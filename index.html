@@ -66,7 +66,7 @@
             </nav>
 
             <div class="flex items-center space-x-4">
-                <a href="/login.html" onclick="openPinModal(event)" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold px-5 py-2.5 rounded-xl transition text-sm shadow-lg shadow-amber-500/20">
+                <a href="#" onclick="openPinModal(event)" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold px-5 py-2.5 rounded-xl transition text-sm shadow-lg shadow-amber-500/20">
                     Log In / Sign Up
                 </a>
             </div>
@@ -286,7 +286,7 @@
             <h3 class="text-3xl sm:text-5xl font-extrabold text-white mb-6">Ready to upgrade your nomadic lifestyle?</h3>
             <p class="text-lg text-slate-400 mb-10">Join global entrepreneurs and creators building the future from anywhere in the world.</p>
             
-            <form id="waitlist-form" onsubmit="handleSignup(event)" action="https://assets.mailerlite.com/jsonp/2736426/forms/202608495558657187/subscribe" method="post" class="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-4 max-w-md mx-auto">
+            <form id="waitlist-form" onsubmit="handleWaitlistSubmit(event)" action="https://assets.mailerlite.com/jsonp/2736426/forms/202608495558657187/subscribe" method="post" class="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-4 max-w-md mx-auto">
                 <input id="user-email" type="email" name="fields[email]" required autocomplete="email" placeholder="Enter email" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3.5 text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 text-sm">
                 <input type="hidden" name="ml-submit" value="1">
                 <input type="hidden" name="anticsrf" value="true">
@@ -294,7 +294,7 @@
                     Join the Waitlist
                 </button>
             </form>
-            <div id="signup-success" class="hidden mt-4 text-amber-400 font-medium text-sm">
+            <div id="waitlist-success" class="hidden mt-4 text-amber-400 font-medium text-sm">
                 ✓ You're on the list. Welcome to dimad.
             </div>
         </div>
@@ -365,10 +365,10 @@
             document.getElementById('coming-soon-modal').classList.add('hidden');
         }
 
-        const EXEC_PIN = '9320';
+        const EXEC_PIN = '2026';
 
         function openPinModal(event) {
-            event.preventDefault();
+            if (event) event.preventDefault();
             const error = document.getElementById('pin-error');
             const input = document.getElementById('exec-pin-input');
             error.classList.add('hidden');
@@ -400,9 +400,11 @@
         // MailerLite waitlist (form 202608495558657187)
         const MAILERLITE_SUBSCRIBE = 'https://assets.mailerlite.com/jsonp/2736426/forms/202608495558657187/subscribe';
 
-        async function handleSignup(e) {
+        async function handleWaitlistSubmit(e) {
             e.preventDefault();
-            const form = e.target;
+            e.stopPropagation();
+            const form = document.getElementById('waitlist-form');
+            if (!form) return;
             const emailInput = form.querySelector('[name="fields[email]"]');
             const submitBtn = form.querySelector('button[type="submit"]');
             if (!emailInput || !emailInput.value.trim()) return;
@@ -420,7 +422,9 @@
                 // MailerLite JSONP endpoints often omit CORS; the request still reaches the list.
             }
 
-            document.getElementById('signup-success').classList.remove('hidden');
+            const success = document.getElementById('waitlist-success');
+            if (success) success.classList.remove('hidden');
+            emailInput.value = '';
             form.reset();
             submitBtn.disabled = false;
         }
