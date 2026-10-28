@@ -1,0 +1,153 @@
+<!-- TAB 1: ENTREPRENEUR COMMAND CENTER -->
+<div id="view-ent-dashboard" class="tab-view space-y-3 w-full">
+  <!-- QUOTE OF THE DAY -->
+  <div class="border border-brand-gold/40 bg-brand-panel p-2.5 rounded flex flex-col justify-center">
+    <span class="text-[8px] text-brand-gold font-bold">💡 QUOTE OF THE DAY</span>
+    <p class="text-[10px] text-slate-200 italic mt-0.5">"At the birth of every great business organization was an enthusiast consumed with earnestness of purpose and confidence in their powers." <span class="not-italic text-brand-gold font-semibold">— B.C. Forbes</span></p>
+  </div>
+
+  <!-- INTERNATIONAL CLOCKS -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+    <div class="border border-brand-border bg-brand-panel p-2.5 rounded flex items-center justify-between">
+      <div>
+        <p class="text-[9px] text-slate-400 font-bold">LOCAL (YEREVAN)</p>
+        <p id="clock-yerevan" class="text-xs font-bold font-mono text-brand-accent">--:--:-- AMT</p>
+      </div>
+      <span class="text-[8px] bg-brand-accent/10 text-brand-accent px-1.5 py-0.5 rounded">UTC+4</span>
+    </div>
+    <div class="border border-brand-border bg-brand-panel p-2.5 rounded flex items-center justify-between">
+      <div>
+        <p class="text-[9px] text-slate-400 font-bold">LONDON (BUSINESS)</p>
+        <p id="clock-london" class="text-xs font-bold font-mono text-brand-gold">--:--:-- GMT</p>
+      </div>
+      <span class="text-[8px] bg-brand-gold/10 text-brand-gold px-1.5 py-0.5 rounded">UTC+0</span>
+    </div>
+    <div class="border border-brand-border bg-brand-panel p-2.5 rounded flex items-center justify-between">
+      <div>
+        <p class="text-[9px] text-slate-400 font-bold">NEW YORK (INVESTORS)</p>
+        <p id="clock-ny" class="text-xs font-bold font-mono text-brand-mint">--:--:-- EDT</p>
+      </div>
+      <span class="text-[8px] bg-brand-mint/10 text-brand-mint px-1.5 py-0.5 rounded">UTC-4</span>
+    </div>
+  </div>
+
+  <!-- METRICS OVERVIEW -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+    <div class="border border-brand-border bg-brand-panel p-3 rounded">
+      <p class="text-[9px] text-slate-400">ACTIVE PIPELINE</p>
+      <p class="text-base font-bold text-brand-accent mt-0.5">$42,500</p>
+    </div>
+    <div class="border border-brand-border bg-brand-panel p-3 rounded">
+      <p class="text-[9px] text-slate-400">OPEN DEALS</p>
+      <p class="text-base font-bold text-slate-100 mt-0.5">7 Clients</p>
+    </div>
+    <div class="border border-brand-border bg-brand-panel p-3 rounded">
+      <p class="text-[9px] text-slate-400">MONTHLY REVENUE TARGET</p>
+      <p class="text-base font-bold text-brand-gold mt-0.5">$18,000 / $25k</p>
+    </div>
+    <div class="border border-brand-border bg-brand-panel p-3 rounded">
+      <p class="text-[9px] text-slate-400">WEEKLY BILLABLE</p>
+      <p class="text-base font-bold text-slate-200 mt-0.5">24.5 HRS</p>
+    </div>
+  </div>
+
+  <!-- HOURLY SCHEDULE, AI BUSINESS CHAT, GOALS & OKRS -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+    <div class="border border-brand-border bg-brand-panel p-3.5 rounded space-y-2">
+      <h3 class="font-bold text-slate-200 text-xs border-b border-brand-border pb-1.5 flex items-center justify-between">
+        <span><i class="fa-solid fa-clock text-brand-accent"></i> Hourly Schedule</span>
+        <span class="text-[8px] text-brand-accent font-mono">TODAY</span>
+      </h3>
+      <div class="space-y-1.5 text-[10px]">
+        <div class="bg-brand-black/40 p-2 rounded border border-brand-border flex justify-between">
+          <span class="text-brand-accent font-bold">09:00 - 11:00</span>
+          <span class="text-slate-300">Deep Work: Platform Architecture</span>
+        </div>
+        <div class="bg-brand-black/40 p-2 rounded border border-brand-border flex justify-between">
+          <span class="text-brand-gold font-bold">11:30 - 13:00</span>
+          <span class="text-slate-300">Hotel Advisory Task Force Sync</span>
+        </div>
+        <div class="bg-brand-black/40 p-2 rounded border border-brand-border flex justify-between">
+          <span class="text-brand-mint font-bold">15:00 - 17:00</span>
+          <span class="text-slate-300">Redefining Hospitality Cohort Design</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="border border-brand-accent/40 bg-brand-panel p-3.5 rounded space-y-2">
+      <h3 class="font-bold text-slate-100 text-xs border-b border-brand-border pb-1.5 flex items-center justify-between">
+        <span><i class="fa-solid fa-bolt text-brand-accent"></i> AI Business Co-Pilot & Notepad</span>
+        <span class="text-[8px] bg-brand-accent/20 text-brand-accent px-1.5 py-0.5 rounded">READY</span>
+      </h3>
+      <div class="bg-brand-black/60 p-2.5 rounded border border-brand-border text-[10px] h-20 overflow-y-auto font-mono text-slate-300 space-y-1">
+        <p class="text-brand-accent"><strong>DIMAD AI:</strong> Operational parameters loaded for Yerevan node.</p>
+      </div>
+      <div class="flex space-x-1">
+        <input type="text" placeholder="Ask Business AI..." class="flex-1 bg-brand-black border border-brand-border px-2 py-1 rounded text-[10px] text-slate-200">
+        <button class="bg-brand-accent text-brand-black font-bold px-3 py-1 rounded text-[10px]">SEND</button>
+      </div>
+    </div>
+
+    <div class="border border-brand-border bg-brand-panel p-3.5 rounded space-y-2">
+      <h3 class="font-bold text-slate-200 text-xs border-b border-brand-border pb-1.5 flex items-center justify-between">
+        <span><i class="fa-solid fa-bullseye text-brand-mint"></i> Goals & OKRs</span>
+        <span class="text-[8px] text-brand-mint font-mono">Q4 2026</span>
+      </h3>
+      <div class="space-y-2 text-[10px]">
+        <div class="bg-brand-black/40 p-2 rounded border border-brand-border">
+          <div class="flex justify-between text-slate-300 font-semibold mb-1"><span>Daily: 4h Deep Architecture</span><span class="text-brand-mint">100%</span></div>
+          <div class="w-full bg-brand-border h-1 rounded-full overflow-hidden"><div class="bg-brand-mint h-full w-full"></div></div>
+        </div>
+        <div class="bg-brand-black/40 p-2 rounded border border-brand-border">
+          <div class="flex justify-between text-slate-300 font-semibold mb-1"><span>Weekly: Launch Founder Cohort</span><span class="text-brand-accent">80%</span></div>
+          <div class="w-full bg-brand-border h-1 rounded-full overflow-hidden"><div class="bg-brand-accent h-full w-[80%]"></div></div>
+        </div>
+        <div class="bg-brand-black/40 p-2 rounded border border-brand-border">
+          <div class="flex justify-between text-slate-300 font-semibold mb-1"><span>Monthly: $25k Revenue Target</span><span class="text-brand-gold">72%</span></div>
+          <div class="w-full bg-brand-border h-1 rounded-full overflow-hidden"><div class="bg-brand-gold h-full w-[72%]"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TASK LIST & MONTHLY CALENDAR -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+    <div class="border border-brand-border bg-brand-panel p-3.5 rounded space-y-2">
+      <h3 class="font-bold text-slate-200 text-xs border-b border-brand-border pb-1.5 flex items-center justify-between">
+        <span><i class="fa-solid fa-list-check text-brand-gold"></i> Task Manager</span>
+        <span class="text-[9px] text-brand-gold">+ Add Task</span>
+      </h3>
+      <div class="space-y-1.5 text-[10px]">
+        <label class="flex items-center space-x-2 bg-brand-black/40 p-2 rounded border border-brand-border">
+          <input type="checkbox" checked class="accent-brand-gold">
+          <span class="text-slate-400 line-through">Finalize MailerLite sign-up flow for Dimad Founders Club</span>
+        </label>
+        <label class="flex items-center space-x-2 bg-brand-black/40 p-2 rounded border border-brand-border">
+          <input type="checkbox" class="accent-brand-gold">
+          <span class="text-slate-200">Review soft goods technical design specs for carry system</span>
+        </label>
+        <label class="flex items-center space-x-2 bg-brand-black/40 p-2 rounded border border-brand-border">
+          <input type="checkbox" class="accent-brand-gold">
+          <span class="text-slate-200">Draft chapter 4 of "Redefining Everything" book</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="border border-brand-border bg-brand-panel p-3.5 rounded space-y-2">
+      <h3 class="font-bold text-slate-200 text-xs border-b border-brand-border pb-1.5 flex items-center justify-between">
+        <span><i class="fa-solid fa-calendar-days text-brand-mint"></i> Dimad Monthly Calendar Overview</span>
+        <span class="text-[9px] text-slate-400">October 2026</span>
+      </h3>
+      <div class="grid grid-cols-7 gap-1 text-center font-mono text-[9px] pt-1">
+        <span class="text-slate-500">M</span><span class="text-slate-500">T</span><span class="text-slate-500">W</span><span class="text-slate-500">T</span><span class="text-slate-500">F</span><span class="text-slate-500">S</span><span class="text-slate-500">S</span>
+        <div class="p-1 bg-brand-black/40 text-slate-500 rounded">26</div>
+        <div class="p-1 bg-brand-black/40 text-slate-500 rounded">27</div>
+        <div class="p-1 bg-brand-mint/20 border border-brand-mint text-brand-mint font-bold rounded">28</div>
+        <div class="p-1 bg-brand-black/40 text-slate-200 rounded">29</div>
+        <div class="p-1 bg-brand-black/40 text-slate-200 rounded">30</div>
+        <div class="p-1 bg-brand-black/40 text-slate-200 rounded">31</div>
+        <div class="p-1 bg-brand-black/40 text-slate-500 rounded">1</div>
+      </div>
+    </div>
+  </div>
+</div>

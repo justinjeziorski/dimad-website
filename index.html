@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DIMADOS</title>
+
+  <!-- TAILWIND & FONTS DEPENDENCIES -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { mono: ['"JetBrains Mono"', 'monospace'] },
+          colors: {
+            brand: { black: '#070A0F', panel: '#0B0F17', border: '#1E293B', accent: '#38BDF8', mint: '#10B981', gold: '#F59E0B', alert: '#EF4444' }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    html, body { width: 100%; height: 100%; margin: 0; padding: 0; background-color: #070A0F; overflow: hidden; }
+
+    .dimad-app-root {
+      font-family: 'JetBrains Mono', monospace;
+      background-color: #070A0F;
+      color: #f8fafc;
+      width: 100vw;
+      height: 100vh;
+      position: absolute;
+      top: 0;
+      left: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      font-size: 11px;
+      z-index: 99;
+    }
+
+    .dimad-app-root ::-webkit-scrollbar { width: 4px; height: 4px; }
+    .dimad-app-root ::-webkit-scrollbar-track { background: #070A0F; }
+    .dimad-app-root ::-webkit-scrollbar-thumb { background: #1E293B; border-radius: 2px; }
+    .dimad-app-root ::-webkit-scrollbar-thumb:hover { background: #38BDF8; }
+
+    /* COLLAPSED SIDEBAR STATES */
+    .sidebar-collapsed { width: 3.5rem !important; }
+    .sidebar-collapsed .nav-text-label { display: none !important; }
+    .sidebar-collapsed .nav-sub-container { display: none !important; }
+    .sidebar-collapsed .nav-item-btn { justify-content: center !important; padding-left: 0 !important; padding-right: 0 !important; }
+    .sidebar-collapsed .nav-header-box { justify-content: center !important; padding-left: 0 !important; padding-right: 0 !important; }
+  </style>
+</head>
+<body>
+<!-- APP CONTAINER -->
+<div class="dimad-app-root">
+
+  <!-- TOP STATIC UNIVERSAL UTILITY BAR -->
+  <header class="h-11 border-b border-brand-border bg-brand-panel flex items-center justify-between px-3 select-none flex-shrink-0 w-full">
+    <div class="flex items-center space-x-3">
+      <div class="flex items-center space-x-2 font-bold tracking-wider text-slate-100">
+        <span class="w-2 h-2 rounded-full bg-brand-mint animate-pulse"></span>
+        <span>DIMAD<span class="text-brand-accent">OS</span></span>
+      </div>
+      <div class="h-4 w-[1px] bg-brand-border"></div>
+
+      <!-- STATIC TRACK YOUR PROGRESS WIDGET -->
+      <div class="flex items-center space-x-2 bg-brand-black/60 border border-brand-border/80 px-2.5 py-1 rounded">
+        <div class="flex items-center space-x-1.5">
+          <i class="fa-solid fa-stopwatch text-brand-mint text-xs"></i>
+          <span class="text-[9px] text-slate-400 font-semibold tracking-wide hidden sm:inline">PROGRESS:</span>
+          <span id="weekly-progress-text" class="text-[10px] text-brand-accent font-bold">14.5 / 40.0 HRS</span>
+        </div>
+        <div class="w-20 bg-brand-border/60 rounded-full h-1 overflow-hidden hidden sm:block">
+          <div id="weekly-progress-bar" class="bg-brand-mint h-full w-[36%] transition-all duration-500"></div>
+        </div>
+        <div class="flex items-center space-x-1 pl-1 border-l border-brand-border">
+          <button id="btn-timer-start" onclick="toggleTimer()" class="bg-brand-mint/20 hover:bg-brand-mint/30 text-brand-mint px-2 py-0.5 rounded text-[9px] font-bold border border-brand-mint/40 transition-all">START</button>
+          <button onclick="resetTimer()" class="text-slate-400 hover:text-slate-200 px-1 py-0.5 text-[9px]">RESET</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- BALANCE & FOCUS LOG -->
+    <div class="flex items-center space-x-3">
+      <button onclick="openFocusLog()" class="flex items-center space-x-1 bg-brand-accent/10 hover:bg-brand-accent/20 border border-brand-accent/30 px-2 py-1 rounded text-brand-accent text-[10px] transition-all">
+        <i class="fa-solid fa-chart-line text-[9px]"></i>
+        <span class="hidden md:inline">Focus Log</span>
+      </button>
+
+      <div class="flex items-center space-x-1 bg-brand-border/40 px-2 py-1 rounded border border-brand-border/60">
+        <i class="fa-solid fa-coins text-brand-gold text-[10px]"></i>
+        <span class="text-slate-400 hidden sm:inline">CREDITS:</span>
+        <span id="dim-balance" class="text-brand-gold font-bold">500 $DIM</span>
+      </div>
+
+      <div class="flex items-center space-x-2 border-l border-brand-border pl-3">
+        <div class="w-5 h-5 rounded-full bg-brand-accent/20 border border-brand-accent/50 flex items-center justify-center text-[10px] font-bold text-brand-accent">
+          <i class="fa-solid fa-user"></i>
+        </div>
+        <span class="font-medium text-slate-300 hidden md:inline">FOUNDER</span>
+        <span class="px-1 py-0.2 text-[8px] bg-brand-mint/10 text-brand-mint border border-brand-mint/30 rounded">PILOT</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- FINANCIAL & CURRENCY TICKER STRIP -->
+  <div class="h-6 bg-brand-black border-b border-brand-border/60 flex items-center justify-between px-3 text-[9px] font-mono select-none overflow-x-auto whitespace-nowrap">
+    <div class="flex items-center space-x-4">
+      <span class="text-slate-500 font-bold flex items-center gap-1"><i class="fa-solid fa-chart-simple text-brand-accent"></i> MARKETS:</span>
+      <span>S&P 500 <span class="text-brand-mint">5,815.20 ▲ +0.4%</span></span>
+      <span>NASDAQ <span class="text-brand-mint">18,518.61 ▲ +0.6%</span></span>
+      <span>BTC/USD <span class="text-brand-mint">$67,420.00 ▲ +2.1%</span></span>
+      <span>ETH/USD <span class="text-brand-alert">$2,640.50 ▼ -0.8%</span></span>
+    </div>
+    <div class="flex items-center space-x-4 text-slate-400 hidden md:flex">
+      <span>AMD/USD <span class="text-brand-mint">388.50 ▲</span></span>
+      <span>GEL/USD <span class="text-brand-mint">2.72 ▲</span></span>
+      <span class="text-brand-accent font-semibold">FX NODE: YEREVAN</span>
+    </div>
+  </div>
+
+  <!-- MAIN SHELL -->
+  <div class="flex-1 flex overflow-hidden w-full">
+
+    <!-- NAVIGATION PANEL (COLLAPSIBLE SIDEBAR) -->
+    <nav id="main-sidebar" class="w-52 border-r border-brand-border bg-brand-panel flex flex-col justify-between py-3 select-none flex-shrink-0 font-mono text-[10px] overflow-y-auto transition-all duration-300">
+
+      <div class="flex flex-col space-y-3 w-full px-2">
+
+        <!-- SIDEBAR TOGGLE BUTTON -->
+        <div class="flex items-center justify-between px-1 pb-1 border-b border-brand-border/40">
+          <span class="nav-text-label text-[8px] font-bold text-slate-500 tracking-wider uppercase">NAVIGATION</span>
+          <button onclick="toggleSidebar()" title="Toggle Sidebar" class="text-slate-400 hover:text-brand-accent p-1 rounded hover:bg-brand-black/50 transition-all mx-auto">
+            <i id="sidebar-toggle-icon" class="fa-solid fa-angles-left text-xs"></i>
+          </button>
+        </div>
+
+        <!-- GLOBAL SHARED HUBS -->
+        <div class="space-y-1">
+          <button onclick="switchTab('dimad-ai-hub')" title="DIMAD AI HUB" class="nav-item-btn w-full bg-gradient-to-r from-brand-accent/20 to-brand-gold/25 hover:from-brand-accent/30 hover:to-brand-gold/35 border border-brand-accent/50 text-slate-100 py-2 px-2.5 rounded font-bold flex items-center justify-between shadow-lg transition-all group">
+            <span class="flex items-center gap-2">
+              <i class="fa-solid fa-bolt text-brand-accent text-xs"></i>
+              <span class="nav-text-label">DIMAD AI</span>
+            </span>
+            <span class="nav-text-label text-[8px] bg-brand-black/60 text-brand-gold border border-brand-gold/40 px-1.5 py-0.5 rounded font-mono">HUB</span>
+          </button>
+
+          <button onclick="switchTab('dimad-calendar')" title="Dimad Calendar" class="nav-item-btn w-full bg-brand-black/40 hover:bg-brand-border border border-brand-border text-slate-200 py-2 px-2.5 rounded font-semibold flex items-center gap-2 transition-all">
+            <i class="fa-solid fa-calendar-days text-brand-mint text-xs"></i>
+            <span class="nav-text-label">Dimad Calendar</span>
+          </button>
+        </div>
+
+        <div class="h-[1px] bg-brand-border/60 my-1"></div>
+
+        <!-- 01 // ENTREPRENEUR -->
+        <div class="space-y-1">
+          <button onclick="switchIdentity('entrepreneur')" id="btn-identity-entrepreneur" title="Entrepreneur Mode" class="nav-header-box nav-item-btn w-full flex items-center justify-between px-2.5 py-2 rounded bg-brand-accent/10 border border-brand-accent/40 text-brand-accent font-bold transition-all">
+            <span class="flex items-center gap-2">
+              <i class="fa-solid fa-briefcase text-xs"></i>
+              <span class="nav-text-label">ENTREPRENEUR</span>
+            </span>
+            <i class="fa-solid fa-chevron-down text-[9px] nav-text-label"></i>
+          </button>
+
+          <div id="subnav-entrepreneur" class="nav-sub-container pl-3 space-y-1 pt-1 border-l border-brand-border/60 ml-2">
+            <button onclick="switchTab('ent-dashboard')" id="nav-ent-dashboard" class="sub-nav-btn text-brand-accent font-semibold block w-full text-left py-1 px-2 rounded hover:text-brand-accent">Command Center</button>
+            <button onclick="switchTab('ent-crm')" id="nav-ent-crm" class="sub-nav-btn text-slate-400 block w-full text-left py-1 px-2 rounded hover:text-slate-200">Kanban CRM</button>
+            <button onclick="switchTab('ent-invoices')" id="nav-ent-invoices" class="sub-nav-btn text-slate-400 block w-full text-left py-1 px-2 rounded hover:text-slate-200">Invoices & Proposals</button>
+            <button onclick="switchTab('ent-goals')" id="nav-ent-goals" class="sub-nav-btn text-slate-400 block w-full text-left py-1 px-2 rounded hover:text-slate-200">Goals & OKRs</button>
+            <button onclick="switchTab('ent-tasks')" id="nav-ent-tasks" class="sub-nav-btn text-slate-400 block w-full text-left py-1 px-2 rounded hover:text-slate-200">Task Manager</button>
+            <button onclick="switchTab('ent-custom')" id="nav-ent-custom-nav" class="sub-nav-btn text-brand-gold font-semibold block w-full text-left py-1 px-2 rounded hover:text-brand-gold flex items-center justify-between">
+              <span>Custom Workspace</span>
+              <i class="fa-solid fa-up-right-from-square text-[8px]"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- 02 // CREATOR -->
+        <div class="space-y-1">
+          <button onclick="switchIdentity('creator')" id="btn-identity-creator" title="Creator Mode" class="nav-header-box nav-item-btn w-full flex items-center justify-between px-2.5 py-2 rounded bg-brand-black/40 border border-brand-border/60 text-slate-300 hover:text-brand-accent transition-all">
+            <span class="flex items-center gap-2">
+              <i class="fa-solid fa-feather text-xs text-brand-gold"></i>
+              <span class="nav-text-label">CREATOR</span>
+            </span>
+            <i class="fa-solid fa-chevron-right text-[9px] text-slate-500 nav-text-label"></i>
+          </button>
+
+          <div id="subnav-creator" class="nav-sub-container pl-3 space-y-1 pt-1 border-l border-brand-border/60 ml-2 hidden">
+            <button onclick="switchTab('creator-studio')" id="nav-creator-studio" class="sub-nav-btn text-brand-gold font-semibold block w-full text-left py-1 px-2 rounded hover:text-brand-gold">Dimad Studio</button>
+            <button onclick="switchTab('creator-pipeline')" id="nav-creator-pipeline" class="sub-nav-btn text-slate-400 block w-full text-left py-1 px-2 rounded hover:text-slate-200">Creator Pipeline</button>
+            <button onclick="switchTab('creator-scheduler')" id="nav-creator-scheduler" class="sub-nav-btn text-slate-400 block w-full text-left py-1 px-2 rounded hover:text-slate-200">Content Scheduler</button>
+            <button onclick="switchTab('ent-custom')" id="nav-creator-custom-nav" class="sub-nav-btn text-brand-gold font-semibold block w-full text-left py-1 px-2 rounded hover:text-brand-gold flex items-center justify-between">
+              <span>Custom Workspace</span>
+              <i class="fa-solid fa-up-right-from-square text-[8px]"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- 03 // NOMAD -->
+        <div class="space-y-1">
+          <button onclick="switchIdentity('nomad')" id="btn-identity-nomad" title="Nomad Mode" class="nav-header-box nav-item-btn w-full flex items-center justify-between px-2.5 py-2 rounded bg-brand-black/40 border border-brand-border/60 text-slate-300 hover:text-brand-accent transition-all">
+            <span class="flex items-center gap-2">
+              <i class="fa-solid fa-compass text-xs text-brand-mint"></i>
+              <span class="nav-text-label">NOMAD</span>
+            </span>
+            <i class="fa-solid fa-chevron-right text-[9px] text-slate-500 nav-text-label"></i>
+          </button>
+
+          <div id="subnav-nomad" class="nav-sub-container pl-3 space-y-1 pt-1 border-l border-brand-border/60 ml-2 hidden">
+            <button onclick="switchTab('nomad-city')" id="nav-nomad-city" class="sub-nav-btn text-brand-mint font-semibold block w-full text-left py-1 px-2 rounded hover:text-brand-mint">Your City</button>
+            <button onclick="switchTab('nomad-concierge')" id="nav-nomad-concierge" class="sub-nav-btn text-slate-400 block w-full text-left py-1 px-2 rounded hover:text-slate-200">Dimad Concierge</button>
+            <button onclick="switchTab('nomad-ai')" id="nav-nomad-ai" class="sub-nav-btn text-slate-400 block w-full text-left py-1 px-2 rounded hover:text-slate-200">AI Travel Planner</button>
+            <button onclick="switchTab('nomad-maps')" id="nav-nomad-maps" class="sub-nav-btn text-slate-400 block w-full text-left py-1 px-2 rounded hover:text-slate-200">Digital Maps</button>
+            <button onclick="switchTab('nomad-guides')" id="nav-nomad-guides" class="sub-nav-btn text-slate-400 block w-full text-left py-1 px-2 rounded hover:text-slate-200">Travel Guides</button>
+            <button onclick="switchTab('nomad-language')" id="nav-nomad-language" class="sub-nav-btn text-slate-400 block w-full text-left py-1 px-2 rounded hover:text-slate-200">Language Survival Guide</button>
+            <button onclick="switchTab('nomad-toolbox')" id="nav-nomad-toolbox" class="sub-nav-btn text-slate-400 block w-full text-left py-1 px-2 rounded hover:text-slate-200">Travel Toolbox</button>
+            <button onclick="switchTab('ent-custom')" id="nav-nomad-custom-nav" class="sub-nav-btn text-brand-gold font-semibold block w-full text-left py-1 px-2 rounded hover:text-brand-gold flex items-center justify-between">
+              <span>Custom Workspace</span>
+              <i class="fa-solid fa-up-right-from-square text-[8px]"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- 04 // COMMUNITY -->
+        <div class="space-y-1">
+          <button onclick="switchIdentity('community')" id="btn-identity-community" title="Community Mode" class="nav-header-box nav-item-btn w-full flex items-center justify-between px-2.5 py-2 rounded bg-brand-black/40 border border-brand-border/60 text-slate-300 hover:text-brand-accent transition-all">
+            <span class="flex items-center gap-2">
+              <i class="fa-solid fa-users text-xs text-brand-gold"></i>
+              <span class="nav-text-label">DIMAD CLUB</span>
+            </span>
+            <i class="fa-solid fa-chevron-down text-[9px] nav-text-label"></i>
+          </button>
+
+          <div id="subnav-community" class="nav-sub-container pl-3 space-y-1 pt-1 border-l border-brand-border/60 ml-2 hidden">
+            <button onclick="switchTab('community-overview')" class="sub-nav-btn text-brand-gold font-semibold block w-full text-left py-1 px-2 rounded hover:text-brand-gold">Club Overview</button>
+            <button onclick="switchTab('community-map')" class="sub-nav-btn text-slate-400 block w-full text-left py-1 px-2 rounded hover:text-slate-200">Members Map</button>
+            <button onclick="switchTab('community-meet')" class="sub-nav-btn text-slate-400 block w-full text-left py-1 px-2 rounded hover:text-slate-200">Dimad Meet</button>
+            <button onclick="switchTab('community-forum')" class="sub-nav-btn text-slate-400 block w-full text-left py-1 px-2 rounded hover:text-slate-200">Dimad Forum</button>
+            <button onclick="switchTab('community-announcements')" class="sub-nav-btn text-slate-400 block w-full text-left py-1 px-2 rounded hover:text-slate-200">Announcements</button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- SYSTEM SETTINGS FOOTER -->
+      <div class="px-2 pt-3 border-t border-brand-border/40 space-y-1">
+        <button onclick="switchTab('settings')" title="Settings & Vault" class="nav-item-btn text-slate-400 hover:text-slate-200 block w-full text-left py-1.5 px-2 rounded flex items-center gap-2">
+          <i class="fa-solid fa-gear text-xs"></i>
+          <span class="nav-text-label">Settings & Vault</span>
+        </button>
+      </div>
+
+    </nav>
+
+    <!-- MAIN CONTENT VIEW AREA -->
+    <main id="view-container" class="flex-1 bg-brand-black overflow-y-auto p-4 w-full relative space-y-3">
+      <div class="text-slate-500 text-[10px] font-mono p-4">Loading views…</div>
+    </main>
+  </div>
+</div>
+
+<!-- HOW-TO POPUP MODAL -->
+<div id="howto-modal" class="fixed inset-0 bg-brand-black/80 z-[999] hidden flex items-center justify-center p-4">
+  <div class="border border-brand-gold bg-brand-panel max-w-md w-full p-5 rounded-lg space-y-4 shadow-2xl font-mono text-[11px]">
+    <div class="flex items-center justify-between border-b border-brand-border pb-2">
+      <h3 class="font-bold text-brand-gold flex items-center gap-2"><i class="fa-solid fa-circle-question"></i> How to Add a Custom Workspace</h3>
+      <button onclick="toggleHowToModal()" class="text-slate-400 hover:text-white font-bold text-xs">✕</button>
+    </div>
+    <div class="space-y-3 text-slate-300">
+      <ol class="list-decimal pl-4 space-y-2">
+        <li><strong>Open your tool</strong> in your browser and copy its web URL.</li>
+        <li><strong>Paste the URL</strong> into the input field at the top.</li>
+        <li>Click <strong>+ PIN</strong> to embed it securely.</li>
+      </ol>
+    </div>
+    <button onclick="toggleHowToModal()" class="w-full bg-brand-gold text-brand-black font-bold py-2 rounded text-[10px]">GOT IT</button>
+  </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
