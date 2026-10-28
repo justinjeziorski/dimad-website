@@ -66,9 +66,9 @@
             </nav>
 
             <div class="flex items-center space-x-4">
-                <a href="#" onclick="openPinModal(event)" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold px-5 py-2.5 rounded-xl transition text-sm shadow-lg shadow-amber-500/20">
+                <button type="button" onclick="openPinModal(event)" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold px-5 py-2.5 rounded-xl transition text-sm shadow-lg shadow-amber-500/20">
                     Log In / Sign Up
-                </a>
+                </button>
             </div>
         </div>
     </header>
@@ -106,11 +106,19 @@
                 Join the platform curated for entrepreneurs, creators, and remote professionals who want to work with intention and travel further.
             </p>
 
-            <!-- Primary CTA -->
-            <div class="flex justify-center mb-16">
-                <a href="#join" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold px-10 py-4 rounded-xl text-lg transition shadow-xl shadow-amber-500/20 text-center transform hover:-translate-y-0.5">
-                    Join the Waitlist
-                </a>
+            <!-- Primary CTA: waitlist only (no links, no dashboard/login hrefs) -->
+            <div class="flex flex-col items-center mb-16 w-full max-w-md mx-auto">
+                <form onsubmit="handleWaitlistSubmit(event); return false;" class="waitlist-form w-full flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-3">
+                    <input type="email" name="fields[email]" required autocomplete="email" placeholder="Enter email" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-4 py-4 text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 text-sm">
+                    <input type="hidden" name="ml-submit" value="1">
+                    <input type="hidden" name="anticsrf" value="true">
+                    <button type="submit" class="w-full sm:w-auto bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold px-10 py-4 rounded-xl text-lg transition shadow-xl shadow-amber-500/20 text-center transform hover:-translate-y-0.5 whitespace-nowrap">
+                        Join the Waitlist
+                    </button>
+                </form>
+                <div class="waitlist-success hidden mt-4 text-amber-400 font-medium text-sm">
+                    ✓ You're on the list. Welcome to dimad.
+                </div>
             </div>
         </div>
     </section>
@@ -286,15 +294,15 @@
             <h3 class="text-3xl sm:text-5xl font-extrabold text-white mb-6">Ready to upgrade your nomadic lifestyle?</h3>
             <p class="text-lg text-slate-400 mb-10">Join global entrepreneurs and creators building the future from anywhere in the world.</p>
             
-            <form id="waitlist-form" onsubmit="handleWaitlistSubmit(event)" action="https://assets.mailerlite.com/jsonp/2736426/forms/202608495558657187/subscribe" method="post" class="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-4 max-w-md mx-auto">
-                <input id="user-email" type="email" name="fields[email]" required autocomplete="email" placeholder="Enter email" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3.5 text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 text-sm">
+            <form onsubmit="handleWaitlistSubmit(event); return false;" class="waitlist-form flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-4 max-w-md mx-auto">
+                <input type="email" name="fields[email]" required autocomplete="email" placeholder="Enter email" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3.5 text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 text-sm">
                 <input type="hidden" name="ml-submit" value="1">
                 <input type="hidden" name="anticsrf" value="true">
                 <button type="submit" class="w-full sm:w-auto bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-8 py-3.5 rounded-xl transition whitespace-nowrap shadow-lg shadow-amber-500/20">
                     Join the Waitlist
                 </button>
             </form>
-            <div id="waitlist-success" class="hidden mt-4 text-amber-400 font-medium text-sm">
+            <div class="waitlist-success hidden mt-4 text-amber-400 font-medium text-sm">
                 ✓ You're on the list. Welcome to dimad.
             </div>
         </div>
@@ -403,11 +411,13 @@
         async function handleWaitlistSubmit(e) {
             e.preventDefault();
             e.stopPropagation();
-            const form = document.getElementById('waitlist-form');
-            if (!form) return;
+            const form = (e.currentTarget && e.currentTarget.tagName === 'FORM')
+                ? e.currentTarget
+                : (e.target && e.target.closest ? e.target.closest('form') : null);
+            if (!form) return false;
             const emailInput = form.querySelector('[name="fields[email]"]');
             const submitBtn = form.querySelector('button[type="submit"]');
-            if (!emailInput || !emailInput.value.trim()) return;
+            if (!emailInput || !emailInput.value.trim()) return false;
 
             submitBtn.disabled = true;
             const payload = new FormData(form);
@@ -422,11 +432,12 @@
                 // MailerLite JSONP endpoints often omit CORS; the request still reaches the list.
             }
 
-            const success = document.getElementById('waitlist-success');
+            const success = form.parentElement && form.parentElement.querySelector('.waitlist-success');
             if (success) success.classList.remove('hidden');
             emailInput.value = '';
             form.reset();
             submitBtn.disabled = false;
+            return false;
         }
 
         fetch('https://assets.mailerlite.com/jsonp/2736426/forms/202608495558657187/takel').catch(function () {});
