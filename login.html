@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>dimad — Log In / Sign Up</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            darkbg: '#0f172a',
+            cardbg: '#1e293b',
+            cardborder: '#334155',
+            accent: '#f59e0b',
+            accenthover: '#d97706',
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-darkbg text-slate-100 font-sans antialiased min-h-screen selection:bg-amber-500 selection:text-slate-950">
+  <div class="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] bg-amber-500/10 blur-[130px] rounded-full pointer-events-none"></div>
+
+  <header class="border-b border-slate-800/80 relative z-10">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between">
+      <a href="/" class="text-2xl font-black tracking-wider text-white hover:text-amber-400 transition-colors">dimad</a>
+      <a href="/" class="text-sm font-medium text-slate-400 hover:text-amber-400 transition-colors">Back to home</a>
+    </div>
+  </header>
+
+  <main class="relative z-10 flex items-center justify-center px-4 py-16">
+    <div class="bg-cardbg border border-slate-800 rounded-2xl p-8 w-full max-w-md shadow-2xl">
+      <div class="inline-flex items-center space-x-2 bg-slate-900/90 border border-amber-500/30 px-3 py-1 rounded-full text-amber-400 text-xs font-semibold mb-6">
+        <span class="inline-block w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+        <span>Gateway</span>
+      </div>
+      <h1 class="text-2xl font-extrabold text-white mb-2">Log in / Sign up</h1>
+      <p class="text-slate-400 text-sm mb-8">Enter your email and password to open the dimad dashboard.</p>
+
+      <form id="auth-form" class="space-y-4">
+        <div>
+          <label for="auth-email" class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Email</label>
+          <input id="auth-email" type="email" required autocomplete="email" placeholder="you@example.com" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3.5 text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 text-sm">
+        </div>
+        <div>
+          <label for="auth-password" class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Password</label>
+          <input id="auth-password" type="password" required minlength="6" autocomplete="current-password" placeholder="••••••••" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3.5 text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 text-sm">
+        </div>
+        <button type="submit" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold px-5 py-3.5 rounded-xl transition text-sm shadow-lg shadow-amber-500/20">
+          Continue
+        </button>
+      </form>
+    </div>
+  </main>
+
+  <script>
+    if (localStorage.getItem('dimad_user')) {
+      window.location.replace('/dashboard/index.html');
+    }
+
+    document.getElementById('auth-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      const email = document.getElementById('auth-email').value.trim();
+      const password = document.getElementById('auth-password').value;
+      if (!email || !password) return;
+      localStorage.setItem('dimad_user', JSON.stringify({ email: email }));
+      window.location.replace('/dashboard/index.html');
+    });
+  </script>
+</body>
+</html>

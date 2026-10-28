@@ -62,7 +62,7 @@ async function loadViews() {
   const container = document.getElementById('view-container');
   try {
     const fragments = await Promise.all(VIEW_FILES.map(async (id) => {
-      const res = await fetch(`views/${id}.html`);
+      const res = await fetch(new URL(`../views/${id}.html`, window.location.href));
       if (!res.ok) throw new Error(`Failed to load views/${id}.html (${res.status})`);
       return res.text();
     }));
