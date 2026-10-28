@@ -170,20 +170,9 @@
               <i class="fa-solid fa-briefcase text-xs"></i>
               <span class="nav-text-label">ENTREPRENEUR</span>
             </span>
-            <i class="fa-solid fa-chevron-down text-[9px] nav-text-label"></i>
+            <i data-identity-chevron="entrepreneur" class="fa-solid fa-chevron-down text-[9px] nav-text-label"></i>
           </button>
-
-          <div id="subnav-entrepreneur" class="nav-sub-container pl-3 space-y-1 pt-1 border-l border-brand-border/60 ml-2">
-            <button onclick="switchTab('ent-dashboard')" id="nav-ent-dashboard" class="sub-nav-btn text-brand-accent font-semibold block w-full text-left py-1 px-2 rounded hover:text-brand-accent">Command Center</button>
-            <button onclick="switchTab('ent-crm')" id="nav-ent-crm" class="sub-nav-btn text-slate-400 block w-full text-left py-1 px-2 rounded hover:text-slate-200">Kanban CRM</button>
-            <button onclick="switchTab('ent-invoices')" id="nav-ent-invoices" class="sub-nav-btn text-slate-400 block w-full text-left py-1 px-2 rounded hover:text-slate-200">Invoices & Proposals</button>
-            <button onclick="switchTab('ent-goals')" id="nav-ent-goals" class="sub-nav-btn text-slate-400 block w-full text-left py-1 px-2 rounded hover:text-slate-200">Goals & OKRs</button>
-            <button onclick="switchTab('ent-tasks')" id="nav-ent-tasks" class="sub-nav-btn text-slate-400 block w-full text-left py-1 px-2 rounded hover:text-slate-200">Task Manager</button>
-            <button onclick="switchTab('ent-custom')" id="nav-ent-custom-nav" class="sub-nav-btn text-brand-gold font-semibold block w-full text-left py-1 px-2 rounded hover:text-brand-gold flex items-center justify-between">
-              <span>Custom Workspace</span>
-              <i class="fa-solid fa-up-right-from-square text-[8px]"></i>
-            </button>
-          </div>
+          <div id="subnav-entrepreneur" class="nav-sub-container pl-3 space-y-1 pt-1 border-l border-brand-border/60 ml-2"></div>
         </div>
 
         <!-- 02 // CREATOR -->
@@ -193,62 +182,34 @@
               <i class="fa-solid fa-feather text-xs text-brand-gold"></i>
               <span class="nav-text-label">CREATOR</span>
             </span>
-            <i class="fa-solid fa-chevron-right text-[9px] text-slate-500 nav-text-label"></i>
+            <i data-identity-chevron="creator" class="fa-solid fa-chevron-right text-[9px] text-slate-500 nav-text-label"></i>
           </button>
-
-          <div id="subnav-creator" class="nav-sub-container pl-3 space-y-1 pt-1 border-l border-brand-border/60 ml-2 hidden">
-            <button onclick="switchTab('creator-studio')" id="nav-creator-studio" class="sub-nav-btn text-brand-gold font-semibold block w-full text-left py-1 px-2 rounded hover:text-brand-gold">Dimad Studio</button>
-            <button onclick="switchTab('creator-pipeline')" id="nav-creator-pipeline" class="sub-nav-btn text-slate-400 block w-full text-left py-1 px-2 rounded hover:text-slate-200">Creator Pipeline</button>
-            <button onclick="switchTab('creator-scheduler')" id="nav-creator-scheduler" class="sub-nav-btn text-slate-400 block w-full text-left py-1 px-2 rounded hover:text-slate-200">Content Scheduler</button>
-            <button onclick="switchTab('ent-custom')" id="nav-creator-custom-nav" class="sub-nav-btn text-brand-gold font-semibold block w-full text-left py-1 px-2 rounded hover:text-brand-gold flex items-center justify-between">
-              <span>Custom Workspace</span>
-              <i class="fa-solid fa-up-right-from-square text-[8px]"></i>
-            </button>
-          </div>
+          <div id="subnav-creator" class="nav-sub-container pl-3 space-y-1 pt-1 border-l border-brand-border/60 ml-2 hidden"></div>
         </div>
 
         <!-- 03 // NOMAD -->
         <div class="space-y-1">
           <button onclick="switchIdentity('nomad')" id="btn-identity-nomad" title="Nomad Mode" class="nav-header-box nav-item-btn w-full flex items-center justify-between px-2.5 py-2 rounded bg-brand-black/40 border border-brand-border/60 text-slate-300 hover:text-brand-accent transition-all">
             <span class="flex items-center gap-2">
-              <i class="fa-solid fa-compass text-xs text-brand-mint"></i>
+              <i class="fa-solid fa-compass text-xs text-brand-gold"></i>
               <span class="nav-text-label">NOMAD</span>
             </span>
-            <i class="fa-solid fa-chevron-right text-[9px] text-slate-500 nav-text-label"></i>
+            <i data-identity-chevron="nomad" class="fa-solid fa-chevron-right text-[9px] text-slate-500 nav-text-label"></i>
           </button>
-
-          <div id="subnav-nomad" class="nav-sub-container pl-3 space-y-1 pt-1 border-l border-brand-border/60 ml-2 hidden">
-            <button onclick="switchTab('nomad-city')" id="nav-nomad-city" class="sub-nav-btn text-brand-mint font-semibold block w-full text-left py-1 px-2 rounded hover:text-brand-mint">Your City</button>
-            <button onclick="switchTab('nomad-concierge')" id="nav-nomad-concierge" class="sub-nav-btn text-slate-400 block w-full text-left py-1 px-2 rounded hover:text-slate-200">Dimad Concierge</button>
-            <button onclick="switchTab('nomad-ai')" id="nav-nomad-ai" class="sub-nav-btn text-slate-400 block w-full text-left py-1 px-2 rounded hover:text-slate-200">AI Travel Planner</button>
-            <button onclick="switchTab('nomad-maps')" id="nav-nomad-maps" class="sub-nav-btn text-slate-400 block w-full text-left py-1 px-2 rounded hover:text-slate-200">Digital Maps</button>
-            <button onclick="switchTab('nomad-guides')" id="nav-nomad-guides" class="sub-nav-btn text-slate-400 block w-full text-left py-1 px-2 rounded hover:text-slate-200">Travel Guides</button>
-            <button onclick="switchTab('nomad-language')" id="nav-nomad-language" class="sub-nav-btn text-slate-400 block w-full text-left py-1 px-2 rounded hover:text-slate-200">Language Survival Guide</button>
-            <button onclick="switchTab('nomad-toolbox')" id="nav-nomad-toolbox" class="sub-nav-btn text-slate-400 block w-full text-left py-1 px-2 rounded hover:text-slate-200">Travel Toolbox</button>
-            <button onclick="switchTab('ent-custom')" id="nav-nomad-custom-nav" class="sub-nav-btn text-brand-gold font-semibold block w-full text-left py-1 px-2 rounded hover:text-brand-gold flex items-center justify-between">
-              <span>Custom Workspace</span>
-              <i class="fa-solid fa-up-right-from-square text-[8px]"></i>
-            </button>
-          </div>
+          <div id="subnav-nomad" class="nav-sub-container pl-3 space-y-1 pt-1 border-l border-brand-border/60 ml-2 hidden"></div>
         </div>
 
         <!-- 04 // COMMUNITY -->
         <div class="space-y-1">
           <button onclick="switchIdentity('community')" id="btn-identity-community" title="Community Mode" class="nav-header-box nav-item-btn w-full flex items-center justify-between px-2.5 py-2 rounded bg-brand-black/40 border border-brand-border/60 text-slate-300 hover:text-brand-accent transition-all">
-            <span class="flex items-center gap-2">
+            <span class="flex items-center gap-2 min-w-0">
               <i class="fa-solid fa-users text-xs text-brand-gold"></i>
               <span class="nav-text-label">DIMAD CLUB</span>
+              <span class="nav-text-label text-[7px] bg-brand-gold/15 text-brand-gold border border-brand-gold/40 px-1 py-0.5 rounded uppercase tracking-wide">Premium</span>
             </span>
-            <i class="fa-solid fa-chevron-down text-[9px] nav-text-label"></i>
+            <i data-identity-chevron="community" class="fa-solid fa-chevron-right text-[9px] text-slate-500 nav-text-label"></i>
           </button>
-
-          <div id="subnav-community" class="nav-sub-container pl-3 space-y-1 pt-1 border-l border-brand-border/60 ml-2 hidden">
-            <button onclick="switchTab('community-overview')" class="sub-nav-btn text-brand-gold font-semibold block w-full text-left py-1 px-2 rounded hover:text-brand-gold">Club Overview</button>
-            <button onclick="switchTab('community-map')" class="sub-nav-btn text-slate-400 block w-full text-left py-1 px-2 rounded hover:text-slate-200">Members Map</button>
-            <button onclick="switchTab('community-meet')" class="sub-nav-btn text-slate-400 block w-full text-left py-1 px-2 rounded hover:text-slate-200">Dimad Meet</button>
-            <button onclick="switchTab('community-forum')" class="sub-nav-btn text-slate-400 block w-full text-left py-1 px-2 rounded hover:text-slate-200">Dimad Forum</button>
-            <button onclick="switchTab('community-announcements')" class="sub-nav-btn text-slate-400 block w-full text-left py-1 px-2 rounded hover:text-slate-200">Announcements</button>
-          </div>
+          <div id="subnav-community" class="nav-sub-container pl-3 space-y-1 pt-1 border-l border-brand-border/60 ml-2 hidden"></div>
         </div>
 
       </div>
@@ -288,6 +249,6 @@
   </div>
 </div>
 
-<script src="script.js"></script>
+<script src="../script.js"></script>
 </body>
 </html>

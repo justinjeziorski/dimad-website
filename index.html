@@ -66,7 +66,7 @@
             </nav>
 
             <div class="flex items-center space-x-4">
-                <a href="/login.html" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold px-5 py-2.5 rounded-xl transition text-sm shadow-lg shadow-amber-500/20">
+                <a href="/login.html" onclick="openPinModal(event)" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold px-5 py-2.5 rounded-xl transition text-sm shadow-lg shadow-amber-500/20">
                     Log In / Sign Up
                 </a>
             </div>
@@ -108,8 +108,8 @@
 
             <!-- Primary CTA -->
             <div class="flex justify-center mb-16">
-                <a href="/login.html" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold px-10 py-4 rounded-xl text-lg transition shadow-xl shadow-amber-500/20 text-center transform hover:-translate-y-0.5">
-                    Get Started Free
+                <a href="#join" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold px-10 py-4 rounded-xl text-lg transition shadow-xl shadow-amber-500/20 text-center transform hover:-translate-y-0.5">
+                    Join the Waitlist
                 </a>
             </div>
         </div>
@@ -286,10 +286,12 @@
             <h3 class="text-3xl sm:text-5xl font-extrabold text-white mb-6">Ready to upgrade your nomadic lifestyle?</h3>
             <p class="text-lg text-slate-400 mb-10">Join global entrepreneurs and creators building the future from anywhere in the world.</p>
             
-            <form onsubmit="handleSignup(event)" class="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-4 max-w-md mx-auto">
-                <input id="user-email" type="email" required placeholder="Enter email" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3.5 text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 text-sm">
+            <form id="waitlist-form" onsubmit="handleSignup(event)" action="https://assets.mailerlite.com/jsonp/2736426/forms/202608495558657187/subscribe" method="post" class="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-4 max-w-md mx-auto">
+                <input id="user-email" type="email" name="fields[email]" required autocomplete="email" placeholder="Enter email" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3.5 text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 text-sm">
+                <input type="hidden" name="ml-submit" value="1">
+                <input type="hidden" name="anticsrf" value="true">
                 <button type="submit" class="w-full sm:w-auto bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-8 py-3.5 rounded-xl transition whitespace-nowrap shadow-lg shadow-amber-500/20">
-                    Join for Free
+                    Join the Waitlist
                 </button>
             </form>
             <div id="signup-success" class="hidden mt-4 text-amber-400 font-medium text-sm">
@@ -297,6 +299,22 @@
             </div>
         </div>
     </section>
+
+    <!-- EXECUTIVE PIN MODAL -->
+    <div id="pin-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[60] hidden flex items-center justify-center p-6">
+        <div class="bg-cardbg border border-amber-500/30 rounded-2xl p-8 max-w-sm w-full text-center shadow-2xl relative">
+            <div class="text-amber-500 font-black text-xl mb-2 tracking-wide">EXECUTIVE ACCESS</div>
+            <p class="text-slate-400 text-sm mb-6">Enter the 4-digit code to continue to Log In / Sign Up.</p>
+            <form onsubmit="submitPin(event)" class="space-y-4">
+                <input id="exec-pin-input" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="off" placeholder="••••" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3.5 text-center text-xl tracking-[0.6em] text-white placeholder-slate-600 focus:outline-none focus:border-amber-500 font-mono">
+                <p id="pin-error" class="hidden text-red-500 text-sm font-medium">Incorrect code. Access denied.</p>
+                <button type="submit" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold px-5 py-3 rounded-xl transition text-sm shadow-lg shadow-amber-500/20">
+                    Unlock
+                </button>
+            </form>
+            <button type="button" onclick="closePinModal()" class="mt-4 text-slate-500 hover:text-slate-300 text-sm font-medium">Cancel</button>
+        </div>
+    </div>
 
     <!-- COMING SOON MODAL -->
     <div id="coming-soon-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-6">
@@ -347,12 +365,67 @@
             document.getElementById('coming-soon-modal').classList.add('hidden');
         }
 
-        // Signup Handler
-        function handleSignup(e) {
-            e.preventDefault();
-            document.getElementById('signup-success').classList.remove('hidden');
-            document.getElementById('user-email').value = '';
+        const EXEC_PIN = '9320';
+
+        function openPinModal(event) {
+            event.preventDefault();
+            const error = document.getElementById('pin-error');
+            const input = document.getElementById('exec-pin-input');
+            error.classList.add('hidden');
+            input.value = '';
+            document.getElementById('pin-modal').classList.remove('hidden');
+            setTimeout(function () { input.focus(); }, 50);
         }
+
+        function closePinModal() {
+            document.getElementById('pin-modal').classList.add('hidden');
+            document.getElementById('pin-error').classList.add('hidden');
+            document.getElementById('exec-pin-input').value = '';
+        }
+
+        function submitPin(event) {
+            event.preventDefault();
+            const input = document.getElementById('exec-pin-input');
+            const error = document.getElementById('pin-error');
+            if (input.value === EXEC_PIN) {
+                localStorage.setItem('dimad_exec_access', 'true');
+                window.location.href = '/login.html';
+                return;
+            }
+            error.classList.remove('hidden');
+            input.value = '';
+            input.focus();
+        }
+
+        // MailerLite waitlist (form 202608495558657187)
+        const MAILERLITE_SUBSCRIBE = 'https://assets.mailerlite.com/jsonp/2736426/forms/202608495558657187/subscribe';
+
+        async function handleSignup(e) {
+            e.preventDefault();
+            const form = e.target;
+            const emailInput = form.querySelector('[name="fields[email]"]');
+            const submitBtn = form.querySelector('button[type="submit"]');
+            if (!emailInput || !emailInput.value.trim()) return;
+
+            submitBtn.disabled = true;
+            const payload = new FormData(form);
+
+            try {
+                await fetch(MAILERLITE_SUBSCRIBE, {
+                    method: 'POST',
+                    body: payload,
+                    mode: 'no-cors'
+                });
+            } catch (err) {
+                // MailerLite JSONP endpoints often omit CORS; the request still reaches the list.
+            }
+
+            document.getElementById('signup-success').classList.remove('hidden');
+            form.reset();
+            submitBtn.disabled = false;
+        }
+
+        fetch('https://assets.mailerlite.com/jsonp/2736426/forms/202608495558657187/takel').catch(function () {});
 
         // 3D Particle Globe Initialization
         function initGlobe() {

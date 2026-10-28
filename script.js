@@ -3,14 +3,20 @@ let currentActiveMode = 'entrepreneur';
 
 const VIEW_FILES = [
   'ent-dashboard',
+  'ent-ai-business',
   'ent-crm',
+  'ent-stocks',
   'ent-invoices',
   'ent-goals',
   'ent-tasks',
   'ent-custom',
   'creator-studio',
+  'creator-ai',
+  'creator-writespace',
+  'creator-design',
   'creator-pipeline',
   'creator-scheduler',
+  'creator-vault',
   'nomad-city',
   'nomad-concierge',
   'nomad-ai',
@@ -27,6 +33,58 @@ const VIEW_FILES = [
   'community-announcements',
   'settings'
 ];
+
+const MODE_NAV = {
+  entrepreneur: {
+    defaultTab: 'ent-dashboard',
+    items: [
+      { id: 'ent-dashboard', label: 'Command Center', highlight: true },
+      { id: 'ent-ai-business', label: '⚡ AI Business' },
+      { id: 'ent-crm', label: 'Kanban CRM' },
+      { id: 'ent-stocks', label: 'Stocks & Investments' },
+      { id: 'ent-invoices', label: 'Invoices & Proposals' },
+      { id: 'ent-goals', label: 'Goals & Achievements' },
+      { id: 'ent-tasks', label: 'Task Manager' },
+      { type: 'workspace', workspaces: ['Workspace 1', 'Workspace 2', 'Workspace 3'] }
+    ]
+  },
+  creator: {
+    defaultTab: 'creator-studio',
+    items: [
+      { id: 'creator-studio', label: 'Dimad Studio', highlight: true },
+      { id: 'creator-ai', label: '⚡ AI Creator' },
+      { id: 'creator-writespace', label: 'WriteSpace' },
+      { id: 'creator-design', label: 'Design Suite' },
+      { id: 'creator-pipeline', label: 'Creator Pipeline' },
+      { id: 'creator-scheduler', label: 'Content Scheduler' },
+      { id: 'creator-vault', label: 'Asset & Media Vault' },
+      { type: 'workspace', workspaces: ['Workspace 1', 'Workspace 2', 'Workspace 3'] }
+    ]
+  },
+  nomad: {
+    defaultTab: 'nomad-city',
+    items: [
+      { id: 'nomad-city', label: 'Your City', highlight: true },
+      { id: 'nomad-ai', label: '⚡ AI Travel Planner' },
+      { id: 'nomad-concierge', label: 'Dimad Concierge', premium: true },
+      { id: 'nomad-maps', label: 'Digital Maps' },
+      { id: 'nomad-guides', label: 'Travel Guides' },
+      { id: 'nomad-language', label: 'Language Survival Kit' },
+      { id: 'nomad-toolbox', label: 'Travel Toolbox' },
+      { type: 'workspace', workspaces: ['Workspace 1'] }
+    ]
+  },
+  community: {
+    defaultTab: 'community-overview',
+    items: [
+      { id: 'community-overview', label: 'Club Overview', highlight: true },
+      { id: 'community-announcements', label: 'Announcements' },
+      { id: 'community-map', label: 'Members Map' },
+      { id: 'community-meet', label: 'Dimad Meet' },
+      { id: 'community-forum', label: 'Dimad Forum' }
+    ]
+  }
+};
 
 const modePresets = {
   nomad: [
@@ -96,37 +154,96 @@ function updateClocks() {
   }
 }
 
-function switchIdentity(id) {
-  currentActiveMode = id;
-  document.querySelectorAll('.nav-sub-container').forEach(el => el.classList.add('hidden'));
-  document.querySelectorAll('.nav-header-box').forEach(el => {
-    el.classList.remove('bg-brand-accent/10', 'border-brand-accent/40', 'text-brand-accent', 'bg-brand-mint/10', 'border-brand-mint/40', 'text-brand-mint');
-    el.classList.add('bg-brand-black/40', 'border-brand-border/60', 'text-slate-300');
-  });
+function setIdentityHeaderState(id, active) {
+  const btn = document.getElementById(`btn-identity-${id}`);
+  const chevron = document.querySelector(`[data-identity-chevron="${id}"]`);
+  if (!btn) return;
 
-  const activeBtn = document.getElementById(`btn-identity-${id}`);
-  if(activeBtn) {
-    activeBtn.classList.remove('bg-brand-black/40', 'border-brand-border/60', 'text-slate-300');
-    if(id === 'nomad') {
-      activeBtn.classList.add('bg-brand-mint/10', 'border-brand-mint/40', 'text-brand-mint');
-    } else {
-      activeBtn.classList.add('bg-brand-accent/10', 'border-brand-accent/40', 'text-brand-accent');
+  btn.classList.remove('bg-brand-accent/10', 'border-brand-accent/40', 'text-brand-accent', 'bg-brand-mint/10', 'border-brand-mint/40', 'text-brand-mint', 'bg-brand-black/40', 'border-brand-border/60', 'text-slate-300');
+  if (active) {
+    btn.classList.add('bg-brand-accent/10', 'border-brand-accent/40', 'text-brand-accent');
+  } else {
+    btn.classList.add('bg-brand-black/40', 'border-brand-border/60', 'text-slate-300');
+  }
+
+  if (chevron) {
+    chevron.classList.toggle('fa-chevron-down', active);
+    chevron.classList.toggle('fa-chevron-right', !active);
+    chevron.classList.toggle('text-slate-500', !active);
+  }
+}
+
+function renderModeNav(mode) {
+  const container = document.getElementById(`subnav-${mode}`);
+  const config = MODE_NAV[mode];
+  if (!container || !config) return;
+
+  container.innerHTML = config.items.map((item) => {
+    if (item.type === 'workspace') {
+      const options = item.workspaces.map((name, idx) => `
+        <button type="button" onclick="openCustomWorkspace(${idx})" class="block w-full text-left py-1 px-2 rounded text-slate-400 hover:text-slate-200">
+          ${name}
+        </button>
+      `).join('');
+      return `
+        <div class="workspace-nav">
+          <button type="button" onclick="toggleWorkspaceMenu(this)" class="sub-nav-btn text-slate-400 hover:text-slate-200 flex items-center justify-between w-full text-left py-1 px-2 rounded">
+            <span>Custom Workspace</span>
+            <i class="fa-solid fa-chevron-right text-[8px]"></i>
+          </button>
+          <div class="workspace-menu hidden pl-2 space-y-0.5 border-l border-brand-border/40 ml-1">${options}</div>
+        </div>
+      `;
     }
+
+    const color = item.highlight ? 'text-amber-400 font-semibold hover:text-amber-300' : 'text-slate-400 hover:text-slate-200';
+    const badge = item.premium
+      ? '<span class="text-[7px] bg-brand-gold/15 text-brand-gold border border-brand-gold/40 px-1 py-0.5 rounded uppercase tracking-wide">Premium</span>'
+      : '';
+    return `
+      <button type="button" onclick="switchTab('${item.id}')" class="sub-nav-btn ${color} flex items-center justify-between gap-1 w-full text-left py-1 px-2 rounded">
+        <span>${item.label}</span>
+        ${badge}
+      </button>
+    `;
+  }).join('');
+}
+
+function toggleWorkspaceMenu(btn) {
+  const menu = btn.nextElementSibling;
+  if (!menu) return;
+  menu.classList.toggle('hidden');
+  const icon = btn.querySelector('i');
+  if (icon) {
+    icon.classList.toggle('fa-chevron-right');
+    icon.classList.toggle('fa-chevron-down');
+  }
+}
+
+function openCustomWorkspace(idx) {
+  while (customWorkspaces.length <= idx) {
+    customWorkspaces.push({ name: `Workspace ${customWorkspaces.length + 1}`, url: 'https://www.notion.so' });
+  }
+  activeWorkspaceIdx = idx;
+  switchTab('ent-custom');
+}
+
+function switchIdentity(id) {
+  const sub = document.getElementById(`subnav-${id}`);
+  if (!sub || !MODE_NAV[id]) return;
+
+  const isOpen = !sub.classList.contains('hidden');
+  if (isOpen) {
+    sub.classList.add('hidden');
+    setIdentityHeaderState(id, false);
+    return;
   }
 
-  if (id === 'entrepreneur') {
-    document.getElementById('subnav-entrepreneur').classList.remove('hidden');
-    switchTab('ent-dashboard');
-  } else if (id === 'creator') {
-    document.getElementById('subnav-creator').classList.remove('hidden');
-    switchTab('creator-studio');
-  } else if (id === 'nomad') {
-    document.getElementById('subnav-nomad').classList.remove('hidden');
-    switchTab('nomad-city');
-  } else if (id === 'community') {
-    document.getElementById('subnav-community').classList.remove('hidden');
-    switchTab('community-overview');
-  }
+  currentActiveMode = id;
+  renderModeNav(id);
+  sub.classList.remove('hidden');
+  setIdentityHeaderState(id, true);
+  switchTab(MODE_NAV[id].defaultTab);
 }
 
 function switchTab(tabId) {
@@ -254,5 +371,7 @@ window.onload = async function() {
   await loadViews();
   updateClocks();
   setInterval(updateClocks, 1000);
+  renderModeNav('entrepreneur');
+  setIdentityHeaderState('entrepreneur', true);
   switchTab('ent-dashboard');
 };
