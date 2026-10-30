@@ -1,99 +1,211 @@
 <!-- TAB 1: ENTREPRENEUR COMMAND CENTER -->
 <div id="view-ent-dashboard" class="tab-view space-y-3 w-full">
+  <div class="flex items-center justify-between gap-2">
+    <span class="text-[9px] font-bold text-slate-500 tracking-wider uppercase">Command Center</span>
+    <div class="relative">
+      <button type="button" onclick="COMMAND_CENTER.toggleFilter()" class="text-[10px] font-semibold text-slate-300 hover:text-amber-400 border border-slate-700 bg-slate-950 px-2.5 py-1 rounded-lg transition">
+        Filter modules
+      </button>
+      <div id="cc-module-filter" class="hidden absolute right-0 top-full mt-1 z-30 w-56 bg-slate-950 border border-slate-700 rounded-xl p-2 shadow-xl"></div>
+    </div>
+  </div>
+
   <!-- QUOTE OF THE DAY -->
-  <div class="border border-brand-gold/40 bg-brand-panel p-2.5 rounded flex flex-col justify-center">
-    <span class="text-[8px] text-brand-gold font-bold">💡 QUOTE OF THE DAY</span>
-    <p class="text-[10px] text-slate-200 italic mt-0.5">"At the birth of every great business organization was an enthusiast consumed with earnestness of purpose and confidence in their powers." <span class="not-italic text-brand-gold font-semibold">— B.C. Forbes</span></p>
+  <div data-cc-module="quote" class="border border-brand-gold/40 bg-brand-panel p-2.5 rounded">
+    <div class="flex items-center justify-between">
+      <span class="text-[8px] text-brand-gold font-bold">💡 QUOTE OF THE DAY</span>
+      <button type="button" onclick="COMMAND_CENTER.toggleCollapse('quote')" class="text-slate-500 hover:text-amber-400 px-1"><i data-cc-chevron="quote" class="fa-solid fa-chevron-down text-[9px]"></i></button>
+    </div>
+    <div data-cc-body>
+      <p class="text-[10px] text-slate-200 italic mt-0.5">"At the birth of every great business organization was an enthusiast consumed with earnestness of purpose and confidence in their powers." <span class="not-italic text-brand-gold font-semibold">— B.C. Forbes</span></p>
+    </div>
   </div>
 
   <!-- INTERNATIONAL CLOCKS -->
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-    <div class="border border-brand-border bg-brand-panel p-2.5 rounded flex items-center justify-between">
-      <div>
-        <p class="text-[9px] text-slate-400 font-bold">LOCAL (YEREVAN)</p>
-        <p id="clock-yerevan" class="text-xs font-bold font-mono text-brand-accent">--:--:-- AMT</p>
+  <div data-cc-module="clocks" class="relative">
+    <div class="flex items-center justify-between mb-1 gap-2">
+      <span class="text-[8px] text-slate-500 font-bold tracking-wider uppercase">World clocks</span>
+      <div class="flex items-center gap-2">
+        <button type="button" onclick="WORLD_CLOCKS.togglePicker()" class="text-[10px] font-semibold text-slate-300 hover:text-amber-400 border border-slate-700 bg-slate-950 px-2 py-0.5 rounded-lg transition">Select cities</button>
+        <button type="button" onclick="COMMAND_CENTER.toggleCollapse('clocks')" class="text-slate-500 hover:text-amber-400 px-1"><i data-cc-chevron="clocks" class="fa-solid fa-chevron-down text-[9px]"></i></button>
       </div>
-      <span class="text-[8px] bg-brand-accent/10 text-brand-accent px-1.5 py-0.5 rounded">UTC+4</span>
     </div>
-    <div class="border border-brand-border bg-brand-panel p-2.5 rounded flex items-center justify-between">
-      <div>
-        <p class="text-[9px] text-slate-400 font-bold">LONDON (BUSINESS)</p>
-        <p id="clock-london" class="text-xs font-bold font-mono text-brand-gold">--:--:-- GMT</p>
+    <div id="world-clocks-picker" class="hidden absolute right-0 top-7 z-40 w-80 bg-slate-950 border border-slate-700 rounded-xl shadow-xl overflow-hidden">
+      <div class="p-2 border-b border-slate-800 bg-slate-950">
+        <div class="flex items-center gap-2 bg-brand-black border border-amber-500/30 rounded-lg px-2">
+          <i class="fa-solid fa-magnifying-glass text-amber-400 text-[10px]"></i>
+          <input id="world-clocks-search" type="text" placeholder="Search cities or timezones..." oninput="WORLD_CLOCKS.filterCities(this.value)" class="flex-1 bg-transparent outline-none py-2 text-[12px] text-slate-100">
+        </div>
+        <div id="world-clocks-picker-count" class="text-[9px] font-mono text-slate-500 px-0.5 pt-1">Pick up to 3 cities</div>
       </div>
-      <span class="text-[8px] bg-brand-gold/10 text-brand-gold px-1.5 py-0.5 rounded">UTC+0</span>
+      <div id="world-clocks-picker-list" class="max-h-60 overflow-y-auto p-2"></div>
     </div>
-    <div class="border border-brand-border bg-brand-panel p-2.5 rounded flex items-center justify-between">
-      <div>
-        <p class="text-[9px] text-slate-400 font-bold">NEW YORK (INVESTORS)</p>
-        <p id="clock-ny" class="text-xs font-bold font-mono text-brand-mint">--:--:-- EDT</p>
-      </div>
-      <span class="text-[8px] bg-brand-mint/10 text-brand-mint px-1.5 py-0.5 rounded">UTC-4</span>
+    <div data-cc-body>
+      <div id="world-clocks-grid" class="grid grid-cols-1 md:grid-cols-3 gap-3"></div>
     </div>
   </div>
 
-  <!-- METRICS OVERVIEW -->
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-    <div class="border border-brand-border bg-brand-panel p-3 rounded">
-      <p class="text-[9px] text-slate-400">ACTIVE PIPELINE</p>
-      <p class="text-base font-bold text-brand-accent mt-0.5">$42,500</p>
-    </div>
-    <div class="border border-brand-border bg-brand-panel p-3 rounded">
-      <p class="text-[9px] text-slate-400">OPEN DEALS</p>
-      <p class="text-base font-bold text-slate-100 mt-0.5">7 Clients</p>
-    </div>
-    <div class="border border-brand-border bg-brand-panel p-3 rounded">
-      <p class="text-[9px] text-slate-400">MONTHLY REVENUE TARGET</p>
-      <p class="text-base font-bold text-brand-gold mt-0.5">$18,000 / $25k</p>
-    </div>
-    <div class="border border-brand-border bg-brand-panel p-3 rounded">
-      <p class="text-[9px] text-slate-400">WEEKLY BILLABLE</p>
-      <p class="text-base font-bold text-slate-200 mt-0.5">24.5 HRS</p>
-    </div>
+  <!-- CALENDAR (below clocks) -->
+  <div data-cc-module="calendar" class="bg-slate-900 border border-slate-800 p-5 rounded-2xl flex flex-col space-y-3">
+      <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-3 border-b border-slate-800 pb-3">
+        <div>
+          <div class="flex items-center flex-wrap gap-2">
+            <h3 class="text-sm font-bold text-white" id="cal-view-title">Today: Friday, Oct 30</h3>
+            <label class="sr-only" for="cal-mode-select">Calendar view</label>
+            <select id="cal-mode-select" onchange="CALENDAR_NAV.setMode(this.value)" class="text-[10px] font-mono bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded outline-none cursor-pointer hover:bg-amber-500/20">
+              <option value="hourly">Hourly</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+            </select>
+            <button type="button" onclick="COMMAND_CENTER.toggleCollapse('calendar')" class="text-slate-500 hover:text-amber-400 px-1"><i data-cc-chevron="calendar" class="fa-solid fa-chevron-down text-[9px]"></i></button>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-0.5" id="cal-view-hint">Overview — 24-hour schedule. Click an hour to add an event.</p>
+        </div>
+        <div class="flex flex-col items-end gap-1">
+          <div class="flex items-center gap-2">
+            <button type="button" onclick="CONNECT_MODULARS.connectCalendar('Calendly')" class="bg-slate-950 hover:bg-slate-800 border border-slate-700 text-[11px] font-semibold text-slate-200 px-3 py-1.5 rounded-xl transition">
+              Add Calendars with Calendly
+            </button>
+            <button type="button" onclick="CALENDAR_NAV.progressView()" class="bg-transparent border-0 shadow-none text-[10px] font-semibold text-brand-gold hover:text-amber-300 px-0 py-1.5 underline underline-offset-2 whitespace-nowrap transition">
+              <span id="cal-nav-label">Tomorrow ></span>
+            </button>
+          </div>
+          <p class="text-[9px] text-slate-500 leading-tight">Compatible with Google, Outlook, Apple Calendars.</p>
+        </div>
+      </div>
+
+      <div data-cc-body class="flex flex-col space-y-3">
+        <div class="flex flex-col" id="hourly-slots-container"></div>
+        <div class="flex items-center justify-between text-[11px] text-slate-500 border-t border-slate-800 pt-2.5">
+          <span id="calendar-timezone-label">Timezone: Auto-detected</span>
+          <span id="calendar-source-status" class="text-amber-400">Connect via Calendly to sync</span>
+        </div>
+      </div>
   </div>
 
-  <!-- HOURLY SCHEDULE, AI BUSINESS CHAT, GOALS & OKRS -->
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-    <div class="border border-brand-border bg-brand-panel p-3.5 rounded space-y-2">
-      <h3 class="font-bold text-slate-200 text-xs border-b border-brand-border pb-1.5 flex items-center justify-between">
-        <span><i class="fa-solid fa-clock text-brand-accent"></i> Hourly Schedule</span>
-        <span class="text-[8px] text-brand-accent font-mono">TODAY</span>
-      </h3>
-      <div class="space-y-1.5 text-[10px]">
-        <div class="bg-brand-black/40 p-2 rounded border border-brand-border flex justify-between">
-          <span class="text-brand-accent font-bold">09:00 - 11:00</span>
-          <span class="text-slate-300">Deep Work: Platform Architecture</span>
+  <!-- HORIZONTAL INTEGRATION MODULES -->
+  <div id="cc-integrations" class="flex flex-row items-stretch gap-2 overflow-x-auto">
+    <div data-cc-module="stripe" id="module-stripe" onclick="openSalesRevenue()" class="cc-rail-card bg-slate-900 border border-slate-800 p-3 rounded-2xl cursor-pointer hover:border-indigo-500/40 transition-all duration-300 flex items-center gap-3 min-w-0">
+      <div class="shrink-0 min-w-[132px] space-y-1">
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-[9px] font-mono bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 px-1.5 py-0.5 rounded">PAYMENTS</span>
+          <div class="flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-slate-600" id="stripe-indicator"></span>
+            <button type="button" onclick="event.stopPropagation(); COMMAND_CENTER.toggleCollapse('stripe')" class="text-slate-500 hover:text-amber-400 px-1"><i data-cc-chevron="stripe" class="fa-solid fa-chevron-right text-[9px]"></i></button>
+          </div>
         </div>
-        <div class="bg-brand-black/40 p-2 rounded border border-brand-border flex justify-between">
-          <span class="text-brand-gold font-bold">11:30 - 13:00</span>
-          <span class="text-slate-300">Hotel Advisory Task Force Sync</span>
-        </div>
-        <div class="bg-brand-black/40 p-2 rounded border border-brand-border flex justify-between">
-          <span class="text-brand-mint font-bold">15:00 - 17:00</span>
-          <span class="text-slate-300">Redefining Hospitality Cohort Design</span>
+        <h4 class="text-xs font-bold text-white">Stripe</h4>
+      </div>
+      <div data-cc-body class="flex-1 min-w-0 space-y-1.5">
+        <p class="text-[10px] text-slate-400">Track MRR, subscriptions, and cash flow.</p>
+        <div id="stripe-content">
+          <button type="button" onclick="event.stopPropagation(); CONNECT_MODULARS.connectStripe()" class="w-full bg-slate-950 hover:bg-slate-800 border border-slate-700 text-[10px] font-semibold text-indigo-400 py-1.5 rounded-xl transition">Connect Stripe</button>
         </div>
       </div>
     </div>
 
-    <div class="border border-brand-accent/40 bg-brand-panel p-3.5 rounded space-y-2">
+    <div data-cc-module="store" id="module-store" onclick="openSalesRevenue()" class="cc-rail-card bg-slate-900 border border-slate-800 p-3 rounded-2xl cursor-pointer hover:border-amber-500/40 transition-all duration-300 flex items-center gap-3 min-w-0">
+      <div class="shrink-0 min-w-[132px] space-y-1">
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-[9px] font-mono bg-amber-500/10 border border-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded">STOREFRONT</span>
+          <div class="flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-slate-600" id="store-indicator"></span>
+            <button type="button" onclick="event.stopPropagation(); COMMAND_CENTER.toggleCollapse('store')" class="text-slate-500 hover:text-amber-400 px-1"><i data-cc-chevron="store" class="fa-solid fa-chevron-right text-[9px]"></i></button>
+          </div>
+        </div>
+        <h4 class="text-xs font-bold text-white">E-Commerce</h4>
+      </div>
+      <div data-cc-body class="flex-1 min-w-0 space-y-1.5">
+        <p class="text-[10px] text-slate-400">Stream orders from your store engine.</p>
+        <div id="store-content" class="grid grid-cols-2 gap-1.5">
+          <button type="button" onclick="event.stopPropagation(); CONNECT_MODULARS.connectStore('Shopify')" class="bg-slate-950 hover:bg-slate-800 border border-slate-700 text-[10px] font-semibold text-slate-200 py-1.5 rounded-xl transition">Shopify</button>
+          <button type="button" onclick="event.stopPropagation(); CONNECT_MODULARS.connectStore('Lemon Squeezy')" class="bg-slate-950 hover:bg-slate-800 border border-slate-700 text-[10px] font-semibold text-slate-200 py-1.5 rounded-xl transition">Lemon Squeezy</button>
+        </div>
+      </div>
+    </div>
+
+    <div data-cc-module="gumroad" id="module-gumroad" class="cc-rail-card bg-slate-900 border border-slate-800 p-3 rounded-2xl transition-all duration-300 flex items-center gap-3 min-w-0">
+      <div class="shrink-0 min-w-[132px] space-y-1">
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-[9px] font-mono bg-pink-500/10 border border-pink-500/20 text-pink-400 px-1.5 py-0.5 rounded">DIGITAL</span>
+          <div class="flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-slate-600" id="gumroad-indicator"></span>
+            <button type="button" onclick="COMMAND_CENTER.toggleCollapse('gumroad')" class="text-slate-500 hover:text-amber-400 px-1"><i data-cc-chevron="gumroad" class="fa-solid fa-chevron-right text-[9px]"></i></button>
+          </div>
+        </div>
+        <h4 class="text-xs font-bold text-white">Gumroad</h4>
+      </div>
+      <div data-cc-body class="flex-1 min-w-0 space-y-1.5">
+        <p class="text-[10px] text-slate-400">Products, packs, and checkout.</p>
+        <button type="button" onclick="COMMAND_CENTER.markConnected('gumroad')" class="w-full bg-slate-950 hover:bg-slate-800 border border-slate-700 text-[10px] font-semibold text-pink-400 py-1.5 rounded-xl transition">Connect Gumroad</button>
+      </div>
+    </div>
+
+    <div data-cc-module="patreon" id="module-patreon" class="cc-rail-card bg-slate-900 border border-slate-800 p-3 rounded-2xl transition-all duration-300 flex items-center gap-3 min-w-0">
+      <div class="shrink-0 min-w-[132px] space-y-1">
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-[9px] font-mono bg-orange-500/10 border border-orange-500/20 text-orange-400 px-1.5 py-0.5 rounded">MEMBERSHIP</span>
+          <div class="flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-slate-600" id="patreon-indicator"></span>
+            <button type="button" onclick="COMMAND_CENTER.toggleCollapse('patreon')" class="text-slate-500 hover:text-amber-400 px-1"><i data-cc-chevron="patreon" class="fa-solid fa-chevron-right text-[9px]"></i></button>
+          </div>
+        </div>
+        <h4 class="text-xs font-bold text-white">Patreon</h4>
+      </div>
+      <div data-cc-body class="flex-1 min-w-0 space-y-1.5">
+        <p class="text-[10px] text-slate-400">Tiers, pledges, and retention.</p>
+        <button type="button" onclick="COMMAND_CENTER.markConnected('patreon')" class="w-full bg-slate-950 hover:bg-slate-800 border border-slate-700 text-[10px] font-semibold text-orange-400 py-1.5 rounded-xl transition">Connect Patreon</button>
+      </div>
+    </div>
+
+    <div data-cc-module="mailerlite" id="module-mailerlite" class="cc-rail-card bg-slate-900 border border-slate-800 p-3 rounded-2xl transition-all duration-300 flex items-center gap-3 min-w-0">
+      <div class="shrink-0 min-w-[132px] space-y-1">
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-[9px] font-mono bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded">EMAIL</span>
+          <div class="flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-slate-600" id="mailerlite-indicator"></span>
+            <button type="button" onclick="COMMAND_CENTER.toggleCollapse('mailerlite')" class="text-slate-500 hover:text-amber-400 px-1"><i data-cc-chevron="mailerlite" class="fa-solid fa-chevron-right text-[9px]"></i></button>
+          </div>
+        </div>
+        <h4 class="text-xs font-bold text-white">MailerLite</h4>
+      </div>
+      <div data-cc-body class="flex-1 min-w-0 space-y-1.5">
+        <p class="text-[10px] text-slate-400">Waitlist, campaigns, and list growth.</p>
+        <button type="button" onclick="COMMAND_CENTER.markConnected('mailerlite')" class="w-full bg-slate-950 hover:bg-slate-800 border border-slate-700 text-[10px] font-semibold text-emerald-400 py-1.5 rounded-xl transition">Connect MailerLite</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI BUSINESS CHAT & GOALS & OKRS -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+    <div data-cc-module="copilot" class="border border-brand-accent/40 bg-brand-panel p-3.5 rounded space-y-2">
       <h3 class="font-bold text-slate-100 text-xs border-b border-brand-border pb-1.5 flex items-center justify-between">
         <span><i class="fa-solid fa-bolt text-brand-accent"></i> AI Business Co-Pilot & Notepad</span>
-        <span class="text-[8px] bg-brand-accent/20 text-brand-accent px-1.5 py-0.5 rounded">READY</span>
+        <span class="flex items-center gap-2">
+          <span class="text-[8px] bg-brand-accent/20 text-brand-accent px-1.5 py-0.5 rounded">READY</span>
+          <button type="button" onclick="COMMAND_CENTER.toggleCollapse('copilot')" class="text-slate-500 hover:text-amber-400 px-1"><i data-cc-chevron="copilot" class="fa-solid fa-chevron-down text-[9px]"></i></button>
+        </span>
       </h3>
-      <div class="bg-brand-black/60 p-2.5 rounded border border-brand-border text-[10px] h-20 overflow-y-auto font-mono text-slate-300 space-y-1">
-        <p class="text-brand-accent"><strong>DIMAD AI:</strong> Operational parameters loaded for Yerevan node.</p>
-      </div>
-      <div class="flex space-x-1">
-        <input type="text" placeholder="Ask Business AI..." class="flex-1 bg-brand-black border border-brand-border px-2 py-1 rounded text-[10px] text-slate-200">
-        <button class="bg-brand-accent text-brand-black font-bold px-3 py-1 rounded text-[10px]">SEND</button>
+      <div data-cc-body class="space-y-2">
+        <div class="bg-brand-black/60 p-2.5 rounded border border-brand-border text-[10px] h-20 overflow-y-auto font-mono text-slate-300 space-y-1">
+          <p class="text-brand-accent"><strong>DIMAD AI:</strong> Operational parameters loaded for Yerevan node.</p>
+        </div>
+        <div class="flex space-x-1">
+          <input type="text" placeholder="Ask Business AI..." class="flex-1 bg-brand-black border border-brand-border px-2 py-1 rounded text-[10px] text-slate-200">
+          <button class="bg-brand-accent text-brand-black font-bold px-3 py-1 rounded text-[10px]">SEND</button>
+        </div>
       </div>
     </div>
 
-    <div class="border border-brand-border bg-brand-panel p-3.5 rounded space-y-2">
+    <div data-cc-module="goals" class="border border-brand-border bg-brand-panel p-3.5 rounded space-y-2">
       <h3 class="font-bold text-slate-200 text-xs border-b border-brand-border pb-1.5 flex items-center justify-between">
         <span><i class="fa-solid fa-bullseye text-brand-mint"></i> Goals & OKRs</span>
-        <span class="text-[8px] text-brand-mint font-mono">Q4 2026</span>
+        <span class="flex items-center gap-2">
+          <span class="text-[8px] text-brand-mint font-mono">Q4 2026</span>
+          <button type="button" onclick="COMMAND_CENTER.toggleCollapse('goals')" class="text-slate-500 hover:text-amber-400 px-1"><i data-cc-chevron="goals" class="fa-solid fa-chevron-down text-[9px]"></i></button>
+        </span>
       </h3>
-      <div class="space-y-2 text-[10px]">
+      <div data-cc-body class="space-y-2 text-[10px]">
         <div class="bg-brand-black/40 p-2 rounded border border-brand-border">
           <div class="flex justify-between text-slate-300 font-semibold mb-1"><span>Daily: 4h Deep Architecture</span><span class="text-brand-mint">100%</span></div>
           <div class="w-full bg-brand-border h-1 rounded-full overflow-hidden"><div class="bg-brand-mint h-full w-full"></div></div>
@@ -112,12 +224,15 @@
 
   <!-- TASK LIST & MONTHLY CALENDAR -->
   <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-    <div class="border border-brand-border bg-brand-panel p-3.5 rounded space-y-2">
+    <div data-cc-module="tasks" class="border border-brand-border bg-brand-panel p-3.5 rounded space-y-2">
       <h3 class="font-bold text-slate-200 text-xs border-b border-brand-border pb-1.5 flex items-center justify-between">
         <span><i class="fa-solid fa-list-check text-brand-gold"></i> Task Manager</span>
-        <span class="text-[9px] text-brand-gold">+ Add Task</span>
+        <span class="flex items-center gap-2">
+          <span class="text-[9px] text-brand-gold">+ Add Task</span>
+          <button type="button" onclick="COMMAND_CENTER.toggleCollapse('tasks')" class="text-slate-500 hover:text-amber-400 px-1"><i data-cc-chevron="tasks" class="fa-solid fa-chevron-down text-[9px]"></i></button>
+        </span>
       </h3>
-      <div class="space-y-1.5 text-[10px]">
+      <div data-cc-body class="space-y-1.5 text-[10px]">
         <label class="flex items-center space-x-2 bg-brand-black/40 p-2 rounded border border-brand-border">
           <input type="checkbox" checked class="accent-brand-gold">
           <span class="text-slate-400 line-through">Finalize MailerLite sign-up flow for Dimad Founders Club</span>
@@ -133,12 +248,15 @@
       </div>
     </div>
 
-    <div class="border border-brand-border bg-brand-panel p-3.5 rounded space-y-2">
+    <div data-cc-module="monthcal" class="border border-brand-border bg-brand-panel p-3.5 rounded space-y-2">
       <h3 class="font-bold text-slate-200 text-xs border-b border-brand-border pb-1.5 flex items-center justify-between">
         <span><i class="fa-solid fa-calendar-days text-brand-mint"></i> Dimad Monthly Calendar Overview</span>
-        <span class="text-[9px] text-slate-400">October 2026</span>
+        <span class="flex items-center gap-2">
+          <span class="text-[9px] text-slate-400">October 2026</span>
+          <button type="button" onclick="COMMAND_CENTER.toggleCollapse('monthcal')" class="text-slate-500 hover:text-amber-400 px-1"><i data-cc-chevron="monthcal" class="fa-solid fa-chevron-down text-[9px]"></i></button>
+        </span>
       </h3>
-      <div class="grid grid-cols-7 gap-1 text-center font-mono text-[9px] pt-1">
+      <div data-cc-body class="grid grid-cols-7 gap-1 text-center font-mono text-[9px] pt-1">
         <span class="text-slate-500">M</span><span class="text-slate-500">T</span><span class="text-slate-500">W</span><span class="text-slate-500">T</span><span class="text-slate-500">F</span><span class="text-slate-500">S</span><span class="text-slate-500">S</span>
         <div class="p-1 bg-brand-black/40 text-slate-500 rounded">26</div>
         <div class="p-1 bg-brand-black/40 text-slate-500 rounded">27</div>

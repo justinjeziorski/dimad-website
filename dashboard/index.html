@@ -114,16 +114,18 @@
   </header>
 
   <!-- FINANCIAL & CURRENCY TICKER STRIP -->
-  <div class="h-6 bg-brand-black border-b border-brand-border/60 flex items-center justify-between px-3 text-[9px] font-mono select-none overflow-x-auto whitespace-nowrap">
+  <div class="h-6 bg-brand-black border-b border-brand-border/60 flex items-center justify-between px-3 text-[9px] font-mono overflow-x-auto whitespace-nowrap">
     <div class="flex items-center space-x-4">
-      <span class="text-slate-500 font-bold flex items-center gap-1"><i class="fa-solid fa-chart-simple text-brand-accent"></i> MARKETS:</span>
-      <span>S&P 500 <span class="text-brand-mint">5,815.20 ▲ +0.4%</span></span>
-      <span>NASDAQ <span class="text-brand-mint">18,518.61 ▲ +0.6%</span></span>
-      <span>BTC/USD <span class="text-brand-mint">$67,420.00 ▲ +2.1%</span></span>
-      <span>ETH/USD <span class="text-brand-alert">$2,640.50 ▼ -0.8%</span></span>
+      <button type="button" onclick="openStocksFromTicker()" title="Open Stocks & Finance" class="text-slate-400 hover:text-brand-gold font-bold flex items-center gap-1 transition">
+        <i class="fa-solid fa-chart-simple text-brand-gold"></i> STOCK TICKER
+      </button>
+      <span>S&P 500 <span id="mkt-spy" class="text-brand-mint">5,815.20 ▲ +0.4%</span></span>
+      <span>NASDAQ <span id="mkt-qqq" class="text-brand-mint">18,518.61 ▲ +0.6%</span></span>
+      <span>BTC/USD <span id="mkt-btc" class="text-brand-mint">$67,420.00 ▲ +2.1%</span></span>
+      <span>ETH/USD <span id="mkt-eth" class="text-brand-alert">$2,640.50 ▼ -0.8%</span></span>
     </div>
     <div class="flex items-center space-x-4 text-slate-400 hidden md:flex">
-      <span>AMD/USD <span class="text-brand-mint">388.50 ▲</span></span>
+      <span>AMD/USD <span id="mkt-amd" class="text-brand-mint">388.50 ▲</span></span>
       <span>GEL/USD <span class="text-brand-mint">2.72 ▲</span></span>
       <span class="text-brand-accent font-semibold">FX NODE: YEREVAN</span>
     </div>
@@ -147,7 +149,7 @@
 
         <!-- GLOBAL SHARED HUBS -->
         <div class="space-y-1">
-          <button onclick="switchTab('dimad-ai-hub')" title="DIMAD AI HUB" class="nav-item-btn w-full bg-gradient-to-r from-brand-accent/20 to-brand-gold/25 hover:from-brand-accent/30 hover:to-brand-gold/35 border border-brand-accent/50 text-slate-100 py-2 px-2.5 rounded font-bold flex items-center justify-between shadow-lg transition-all group">
+          <button onclick="openDimadAiNav()" title="DIMAD AI HUB" class="nav-item-btn w-full bg-gradient-to-r from-brand-accent/20 to-brand-gold/25 hover:from-brand-accent/30 hover:to-brand-gold/35 border border-brand-accent/50 text-slate-100 py-2 px-2.5 rounded font-bold flex items-center justify-between shadow-lg transition-all group">
             <span class="flex items-center gap-2">
               <i class="fa-solid fa-bolt text-brand-accent text-xs"></i>
               <span class="nav-text-label">DIMAD AI</span>
@@ -155,9 +157,14 @@
             <span class="nav-text-label text-[8px] bg-brand-black/60 text-brand-gold border border-brand-gold/40 px-1.5 py-0.5 rounded font-mono">HUB</span>
           </button>
 
-          <button onclick="switchTab('dimad-calendar')" title="Dimad Calendar" class="nav-item-btn w-full bg-brand-black/40 hover:bg-brand-border border border-brand-border text-slate-200 py-2 px-2.5 rounded font-semibold flex items-center gap-2 transition-all">
+          <button onclick="switchTab('dimad-calendar')" title="DIMAD Calendar" class="nav-item-btn w-full bg-brand-black/40 hover:bg-brand-border border border-brand-border text-slate-200 py-2 px-2.5 rounded font-semibold flex items-center gap-2 transition-all">
             <i class="fa-solid fa-calendar-days text-brand-mint text-xs"></i>
-            <span class="nav-text-label">Dimad Calendar</span>
+            <span class="nav-text-label">DIMAD Calendar</span>
+          </button>
+
+          <button onclick="switchTab('dimad-notepad')" title="DIMAD Notepad" class="nav-item-btn w-full bg-brand-black/40 hover:bg-brand-border border border-brand-border text-slate-200 py-2 px-2.5 rounded font-semibold flex items-center gap-2 transition-all">
+            <i class="fa-solid fa-note-sticky text-amber-400 text-xs"></i>
+            <span class="nav-text-label">DIMAD Notepad</span>
           </button>
         </div>
 
@@ -216,7 +223,7 @@
 
       <!-- SYSTEM SETTINGS FOOTER -->
       <div class="px-2 pt-3 border-t border-brand-border/40 space-y-1">
-        <button onclick="switchTab('settings')" title="Settings & Vault" class="nav-item-btn text-slate-400 hover:text-slate-200 block w-full text-left py-1.5 px-2 rounded flex items-center gap-2">
+        <button onclick="openSettingsVaultNav('dim-wallet')" title="Settings & Vault" class="nav-item-btn text-slate-400 hover:text-slate-200 block w-full text-left py-1.5 px-2 rounded flex items-center gap-2">
           <i class="fa-solid fa-gear text-xs"></i>
           <span class="nav-text-label">Settings & Vault</span>
         </button>
@@ -228,6 +235,435 @@
     <main id="view-container" class="flex-1 bg-brand-black overflow-y-auto p-4 w-full relative space-y-3">
       <div class="text-slate-500 text-[10px] font-mono p-4">Loading views…</div>
     </main>
+  </div>
+</div>
+
+<!-- DIMAD AI COMMAND CENTER PANEL -->
+<div id="dimad-ai-panel" class="hidden fixed inset-0 z-[200] min-h-screen bg-slate-950 text-slate-100 flex-col md:flex-row">
+
+  <aside class="w-full md:w-80 bg-slate-900 border-r border-slate-800 p-5 flex flex-col justify-between flex-shrink-0">
+    <div class="space-y-6">
+      <button type="button" onclick="closeDimadAiNav()" class="w-full flex items-center justify-center space-x-2 bg-slate-950 hover:bg-slate-800 border border-slate-700/60 text-slate-300 text-xs font-semibold py-2.5 px-4 rounded-xl transition shadow-sm">
+        <span>← Back to Dashboard</span>
+      </button>
+
+      <button type="button" onclick="startNewChat()" class="w-full flex items-center justify-center space-x-2 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold py-2.5 px-4 rounded-xl transition shadow-lg shadow-amber-500/10">
+        <span>💬</span>
+        <span>New Chat</span>
+      </button>
+
+      <div class="space-y-1">
+        <div class="text-[10px] font-mono text-slate-500 uppercase tracking-wider px-2 mb-1">AI Sub-Engines</div>
+        <button type="button" onclick="switchAiMode('business')" class="ai-mode-btn w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-amber-400 bg-amber-500/10 border border-amber-500/20 font-bold text-xs transition" data-mode="business">
+          <span>💼</span> <span>Business AI</span>
+        </button>
+        <button type="button" onclick="switchAiMode('creator')" class="ai-mode-btn w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 text-xs transition" data-mode="creator">
+          <span>🎨</span> <span>Creator AI</span>
+        </button>
+        <button type="button" onclick="switchAiMode('travel')" class="ai-mode-btn w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 text-xs transition" data-mode="travel">
+          <span>✈️</span> <span>AI Travel Planner</span>
+        </button>
+      </div>
+
+      <div class="h-px bg-slate-800"></div>
+
+      <div class="space-y-2">
+        <div class="flex items-center justify-between px-2">
+          <span class="text-[10px] font-mono text-amber-400 uppercase tracking-wider">💬 Chats</span>
+          <span id="chat-count" class="text-[10px] font-mono bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded">0</span>
+        </div>
+        <div id="chat-history-list" class="space-y-1.5 max-h-56 overflow-y-auto text-xs">
+          <div class="text-slate-500 italic text-[11px] px-2 py-1">No chats yet. Start a conversation and it will auto-save here.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-slate-950 p-3.5 rounded-xl border border-slate-800 space-y-1 text-xs">
+      <div class="flex justify-between text-slate-400 font-mono text-[11px] gap-2">
+        <span>Dimad AI Credits</span>
+        <span id="ai-credits-label" class="text-amber-400 text-right">UNLIMITED Standard AI Active</span>
+      </div>
+      <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+        <div class="bg-amber-400 h-full w-full"></div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="flex-1 flex flex-col h-screen overflow-hidden">
+    <header class="bg-slate-900 border-b border-slate-800 p-4 px-6 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <span id="active-mode-icon" class="text-xl">💼</span>
+        <div>
+          <h3 id="active-mode-title" class="text-sm font-bold text-white">Business AI Command</h3>
+          <p id="active-mode-desc" class="text-[11px] text-slate-400">Strategy, unit economics, and high-agency scaling.</p>
+        </div>
+      </div>
+      <div class="flex items-center space-x-2">
+        <span id="ai-active-model-badge" class="text-[10px] font-mono bg-slate-800 text-amber-400 px-2 py-1 rounded-lg border border-slate-700">UNLIMITED Standard AI Active</span>
+        <button type="button" onclick="openPinnedChatsPage()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-3 py-1.5 rounded-xl transition flex items-center space-x-1.5">
+          <span>📌 View Pinned Chats</span>
+        </button>
+      </div>
+    </header>
+
+    <div id="chat-messages-container" class="flex-1 overflow-y-auto p-6 space-y-6">
+      <div class="flex items-start space-x-3 max-w-2xl">
+        <div class="w-8 h-8 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 font-bold text-xs flex-shrink-0">
+          AI
+        </div>
+        <div class="space-y-2 group relative">
+          <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl text-xs text-slate-200 leading-relaxed shadow-lg">
+            <p>Here is your high-agency growth loop framework: Focus exclusively on high-value B2B creators, charge a premium VIP Unlimited subscription ($199/mo), and reward execution via our $DIM proof-of-work token.</p>
+          </div>
+          <div class="absolute -right-12 top-2 opacity-0 group-hover:opacity-100 transition">
+            <button type="button" onclick="pinMessage(this)" class="p-2 bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-slate-300 rounded-lg shadow transition" title="Pin this idea">
+              📌
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="p-4 bg-slate-900 border-t border-slate-800">
+      <div class="max-w-4xl mx-auto flex items-center space-x-2 bg-slate-950 border border-slate-800 rounded-2xl p-2 focus-within:border-amber-500/50 transition">
+        <input type="text" id="chat-input-box" placeholder="Ask Business AI anything... (e.g. 'Map out my Q3 pricing model')" class="w-full bg-transparent border-none text-xs text-slate-200 px-3 py-2 focus:outline-none">
+        <button type="button" onclick="sendChatMessage()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs transition">
+          Send ↵
+        </button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- PINNED CHATS EXPLORER -->
+<div id="pinned-chats-panel" class="hidden fixed inset-0 z-[210] min-h-screen bg-slate-950 text-slate-100 flex-col">
+  <div class="flex items-center justify-between border-b border-slate-800 px-6 py-4">
+    <button type="button" onclick="closePinnedChatsPage()" class="bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 text-xs font-semibold px-4 py-2 rounded-xl transition">
+      ← Back to Dimad AI
+    </button>
+    <span class="text-[10px] font-mono text-slate-500 uppercase tracking-wider">Pinned Chats Explorer</span>
+  </div>
+  <div class="flex-1 overflow-y-auto p-6">
+    <div id="vault-tab-pinned-ideas" class="vault-tab-content space-y-6 max-w-6xl mx-auto">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-6 rounded-2xl">
+        <div>
+          <h2 class="text-xl font-bold text-white flex items-center gap-2">
+            <span>📌</span> Pinned Chats
+          </h2>
+          <p class="text-xs text-slate-400 mt-1">Your sovereign knowledge engine. Re-ignite, synthesize, or transform saved insights into execution.</p>
+        </div>
+        <div class="flex items-center space-x-3">
+          <input type="text" id="vault-search-input" placeholder="Search pinned chats..." class="bg-slate-950 border border-slate-800 text-xs text-slate-200 px-3.5 py-2 rounded-xl focus:outline-none focus:border-amber-500/50">
+          <button type="button" id="synthesize-selected-btn" onclick="synthesizeSelectedIdeas()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs px-4 py-2 rounded-xl transition shadow-lg shadow-amber-500/10 flex items-center space-x-1.5 whitespace-nowrap">
+            <span>⚡ Synthesize (0 Selected)</span>
+          </button>
+        </div>
+      </div>
+
+      <div id="pinned-chat-filters" class="flex items-center space-x-2 overflow-x-auto pb-2 text-xs"></div>
+      <div id="pinned-chats-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+    </div>
+  </div>
+</div>
+
+<!-- FREE TIER AI QUOTA LOCKOUT MODAL -->
+<div id="ai-quota-modal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[310] items-center justify-center p-4">
+  <div class="bg-slate-900 border border-amber-500/30 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+    <h3 class="text-base font-bold text-white">Daily Gemini Flash limit reached</h3>
+    <p id="ai-quota-modal-message" class="text-xs text-slate-300 leading-relaxed">You've reached your daily 50-query limit on Gemini Flash.</p>
+    <div class="flex space-x-3">
+      <button type="button" onclick="closeQuotaExceededModal()" class="flex-1 bg-slate-950 hover:bg-slate-800 border border-slate-700 text-slate-300 font-bold py-2.5 rounded-xl transition text-xs">
+        Close
+      </button>
+      <button type="button" onclick="upgradeFromQuotaModal()" class="flex-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2.5 rounded-xl transition text-xs">
+        Upgrade to Explore ($9/mo)
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- PINNED IDEA & AUTO-SUMMARY MODAL -->
+<div id="pin-summary-modal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[300] items-center justify-center p-4">
+  <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-5 relative shadow-2xl">
+    <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+      <h3 class="text-base font-bold text-white flex items-center gap-2">
+        📌 Idea Pinned & Summarized
+      </h3>
+      <button type="button" onclick="closePinModal()" class="text-slate-400 hover:text-white">✕</button>
+    </div>
+
+    <div class="space-y-4 text-xs">
+      <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+        <div class="text-[10px] font-mono text-amber-400 uppercase">Original Snippet</div>
+        <p id="modal-pinned-snippet" class="text-slate-300 italic">"Here is your high-agency growth loop framework..."</p>
+      </div>
+
+      <div class="bg-amber-500/10 p-4 rounded-xl border border-amber-500/30 space-y-2">
+        <div class="text-[10px] font-mono text-amber-300 uppercase font-bold">✨ AI Executive Summary</div>
+        <p id="modal-ai-summary" class="text-slate-200 leading-relaxed">
+          <strong>Core Concept:</strong> High-ticket B2B creator positioning.<br>
+          <strong>Action Item:</strong> Anchor pricing at $199/mo with $DIM proof-of-work incentives to eliminate churn.
+        </p>
+      </div>
+    </div>
+
+    <div class="flex space-x-3">
+      <button type="button" onclick="closePinModal()" class="flex-1 bg-slate-950 hover:bg-slate-800 border border-slate-700 text-slate-300 font-bold py-2.5 rounded-xl transition text-xs">
+        Close
+      </button>
+      <button type="button" onclick="savePinnedIdeaToVault()" class="flex-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2.5 rounded-xl transition text-xs shadow-lg shadow-amber-500/10">
+        Save to Pinned Vault
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS & VAULT SUB-NAVIGATION PANEL (HIDDEN BY DEFAULT) -->
+<div id="settings-vault-panel" class="hidden fixed inset-0 z-[200] min-h-screen bg-slate-950 text-slate-100 flex-col md:flex-row">
+
+  <!-- LEFT SUB-NAV SIDEBAR -->
+  <aside class="w-full md:w-64 bg-slate-900 border-r border-slate-800 p-5 space-y-6 flex-shrink-0">
+
+    <button type="button" onclick="closeSettingsVaultNav()" class="w-full flex items-center justify-center space-x-2 bg-slate-950 hover:bg-slate-800 border border-slate-700/60 text-slate-300 text-xs font-semibold py-2.5 px-4 rounded-xl transition shadow-sm group">
+      <span class="group-hover:-translate-x-1 transition-transform">←</span>
+      <span>Back to Dashboard</span>
+    </button>
+
+    <div class="h-px bg-slate-800/80"></div>
+
+    <nav class="space-y-1.5 text-xs font-medium">
+      <button type="button" onclick="switchVaultTab('profile')" class="vault-tab-btn w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 transition" data-tab="profile">
+        <span>👤</span> <span>Profile</span>
+      </button>
+
+      <button type="button" onclick="switchVaultTab('travel-vault')" class="vault-tab-btn w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 transition" data-tab="travel-vault">
+        <span>🧳</span> <span>Travel Vault</span>
+      </button>
+
+      <button type="button" onclick="switchVaultTab('dim-wallet')" class="vault-tab-btn w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-amber-400 bg-amber-500/10 border border-amber-500/20 font-bold transition" data-tab="dim-wallet">
+        <div class="flex items-center space-x-3">
+          <span>💎</span> <span>$DIM Wallet</span>
+        </div>
+        <span class="text-[10px] font-mono bg-amber-400/20 text-amber-300 px-1.5 py-0.5 rounded">PREMIUM</span>
+      </button>
+
+      <button type="button" onclick="switchVaultTab('subscription')" class="vault-tab-btn w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 transition" data-tab="subscription">
+        <span>💳</span> <span>Subscription</span>
+      </button>
+
+      <button type="button" onclick="switchVaultTab('support')" class="vault-tab-btn w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 transition" data-tab="support">
+        <span>🎧</span> <span>Support</span>
+      </button>
+
+      <button type="button" onclick="switchVaultTab('settings')" class="vault-tab-btn w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 transition" data-tab="settings">
+        <span>⚙️</span> <span>Settings</span>
+      </button>
+    </nav>
+  </aside>
+
+  <!-- RIGHT CONTENT AREA -->
+  <main class="flex-1 p-6 md:p-10 max-w-6xl overflow-y-auto">
+
+    <div id="vault-tab-profile" class="vault-tab-content hidden">
+      <h2 class="text-xl font-bold text-white mb-2">Profile Details</h2>
+      <p class="text-xs text-slate-400">Manage your sovereign identity and workspace preferences.</p>
+    </div>
+
+    <div id="vault-tab-travel-vault" class="vault-tab-content hidden">
+      <h2 class="text-xl font-bold text-white mb-2">Travel Vault</h2>
+      <p class="text-xs text-slate-400">Stored visas, passport profiles, and co-living itineraries.</p>
+    </div>
+
+    <div id="vault-tab-dim-wallet" class="vault-tab-content space-y-8">
+
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-6 rounded-2xl relative overflow-hidden">
+        <div class="absolute -right-10 -top-10 w-40 h-40 bg-amber-500/5 rounded-full blur-3xl pointer-events-none"></div>
+        <div>
+          <div class="flex items-center space-x-3">
+            <h2 class="text-2xl font-black text-white tracking-tight">$DIM Token Vault</h2>
+            <span class="user-tier-badge text-[11px] font-mono font-bold uppercase bg-amber-500/10 border border-amber-500/30 text-amber-400 px-2.5 py-1 rounded-lg">Premium (1.15x Yield)</span>
+          </div>
+          <p class="text-xs text-slate-400 mt-1">Proof-of-Work Sovereign Yield. Minted from focus hours, streak momentum, and target clears.</p>
+        </div>
+
+        <div class="flex items-center space-x-3 bg-slate-950 border border-slate-800/80 p-3 rounded-xl">
+          <div class="text-right">
+            <div class="text-[10px] font-mono text-slate-400 uppercase tracking-wider">Valuation Peg</div>
+            <div class="text-xs font-bold font-mono text-slate-200">16,000 $DIM = $10.00 USD</div>
+          </div>
+          <div class="h-6 w-px bg-slate-800"></div>
+          <div class="text-right">
+            <div class="text-[10px] font-mono text-slate-400 uppercase tracking-wider">Active Multiplier</div>
+            <div class="dim-multiplier-display text-sm font-black font-mono text-amber-400">1.15x Yield</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="free-tier-lock-banner" class="hidden bg-amber-500/10 border border-amber-500/30 rounded-2xl p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div class="flex items-start space-x-3">
+          <span class="text-2xl">🔒</span>
+          <div>
+            <h4 class="text-sm font-bold text-amber-300">Vault Redemption Locked (Free)</h4>
+            <p class="text-xs text-slate-300 mt-0.5">You are currently accumulating $DIM at the 1.00x base rate. Upgrade to <strong>Explore ($9/mo)</strong> or higher to unlock flight redemptions, concierge access, and subscription discounts.</p>
+          </div>
+        </div>
+        <button type="button" onclick="switchVaultTab('subscription')" class="whitespace-nowrap bg-gradient-to-r from-amber-500 to-amber-400 text-slate-950 text-xs font-bold px-4 py-2.5 rounded-xl shadow-lg shadow-amber-500/10 hover:brightness-110 transition">
+          Unlock $DIM Vault
+        </button>
+      </div>
+
+      <p id="dim-wallet-notice" class="hidden text-xs font-mono text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-2"></p>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-slate-900 border border-amber-500/20 p-5 rounded-2xl space-y-2 relative overflow-hidden shadow-xl">
+          <span class="text-xs font-mono text-slate-400 uppercase tracking-wider">Total Vault Balance</span>
+          <div class="dim-balance-display text-3xl font-black font-mono text-amber-400">18,400 $DIM</div>
+          <div class="text-xs text-slate-400">Est. Cash Value: <strong class="dim-usd-value text-emerald-400 font-mono">$11.50 USD</strong></div>
+        </div>
+
+        <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl space-y-2">
+          <span class="text-xs font-mono text-slate-400 uppercase tracking-wider">Max Subscription Offset (50% Cap)</span>
+          <div class="sub-discount-display text-2xl font-bold font-mono text-emerald-400">-$29.50 / mo</div>
+          <div class="text-[11px] text-slate-400">Net Cash Due: <strong class="sub-final-cash text-white font-mono">$29.50 / mo</strong></div>
+        </div>
+
+        <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl space-y-2">
+          <span class="text-xs font-mono text-slate-400 uppercase tracking-wider">Concierge Travel Value</span>
+          <div class="dim-usd-value text-2xl font-bold font-mono text-amber-300">$11.50 USD</div>
+          <div class="text-[11px] text-slate-400">Applicable toward global flights & hotels</div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-5">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h3 class="text-base font-bold text-white">Lifetime Yield Breakdown</h3>
+            <span class="text-xs font-mono text-slate-400">Audit Trail</span>
+          </div>
+
+          <div class="space-y-3.5 text-xs">
+            <div class="flex justify-between items-center bg-slate-950 p-3 rounded-xl border border-slate-800">
+              <div class="flex items-center space-x-3">
+                <span>⏱️</span>
+                <div>
+                  <div class="font-bold text-slate-200">Verified Focus Hours</div>
+                  <div class="text-[10px] text-slate-500">200 $DIM/hr base rate</div>
+                </div>
+              </div>
+              <span class="font-mono font-bold text-amber-400">+10,350 $DIM</span>
+            </div>
+
+            <div class="flex justify-between items-center bg-slate-950 p-3 rounded-xl border border-slate-800">
+              <div class="flex items-center space-x-3">
+                <span>🔥</span>
+                <div>
+                  <div class="font-bold text-slate-200">Streak Milestones & Micro-Drops</div>
+                  <div class="text-[10px] text-slate-500">14-Day Active Execution</div>
+                </div>
+              </div>
+              <span class="font-mono font-bold text-amber-400">+3,450 $DIM</span>
+            </div>
+
+            <div class="flex justify-between items-center bg-slate-950 p-3 rounded-xl border border-slate-800">
+              <div class="flex items-center space-x-3">
+                <span>🏦</span>
+                <div>
+                  <div class="font-bold text-slate-200">Monthly Membership Deposit</div>
+                  <div class="text-[10px] text-slate-500">Premium Deposit</div>
+                </div>
+              </div>
+              <span class="font-mono font-bold text-amber-400">+10,000 $DIM</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-gradient-to-br from-slate-900 to-slate-950 border border-amber-500/30 rounded-2xl p-6 space-y-4 relative overflow-hidden flex flex-col justify-between">
+          <div class="space-y-3">
+            <div class="inline-block bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded">
+              Yield Optimization
+            </div>
+            <h4 class="text-base font-bold text-white">Unlock 1.50x Yield (+50% Boost)</h4>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              Upgrade to <strong>VIP Unlimited ($199/mo)</strong> to unlock the 1.50x yield multiplier on all focus hours and streaks, plus a <strong>30,000 $DIM monthly deposit</strong> ($18.75 value/mo).
+            </p>
+          </div>
+
+          <button type="button" onclick="switchVaultTab('subscription')" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs py-3 rounded-xl transition shadow-lg shadow-amber-500/10">
+            Upgrade Membership Tier
+          </button>
+        </div>
+      </div>
+
+      <div class="space-y-4">
+        <h3 class="text-base font-bold text-white">Redeem $DIM Balance</h3>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl space-y-3 flex flex-col justify-between hover:border-amber-500/30 transition">
+            <div class="space-y-2">
+              <div class="text-xl">✈️</div>
+              <h4 class="text-sm font-bold text-white">Concierge Flight & Hotel Stay</h4>
+              <p class="text-xs text-slate-400 leading-relaxed">Book global flight routes or boutique stay itineraries directly through our sovereign concierge desk.</p>
+            </div>
+            <button type="button" onclick="DIM_ENGINE.redeemConcierge()" class="w-full bg-slate-950 hover:bg-slate-800 border border-slate-700 text-xs font-semibold text-amber-400 py-2.5 rounded-xl transition">
+              Book with Concierge
+            </button>
+          </div>
+
+          <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl space-y-3 flex flex-col justify-between hover:border-slate-700 transition">
+            <div class="space-y-2">
+              <div class="text-xl">💳</div>
+              <h4 class="text-sm font-bold text-white">Subscription Tier Offset</h4>
+              <p class="text-xs text-slate-400 leading-relaxed">Apply accumulated $DIM to reduce your monthly subscription cost by up to 50% automatically.</p>
+            </div>
+            <button type="button" onclick="DIM_ENGINE.applySubscriptionOffset()" class="w-full bg-slate-950 hover:bg-slate-800 border border-slate-700 text-xs font-semibold text-emerald-400 py-2.5 rounded-xl transition">
+              Apply 50% Offset
+            </button>
+          </div>
+
+          <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl space-y-3 flex flex-col justify-between hover:border-slate-700 transition">
+            <div class="space-y-2">
+              <div class="text-xl">🎫</div>
+              <h4 class="text-sm font-bold text-white">Onward Flight Ticket</h4>
+              <p class="text-xs text-slate-400 leading-relaxed">Instantly issue verified onward flight reservations for visa checks and digital nomad border transit.</p>
+            </div>
+            <button type="button" onclick="DIM_ENGINE.issueOnwardTicket()" class="w-full bg-slate-950 hover:bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-200 py-2.5 rounded-xl transition">
+              Issue Ticket (2,500 $DIM)
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div id="vault-tab-subscription" class="vault-tab-content hidden space-y-4">
+      <h2 class="text-xl font-bold text-white">Subscription Management</h2>
+      <p class="text-xs text-slate-400">Switch between Free, Explore ($9), Premium ($59), and VIP Unlimited ($199).</p>
+    </div>
+
+    <div id="vault-tab-support" class="vault-tab-content hidden">
+      <h2 class="text-xl font-bold text-white">Executive Support</h2>
+    </div>
+
+    <div id="vault-tab-settings" class="vault-tab-content hidden">
+      <h2 class="text-xl font-bold text-white">Workspace Settings</h2>
+    </div>
+
+  </main>
+</div>
+
+<!-- GOAL STREAK REMINDER MODAL -->
+<div id="goal-reminder-modal" class="fixed inset-0 bg-brand-black/80 z-[999] hidden flex items-center justify-center p-4">
+  <div class="border border-brand-gold/40 bg-brand-panel max-w-md w-full p-5 rounded-lg space-y-4 shadow-2xl font-mono text-[11px]">
+    <div class="flex items-center justify-between border-b border-brand-border pb-2">
+      <h3 class="font-bold text-brand-gold">🔔 Streak Reminders</h3>
+      <button type="button" onclick="toggleNotificationModal()" class="text-slate-400 hover:text-white font-bold text-xs">✕</button>
+    </div>
+    <p class="text-slate-300">Daily 8:00 AM popup to protect your 🔥 14d streak and keep progress toward 2,000 $DIM (30 Days).</p>
+    <label class="flex items-center gap-2 text-slate-200">
+      <input type="checkbox" checked class="accent-amber-500">
+      Enable daily streak reminder
+    </label>
+    <button type="button" onclick="toggleNotificationModal()" class="w-full bg-brand-gold text-brand-black font-bold py-2 rounded text-[10px]">SAVE</button>
   </div>
 </div>
 
@@ -249,6 +685,6 @@
   </div>
 </div>
 
-<script src="../script.js"></script>
+<script src="../script.js?v=clocks-search"></script>
 </body>
 </html>

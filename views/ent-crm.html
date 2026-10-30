@@ -1,4 +1,43 @@
-<div id="view-ent-crm" class="tab-view hidden p-4 border border-brand-border bg-brand-panel rounded">
-  <h2 class="text-sm font-bold text-brand-accent mb-2">KANBAN CRM</h2>
-  <p class="text-slate-400">Deal pipeline and client board.</p>
+<div id="view-ent-crm" class="tab-view hidden p-4 border border-brand-border bg-brand-panel rounded space-y-3">
+  <div>
+    <h2 class="text-sm font-bold text-brand-accent">SALES & REVENUE</h2>
+    <p class="text-[11px] text-slate-400 mt-0.5">Stripe payments, storefront orders, and revenue operations in one board.</p>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+    <div class="border border-indigo-500/20 bg-indigo-500/5 rounded-xl p-3 space-y-1">
+      <div class="text-[10px] font-mono text-indigo-400">STRIPE MRR</div>
+      <div class="text-lg font-bold text-white">$14,250</div>
+      <div class="text-[10px] text-emerald-400">+8.4% vs last month</div>
+    </div>
+    <div class="border border-amber-500/20 bg-amber-500/5 rounded-xl p-3 space-y-1">
+      <div class="text-[10px] font-mono text-amber-400">SHOPIFY ORDERS</div>
+      <div class="text-lg font-bold text-white">38 today</div>
+      <div class="text-[10px] text-slate-400">$4,820 gross merchandise</div>
+    </div>
+    <div class="border border-brand-mint/20 bg-brand-mint/5 rounded-xl p-3 space-y-1">
+      <div class="text-[10px] font-mono text-brand-mint">NET CASH</div>
+      <div class="text-lg font-bold text-white">$9,410</div>
+      <div class="text-[10px] text-slate-400">After fees & refunds</div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+    <div class="border border-slate-800 rounded-xl bg-slate-950/50 p-3 space-y-2">
+      <h3 class="text-[11px] font-bold text-slate-200">Stripe pipeline</h3>
+      <div class="text-[11px] text-slate-400 space-y-1.5">
+        <div class="flex justify-between border-b border-slate-800 pb-1.5"><span>Active subscriptions</span><span class="text-slate-200 font-mono">186</span></div>
+        <div class="flex justify-between border-b border-slate-800 pb-1.5"><span>Failed payments</span><span class="text-amber-400 font-mono">4</span></div>
+        <div class="flex justify-between"><span>Trial conversions this week</span><span class="text-brand-mint font-mono">12</span></div>
+      </div>
+    </div>
+    <div class="border border-slate-800 rounded-xl bg-slate-950/50 p-3 space-y-2">
+      <h3 class="text-[11px] font-bold text-slate-200">Storefront</h3>
+      <div class="text-[11px] text-slate-400 space-y-1.5">
+        <div class="flex justify-between border-b border-slate-800 pb-1.5"><span>Shopify</span><span class="text-slate-200">Ready to sync</span></div>
+        <div class="flex justify-between border-b border-slate-800 pb-1.5"><span>Lemon Squeezy</span><span class="text-slate-200">Ready to sync</span></div>
+        <div class="flex justify-between"><span>Top SKU</span><span class="text-amber-400">Founders Carry Kit</span></div>
+      </div>
+    </div>
+  </div>
 </div>
