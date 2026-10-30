@@ -3,50 +3,40 @@
 <div class="p-6 max-w-5xl mx-auto space-y-6">
 
   <!-- 1. TOP HEADER: STREAK & $DIM REWARD MILESTONE BAR -->
-  <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-5">
-    <div class="flex items-center space-x-4">
-      <!-- Active Streak Flame Badge -->
-      <div class="h-14 w-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col items-center justify-center text-amber-400 font-black shadow-inner">
-        <span class="text-lg leading-none">🔥</span>
-        <span class="text-[11px] font-bold mt-0.5">14d</span>
+  <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div class="flex items-center space-x-4">
+        <div class="h-[4.5rem] w-[4.5rem] rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col items-center justify-center text-amber-400 font-black shadow-inner">
+          <span class="text-2xl leading-none">🔥</span>
+          <span id="goals-streak-badge" class="text-xs font-bold mt-0.5 leading-none">14d</span>
+          <span class="text-[9px] font-bold tracking-wide uppercase text-amber-400/80 mt-0.5 leading-none">Streak</span>
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <h1 class="text-lg font-black text-white">Goals & Achievements</h1>
+            <span class="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+              Active Streak
+            </span>
+          </div>
+          <p id="goals-streak-next" class="text-[11px] font-mono text-slate-400 mt-1">Next Milestone: 21 Days</p>
+        </div>
       </div>
-      <div class="space-y-1">
-        <div class="flex items-center space-x-2">
-          <h1 class="text-lg font-black text-white">Goals & Achievements</h1>
-          <span class="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
-            Active Streak
-          </span>
-        </div>
 
-        <!-- $DIM Milestone Progress Gauge -->
-        <div class="space-y-1">
-          <div class="flex justify-between items-center text-[11px] font-mono">
-            <span class="text-slate-400">Next Milestone: <strong class="text-slate-200">30 Days</strong></span>
-            <span class="text-amber-400 font-bold">2,000 $DIM</span>
-          </div>
-          <div class="w-64 bg-slate-950 h-2.5 rounded-full overflow-hidden border border-slate-800">
-            <!-- Progress towards 30 days (14/30 = 46.6%) -->
-            <div class="bg-gradient-to-r from-amber-500 to-amber-300 h-full rounded-full" style="width: 46.6%"></div>
-          </div>
-          <div class="text-[10px] text-slate-500 font-mono">14 / 30 Days (16 days remaining)</div>
+      <div class="flex items-center space-x-4 md:border-l border-slate-800 md:pl-5">
+        <div class="text-right">
+          <div class="text-[10px] font-mono text-slate-400 uppercase tracking-wider">Earned Balance</div>
+          <div class="text-base font-black text-amber-400 font-mono dim-balance-display">18,400 $DIM</div>
         </div>
+        <button type="button" onclick="toggleNotificationModal()" class="p-2.5 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-slate-400 hover:text-white transition flex items-center gap-2 text-xs">
+          🔔 Reminders
+        </button>
+        <button type="button" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs px-4 py-2.5 rounded-xl transition shadow-lg shadow-amber-500/10 whitespace-nowrap">
+          + New Goal
+        </button>
       </div>
     </div>
 
-    <!-- Right Stats: Total Earned $DIM & Notification Controls -->
-    <div class="flex items-center space-x-4 border-t md:border-t-0 md:border-l border-slate-800 pt-3 md:pt-0 md:pl-5">
-      <div class="text-right">
-        <div class="text-[10px] font-mono text-slate-400 uppercase tracking-wider">Earned Balance</div>
-        <div class="text-base font-black text-amber-400 font-mono">1,000 $DIM</div>
-      </div>
-
-      <button type="button" onclick="toggleNotificationModal()" class="p-2.5 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-slate-400 hover:text-white transition flex items-center gap-2 text-xs">
-        🔔 Reminders
-      </button>
-      <button type="button" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs px-4 py-2.5 rounded-xl transition shadow-lg shadow-amber-500/10 whitespace-nowrap">
-        + New Goal
-      </button>
-    </div>
+    <div id="dim-streak-track" class="w-full"></div>
   </div>
 
   <!-- 2. TIME HORIZON SELECTOR & TARGET LIST -->
@@ -94,7 +84,7 @@
 
     <div class="space-y-3 hidden" data-goal-horizon="monthly">
       <div class="p-4 bg-slate-950 border border-slate-800 rounded-xl flex items-center justify-between">
-        <span class="text-sm font-semibold text-slate-200">Reach the 30-day streak and claim 2,000 $DIM</span>
+        <span class="text-sm font-semibold text-slate-200">Reach the 30-day streak and claim 2,500 $DIM</span>
         <span class="text-xs font-mono text-amber-400 font-bold bg-amber-500/10 px-2.5 py-1 rounded-lg">This Month</span>
       </div>
     </div>
@@ -108,88 +98,8 @@
 
     <div class="space-y-3 hidden" data-goal-horizon="yearly">
       <div class="p-4 bg-slate-950 border border-slate-800 rounded-xl flex items-center justify-between">
-        <span class="text-sm font-semibold text-slate-200">Complete a 365-day streak for 25,000 $DIM</span>
+        <span class="text-sm font-semibold text-slate-200">Complete a 365-day streak for 27,500 $DIM</span>
         <span class="text-xs font-mono text-amber-400 font-bold bg-amber-500/10 px-2.5 py-1 rounded-lg">Year Vision</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- 3. $DIM MILESTONE ROADMAP (TROPHY / REWARD TRACK) -->
-  <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
-    <h3 class="text-sm font-bold text-white flex items-center gap-2">
-      💎 $DIM Streak Milestone Rewards
-    </h3>
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-      <div class="p-3.5 bg-slate-950 border border-emerald-500/40 rounded-xl space-y-1">
-        <div class="flex justify-between items-center">
-          <span class="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">Claimed</span>
-          <span class="text-xs">✅</span>
-        </div>
-        <div class="text-xs font-bold text-white">7 Days</div>
-        <div class="text-xs font-mono text-amber-400 font-bold">1,000 $DIM</div>
-      </div>
-
-      <div class="p-3.5 bg-slate-950 border border-amber-500/40 rounded-xl space-y-1 relative">
-        <div class="flex justify-between items-center">
-          <span class="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded">In Progress</span>
-          <span class="text-xs">🎯</span>
-        </div>
-        <div class="text-xs font-bold text-white">30 Days</div>
-        <div class="text-xs font-mono text-amber-400 font-bold">2,000 $DIM</div>
-      </div>
-
-      <div class="p-3.5 bg-slate-950 border border-slate-800 opacity-60 rounded-xl space-y-1">
-        <div class="flex justify-between items-center">
-          <span class="text-[10px] font-bold text-slate-500">Locked</span>
-          <span class="text-xs">🔒</span>
-        </div>
-        <div class="text-xs font-bold text-slate-300">50 Days</div>
-        <div class="text-xs font-mono text-slate-400">3,000 $DIM</div>
-      </div>
-
-      <div class="p-3.5 bg-slate-950 border border-slate-800 opacity-60 rounded-xl space-y-1">
-        <div class="flex justify-between items-center">
-          <span class="text-[10px] font-bold text-slate-500">Locked</span>
-          <span class="text-xs">🔒</span>
-        </div>
-        <div class="text-xs font-bold text-slate-300">100 Days</div>
-        <div class="text-xs font-mono text-slate-400">5,000 $DIM</div>
-      </div>
-
-      <div class="p-3.5 bg-slate-950 border border-slate-800 opacity-60 rounded-xl space-y-1">
-        <div class="flex justify-between items-center">
-          <span class="text-[10px] font-bold text-slate-500">Locked</span>
-          <span class="text-xs">🔒</span>
-        </div>
-        <div class="text-xs font-bold text-slate-300">180 Days</div>
-        <div class="text-xs font-mono text-slate-400">10,000 $DIM</div>
-      </div>
-
-      <div class="p-3.5 bg-slate-950 border border-slate-800 opacity-60 rounded-xl space-y-1">
-        <div class="flex justify-between items-center">
-          <span class="text-[10px] font-bold text-slate-500">Locked</span>
-          <span class="text-xs">🔒</span>
-        </div>
-        <div class="text-xs font-bold text-slate-300">250 Days</div>
-        <div class="text-xs font-mono text-slate-400">15,000 $DIM</div>
-      </div>
-
-      <div class="p-3.5 bg-slate-950 border border-slate-800 opacity-60 rounded-xl space-y-1">
-        <div class="flex justify-between items-center">
-          <span class="text-[10px] font-bold text-slate-500">Locked</span>
-          <span class="text-xs">🔒</span>
-        </div>
-        <div class="text-xs font-bold text-slate-300">300 Days</div>
-        <div class="text-xs font-mono text-slate-400">20,000 $DIM</div>
-      </div>
-
-      <div class="p-3.5 bg-slate-950 border border-slate-800 opacity-60 rounded-xl space-y-1">
-        <div class="flex justify-between items-center">
-          <span class="text-[10px] font-bold text-slate-500">Locked</span>
-          <span class="text-xs">🔒</span>
-        </div>
-        <div class="text-xs font-bold text-slate-300">365 Days</div>
-        <div class="text-xs font-mono text-slate-400">25,000 $DIM</div>
       </div>
     </div>
   </div>

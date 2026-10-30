@@ -1,4 +1,249 @@
-<div id="view-creator-writespace" class="tab-view hidden p-4 border border-brand-border bg-brand-panel rounded">
-  <h2 class="text-sm font-bold text-amber-400 mb-2">WRITESPACE</h2>
-  <p class="text-slate-400">Distraction-free writing and essay drafting.</p>
+<div id="view-creator-writespace" class="tab-view hidden w-full h-full overflow-hidden">
+  <div id="ws-root" class="h-full min-h-[640px] flex flex-col font-sans bg-[#0f0e13] text-amber-50">
+
+    <header class="px-4 py-2.5 border-b border-amber-900/30 bg-[#16141d]/90 backdrop-blur-md flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3 min-w-0">
+        <div class="flex items-center gap-2 font-bold text-lg tracking-tight">
+          <span class="p-1.5 rounded-lg bg-gradient-to-tr from-amber-500 to-amber-600 text-slate-950 shadow-md"><i class="fa-solid fa-wand-magic-sparkles text-sm"></i></span>
+          <span class="text-amber-400">WriteSpace</span>
+          <span class="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-500 font-medium">Studio</span>
+        </div>
+        <div class="h-4 w-px bg-amber-900/40 mx-1 hidden sm:block"></div>
+        <div class="relative hidden sm:flex items-center">
+          <i class="fa-solid fa-table-columns absolute left-2.5 text-[11px] opacity-60"></i>
+          <select id="ws-layout" class="pl-8 pr-7 py-1 text-xs rounded-md font-medium border appearance-none cursor-pointer bg-[#1e1b26] border-amber-900/40 text-amber-200">
+            <option value="substack">Substack Blog Layout</option>
+            <option value="word">Microsoft Word Document</option>
+          </select>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button type="button" onclick="WRITESPACE.toggleTheme()" id="ws-theme-btn" class="p-1.5 rounded-md border bg-[#1e1b26] border-amber-900/40 text-amber-300 text-xs font-medium flex items-center gap-1.5">
+          <i class="fa-solid fa-sun text-blue-400"></i><span class="hidden sm:inline">Word Light</span>
+        </button>
+        <button type="button" onclick="WRITESPACE.toggleSidebar()" id="ws-sidebar-btn" title="Collapse tools" class="p-1.5 rounded-md border bg-[#1e1b26] border-amber-900/40 text-amber-300 text-xs font-medium flex items-center gap-1.5">
+          <i class="fa-solid fa-table-columns"></i><span class="hidden sm:inline">Tools</span>
+        </button>
+        <button type="button" onclick="WRITESPACE.toggleFullscreen()" id="ws-full-btn" title="Expand WriteSpace" class="p-1.5 rounded-md border bg-[#1e1b26] border-amber-900/40 text-amber-300 text-xs font-medium flex items-center gap-1.5">
+          <i class="fa-solid fa-expand"></i><span class="hidden sm:inline">Expand</span>
+        </button>
+        <button type="button" onclick="WRITESPACE.openOpenModal()" class="p-1.5 rounded-md border bg-[#1e1b26] border-amber-900/40 text-amber-300 text-xs font-medium flex items-center gap-1.5">
+          <i class="fa-solid fa-folder-open"></i><span class="hidden sm:inline">Open</span>
+        </button>
+        <button type="button" onclick="WRITESPACE.openSaveModal()" class="p-1.5 rounded-md border border-amber-500/40 bg-amber-500/10 text-amber-300 text-xs font-medium flex items-center gap-1.5">
+          <i class="fa-solid fa-floppy-disk"></i><span class="hidden sm:inline">Save</span>
+        </button>
+        <button type="button" onclick="WRITESPACE.openVictory()" class="px-3 py-1.5 rounded-md text-xs font-semibold bg-amber-500 text-slate-950 hover:bg-amber-400 flex items-center gap-1.5">
+          <i class="fa-solid fa-paper-plane"></i><span>Finish &amp; Export</span>
+        </button>
+      </div>
+    </header>
+
+    <div id="ws-publish-banner" class="hidden bg-emerald-500 text-slate-950 text-xs py-2 px-4 text-center font-semibold"></div>
+
+    <div class="px-4 py-2 border-b border-amber-900/30 bg-[#14121a] flex items-center gap-2 overflow-x-auto text-xs">
+      <select id="ws-font" class="py-1 px-2 rounded border bg-[#1e1b26] border-amber-900/40 text-amber-200">
+        <option value="Calibri">Calibri</option>
+        <option value="Cambria">Cambria</option>
+        <option value="Times New Roman">Times New Roman</option>
+        <option value="Georgia">Georgia (Serif)</option>
+        <option value="Arial">Arial (Sans-Serif)</option>
+        <option value="Courier New">Courier New (Mono)</option>
+      </select>
+      <select id="ws-size" class="py-1 px-2 rounded border bg-[#1e1b26] border-amber-900/40 text-amber-200">
+        <option value="11">11pt</option>
+        <option value="12">12pt</option>
+        <option value="16">16px</option>
+        <option value="18" selected>18px</option>
+        <option value="20">20px</option>
+        <option value="24">24px</option>
+      </select>
+      <div class="h-4 w-px bg-amber-900/40 mx-1"></div>
+      <button type="button" id="ws-bold" onclick="WRITESPACE.toggleFormat('bold')" class="p-1.5 rounded border border-transparent"><i class="fa-solid fa-bold"></i></button>
+      <button type="button" id="ws-italic" onclick="WRITESPACE.toggleFormat('italic')" class="p-1.5 rounded border border-transparent"><i class="fa-solid fa-italic"></i></button>
+      <button type="button" id="ws-underline" onclick="WRITESPACE.toggleFormat('underline')" class="p-1.5 rounded border border-transparent"><i class="fa-solid fa-underline"></i></button>
+      <div class="h-4 w-px bg-amber-900/40 mx-1"></div>
+      <button type="button" id="ws-grammar-btn" onclick="WRITESPACE.toggleGrammar()" class="px-2.5 py-1 rounded border border-amber-500/40 bg-amber-500/10 text-amber-500 flex items-center gap-1.5">
+        <i class="fa-solid fa-circle-check"></i><span>Grammar Check</span>
+      </button>
+    </div>
+
+    <div class="flex-1 flex overflow-hidden min-h-0">
+      <main id="ws-stage" class="flex-1 overflow-y-auto p-4 md:p-8 flex justify-center">
+        <div id="ws-page-stack" class="flex flex-col items-center w-full max-w-[850px]">
+        <div id="ws-word-ruler" class="hidden w-full max-w-[816px] h-6 bg-[#f3f3f3] border border-[#c8c8c8] border-b-0 text-[9px] text-[#666] font-sans relative overflow-hidden select-none">
+          <div class="absolute inset-0 flex">
+            <span class="w-[96px] border-r border-[#d0d0d0] text-center leading-6">1"</span>
+            <span class="flex-1 border-r border-[#d0d0d0]"></span>
+            <span class="w-[96px] border-l border-[#d0d0d0] text-center leading-6">1"</span>
+          </div>
+          <div class="absolute left-[96px] right-[96px] top-0 bottom-0 flex">
+            <span class="flex-1 text-center leading-6 border-r border-[#dedede]">2</span>
+            <span class="flex-1 text-center leading-6 border-r border-[#dedede]">3</span>
+            <span class="flex-1 text-center leading-6 border-r border-[#dedede]">4</span>
+            <span class="flex-1 text-center leading-6 border-r border-[#dedede]">5</span>
+            <span class="flex-1 text-center leading-6 border-r border-[#dedede]">6</span>
+            <span class="flex-1 text-center leading-6">7</span>
+          </div>
+        </div>
+        <div id="ws-canvas" class="w-full max-w-3xl p-8 md:p-12 rounded-xl border shadow-xl bg-[#16141d] border-amber-900/30">
+          <div id="ws-substack-head" class="mb-8 space-y-4">
+            <div id="ws-cover-wrap" class="relative group rounded-lg overflow-hidden border border-amber-900/30 h-48 sm:h-64">
+              <img id="ws-cover" alt="Cover" class="w-full h-full object-cover" src="https://images.unsplash.com/photo-1455390582262-044cdead277a?auto=format&amp;fit=crop&amp;w=1200&amp;q=80">
+              <button type="button" onclick="WRITESPACE.removeCover()" class="absolute top-2 right-2 p-1.5 rounded-full bg-slate-900/80 text-white opacity-0 group-hover:opacity-100"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <input id="ws-title" type="text" placeholder="Post Title..." class="w-full text-3xl sm:text-4xl font-extrabold bg-transparent focus:outline-none text-amber-100 placeholder:text-amber-900/40">
+            <input id="ws-subtitle" type="text" placeholder="Add a subtitle or newsletter hook..." class="w-full text-lg bg-transparent focus:outline-none text-amber-300/70 placeholder:text-amber-900/40">
+            <div class="flex items-center gap-3 mt-6 pt-4 border-t border-amber-900/20 text-xs opacity-75">
+              <div class="w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-slate-950 font-bold">WS</div>
+              <div>
+                <div class="font-semibold text-amber-500">WriteSpace Author</div>
+                <div id="ws-byline"></div>
+              </div>
+            </div>
+          </div>
+
+          <div id="ws-word-head" class="hidden mb-10 flex items-center justify-between text-[10px] text-[#666666] tracking-wide" style="font-family:Calibri, 'Segoe UI', sans-serif">
+            <span id="ws-word-header-left"></span>
+            <span id="ws-page-of"></span>
+          </div>
+          <input id="ws-title-word" type="text" placeholder="Document Title" class="hidden w-full bg-transparent focus:outline-none text-black placeholder:text-neutral-400">
+
+          <textarea id="ws-body" placeholder="Start typing your post or story..." class="w-full min-h-[450px] bg-transparent resize-none focus:outline-none leading-relaxed text-amber-50 placeholder:text-amber-900/40"></textarea>
+          <div id="ws-grammar" class="mt-6 pt-4 border-t border-dashed border-amber-500/30 text-xs"></div>
+
+          <div id="ws-word-foot" class="hidden mt-8 pt-6 text-center text-[11px] text-[#666666]" style="font-family:Calibri, 'Segoe UI', sans-serif">
+            <span id="ws-word-page-num">1</span>
+          </div>
+        </div>
+        </div>
+      </main>
+
+      <aside id="ws-aside" class="w-80 md:w-96 border-l border-amber-900/30 bg-[#121018] flex flex-col min-h-0 text-amber-200">
+        <div class="flex items-center border-b border-amber-900/30 bg-[#171520] text-xs font-medium">
+          <button type="button" data-ws-tab="ai-editor" onclick="WRITESPACE.setTab('ai-editor')" class="ws-tab flex-1 py-3 flex items-center justify-center gap-1.5 border-b-2 border-amber-400 text-amber-400 font-semibold"><i class="fa-solid fa-sparkles"></i> AI Copilot</button>
+          <button type="button" data-ws-tab="seo" onclick="WRITESPACE.setTab('seo')" class="ws-tab flex-1 py-3 flex items-center justify-center gap-1.5 border-b-2 border-transparent text-amber-200 hover:text-amber-300"><i class="fa-solid fa-magnifying-glass"></i> SEO Audit</button>
+          <button type="button" data-ws-tab="export" onclick="WRITESPACE.setTab('export')" class="ws-tab flex-1 py-3 flex items-center justify-center gap-1.5 border-b-2 border-transparent text-amber-200 hover:text-amber-300"><i class="fa-solid fa-share-nodes"></i> Publish</button>
+          <button type="button" onclick="WRITESPACE.toggleSidebar()" title="Collapse tools" class="px-2 py-3 text-amber-400/70 hover:text-amber-300"><i class="fa-solid fa-chevron-right"></i></button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-4 space-y-5 text-xs">
+          <div id="ws-tab-ai-editor" class="ws-pane space-y-4">
+            <div class="font-semibold text-sm flex items-center gap-1.5 text-amber-400"><i class="fa-solid fa-wand-magic-sparkles"></i> AI Editing &amp; Tone Tools</div>
+            <div>
+              <label class="block text-[11px] font-medium text-amber-300 mb-1.5">Select Audience Tone</label>
+              <div class="grid grid-cols-2 gap-1.5" id="ws-tones"></div>
+            </div>
+            <div class="space-y-2">
+              <label class="block text-[11px] font-medium text-amber-300">Quick Enhancements</label>
+              <button type="button" onclick="WRITESPACE.aiAction('grammar')" class="w-full py-2 px-3 rounded-lg border border-amber-500/40 bg-amber-500/5 hover:bg-amber-500/10 text-left flex items-center justify-between font-medium text-amber-200"><span class="flex items-center gap-2"><i class="fa-solid fa-circle-check text-amber-400"></i> Fix Grammar &amp; Punctuation</span><i class="fa-solid fa-bolt text-amber-400"></i></button>
+              <button type="button" onclick="WRITESPACE.aiAction('improve')" class="w-full py-2 px-3 rounded-lg border border-amber-500/40 bg-amber-500/5 hover:bg-amber-500/10 text-left flex items-center justify-between font-medium text-amber-200"><span class="flex items-center gap-2"><i class="fa-solid fa-sparkles text-amber-400"></i> Improve Flow &amp; Rhythm</span><i class="fa-solid fa-bolt text-amber-400"></i></button>
+              <button type="button" onclick="WRITESPACE.aiAction('tone')" class="w-full py-2 px-3 rounded-lg border border-amber-500/40 bg-amber-500/5 hover:bg-amber-500/10 text-left flex items-center justify-between font-medium text-amber-200"><span class="flex items-center gap-2"><i class="fa-solid fa-sliders text-amber-400"></i> Apply Tone</span><i class="fa-solid fa-bolt text-amber-400"></i></button>
+              <button type="button" onclick="WRITESPACE.aiAction('summarize')" class="w-full py-2 px-3 rounded-lg border border-amber-500/40 bg-amber-500/5 hover:bg-amber-500/10 text-left flex items-center justify-between font-medium text-amber-200"><span class="flex items-center gap-2"><i class="fa-solid fa-book-open text-amber-400"></i> Generate Executive Summary</span><i class="fa-solid fa-bolt text-amber-400"></i></button>
+            </div>
+            <div>
+              <label class="block text-[11px] font-medium text-amber-300 mb-1">Custom Instruction</label>
+              <div class="flex items-center gap-1.5">
+                <input id="ws-ai-prompt" type="text" placeholder="e.g., Make opening paragraph more compelling..." class="flex-1 py-1.5 px-2.5 rounded border bg-[#1a1724] border-amber-900/40 text-amber-100">
+                <button type="button" onclick="WRITESPACE.aiAction('custom')" class="p-2 bg-amber-500 text-slate-950 rounded hover:bg-amber-400"><i class="fa-solid fa-paper-plane"></i></button>
+              </div>
+            </div>
+            <div id="ws-ai-out" class="hidden p-3 rounded-lg border bg-[#171421] border-amber-900/40 space-y-2"></div>
+          </div>
+
+          <div id="ws-tab-seo" class="ws-pane hidden space-y-4">
+            <div class="flex items-center justify-between">
+              <span class="font-semibold text-sm flex items-center gap-1.5 text-amber-400"><i class="fa-solid fa-magnifying-glass"></i> SEO Readability &amp; Keywords</span>
+              <span id="ws-seo-badge" class="px-2 py-0.5 rounded font-bold text-xs bg-amber-500/20 text-amber-400">Score: 0/100</span>
+            </div>
+            <div class="w-full bg-amber-900/20 rounded-full h-2 overflow-hidden">
+              <div id="ws-seo-bar" class="bg-gradient-to-r from-amber-500 to-emerald-400 h-2 rounded-full" style="width:0%"></div>
+            </div>
+            <label class="block text-[11px] font-medium text-amber-300 mb-1">Focus Keyword</label>
+            <input id="ws-keyword" type="text" class="w-full py-1.5 px-2.5 rounded border bg-[#1a1724] border-amber-900/40 text-amber-100">
+            <label class="block text-[11px] font-medium text-amber-300 mb-1">Meta Title <span id="ws-meta-title-count"></span></label>
+            <input id="ws-meta-title" type="text" class="w-full py-1.5 px-2.5 rounded border bg-[#1a1724] border-amber-900/40 text-amber-100">
+            <label class="block text-[11px] font-medium text-amber-300 mb-1">Meta Description <span id="ws-meta-desc-count"></span></label>
+            <textarea id="ws-meta-desc" rows="3" class="w-full py-1.5 px-2.5 rounded border resize-none bg-[#1a1724] border-amber-900/40 text-amber-100"></textarea>
+            <label class="block text-[11px] font-medium text-amber-300 mb-1">URL Slug</label>
+            <input id="ws-slug" type="text" class="w-full py-1.5 px-2.5 rounded border font-mono bg-[#1a1724] border-amber-900/40 text-amber-100">
+            <div id="ws-seo-checks" class="pt-2 border-t border-amber-900/30 space-y-1.5"></div>
+          </div>
+
+          <div id="ws-tab-export" class="ws-pane hidden space-y-4">
+            <span class="font-semibold text-sm flex items-center gap-1.5 text-amber-400"><i class="fa-solid fa-share-nodes"></i> Distribution Channels</span>
+            <p class="text-amber-200/90 leading-relaxed">Send your polished draft to platform editor queues without losing visual formatting.</p>
+            <button type="button" onclick="WRITESPACE.publish('Substack')" class="w-full py-2.5 px-3 rounded-lg border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 flex items-center justify-between font-semibold"><span class="flex items-center gap-2"><i class="fa-solid fa-paper-plane text-amber-500"></i> Push to Substack Draft</span><i class="fa-solid fa-arrow-up-right-from-square"></i></button>
+            <button type="button" onclick="WRITESPACE.publish('Medium')" class="w-full py-2.5 px-3 rounded-lg border border-amber-900/40 hover:bg-[#1a1724] flex items-center justify-between font-semibold"><span class="flex items-center gap-2"><i class="fa-regular fa-file-lines"></i> Send to Medium</span><i class="fa-solid fa-arrow-up-right-from-square"></i></button>
+            <button type="button" onclick="WRITESPACE.publish('WordPress')" class="w-full py-2.5 px-3 rounded-lg border border-amber-900/40 hover:bg-[#1a1724] flex items-center justify-between font-semibold"><span class="flex items-center gap-2"><i class="fa-solid fa-layer-group"></i> Publish to WordPress</span><i class="fa-solid fa-arrow-up-right-from-square"></i></button>
+            <div class="pt-3 border-t border-amber-900/30 space-y-2">
+              <span class="font-semibold opacity-80">Export Files</span>
+              <div class="grid grid-cols-2 gap-2">
+                <button type="button" onclick="WRITESPACE.copyHtml()" class="py-2 px-2.5 border border-amber-900/30 rounded flex items-center justify-center gap-1.5 hover:bg-[#1f1c2b]"><i class="fa-solid fa-copy"></i> Copy HTML</button>
+                <button type="button" onclick="WRITESPACE.downloadMd()" class="py-2 px-2.5 border border-amber-900/30 rounded flex items-center justify-center gap-1.5 hover:bg-[#1f1c2b]"><i class="fa-solid fa-download"></i> Save .MD</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="p-3 border-t border-amber-900/30 bg-[#181522] flex items-center justify-between text-[11px] font-mono text-amber-300/70">
+          <span id="ws-stat-words">0 words</span>
+          <span id="ws-stat-chars">0 chars</span>
+          <span id="ws-stat-read">~1 min read</span>
+        </div>
+      </aside>
+
+      <div id="ws-aside-rail" class="hidden w-12 border-l border-amber-900/30 bg-[#121018] flex-col items-center py-3 gap-2">
+        <button type="button" onclick="WRITESPACE.toggleSidebar()" title="Expand tools" class="p-2 rounded-lg text-amber-400 hover:bg-amber-500/10"><i class="fa-solid fa-chevron-left"></i></button>
+        <button type="button" onclick="WRITESPACE.openSidebarTab('ai-editor')" title="AI Copilot" class="p-2 rounded-lg text-amber-300/80 hover:bg-amber-500/10"><i class="fa-solid fa-sparkles"></i></button>
+        <button type="button" onclick="WRITESPACE.openSidebarTab('seo')" title="SEO Audit" class="p-2 rounded-lg text-amber-300/80 hover:bg-amber-500/10"><i class="fa-solid fa-magnifying-glass"></i></button>
+        <button type="button" onclick="WRITESPACE.openSidebarTab('export')" title="Publish" class="p-2 rounded-lg text-amber-300/80 hover:bg-amber-500/10"><i class="fa-solid fa-share-nodes"></i></button>
+      </div>
+    </div>
+  </div>
+
+  <div id="ws-victory" class="hidden fixed inset-0 z-[340] bg-slate-950/80 backdrop-blur-md items-center justify-center p-4">
+    <div class="w-full max-w-md rounded-2xl border p-6 space-y-5 shadow-2xl relative overflow-hidden bg-[#16141d] border-amber-900/40 text-amber-50">
+      <div class="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-amber-500 via-amber-400 to-amber-600"></div>
+      <div class="text-center space-y-2">
+        <div class="w-12 h-12 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-500 flex items-center justify-center mx-auto mb-3"><i class="fa-solid fa-award text-xl"></i></div>
+        <h2 class="text-2xl font-black tracking-tight">Flow State Achieved!</h2>
+        <p class="text-xs opacity-70">Here is your post-writing performance breakdown for this session.</p>
+      </div>
+      <div class="grid grid-cols-3 gap-3 text-center">
+        <div class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20"><div id="ws-win-words" class="text-xl font-black text-amber-500">0</div><div class="text-[10px] font-medium opacity-70">Words Written</div></div>
+        <div class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20"><div id="ws-win-read" class="text-xl font-black text-amber-500">1 min</div><div class="text-[10px] font-medium opacity-70">Est. Read Time</div></div>
+        <div class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20"><div id="ws-win-seo" class="text-xl font-black text-amber-500">0%</div><div class="text-[10px] font-medium opacity-70">SEO Grade</div></div>
+      </div>
+      <button type="button" onclick="WRITESPACE.closeVictory(); WRITESPACE.publish('Substack')" class="w-full py-3 rounded-xl bg-amber-500 text-slate-950 font-bold hover:bg-amber-400 flex items-center justify-center gap-2"><i class="fa-solid fa-paper-plane"></i> Publish Directly to Substack</button>
+      <button type="button" onclick="WRITESPACE.closeVictory()" class="w-full py-2.5 rounded-xl border border-amber-900/40 font-medium text-xs hover:bg-[#1e1c27]">Keep Refining in WriteSpace</button>
+    </div>
+  </div>
+
+  <div id="ws-save-modal" class="hidden fixed inset-0 z-[345] bg-slate-950/80 backdrop-blur-md items-center justify-center p-4">
+    <div class="w-full max-w-md rounded-2xl border border-amber-900/40 bg-[#16141d] p-5 space-y-4 text-amber-50">
+      <div class="flex items-center justify-between">
+        <h3 class="text-sm font-bold text-amber-400">Save document</h3>
+        <button type="button" onclick="WRITESPACE.closeSaveModal()" class="text-slate-400 hover:text-white">✕</button>
+      </div>
+      <label class="block space-y-1">
+        <span class="text-[10px] text-amber-300/80">File name</span>
+        <input id="ws-save-name" type="text" class="w-full bg-slate-950 border border-amber-900/40 rounded-lg px-2 py-1.5 text-[12px] text-amber-100" placeholder="Untitled draft">
+      </label>
+      <div class="grid grid-cols-1 gap-2">
+        <button type="button" onclick="WRITESPACE.saveToDrive()" class="w-full py-2.5 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs flex items-center justify-center gap-2">☁️ Save to dimDrive</button>
+        <button type="button" onclick="WRITESPACE.saveLocally()" class="w-full py-2.5 rounded-xl border border-amber-900/40 text-amber-200 font-semibold text-xs flex items-center justify-center gap-2"><i class="fa-solid fa-download"></i> Save locally (.md)</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="ws-open-modal" class="hidden fixed inset-0 z-[345] bg-slate-950/80 backdrop-blur-md items-center justify-center p-4">
+    <div class="w-full max-w-lg rounded-2xl border border-amber-900/40 bg-[#16141d] p-5 space-y-3 text-amber-50 max-h-[80vh] flex flex-col">
+      <div class="flex items-center justify-between">
+        <h3 class="text-sm font-bold text-amber-400">☁️ Open from dimDrive</h3>
+        <button type="button" onclick="WRITESPACE.closeOpenModal()" class="text-slate-400 hover:text-white">✕</button>
+      </div>
+      <div id="ws-open-list" class="flex-1 overflow-y-auto space-y-2 min-h-[160px]"></div>
+    </div>
+  </div>
 </div>

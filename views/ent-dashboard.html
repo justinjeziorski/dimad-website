@@ -62,14 +62,12 @@
           <p class="text-[11px] text-slate-400 mt-0.5" id="cal-view-hint">Overview — 24-hour schedule. Click an hour to add an event.</p>
         </div>
         <div class="flex flex-col items-end gap-1">
-          <div class="flex items-center gap-2">
-            <button type="button" onclick="CONNECT_MODULARS.connectCalendar('Calendly')" class="bg-slate-950 hover:bg-slate-800 border border-slate-700 text-[11px] font-semibold text-slate-200 px-3 py-1.5 rounded-xl transition">
-              Add Calendars with Calendly
-            </button>
-            <button type="button" onclick="CALENDAR_NAV.progressView()" class="bg-transparent border-0 shadow-none text-[10px] font-semibold text-brand-gold hover:text-amber-300 px-0 py-1.5 underline underline-offset-2 whitespace-nowrap transition">
-              <span id="cal-nav-label">Tomorrow ></span>
-            </button>
-          </div>
+          <button type="button" onclick="CALENDAR_NAV.progressView()" class="bg-transparent border-0 shadow-none text-[10px] font-semibold text-brand-gold hover:text-amber-300 px-0 py-1 underline underline-offset-2 whitespace-nowrap transition">
+            <span id="cal-nav-label">Tomorrow ></span>
+          </button>
+          <button type="button" id="calendar-source-status" onclick="CONNECT_MODULARS.connectCalendar('Calendly')" class="bg-transparent border-0 text-[11px] font-semibold text-amber-400 hover:text-amber-300 px-0 py-0.5 transition">
+            Connect via Calendly to sync
+          </button>
           <p class="text-[9px] text-slate-500 leading-tight">Compatible with Google, Outlook, Apple Calendars.</p>
         </div>
       </div>
@@ -78,7 +76,6 @@
         <div class="flex flex-col" id="hourly-slots-container"></div>
         <div class="flex items-center justify-between text-[11px] text-slate-500 border-t border-slate-800 pt-2.5">
           <span id="calendar-timezone-label">Timezone: Auto-detected</span>
-          <span id="calendar-source-status" class="text-amber-400">Connect via Calendly to sync</span>
         </div>
       </div>
   </div>
@@ -252,20 +249,11 @@
       <h3 class="font-bold text-slate-200 text-xs border-b border-brand-border pb-1.5 flex items-center justify-between">
         <span><i class="fa-solid fa-calendar-days text-brand-mint"></i> Dimad Monthly Calendar Overview</span>
         <span class="flex items-center gap-2">
-          <span class="text-[9px] text-slate-400">October 2026</span>
+          <span id="cc-mini-month-label" class="text-[9px] text-slate-400">October 2026</span>
           <button type="button" onclick="COMMAND_CENTER.toggleCollapse('monthcal')" class="text-slate-500 hover:text-amber-400 px-1"><i data-cc-chevron="monthcal" class="fa-solid fa-chevron-down text-[9px]"></i></button>
         </span>
       </h3>
-      <div data-cc-body class="grid grid-cols-7 gap-1 text-center font-mono text-[9px] pt-1">
-        <span class="text-slate-500">M</span><span class="text-slate-500">T</span><span class="text-slate-500">W</span><span class="text-slate-500">T</span><span class="text-slate-500">F</span><span class="text-slate-500">S</span><span class="text-slate-500">S</span>
-        <div class="p-1 bg-brand-black/40 text-slate-500 rounded">26</div>
-        <div class="p-1 bg-brand-black/40 text-slate-500 rounded">27</div>
-        <div class="p-1 bg-brand-mint/20 border border-brand-mint text-brand-mint font-bold rounded">28</div>
-        <div class="p-1 bg-brand-black/40 text-slate-200 rounded">29</div>
-        <div class="p-1 bg-brand-black/40 text-slate-200 rounded">30</div>
-        <div class="p-1 bg-brand-black/40 text-slate-200 rounded">31</div>
-        <div class="p-1 bg-brand-black/40 text-slate-500 rounded">1</div>
-      </div>
+      <div data-cc-body id="cc-mini-month" class="grid grid-cols-7 gap-1 text-center font-mono text-[9px] pt-1"></div>
     </div>
   </div>
 </div>

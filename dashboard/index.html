@@ -166,6 +166,12 @@
             <i class="fa-solid fa-note-sticky text-amber-400 text-xs"></i>
             <span class="nav-text-label">DIMAD Notepad</span>
           </button>
+
+          <button onclick="switchTab('dimad-dimdrive')" title="dimDrive" class="nav-item-btn w-full bg-brand-black/40 hover:bg-brand-border border border-brand-border text-slate-200 py-2 px-2.5 rounded font-semibold flex items-center gap-2 transition-all">
+            <span class="text-sm leading-none">☁️</span>
+            <span class="nav-text-label">dimDrive</span>
+          </button>
+
         </div>
 
         <div class="h-[1px] bg-brand-border/60 my-1"></div>
@@ -685,6 +691,69 @@
   </div>
 </div>
 
-<script src="../script.js?v=clocks-search"></script>
+<div id="dimad-cal-composer" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[320] items-center justify-center p-4">
+  <div class="bg-slate-900 border border-slate-700 max-w-md w-full rounded-2xl p-5 space-y-3 font-mono">
+    <div class="flex items-center justify-between">
+      <h3 id="cal-event-heading" class="text-sm font-bold text-amber-400">Add meeting / event</h3>
+      <input type="hidden" id="cal-event-id" value="">
+      <button type="button" onclick="DIMAD_CAL.closeComposer()" class="text-slate-400 hover:text-white">✕</button>
+    </div>
+    <label class="block space-y-1">
+      <span class="text-[10px] text-slate-500">Title</span>
+      <input id="cal-event-title" type="text" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-[12px] text-slate-100" placeholder="Strategy call">
+    </label>
+    <label class="block space-y-1">
+      <span class="text-[10px] text-slate-500">Date</span>
+      <input id="cal-event-date" type="date" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-[12px] text-slate-100">
+    </label>
+    <div class="grid grid-cols-2 gap-2">
+      <label class="block space-y-1">
+        <span class="text-[10px] text-slate-500">Start time</span>
+        <input id="cal-event-start" type="time" step="60" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-[12px] text-slate-100">
+      </label>
+      <label class="block space-y-1">
+        <span class="text-[10px] text-slate-500">End time</span>
+        <input id="cal-event-end" type="time" step="60" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-[12px] text-slate-100">
+      </label>
+    </div>
+    <p class="text-[9px] text-slate-500 leading-tight">Set start and end to the minute (24-hour clock).</p>
+    <label class="block space-y-1">
+      <span class="text-[10px] text-slate-500">Type</span>
+      <select id="cal-event-type" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-[12px] text-slate-100">
+        <option value="meeting">Meeting</option>
+        <option value="task">Task</option>
+      </select>
+    </label>
+    <label class="block space-y-1">
+      <span class="text-[10px] text-slate-500">Notes</span>
+      <textarea id="cal-event-notes" rows="2" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-[12px] text-slate-100" placeholder="Optional"></textarea>
+    </label>
+    <label class="block space-y-1">
+      <span class="text-[10px] text-slate-500">Popup reminder</span>
+      <select id="cal-event-reminder" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-[12px] text-slate-100">
+        <option value="none">No reminder</option>
+        <option value="0">At event time</option>
+        <option value="5">5 minutes before</option>
+        <option value="15" selected>15 minutes before</option>
+        <option value="60">1 hour before</option>
+      </select>
+    </label>
+    <div class="flex gap-2 pt-1">
+      <button type="button" onclick="DIMAD_CAL.saveComposer()" class="flex-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[11px] py-2 rounded-xl">Save event</button>
+      <button type="button" id="cal-event-delete" onclick="DIMAD_CAL.deleteFromComposer()" class="hidden px-3 text-[11px] text-rose-400 border border-rose-500/40 rounded-xl">Delete</button>
+      <button type="button" onclick="DIMAD_CAL.closeComposer()" class="px-3 text-[11px] text-slate-400 border border-slate-700 rounded-xl">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div id="dimad-cal-reminder" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[330] items-center justify-center p-4">
+  <div class="bg-slate-900 border border-amber-500/40 max-w-sm w-full rounded-2xl p-5 space-y-3 font-mono">
+    <h3 class="text-sm font-bold text-amber-400">📅 Calendar reminder</h3>
+    <p id="dimad-cal-reminder-text" class="text-[12px] text-slate-200">Upcoming event</p>
+    <button type="button" onclick="DIMAD_CAL.dismissReminder()" class="w-full bg-amber-500 text-slate-950 font-bold text-[11px] py-2 rounded-xl">Dismiss</button>
+  </div>
+</div>
+
+<script src="../script.js?v=dimdrive"></script>
 </body>
 </html>

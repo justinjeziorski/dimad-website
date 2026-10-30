@@ -27,6 +27,7 @@ const VIEW_FILES = [
   'dimad-ai-hub',
   'dimad-calendar',
   'dimad-notepad',
+  'dimad-dimdrive',
   'community-overview',
   'community-map',
   'community-meet',
@@ -522,6 +523,15 @@ function switchTab(tabId) {
   if (tabId === 'ent-dashboard' && typeof COMMAND_CENTER !== 'undefined') {
     COMMAND_CENTER.apply();
   }
+  if (tabId === 'dimad-calendar' && typeof DIMAD_CAL !== 'undefined') {
+    DIMAD_CAL.renderFull();
+  }
+  if (tabId === 'creator-writespace' && typeof WRITESPACE !== 'undefined') {
+    WRITESPACE.mount();
+  }
+  if (tabId === 'dimad-dimdrive' && typeof DIMDRIVE !== 'undefined') {
+    DIMDRIVE.render();
+  }
 }
 
 function resolveDimTier() {
@@ -555,6 +565,7 @@ function persistAiQuota() {
   }
 }
 
+// DIMAD OS: $DIM ECONOMICS — 16,000 $DIM = $10.00 USD ($1 $DIM = $0.000625)
 const DIM_ENGINE = {
   peg: {
     tokensPerDollar: 1600
@@ -562,7 +573,7 @@ const DIM_ENGINE = {
 
   tierConfigs: {
     FREE: {
-      name: 'Free',
+      name: 'Free Account',
       price: 0,
       multiplier: 1.00,
       canRedeem: false,
@@ -575,7 +586,7 @@ const DIM_ENGINE = {
       aiFallbackModel: null
     },
     EXPLORE: {
-      name: 'Explore',
+      name: 'Explore Tier ($9/mo)',
       price: 9,
       multiplier: 1.00,
       canRedeem: true,
@@ -588,7 +599,7 @@ const DIM_ENGINE = {
       aiFallbackModel: 'Gemini Flash'
     },
     PRO: {
-      name: 'Premium',
+      name: 'Premium Tier ($59/mo)',
       price: 59,
       multiplier: 1.15,
       canRedeem: true,
@@ -601,7 +612,7 @@ const DIM_ENGINE = {
       aiFallbackModel: null
     },
     EXECUTIVE: {
-      name: 'VIP Unlimited',
+      name: 'Unlimited VIP Tier ($199/mo)',
       price: 199,
       multiplier: 1.50,
       canRedeem: true,
@@ -674,7 +685,7 @@ const DIM_ENGINE = {
   redeemConcierge() {
     const activeTier = this.tierConfigs[this.user.tier];
     if (!activeTier.canRedeem) {
-      alert('Vault Redemptions are locked on Free. Upgrade to Explore ($9/mo) or higher to redeem $DIM.');
+      alert('Vault Redemptions are locked on Free accounts. Upgrade to $9/mo Explore Tier or higher to redeem $DIM.');
       switchVaultTab('subscription');
       return;
     }
@@ -695,7 +706,7 @@ const DIM_ENGINE = {
   issueOnwardTicket() {
     const activeTier = this.tierConfigs[this.user.tier];
     if (!activeTier.canRedeem) {
-      alert('Vault Redemptions are locked on Free.');
+      alert('Vault Redemptions are locked on Free accounts.');
       return;
     }
     const cost = 2500;
@@ -742,7 +753,62 @@ const DIM_ENGINE = {
     document.querySelectorAll('.sub-final-cash').forEach((el) => {
       el.textContent = `$${discount.finalCashDue} / mo`;
     });
+    this.renderStreakTrack();
     renderAiQuotaUi();
+  },
+
+  renderStreakTrack() {
+    const root = document.getElementById('dim-streak-track');
+    if (!root) return;
+    const days = this.user.streakDays || 0;
+    const milestones = this.streakMilestones;
+    const next = milestones.find((m) => m.days > days);
+    const activeTier = this.tierConfigs[this.user.tier] || this.tierConfigs.PRO;
+    const badge = document.getElementById('goals-streak-badge');
+    const nextEl = document.getElementById('goals-streak-next');
+    if (badge) badge.textContent = `${days}d`;
+    if (nextEl) {
+      if (next) {
+        const yieldAmt = Math.round(next.baseReward * activeTier.multiplier);
+        const remaining = next.days - days;
+        nextEl.innerHTML = `Next Milestone: <strong class="text-slate-200">${next.days} Days</strong> · ${yieldAmt.toLocaleString()} $DIM · ${remaining} day${remaining === 1 ? '' : 's'} remaining`;
+      } else {
+        nextEl.textContent = 'Year streak complete — all milestones claimed';
+      }
+    }
+
+    let prev = 0;
+    const segs = milestones.map((m) => {
+      const span = Math.max(1, m.days - prev);
+      const earned = Math.max(0, Math.min(span, days - prev));
+      const fill = (earned / span) * 100;
+      const claimed = days >= m.days;
+      const barColor = claimed ? 'bg-emerald-400' : 'bg-gradient-to-r from-amber-500 to-amber-300';
+      prev = m.days;
+      return `<div class="flex-1 min-w-[52px] h-full bg-slate-950 overflow-hidden border-r border-slate-800 last:border-0 first:rounded-l-full last:rounded-r-full" title="${m.days} days · ${m.baseReward.toLocaleString()} $DIM">
+        <div class="${barColor} h-full" style="width:${fill}%"></div>
+      </div>`;
+    }).join('');
+
+    const labels = milestones.map((m) => {
+      const claimed = days >= m.days;
+      const current = next && m.days === next.days;
+      const tone = claimed ? 'text-emerald-400' : current ? 'text-amber-400' : 'text-slate-500';
+      return `<div class="flex-1 min-w-[52px] text-center px-0.5">
+        <div class="text-[9px] font-bold ${tone} leading-tight">${m.days}d</div>
+        <div class="text-[8px] font-mono ${claimed || current ? 'text-amber-400/90' : 'text-slate-600'} leading-tight">${m.baseReward.toLocaleString()}</div>
+      </div>`;
+    }).join('');
+
+    root.innerHTML = `
+      <div class="overflow-x-auto pb-1">
+        <div class="min-w-[720px] space-y-1.5">
+          <div class="flex h-5 rounded-full overflow-hidden border border-slate-700">${segs}</div>
+          <div class="flex">${labels}</div>
+        </div>
+      </div>
+      <p class="text-[10px] font-mono text-slate-500 mt-1">${days} / 365 days · rewards shown in $DIM before ${activeTier.multiplier}x yield</p>
+    `;
   }
 };
 
@@ -1520,9 +1586,11 @@ function switchGoalHorizon(value) {
 
 function initGoalsRewards() {
   const select = document.getElementById('goal-horizon-select');
-  if (!select) return;
-  select.addEventListener('change', (e) => switchGoalHorizon(e.target.value));
-  switchGoalHorizon(select.value);
+  if (select) {
+    select.addEventListener('change', (e) => switchGoalHorizon(e.target.value));
+    switchGoalHorizon(select.value);
+  }
+  if (typeof DIM_ENGINE !== 'undefined') DIM_ENGINE.renderStreakTrack();
 }
 
 function toggleTimer() {
@@ -1671,9 +1739,1604 @@ const DIMAD_NOTEPAD = {
   }
 };
 
+const DIMDRIVE = {
+  storageKey: 'dimad_dimdrive',
+
+  load() {
+    try {
+      const rows = JSON.parse(localStorage.getItem(this.storageKey) || '[]');
+      return Array.isArray(rows) ? rows : [];
+    } catch (err) {
+      return [];
+    }
+  },
+
+  persist(rows) {
+    localStorage.setItem(this.storageKey, JSON.stringify(rows));
+  },
+
+  escape(value) {
+    return String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  },
+
+  upsertWriteSpace(draft) {
+    const rows = this.load();
+    const now = Date.now();
+    const name = (draft.name || draft.title || 'Untitled draft').trim();
+    const payload = {
+      title: draft.title || '',
+      subtitle: draft.subtitle || '',
+      bodyText: draft.bodyText || '',
+      layoutStyle: draft.layoutStyle || 'substack',
+      fontFamily: draft.fontFamily || 'Georgia',
+      fontSize: draft.fontSize || '18',
+      coverImage: draft.coverImage || '',
+      focusKeyword: draft.focusKeyword || '',
+      metaTitle: draft.metaTitle || '',
+      metaDescription: draft.metaDescription || '',
+      slug: draft.slug || ''
+    };
+    if (draft.id) {
+      const idx = rows.findIndex((f) => String(f.id) === String(draft.id));
+      if (idx >= 0) {
+        rows[idx] = { ...rows[idx], name, payload, updatedAt: now, type: 'writespace' };
+        this.persist(rows);
+        return rows[idx];
+      }
+    }
+    const file = {
+      id: `drv_${now}`,
+      name,
+      type: 'writespace',
+      kind: 'WriteSpace',
+      createdAt: now,
+      updatedAt: now,
+      payload
+    };
+    rows.unshift(file);
+    this.persist(rows);
+    return file;
+  },
+
+  get(id) {
+    return this.load().find((f) => String(f.id) === String(id)) || null;
+  },
+
+  remove(id) {
+    this.persist(this.load().filter((f) => String(f.id) !== String(id)));
+    this.render();
+  },
+
+  upload(input) {
+    const file = input && input.files && input.files[0];
+    if (!file) return;
+    if (file.size > 750000) {
+      alert('Keep uploads under 750 KB for dimDrive on this device.');
+      input.value = '';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const rows = this.load();
+      rows.unshift({
+        id: `drv_${Date.now()}`,
+        name: file.name,
+        type: 'upload',
+        kind: file.type || 'File',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        mime: file.type,
+        payload: { dataUrl: reader.result, text: typeof reader.result === 'string' && !String(reader.result).startsWith('data:') ? reader.result : '' }
+      });
+      this.persist(rows);
+      this.render();
+      input.value = '';
+    };
+    if (file.type.startsWith('text/') || /\.(md|txt|json|html|csv)$/i.test(file.name)) reader.readAsText(file);
+    else reader.readAsDataURL(file);
+  },
+
+  download(id) {
+    const file = this.get(id);
+    if (!file) return;
+    let blob;
+    let filename = file.name || 'dimdrive-file';
+    if (file.type === 'writespace') {
+      const body = `# ${file.payload.title}\n\n${file.payload.subtitle || ''}\n\n${file.payload.bodyText || ''}`;
+      blob = new Blob([body], { type: 'text/markdown' });
+      if (!/\.md$/i.test(filename)) filename += '.md';
+    } else if (file.payload && file.payload.dataUrl && String(file.payload.dataUrl).startsWith('data:')) {
+      const a = document.createElement('a');
+      a.href = file.payload.dataUrl;
+      a.download = filename;
+      a.click();
+      return;
+    } else {
+      blob = new Blob([file.payload && file.payload.text ? file.payload.text : JSON.stringify(file.payload || {})], { type: 'text/plain' });
+    }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+  },
+
+  openInWriteSpace(id) {
+    const file = this.get(id);
+    if (!file || file.type !== 'writespace' || typeof WRITESPACE === 'undefined') return;
+    WRITESPACE.loadDriveFile(file);
+    if (typeof switchTab === 'function') switchTab('creator-writespace');
+  },
+
+  render() {
+    const root = document.getElementById('dimdrive-list');
+    if (!root) return;
+    const rows = this.load().sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+    if (!rows.length) {
+      root.innerHTML = '<div class="col-span-full border border-slate-800 rounded-2xl p-6 text-[12px] text-slate-400">No files yet. Save a WriteSpace draft to dimDrive or upload a file.</div>';
+      return;
+    }
+    root.innerHTML = rows.map((file) => {
+      const stamp = new Date(file.updatedAt || file.createdAt).toLocaleString();
+      const canOpen = file.type === 'writespace';
+      return `<article class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+        <div class="flex items-start justify-between gap-2">
+          <div class="min-w-0">
+            <div class="text-sm font-semibold text-slate-100 truncate">${this.escape(file.name)}</div>
+            <div class="text-[10px] font-mono text-amber-400/80 mt-0.5">${this.escape(file.kind || file.type)} · ${stamp}</div>
+          </div>
+          <span class="text-lg">${file.type === 'writespace' ? '✍️' : '📄'}</span>
+        </div>
+        <div class="flex flex-wrap gap-1.5">
+          ${canOpen ? `<button type="button" onclick="DIMDRIVE.openInWriteSpace('${file.id}')" class="flex-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[10px] py-1.5 rounded-lg">Open in WriteSpace</button>` : ''}
+          <button type="button" onclick="DIMDRIVE.download('${file.id}')" class="px-2.5 bg-slate-950 border border-slate-700 text-[10px] text-slate-200 rounded-lg">Download</button>
+          <button type="button" onclick="DIMDRIVE.remove('${file.id}')" class="px-2.5 text-[10px] text-rose-400 border border-rose-500/30 rounded-lg">Delete</button>
+        </div>
+      </article>`;
+    }).join('');
+  }
+};
+
+const WRITESPACE = {
+  storageKey: 'dimad_writespace',
+  bound: false,
+  tones: ['Conversational', 'Professional', 'Persuasive', 'Academic'],
+  defaults: {
+    themeMode: 'dark',
+    layoutStyle: 'substack',
+    title: 'The Art of Deep Work in an Era of Digital Distraction',
+    subtitle: 'How modern writers build concentration reserves and produce high-impact essays.',
+    bodyText: 'In an age dominated by instant notifications and relentless feeds, the ability to maintain deep focus has become both extraordinarily rare and immensely valuable.\n\nFor essayists and newsletter creators, writing is not merely typing words onto a screen; it is an act of synthesis. When we allow our focus to fragment every six minutes, we severely impair our capacity for high-level creative thinking.\n\nTo construct compelling arguments and memorable prose, writers must cultivate dedicated zones of solitude. By removing visual noise and establishing intentional distribution pipelines, the friction between thought and published work disappears.\n\nHere are three core principles for maintaining a flow state:\n1. Eliminate non-essential visual triggers during draft mode.\n2. Separate the acts of drafting, line-editing, and publishing into distinct sessions.\n3. Leverage modern assistance tools for polishing, while preserving your authentic voice.',
+    coverImage: 'https://images.unsplash.com/photo-1455390582262-044cdead277a?auto=format&fit=crop&w=1200&q=80',
+    fontFamily: 'Georgia',
+    fontSize: '18',
+    bold: false,
+    italic: false,
+    underline: false,
+    grammarEnabled: true,
+    grammarIssues: [
+      { id: 1, type: 'typo', word: 'synthsis', fix: 'synthesis', explanation: 'Possible spelling error.' },
+      { id: 2, type: 'grammar', word: 'impair', fix: 'impairs', explanation: 'Subject-verb agreement check.' },
+      { id: 3, type: 'style', word: 'immensely valuable', fix: 'priceless', explanation: 'Wordiness: consider a more concise alternative.' }
+    ],
+    selectedTone: 'Conversational',
+    focusKeyword: 'deep work writing',
+    metaTitle: 'The Art of Deep Work in Digital Era',
+    metaDescription: 'Learn how modern writers build concentration reserves and publish high-impact essays consistently.',
+    slug: 'art-of-deep-work-writing',
+    tab: 'ai-editor',
+    sidebarCollapsed: false,
+    fullscreen: false,
+    currentFileId: ''
+  },
+
+  load() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(this.storageKey) || '{}');
+      return { ...this.defaults, ...saved };
+    } catch (err) {
+      return { ...this.defaults };
+    }
+  },
+
+  persist(state) {
+    localStorage.setItem(this.storageKey, JSON.stringify(state));
+  },
+
+  state() {
+    if (!this._state) this._state = this.load();
+    return this._state;
+  },
+
+  saveFromDom() {
+    const s = this.state();
+    s.title = document.getElementById('ws-title')?.value || '';
+    s.subtitle = document.getElementById('ws-subtitle')?.value || '';
+    s.bodyText = document.getElementById('ws-body')?.value || '';
+    s.fontFamily = document.getElementById('ws-font')?.value || s.fontFamily;
+    s.fontSize = document.getElementById('ws-size')?.value || s.fontSize;
+    s.layoutStyle = document.getElementById('ws-layout')?.value || s.layoutStyle;
+    s.focusKeyword = document.getElementById('ws-keyword')?.value || '';
+    s.metaTitle = document.getElementById('ws-meta-title')?.value || '';
+    s.metaDescription = document.getElementById('ws-meta-desc')?.value || '';
+    s.slug = document.getElementById('ws-slug')?.value || '';
+    s.aiPrompt = document.getElementById('ws-ai-prompt')?.value || '';
+    this.persist(s);
+    this.syncMetrics();
+    this.syncLayout();
+  },
+
+  wordCount() {
+    const s = this.state();
+    return `${s.bodyText || ''} ${s.title || ''}`.trim().split(/\s+/).filter(Boolean).length;
+  },
+
+  seoScore() {
+    const s = this.state();
+    const kw = (s.focusKeyword || '').toLowerCase();
+    let score = 40;
+    if (kw && (s.title || '').toLowerCase().includes(kw)) score += 20;
+    if (kw && (s.bodyText || '').toLowerCase().includes(kw)) score += 20;
+    if ((s.metaDescription || '').length >= 100 && (s.metaDescription || '').length <= 160) score += 10;
+    if (this.wordCount() >= 300) score += 10;
+    return Math.min(score, 100);
+  },
+
+  mount() {
+    const s = this.state();
+    const title = document.getElementById('ws-title');
+    const titleWord = document.getElementById('ws-title-word');
+    const sub = document.getElementById('ws-subtitle');
+    const body = document.getElementById('ws-body');
+    if (!body) return;
+    if (title) title.value = s.title;
+    if (titleWord) titleWord.value = s.title;
+    if (sub) sub.value = s.subtitle;
+    body.value = s.bodyText;
+    const font = document.getElementById('ws-font');
+    const size = document.getElementById('ws-size');
+    const layout = document.getElementById('ws-layout');
+    if (font) font.value = s.fontFamily;
+    if (size) size.value = s.fontSize;
+    if (layout) layout.value = s.layoutStyle;
+    const kw = document.getElementById('ws-keyword');
+    const mt = document.getElementById('ws-meta-title');
+    const md = document.getElementById('ws-meta-desc');
+    const slug = document.getElementById('ws-slug');
+    if (kw) kw.value = s.focusKeyword;
+    if (mt) mt.value = s.metaTitle;
+    if (md) md.value = s.metaDescription;
+    if (slug) slug.value = s.slug;
+    const cover = document.getElementById('ws-cover');
+    const wrap = document.getElementById('ws-cover-wrap');
+    if (cover && wrap) {
+      if (s.coverImage) {
+        cover.src = s.coverImage;
+        wrap.classList.remove('hidden');
+      } else wrap.classList.add('hidden');
+    }
+    this.renderTones();
+    this.setTab(s.tab || 'ai-editor');
+    this.syncLayout();
+    this.syncTheme();
+    this.syncChrome();
+    this.syncFormats();
+    this.syncGrammar();
+    this.syncMetrics();
+    if (!this.bound) {
+      ['ws-title', 'ws-subtitle', 'ws-body', 'ws-font', 'ws-size', 'ws-layout', 'ws-keyword', 'ws-meta-title', 'ws-meta-desc', 'ws-slug', 'ws-ai-prompt'].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', () => {
+          if (id === 'ws-title' && titleWord) titleWord.value = title.value;
+          if (id === 'ws-title-word' && title) title.value = titleWord.value;
+          this.saveFromDom();
+        });
+        if (el && el.tagName === 'SELECT') el.addEventListener('change', () => {
+          if (id === 'ws-layout' && el.value === 'word') {
+            const st = this.state();
+            if (st.fontFamily === 'Georgia') {
+              st.fontFamily = 'Calibri';
+              const font = document.getElementById('ws-font');
+              if (font) font.value = 'Calibri';
+            }
+            if (st.fontSize === '18') {
+              st.fontSize = '11';
+              const sizeEl = document.getElementById('ws-size');
+              if (sizeEl) sizeEl.value = '11';
+            }
+          }
+          this.saveFromDom();
+        });
+      });
+      if (titleWord) titleWord.addEventListener('input', () => {
+        if (title) title.value = titleWord.value;
+        this.saveFromDom();
+      });
+      if (!this._escBound) {
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape' && this.state().fullscreen) this.toggleFullscreen();
+        });
+        this._escBound = true;
+      }
+      this.bound = true;
+    }
+  },
+
+  renderTones() {
+    const root = document.getElementById('ws-tones');
+    if (!root) return;
+    const s = this.state();
+    root.innerHTML = this.tones.map((tone) => `<button type="button" onclick="WRITESPACE.setTone('${tone}')" class="py-1.5 px-2 rounded text-center font-medium border ${s.selectedTone === tone ? 'bg-amber-500/20 border-amber-400 text-amber-300' : 'bg-[#1a1724] border-amber-900/40 text-amber-200'}">${tone}</button>`).join('');
+  },
+
+  setTone(tone) {
+    this.state().selectedTone = tone;
+    this.persist(this.state());
+    this.renderTones();
+  },
+
+  setTab(tab) {
+    this.state().tab = tab;
+    this.persist(this.state());
+    document.querySelectorAll('.ws-pane').forEach((el) => el.classList.add('hidden'));
+    const pane = document.getElementById(`ws-tab-${tab}`);
+    if (pane) pane.classList.remove('hidden');
+    document.querySelectorAll('.ws-tab').forEach((btn) => {
+      const on = btn.getAttribute('data-ws-tab') === tab;
+      btn.classList.toggle('border-amber-400', on);
+      btn.classList.toggle('text-amber-400', on);
+      btn.classList.toggle('font-semibold', on);
+      btn.classList.toggle('border-transparent', !on);
+      btn.classList.toggle('text-amber-200', !on);
+      btn.classList.toggle('opacity-60', false);
+    });
+  },
+
+  toggleTheme() {
+    const s = this.state();
+    s.themeMode = s.themeMode === 'light' ? 'dark' : 'light';
+    this.persist(s);
+    this.syncTheme();
+    this.syncChrome();
+  },
+
+  toggleFullscreen() {
+    const s = this.state();
+    s.fullscreen = !s.fullscreen;
+    this.persist(s);
+    this.syncChrome();
+  },
+
+  toggleSidebar() {
+    const s = this.state();
+    s.sidebarCollapsed = !s.sidebarCollapsed;
+    this.persist(s);
+    this.syncChrome();
+  },
+
+  openSidebarTab(tab) {
+    const s = this.state();
+    s.sidebarCollapsed = false;
+    this.persist(s);
+    this.syncChrome();
+    this.setTab(tab);
+  },
+
+  syncChrome() {
+    const s = this.state();
+    const root = document.getElementById('ws-root');
+    const view = document.getElementById('view-creator-writespace');
+    const aside = document.getElementById('ws-aside');
+    const rail = document.getElementById('ws-aside-rail');
+    const fullBtn = document.getElementById('ws-full-btn');
+    const sideBtn = document.getElementById('ws-sidebar-btn');
+    if (root) {
+      root.classList.toggle('fixed', !!s.fullscreen);
+      root.classList.toggle('inset-0', !!s.fullscreen);
+      root.classList.toggle('z-[350]', !!s.fullscreen);
+      if (s.fullscreen) {
+        root.style.minHeight = '100vh';
+        root.style.height = '100vh';
+      } else {
+        root.style.minHeight = '';
+        root.style.height = '';
+      }
+    }
+    if (view && s.fullscreen) view.classList.remove('hidden');
+    if (aside) aside.classList.toggle('hidden', !!s.sidebarCollapsed);
+    if (rail) {
+      rail.classList.toggle('hidden', !s.sidebarCollapsed);
+      rail.classList.toggle('flex', !!s.sidebarCollapsed);
+    }
+    if (fullBtn) {
+      fullBtn.innerHTML = s.fullscreen
+        ? '<i class="fa-solid fa-compress"></i><span class="hidden sm:inline">Exit</span>'
+        : '<i class="fa-solid fa-expand"></i><span class="hidden sm:inline">Expand</span>';
+      fullBtn.title = s.fullscreen ? 'Exit full screen' : 'Expand WriteSpace';
+    }
+    if (sideBtn) {
+      sideBtn.innerHTML = s.sidebarCollapsed
+        ? '<i class="fa-solid fa-table-columns"></i><span class="hidden sm:inline">Tools</span>'
+        : '<i class="fa-solid fa-table-columns"></i><span class="hidden sm:inline">Hide tools</span>';
+    }
+  },
+
+  syncTheme() {
+    const s = this.state();
+    const root = document.getElementById('ws-root');
+    const btn = document.getElementById('ws-theme-btn');
+    const canvas = document.getElementById('ws-canvas');
+    const body = document.getElementById('ws-body');
+    const title = document.getElementById('ws-title');
+    const titleWord = document.getElementById('ws-title-word');
+    const subtitle = document.getElementById('ws-subtitle');
+    const wordH = document.getElementById('ws-word-head');
+    const wordF = document.getElementById('ws-word-foot');
+    const light = s.themeMode === 'light';
+    if (root) {
+      root.classList.toggle('bg-[#f0f2f5]', light);
+      root.classList.toggle('text-slate-800', light);
+      root.classList.toggle('bg-[#0f0e13]', !light);
+      root.classList.toggle('text-amber-50', !light);
+    }
+    if (btn) {
+      btn.innerHTML = light
+        ? '<i class="fa-solid fa-moon text-amber-500"></i><span class="hidden sm:inline">Dark Amber</span>'
+        : '<i class="fa-solid fa-sun text-blue-400"></i><span class="hidden sm:inline">Word Light</span>';
+    }
+    const wordDoc = s.layoutStyle === 'word';
+    if (canvas && !wordDoc) {
+      canvas.style.backgroundColor = light ? '#ffffff' : '';
+      canvas.style.color = light ? '#1e293b' : '';
+      canvas.classList.toggle('bg-white', light);
+      canvas.classList.toggle('border-slate-200', light);
+      canvas.classList.toggle('text-slate-800', light);
+      canvas.classList.toggle('bg-[#16141d]', !light);
+      canvas.classList.toggle('border-amber-900/30', !light);
+      canvas.classList.toggle('text-amber-50', !light);
+    }
+    if (!wordDoc) {
+      [body, title, titleWord, subtitle].forEach((el) => {
+        if (!el) return;
+        el.style.backgroundColor = light ? '#ffffff' : 'transparent';
+        el.style.color = light ? '#1e293b' : '';
+      });
+      if (subtitle && light) subtitle.style.color = '#475569';
+    }
+    if (wordH && !wordDoc) {
+      wordH.classList.toggle('border-slate-200', light);
+      wordH.classList.toggle('text-slate-500', light);
+      wordH.classList.toggle('border-amber-900/30', !light);
+      wordH.classList.toggle('text-amber-400/60', !light);
+    }
+    if (wordF && !wordDoc) {
+      wordF.classList.toggle('border-slate-200', light);
+      wordF.classList.toggle('text-slate-400', light);
+      wordF.classList.toggle('border-amber-900/30', !light);
+      wordF.classList.toggle('text-amber-400/50', !light);
+    }
+    const aside = document.getElementById('ws-aside');
+    if (aside) {
+      aside.style.color = '#fde68a';
+    }
+  },
+
+  sizePx(size) {
+    if (size === '11') return '14.67px';
+    if (size === '12') return '16px';
+    return `${size || 18}px`;
+  },
+
+  syncLayout() {
+    const s = this.state();
+    const sub = document.getElementById('ws-substack-head');
+    const wordH = document.getElementById('ws-word-head');
+    const wordT = document.getElementById('ws-title-word');
+    const wordF = document.getElementById('ws-word-foot');
+    const ruler = document.getElementById('ws-word-ruler');
+    const stage = document.getElementById('ws-stage');
+    const canvas = document.getElementById('ws-canvas');
+    const grammar = document.getElementById('ws-grammar');
+    const isWord = s.layoutStyle === 'word';
+    if (sub) sub.classList.toggle('hidden', isWord);
+    if (wordH) wordH.classList.toggle('hidden', !isWord);
+    if (wordT) wordT.classList.toggle('hidden', !isWord);
+    if (wordF) wordF.classList.toggle('hidden', !isWord);
+    if (ruler) ruler.classList.toggle('hidden', !isWord);
+    const body = document.getElementById('ws-body');
+    if (isWord) {
+      if (!this._wordDefaultsApplied) {
+        this._wordDefaultsApplied = true;
+        if (s.fontFamily === 'Georgia') {
+          s.fontFamily = 'Calibri';
+          const font = document.getElementById('ws-font');
+          if (font) font.value = 'Calibri';
+        }
+        if (s.fontSize === '18') {
+          s.fontSize = '11';
+          const sizeEl = document.getElementById('ws-size');
+          if (sizeEl) sizeEl.value = '11';
+        }
+        this.persist(s);
+      }
+      if (stage) stage.style.backgroundColor = s.themeMode === 'light' ? '#e6e6e6' : '#2d2d2d';
+      if (canvas) {
+        canvas.style.backgroundColor = '#ffffff';
+        canvas.style.color = '#000000';
+        canvas.style.width = '816px';
+        canvas.style.maxWidth = '100%';
+        canvas.style.minHeight = '1056px';
+        canvas.style.padding = '64px 96px 56px';
+        canvas.style.borderRadius = '0';
+        canvas.style.border = '1px solid #c6c6c6';
+        canvas.style.boxShadow = '0 0 0 1px rgba(0,0,0,.06), 0 6px 24px rgba(0,0,0,.18)';
+        canvas.classList.remove('rounded-xl', 'bg-[#16141d]', 'text-amber-50');
+      }
+      const face = `'${s.fontFamily}', Calibri, 'Segoe UI', sans-serif`;
+      if (body) {
+        body.style.fontFamily = face;
+        body.style.fontSize = this.sizePx(s.fontSize);
+        body.style.lineHeight = '1.15';
+        body.style.color = '#000000';
+        body.style.backgroundColor = '#ffffff';
+        body.style.minHeight = '760px';
+        body.placeholder = 'Start typing...';
+      }
+      if (wordT) {
+        wordT.style.fontFamily = face;
+        wordT.style.fontSize = '21.33px';
+        wordT.style.fontWeight = '700';
+        wordT.style.color = '#000000';
+        wordT.style.backgroundColor = '#ffffff';
+        wordT.style.marginBottom = '10px';
+        wordT.style.lineHeight = '1.15';
+      }
+      const headerLeft = document.getElementById('ws-word-header-left');
+      if (headerLeft) headerLeft.textContent = s.title || '';
+      if (grammar) grammar.classList.add('text-neutral-600');
+    } else {
+      if (stage) stage.style.backgroundColor = '';
+      if (canvas) {
+        canvas.style.width = '';
+        canvas.style.maxWidth = '';
+        canvas.style.minHeight = '';
+        canvas.style.padding = '';
+        canvas.style.borderRadius = '';
+        canvas.style.border = '';
+        canvas.style.boxShadow = '';
+        canvas.classList.add('w-full', 'max-w-3xl', 'p-8', 'md:p-12', 'rounded-xl');
+      }
+      if (body) {
+        body.style.fontFamily = s.fontFamily;
+        body.style.fontSize = this.sizePx(s.fontSize);
+        body.style.lineHeight = '';
+        body.style.minHeight = '';
+        body.placeholder = 'Start typing your post or story...';
+      }
+    }
+    if (body) {
+      body.classList.toggle('font-bold', !!s.bold);
+      body.classList.toggle('italic', !!s.italic);
+      body.classList.toggle('underline', !!s.underline);
+    }
+  },
+
+  toggleFormat(key) {
+    const s = this.state();
+    s[key] = !s[key];
+    this.persist(s);
+    this.syncFormats();
+    this.syncLayout();
+  },
+
+  syncFormats() {
+    const s = this.state();
+    ['bold', 'italic', 'underline'].forEach((key) => {
+      const btn = document.getElementById(`ws-${key}`);
+      if (!btn) return;
+      btn.className = s[key]
+        ? 'p-1.5 rounded border bg-amber-500/20 border-amber-500 text-amber-500'
+        : 'p-1.5 rounded border border-transparent';
+    });
+  },
+
+  toggleGrammar() {
+    const s = this.state();
+    s.grammarEnabled = !s.grammarEnabled;
+    this.persist(s);
+    this.syncGrammar();
+  },
+
+  syncGrammar() {
+    const s = this.state();
+    const box = document.getElementById('ws-grammar');
+    const btn = document.getElementById('ws-grammar-btn');
+    if (btn) btn.className = s.grammarEnabled
+      ? 'px-2.5 py-1 rounded border border-amber-500/40 bg-amber-500/10 text-amber-500 flex items-center gap-1.5'
+      : 'px-2.5 py-1 rounded border border-transparent opacity-50 flex items-center gap-1.5';
+    if (!box) return;
+    if (!s.grammarEnabled || !s.grammarIssues.length) {
+      box.innerHTML = '';
+      return;
+    }
+    box.innerHTML = `<div class="flex items-center gap-2 font-medium mb-2 text-amber-500"><i class="fa-solid fa-circle-exclamation"></i> Real-time Grammar &amp; Style Alerts (${s.grammarIssues.length})</div>
+      <div class="flex flex-wrap gap-2">${s.grammarIssues.map((issue) => {
+        const tone = issue.type === 'typo' ? 'border-red-500/50 bg-red-500/10 text-red-400' : issue.type === 'grammar' ? 'border-blue-500/50 bg-blue-500/10 text-blue-400' : 'border-amber-500/50 bg-amber-500/10 text-amber-400';
+        return `<span class="px-2.5 py-1 rounded text-xs border ${tone} flex items-center gap-1.5">
+          <span class="line-through opacity-70">${issue.word}</span> → <span class="font-semibold">${issue.fix}</span>
+          <button type="button" onclick="WRITESPACE.acceptFix(${issue.id})" class="font-bold">✓</button>
+          <button type="button" onclick="WRITESPACE.ignoreFix(${issue.id})" class="opacity-70">✕</button>
+        </span>`;
+      }).join('')}</div>`;
+  },
+
+  acceptFix(id) {
+    const s = this.state();
+    const issue = s.grammarIssues.find((i) => i.id === id);
+    if (!issue) return;
+    s.bodyText = (s.bodyText || '').replace(issue.word, issue.fix);
+    s.grammarIssues = s.grammarIssues.filter((i) => i.id !== id);
+    this.persist(s);
+    const body = document.getElementById('ws-body');
+    if (body) body.value = s.bodyText;
+    this.syncGrammar();
+    this.syncMetrics();
+  },
+
+  ignoreFix(id) {
+    const s = this.state();
+    s.grammarIssues = s.grammarIssues.filter((i) => i.id !== id);
+    this.persist(s);
+    this.syncGrammar();
+  },
+
+  removeCover() {
+    this.state().coverImage = '';
+    this.persist(this.state());
+    const wrap = document.getElementById('ws-cover-wrap');
+    if (wrap) wrap.classList.add('hidden');
+  },
+
+  syncMetrics() {
+    const s = this.state();
+    const words = this.wordCount();
+    const chars = (s.bodyText || '').length + (s.title || '').length;
+    const read = Math.max(1, Math.ceil(words / 200));
+    const pages = Math.max(1, Math.ceil(words / 350));
+    const score = this.seoScore();
+    const w = document.getElementById('ws-stat-words');
+    const c = document.getElementById('ws-stat-chars');
+    const r = document.getElementById('ws-stat-read');
+    if (w) w.textContent = `${words} words`;
+    if (c) c.textContent = `${chars} chars`;
+    if (r) r.textContent = `~${read} min read`;
+    const byline = document.getElementById('ws-byline');
+    if (byline) byline.textContent = `${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} · ${read} min read`;
+    const page = document.getElementById('ws-page-of');
+    const pageNum = document.getElementById('ws-word-page-num');
+    if (s.layoutStyle === 'word') {
+      if (page) page.textContent = '';
+      if (pageNum) pageNum.textContent = String(pages);
+    } else if (page) {
+      page.textContent = `PAGE 1 OF ${pages}`;
+    }
+    const badge = document.getElementById('ws-seo-badge');
+    const bar = document.getElementById('ws-seo-bar');
+    if (badge) {
+      badge.textContent = `Score: ${score}/100`;
+      badge.className = `px-2 py-0.5 rounded font-bold text-xs ${score >= 70 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`;
+    }
+    if (bar) bar.style.width = `${score}%`;
+    const mtc = document.getElementById('ws-meta-title-count');
+    const mdc = document.getElementById('ws-meta-desc-count');
+    if (mtc) mtc.textContent = `(${(s.metaTitle || '').length}/60)`;
+    if (mdc) mdc.textContent = `(${(s.metaDescription || '').length}/160)`;
+    const checks = document.getElementById('ws-seo-checks');
+    if (checks) {
+      const kw = (s.focusKeyword || '').toLowerCase();
+      const rows = [
+        [(s.title || '').toLowerCase().includes(kw) && kw, 'Focus Keyword in Title'],
+        [(s.bodyText || '').toLowerCase().includes(kw) && kw, 'Focus Keyword in First 200 words'],
+        [words >= 300, 'Word Count > 300 words']
+      ];
+      checks.innerHTML = `<span class="font-semibold opacity-80">SEO Quality Checks</span>${rows.map(([ok, label]) => `<div class="flex items-center gap-2"><i class="fa-solid fa-circle-check ${ok ? 'text-emerald-400' : 'text-slate-500'}"></i><span>${label}</span></div>`).join('')}`;
+    }
+    const ww = document.getElementById('ws-win-words');
+    const wr = document.getElementById('ws-win-read');
+    const ws = document.getElementById('ws-win-seo');
+    if (ww) ww.textContent = String(words);
+    if (wr) wr.textContent = `${read} min`;
+    if (ws) ws.textContent = `${score}%`;
+  },
+
+  aiAction(type) {
+    const s = this.state();
+    const promptEl = document.getElementById('ws-ai-prompt');
+    const custom = promptEl ? promptEl.value.trim() : '';
+    if (type === 'custom' && !custom) return;
+    const out = document.getElementById('ws-ai-out');
+    if (out) {
+      out.classList.remove('hidden');
+      out.innerHTML = '<div class="flex items-center gap-1.5 font-semibold text-amber-500"><i class="fa-solid fa-rotate animate-spin"></i> Analyzing draft tokens and restructuring prose...</div>';
+    }
+    setTimeout(() => {
+      let text = '';
+      if (type === 'grammar') text = 'Grammar pass complete. Review subject-verb agreement in paragraph 2 and keep the three principles as a numbered list.';
+      else if (type === 'improve') text = 'Tighten the opening by leading with a concrete scene of interruption, then land the synthesis line. Vary sentence length in paragraph 3.';
+      else if (type === 'tone') text = `Tone shifted toward ${s.selectedTone}: keep the solitude argument, but make the call-to-action more ${s.selectedTone.toLowerCase()}.`;
+      else if (type === 'summarize') text = '• Deep focus is scarce and valuable for essayists.\n• Fragmented attention blocks synthesis.\n• Separate drafting, editing, and publishing; use tools without losing voice.';
+      else text = custom ? `Instruction: ${custom}\n\nRewrite the hook to earn the next sentence, then keep the three principles intact.` : '';
+      s.lastAi = text;
+      this.persist(s);
+      if (out) {
+        out.innerHTML = `<div class="font-semibold text-amber-500 mb-1"><i class="fa-solid fa-sparkles"></i> AI Editor Output</div>
+          <p class="whitespace-pre-wrap leading-relaxed opacity-90">${text.replace(/</g, '&lt;')}</p>
+          <button type="button" onclick="WRITESPACE.applyAi()" class="mt-2 w-full py-1.5 bg-amber-500/20 text-amber-400 border border-amber-500/40 rounded font-medium text-[11px]">Replace Draft with AI Output</button>`;
+      }
+    }, 700);
+  },
+
+  applyAi() {
+    const s = this.state();
+    if (!s.lastAi) return;
+    s.bodyText = s.lastAi;
+    this.persist(s);
+    const body = document.getElementById('ws-body');
+    if (body) body.value = s.bodyText;
+    this.syncMetrics();
+  },
+
+  publish(platform) {
+    const banner = document.getElementById('ws-publish-banner');
+    if (!banner) return;
+    banner.textContent = `Pushed to ${platform} as a formatted Draft!`;
+    banner.classList.remove('hidden');
+    setTimeout(() => banner.classList.add('hidden'), 4000);
+  },
+
+  copyHtml() {
+    const s = this.state();
+    const html = `<article><h1>${s.title}</h1><h2>${s.subtitle}</h2><p>${(s.bodyText || '').replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p></article>`;
+    if (navigator.clipboard) navigator.clipboard.writeText(html);
+    this.publish('Clean HTML');
+  },
+
+  downloadMd() {
+    const s = this.state();
+    const md = `# ${s.title}\n\n*${s.subtitle}*\n\n${s.bodyText}`;
+    const blob = new Blob([md], { type: 'text/markdown' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${s.slug || 'writespace-draft'}.md`;
+    a.click();
+    this.publish('Markdown');
+  },
+
+  draftSnapshot() {
+    this.saveFromDom();
+    const s = this.state();
+    return {
+      id: s.currentFileId || '',
+      name: s.title || 'Untitled draft',
+      title: s.title,
+      subtitle: s.subtitle,
+      bodyText: s.bodyText,
+      layoutStyle: s.layoutStyle,
+      fontFamily: s.fontFamily,
+      fontSize: s.fontSize,
+      coverImage: s.coverImage,
+      focusKeyword: s.focusKeyword,
+      metaTitle: s.metaTitle,
+      metaDescription: s.metaDescription,
+      slug: s.slug
+    };
+  },
+
+  openSaveModal() {
+    const modal = document.getElementById('ws-save-modal');
+    const name = document.getElementById('ws-save-name');
+    if (name) name.value = this.state().title || 'Untitled draft';
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  },
+
+  closeSaveModal() {
+    const modal = document.getElementById('ws-save-modal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  },
+
+  saveToDrive() {
+    const name = (document.getElementById('ws-save-name')?.value || '').trim();
+    const draft = this.draftSnapshot();
+    draft.name = name || draft.title || 'Untitled draft';
+    const file = DIMDRIVE.upsertWriteSpace(draft);
+    this.state().currentFileId = file.id;
+    this.persist(this.state());
+    this.closeSaveModal();
+    this.publish('dimDrive');
+    const banner = document.getElementById('ws-publish-banner');
+    if (banner) banner.textContent = `Saved to dimDrive as “${file.name}”.`;
+  },
+
+  saveLocally() {
+    const name = (document.getElementById('ws-save-name')?.value || this.state().title || 'writespace-draft').trim();
+    const s = this.draftSnapshot();
+    const md = `# ${s.title}\n\n*${s.subtitle || ''}*\n\n${s.bodyText || ''}`;
+    const blob = new Blob([md], { type: 'text/markdown' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${name.replace(/[^\w\-]+/g, '-') || 'writespace-draft'}.md`;
+    a.click();
+    this.closeSaveModal();
+    this.publish('this device');
+  },
+
+  openOpenModal() {
+    const modal = document.getElementById('ws-open-modal');
+    const list = document.getElementById('ws-open-list');
+    if (list) {
+      const files = DIMDRIVE.load().filter((f) => f.type === 'writespace');
+      if (!files.length) {
+        list.innerHTML = '<p class="text-[12px] text-slate-400">No WriteSpace files in dimDrive yet. Save a draft first.</p>';
+      } else {
+        list.innerHTML = files.map((file) => `<button type="button" onclick="DIMDRIVE.openInWriteSpace('${file.id}')" class="w-full text-left border border-amber-900/40 hover:border-amber-500/50 rounded-xl px-3 py-2.5">
+          <div class="text-[12px] font-semibold text-amber-100 truncate">${DIMDRIVE.escape(file.name)}</div>
+          <div class="text-[10px] font-mono text-amber-400/70">${new Date(file.updatedAt || file.createdAt).toLocaleString()}</div>
+        </button>`).join('');
+      }
+    }
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  },
+
+  closeOpenModal() {
+    const modal = document.getElementById('ws-open-modal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  },
+
+  loadDriveFile(file) {
+    if (!file || !file.payload) return;
+    const s = this.state();
+    Object.assign(s, file.payload, { currentFileId: file.id });
+    this.persist(s);
+    this.closeOpenModal();
+    this.mount();
+  },
+
+  openVictory() {
+    this.syncMetrics();
+    const modal = document.getElementById('ws-victory');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  },
+
+  closeVictory() {
+    const modal = document.getElementById('ws-victory');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }
+};
+
 let calendarClickCount = 0;
 
 const CALENDAR_HOURS = Array.from({ length: 24 }, (_, hour) => `${String(hour).padStart(2, '0')}:00`);
+
+const DIMAD_CAL = {
+  storageKey: 'dimad_calendar_events',
+  mode: 'hourly',
+  dayOffset: 0,
+  editingId: '',
+
+  load() {
+    try {
+      const rows = JSON.parse(localStorage.getItem(this.storageKey) || '[]');
+      if (Array.isArray(rows)) return rows;
+    } catch (err) { /* empty */ }
+    return [];
+  },
+
+  persist(rows) {
+    localStorage.setItem(this.storageKey, JSON.stringify(rows));
+  },
+
+  escape(value) {
+    return String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  },
+
+  dateKey(date) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  },
+
+  anchorDate() {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() + this.dayOffset);
+    return d;
+  },
+
+  eventsListForDay(date) {
+    const key = typeof date === 'string' ? date : this.dateKey(date);
+    return this.load().filter((ev) => ev.date === key);
+  },
+
+  eventsForDay(date) {
+    const map = {};
+    this.eventsListForDay(date).forEach((ev) => {
+      const time = ev.startTime || ev.time;
+      if (!time) return;
+      map[time] = { ...ev, title: ev.title, source: ev.source || 'DIMAD Calendar', tone: ev.tone || 'amber', id: ev.id, notes: ev.notes, reminder: ev.reminder, type: ev.type, endTime: ev.endTime, startTime: time };
+    });
+    return map;
+  },
+
+  upcoming() {
+    const now = Date.now();
+    return this.load().map((ev) => {
+      const start = new Date(`${ev.date}T${ev.startTime || ev.time}:00`);
+      return { ...ev, start };
+    }).filter((ev) => ev.start.getTime() >= now - 3600000).sort((a, b) => a.start - b.start).slice(0, 12);
+  },
+
+  toMinutes(hhmm) {
+    const parts = String(hhmm || '').split(':').map(Number);
+    return (parts[0] || 0) * 60 + (parts[1] || 0);
+  },
+
+  eventStartHour(ev) {
+    return Math.floor(this.toMinutes(ev.startTime || ev.time) / 60);
+  },
+
+  eventEndExclusiveHour(ev) {
+    const endM = this.toMinutes(ev.endTime || this.calculateEndTime(ev.startTime || ev.time));
+    if (endM <= this.toMinutes(ev.startTime || ev.time)) return this.eventStartHour(ev) + 1;
+    return endM % 60 === 0 ? endM / 60 : Math.ceil(endM / 60);
+  },
+
+  coversHour(ev, hour) {
+    const startM = this.toMinutes(ev.startTime || ev.time);
+    const endM = this.toMinutes(ev.endTime || this.calculateEndTime(ev.startTime || ev.time));
+    return startM < (hour + 1) * 60 && endM > hour * 60;
+  },
+
+  spanHours(ev, colStart = 0, colEnd = 24) {
+    const startH = Math.max(colStart, this.eventStartHour(ev));
+    const endH = Math.min(colEnd, this.eventEndExclusiveHour(ev));
+    return Math.max(1, endH - startH);
+  },
+
+  visibleStartHour(ev, colStart = 0) {
+    return Math.max(colStart, this.eventStartHour(ev));
+  },
+
+  HOUR_PX: 32,
+
+  renderHourColumn(dateKey, hours, events, opts) {
+    const options = opts || {};
+    const showGutter = options.showGutter !== false;
+    const colStart = hours[0] * 60;
+    const colEnd = (hours[hours.length - 1] + 1) * 60;
+    const hourPx = this.HOUR_PX;
+    const height = hours.length * hourPx;
+    const gutter = hours.map((h) => {
+      const label = `${String(h).padStart(2, '0')}:00`;
+      return `<div class="text-[10px] font-mono text-slate-500 border-t border-slate-800/80" style="height:${hourPx}px;line-height:${hourPx}px">${label}</div>`;
+    }).join('');
+    const empties = hours.map((h) => {
+      const time = `${String(h).padStart(2, '0')}:00`;
+      return `<button type="button" onclick="DIMAD_CAL.openComposer({date:'${dateKey}',time:'${time}'})" class="block w-full border-t border-dashed border-slate-800 hover:border-amber-500/40 hover:bg-amber-500/5 transition" style="height:${hourPx}px" title="Add event at ${time}"></button>`;
+    }).join('');
+    const blocks = (events || []).map((ev) => {
+      const start = this.toMinutes(ev.startTime || ev.time);
+      const endRaw = this.toMinutes(ev.endTime || this.calculateEndTime(ev.startTime || ev.time));
+      const end = endRaw > start ? endRaw : start + 60;
+      if (end <= colStart || start >= colEnd) return '';
+      const visStart = Math.max(start, colStart);
+      const visEnd = Math.min(end, colEnd);
+      const top = ((visStart - colStart) / 60) * hourPx + 1;
+      const hgt = Math.max(18, ((visEnd - visStart) / 60) * hourPx - 3);
+      const indigo = ev.type === 'meeting' || ev.source === 'Calendly' || ev.tone === 'indigo';
+      const wrap = indigo ? 'bg-indigo-500/20 border-indigo-500/40' : 'bg-amber-500/20 border-amber-500/40';
+      const startLabel = this.clockValue(ev.startTime || ev.time);
+      const endLabel = this.clockValue(ev.endTime || this.calculateEndTime(ev.startTime || ev.time));
+      const safeTitle = this.escape(ev.title);
+      const click = ev.id
+        ? `DIMAD_CAL.openEvent('${ev.id}')`
+        : `DIMAD_CAL.openComposer({date:'${dateKey}',time:'${startLabel}',title:'${String(ev.title || '').replace(/'/g, '')}'})`;
+      return `<button type="button" onclick="event.stopPropagation(); ${click}" class="absolute left-0 right-0 ${wrap} border rounded-md px-1.5 text-left overflow-hidden z-[1] hover:brightness-110" style="top:${top}px;height:${hgt}px">
+        <div class="text-[10px] font-semibold text-slate-100 truncate leading-tight pt-0.5">${safeTitle}</div>
+        <div class="text-[8px] font-mono text-slate-300/90">${startLabel}–${endLabel}</div>
+      </button>`;
+    }).join('');
+    const lane = `<div class="relative min-w-0" style="height:${height}px">
+      <div class="absolute inset-0">${empties}</div>
+      ${blocks}
+    </div>`;
+    if (!showGutter) return lane;
+    return `<div class="grid grid-cols-[42px_minmax(0,1fr)] gap-x-1" style="height:${height}px">
+      <div class="select-none">${gutter}</div>
+      ${lane}
+    </div>`;
+  },
+
+  calculateEndTime(startTime) {
+    const [hours, minutes] = String(startTime).split(':').map(Number);
+    const nextHour = ((hours || 0) + 1) % 24;
+    return `${String(nextHour).padStart(2, '0')}:${String(minutes || 0).padStart(2, '0')}`;
+  },
+
+  hasConflict(date, startTime, endTime, ignoreId) {
+    const start = this.toMinutes(startTime);
+    const end = this.toMinutes(endTime || this.calculateEndTime(startTime));
+    return this.load().some((ev) => {
+      if (ignoreId && String(ev.id) === String(ignoreId) || ev.date !== date) return false;
+      const evStart = this.toMinutes(ev.startTime || ev.time);
+      const evEnd = this.toMinutes(ev.endTime || this.calculateEndTime(ev.startTime || ev.time));
+      return start < evEnd && end > evStart;
+    });
+  },
+
+  addEvent(eventData) {
+    if (!eventData || !eventData.title || !eventData.date || !(eventData.startTime || eventData.time)) {
+      alert('Please provide a title, date, and start time.');
+      return false;
+    }
+    const startTime = eventData.startTime || eventData.time;
+    const endTime = eventData.endTime || this.calculateEndTime(startTime);
+    const rows = this.load();
+    const existingId = eventData.id || '';
+    const idx = existingId ? rows.findIndex((ev) => String(ev.id) === String(existingId)) : -1;
+    if (this.hasConflict(eventData.date, startTime, endTime, idx >= 0 ? existingId : undefined)) {
+      alert('That slot overlaps another event. Choose a free time.');
+      return false;
+    }
+    const payload = {
+      id: existingId || `evt_${Date.now()}`,
+      title: eventData.title,
+      date: eventData.date,
+      startTime,
+      endTime,
+      time: startTime,
+      type: eventData.type || 'task',
+      source: eventData.source || (idx >= 0 ? rows[idx].source : 'Manual Entry'),
+      notes: eventData.notes || '',
+      reminder: eventData.reminder || 'none',
+      tone: eventData.tone || (idx >= 0 ? rows[idx].tone : 'amber'),
+      reminded: false
+    };
+    if (idx >= 0) rows[idx] = { ...rows[idx], ...payload };
+    else rows.push(payload);
+    this.persist(rows);
+    if (typeof dimadCal !== 'undefined' && dimadCal) dimadCal.syncFromStore();
+    return true;
+  },
+
+  deleteEvent(eventId) {
+    this.persist(this.load().filter((ev) => ev.id !== eventId));
+    if (typeof dimadCal !== 'undefined' && dimadCal) dimadCal.syncFromStore();
+    this.renderFull();
+    if (typeof CALENDAR_NAV !== 'undefined') CALENDAR_NAV.render();
+  },
+
+  openFromCommandCenter(opts) {
+    const options = opts || {};
+    if (options.dateKey) {
+      const [y, m, d] = options.dateKey.split('-').map(Number);
+      const target = new Date(y, m - 1, d);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      this.dayOffset = Math.round((target - today) / 86400000);
+    } else if (typeof CALENDAR_NAV !== 'undefined') {
+      this.dayOffset = CALENDAR_NAV.dayOffset || 0;
+    }
+    const incoming = options.mode || (typeof CALENDAR_NAV !== 'undefined' ? CALENDAR_NAV.mode : 'day');
+    this.mode = incoming === 'hourly' ? 'day' : incoming === 'weekly' ? 'week' : incoming === 'monthly' ? 'month' : incoming;
+    if (typeof switchTab === 'function') switchTab('dimad-calendar');
+    else this.renderFull();
+  },
+
+  setMode(mode) {
+    this.mode = mode === 'week' || mode === 'weekly' ? 'week' : mode === 'month' || mode === 'monthly' ? 'month' : 'day';
+    this.renderFull();
+  },
+
+  goToday() {
+    this.dayOffset = 0;
+    this.renderFull();
+  },
+
+  shift(dir) {
+    if (this.mode === 'monthly') {
+      const d = this.anchorDate();
+      d.setMonth(d.getMonth() + dir);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      this.dayOffset = Math.round((d - today) / 86400000);
+    } else if (this.mode === 'weekly') {
+      this.dayOffset += dir * 7;
+    } else {
+      this.dayOffset += dir;
+    }
+    this.renderFull();
+  },
+
+  tzLabel() {
+    try { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; }
+    catch (err) { return 'UTC'; }
+  },
+
+  renderFull() {
+    ensureDimadCalendar();
+    if (typeof dimadCal !== 'undefined' && dimadCal) {
+      dimadCal.currentDate = this.anchorDate();
+      dimadCal.currentView = this.mode === 'week' || this.mode === 'weekly' ? 'week' : this.mode === 'month' || this.mode === 'monthly' ? 'month' : 'day';
+      dimadCal.syncFromStore();
+    }
+    this.renderAgenda();
+    this.fillTimeSelect();
+  },
+
+  dayHtml(date) {
+    const booked = Object.assign({}, CALENDAR_NAV.bookedForDay(date));
+    const col = (hours) => hours.map((time) => {
+      const ev = booked[time];
+      if (ev) {
+        return `<button type="button" onclick="DIMAD_CAL.openComposer({date:'${this.dateKey(date)}',time:'${time}',title:'${String(ev.title).replace(/'/g, '')}'})" class="w-full text-left bg-amber-500/10 border border-amber-500/30 h-7 px-1.5 rounded-md flex items-center gap-2 my-px">
+          <span class="text-[10px] font-mono text-amber-400 w-[42px]">${time}</span>
+          <span class="text-[11px] font-semibold text-slate-200 truncate">${CALENDAR_NAV.escape(ev.title)}</span>
+        </button>`;
+      }
+      return `<button type="button" onclick="DIMAD_CAL.openComposer({date:'${this.dateKey(date)}',time:'${time}'})" class="group w-full h-7 flex items-center gap-2 px-0.5">
+        <span class="text-[10px] font-mono text-slate-500 w-[42px]">${time}</span>
+        <span class="flex-1 border-t border-dashed border-slate-700 group-hover:border-amber-500/50"></span>
+        <span class="text-[9px] text-slate-500 group-hover:text-amber-400">add event</span>
+      </button>`;
+    }).join('');
+    return `<div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4"><div>${col(CALENDAR_HOURS.slice(0, 12))}</div><div>${col(CALENDAR_HOURS.slice(12))}</div></div>`;
+  },
+
+  weekHtml(start) {
+    const todayKey = this.dateKey(new Date());
+    const days = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      return d;
+    });
+    return `<div class="grid grid-cols-7 gap-1">${days.map((d) => {
+      const key = this.dateKey(d);
+      const booked = CALENDAR_NAV.bookedForDay(d);
+      const items = Object.keys(booked).sort().slice(0, 4).map((time) => `<div class="bg-amber-500/15 text-amber-200 rounded px-1 py-0.5 text-[8px] truncate">${time} ${CALENDAR_NAV.escape(booked[time].title)}</div>`).join('');
+      const isToday = key === todayKey;
+      return `<button type="button" onclick="DIMAD_CAL.openComposer({date:'${key}'})" class="text-left min-h-[120px] rounded-lg border ${isToday ? 'border-amber-500/40 bg-amber-500/5' : 'border-slate-800 bg-slate-950/40'} p-1.5 space-y-1">
+        <div class="flex justify-between"><span class="text-[9px] text-slate-500">${d.toLocaleDateString('en-US', { weekday: 'short' })}</span><span class="text-[11px] font-semibold ${isToday ? 'text-amber-400' : 'text-slate-200'}">${d.getDate()}</span></div>
+        ${items || '<div class="text-[8px] text-slate-600 italic">add event</div>'}
+      </button>`;
+    }).join('')}</div>`;
+  },
+
+  monthHtml(date) {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const start = CALENDAR_NAV.weekStart(new Date(year, month, 1));
+    const todayKey = this.dateKey(new Date());
+    const weekday = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((n) => `<div class="text-center text-[9px] font-mono text-slate-500 py-1">${n}</div>`).join('');
+    const cells = Array.from({ length: 42 }, (_, i) => {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      return d;
+    });
+    return `<div class="grid grid-cols-7 gap-1">${weekday}${cells.map((d) => {
+      const key = this.dateKey(d);
+      const count = Object.keys(CALENDAR_NAV.bookedForDay(d)).length;
+      const inMonth = d.getMonth() === month;
+      const isToday = key === todayKey;
+      return `<button type="button" onclick="DIMAD_CAL.openComposer({date:'${key}'})" class="min-h-[64px] rounded-md border text-left px-1.5 py-1 ${isToday ? 'border-amber-500/40 bg-amber-500/10' : 'border-slate-800 bg-slate-950/40'} ${inMonth ? '' : 'opacity-40'}">
+        <div class="text-[11px] font-semibold ${isToday ? 'text-amber-400' : 'text-slate-200'}">${d.getDate()}</div>
+        <div class="text-[8px] font-mono text-amber-400/80">${count ? count + ' events · edit' : 'add event'}</div>
+      </button>`;
+    }).join('')}</div>`;
+  },
+
+  renderAgenda() {
+    const root = document.getElementById('dimad-cal-agenda');
+    if (!root) return;
+    const rows = this.upcoming();
+    if (!rows.length) {
+      root.innerHTML = '<p class="text-[11px] text-slate-500">No upcoming events. Use + Add event to schedule a meeting and optional popup reminder.</p>';
+      return;
+    }
+    root.innerHTML = rows.map((ev) => {
+      const rem = ev.reminder === 'none' || !ev.reminder ? 'No reminder' : ev.reminder === '0' ? 'At time' : `${ev.reminder} min before`;
+      return `<div class="border border-slate-800 rounded-lg px-2.5 py-2">
+        <div class="text-[11px] font-semibold text-slate-100">${this.escape(ev.title)}</div>
+        <div class="text-[9px] font-mono text-slate-500">${ev.date} · ${ev.startTime || ev.time}${ev.endTime ? '–' + ev.endTime : ''} · ${rem}</div>
+      </div>`;
+    }).join('');
+  },
+
+  clockValue(value) {
+    const parts = String(value || '').split(':');
+    if (parts.length < 2 || Number.isNaN(Number(parts[0])) || Number.isNaN(Number(parts[1]))) return '';
+    return `${String(Number(parts[0])).padStart(2, '0')}:${String(Number(parts[1])).padStart(2, '0')}`;
+  },
+
+  fillTimeSelect() {
+    const startInput = document.getElementById('cal-event-start');
+    const endInput = document.getElementById('cal-event-end');
+    const legacy = document.getElementById('cal-event-time');
+    if (legacy && legacy.tagName === 'SELECT' && !legacy.options.length) {
+      legacy.innerHTML = CALENDAR_HOURS.map((t) => `<option value="${t}">${t}</option>`).join('');
+    }
+    if (startInput && !startInput.value) startInput.value = '09:00';
+    if (endInput && !endInput.value) endInput.value = '10:00';
+  },
+
+  openEvent(id) {
+    const ev = this.load().find((row) => String(row.id) === String(id));
+    if (!ev) return;
+    this.openComposer(ev);
+  },
+
+  openComposer(prefill) {
+    this.fillTimeSelect();
+    let data = Object.assign({}, prefill || {});
+    if (!data.id && data.title && data.date) {
+      const match = this.load().find((row) => row.date === data.date && row.title === data.title);
+      if (match) data = Object.assign({}, match, data.id ? data : match);
+    }
+    this.editingId = data.id ? String(data.id) : '';
+    const dateInput = document.getElementById('cal-event-date');
+    const startInput = document.getElementById('cal-event-start');
+    const endInput = document.getElementById('cal-event-end');
+    const titleInput = document.getElementById('cal-event-title');
+    const notesInput = document.getElementById('cal-event-notes');
+    const typeInput = document.getElementById('cal-event-type');
+    const reminderInput = document.getElementById('cal-event-reminder');
+    const idInput = document.getElementById('cal-event-id');
+    const heading = document.getElementById('cal-event-heading');
+    const deleteBtn = document.getElementById('cal-event-delete');
+    const start = this.clockValue(data.startTime || data.time) || '09:00';
+    const end = this.clockValue(data.endTime) || this.calculateEndTime(start);
+    if (dateInput) dateInput.value = data.date || this.dateKey(this.anchorDate());
+    if (startInput) startInput.value = start;
+    if (endInput) endInput.value = end;
+    if (titleInput) titleInput.value = data.title || '';
+    if (notesInput) notesInput.value = data.notes || '';
+    if (typeInput) typeInput.value = data.type || 'meeting';
+    if (reminderInput) reminderInput.value = data.reminder || '15';
+    if (idInput) idInput.value = this.editingId;
+    if (heading) heading.textContent = this.editingId ? 'View / edit event' : 'Add meeting / event';
+    if (deleteBtn) deleteBtn.classList.toggle('hidden', !this.editingId);
+    const modal = document.getElementById('dimad-cal-composer');
+    if (modal) {
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+  },
+
+  closeComposer() {
+    const modal = document.getElementById('dimad-cal-composer');
+    const idInput = document.getElementById('cal-event-id');
+    this.editingId = '';
+    if (idInput) idInput.value = '';
+    if (modal) {
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+  },
+
+  deleteFromComposer() {
+    const id = document.getElementById('cal-event-id')?.value;
+    if (!id) return;
+    this.deleteEvent(id);
+    this.closeComposer();
+  },
+
+  saveComposer() {
+    const title = (document.getElementById('cal-event-title')?.value || '').trim();
+    const date = document.getElementById('cal-event-date')?.value;
+    const startTime = this.clockValue(document.getElementById('cal-event-start')?.value || document.getElementById('cal-event-time')?.value);
+    const endTime = this.clockValue(document.getElementById('cal-event-end')?.value);
+    const notes = document.getElementById('cal-event-notes')?.value || '';
+    const reminder = document.getElementById('cal-event-reminder')?.value || 'none';
+    if (!title || !date || !startTime) return;
+    if (endTime && this.toMinutes(endTime) <= this.toMinutes(startTime)) {
+      alert('End time must be after start time.');
+      return;
+    }
+    const typeEl = document.getElementById('cal-event-type');
+    const existingId = document.getElementById('cal-event-id')?.value || this.editingId || '';
+    const ok = this.addEvent({
+      id: existingId || undefined,
+      title,
+      date,
+      startTime,
+      endTime: endTime || this.calculateEndTime(startTime),
+      time: startTime,
+      notes,
+      reminder,
+      type: typeEl ? typeEl.value : 'task',
+      source: 'DIMAD Calendar'
+    });
+    if (!ok) return;
+    this.closeComposer();
+    this.renderFull();
+    if (typeof CALENDAR_NAV !== 'undefined') CALENDAR_NAV.render();
+    this.renderMiniMonth();
+    if (reminder !== 'none' && typeof Notification !== 'undefined' && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  },
+
+  showReminder(ev) {
+    const modal = document.getElementById('dimad-cal-reminder');
+    const text = document.getElementById('dimad-cal-reminder-text');
+    const when = ev.startTime || ev.time;
+    if (text) text.textContent = `${when} · ${ev.title}${ev.notes ? ' — ' + ev.notes : ''}`;
+    if (modal) {
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+    try {
+      if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+        new Notification('DIMAD Calendar', { body: `${ev.time} ${ev.title}` });
+      }
+    } catch (err) { /* ignore */ }
+  },
+
+  dismissReminder() {
+    const modal = document.getElementById('dimad-cal-reminder');
+    if (modal) {
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+  },
+
+  tickReminders() {
+    const now = Date.now();
+    const rows = this.load();
+    let changed = false;
+    rows.forEach((ev) => {
+      if (ev.reminded || !ev.reminder || ev.reminder === 'none') return;
+      const start = new Date(`${ev.date}T${ev.startTime || ev.time}:00`).getTime();
+      if (!Number.isFinite(start)) return;
+      const lead = Number(ev.reminder) * 60000;
+      const fireAt = start - (Number.isFinite(lead) ? lead : 0);
+      if (now >= fireAt && now <= start + 120000) {
+        ev.reminded = true;
+        changed = true;
+        this.showReminder(ev);
+      }
+    });
+    if (changed) this.persist(rows);
+  },
+
+  renderMiniMonth() {
+    const root = document.getElementById('cc-mini-month');
+    const label = document.getElementById('cc-mini-month-label');
+    if (!root) return;
+    const now = new Date();
+    if (label) label.textContent = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    const start = CALENDAR_NAV.weekStart(new Date(now.getFullYear(), now.getMonth(), 1));
+    const todayKey = this.dateKey(now);
+    const heads = ['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((n) => `<span class="text-slate-500">${n}</span>`).join('');
+    const cells = Array.from({ length: 14 }, (_, i) => {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      const key = this.dateKey(d);
+      const inMonth = d.getMonth() === now.getMonth();
+      const isToday = key === todayKey;
+      return `<button type="button" onclick="DIMAD_CAL.openFromCommandCenter({dateKey:'${key}',mode:'hourly'})" class="p-1 rounded ${isToday ? 'bg-brand-mint/20 border border-brand-mint text-brand-mint font-bold' : 'bg-brand-black/40'} ${inMonth ? 'text-slate-200' : 'text-slate-500'}">${d.getDate()}</button>`;
+    }).join('');
+    root.innerHTML = heads + cells;
+  }
+};
+
+class DimadCalendar {
+  constructor(containerId) {
+    this.container = document.getElementById(containerId);
+    this.currentDate = new Date();
+    this.currentView = 'week';
+    this.hours = Array.from({ length: 24 }, (_, i) => i);
+    this.syncFromStore();
+    this.ensureSeeds();
+    this.render();
+  }
+
+  formatDateKey(date) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  }
+
+  syncFromStore() {
+    this.events = typeof DIMAD_CAL !== 'undefined' ? DIMAD_CAL.load() : [];
+  }
+
+  ensureSeeds() {
+    if (this.events.length) return;
+    const today = this.formatDateKey(new Date());
+    DIMAD_CAL.addEvent({ id: '1', title: 'Client Onboarding & Setup', date: today, startTime: '10:00', endTime: '11:00', type: 'meeting', source: 'Calendly' });
+    DIMAD_CAL.addEvent({ id: '2', title: 'Deep Work Code Sprint', date: today, startTime: '13:00', endTime: '15:00', type: 'task', source: 'Execution Queue' });
+    this.syncFromStore();
+  }
+
+  addEvent(eventData) {
+    const ok = DIMAD_CAL.addEvent(eventData);
+    if (!ok) return false;
+    this.syncFromStore();
+    this.render();
+    if (typeof CALENDAR_NAV !== 'undefined') CALENDAR_NAV.render();
+    return true;
+  }
+
+  deleteEvent(eventId) {
+    DIMAD_CAL.deleteEvent(eventId);
+  }
+
+  changeView(view) {
+    this.currentView = view;
+    DIMAD_CAL.mode = view;
+    this.render();
+  }
+
+  navigate(direction) {
+    if (this.currentView === 'day') this.currentDate.setDate(this.currentDate.getDate() + direction);
+    else if (this.currentView === 'week') this.currentDate.setDate(this.currentDate.getDate() + direction * 7);
+    else this.currentDate.setMonth(this.currentDate.getMonth() + direction);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const cursor = new Date(this.currentDate);
+    cursor.setHours(0, 0, 0, 0);
+    DIMAD_CAL.dayOffset = Math.round((cursor - today) / 86400000);
+    this.render();
+  }
+
+  getDateRangeString() {
+    const options = { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' };
+    if (this.currentView === 'day') return this.currentDate.toLocaleDateString('en-US', options);
+    if (this.currentView === 'month') return this.currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    const start = CALENDAR_NAV.weekStart(this.currentDate);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    return `Week of ${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+  }
+
+  render() {
+    if (!this.container) return;
+    this.syncFromStore();
+    const active = (view) => this.currentView === view ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white';
+    this.container.innerHTML = `
+      <div class="space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-900 border border-slate-800 p-4 rounded-2xl">
+          <div class="flex items-center space-x-3">
+            <button type="button" onclick="dimadCal.navigate(-1)" class="bg-slate-950 hover:bg-slate-800 border border-slate-700 text-slate-200 px-3 py-1.5 rounded-xl text-xs font-semibold">◀ Prev</button>
+            <button type="button" onclick="dimadCal.navigate(1)" class="bg-slate-950 hover:bg-slate-800 border border-slate-700 text-slate-200 px-3 py-1.5 rounded-xl text-xs font-semibold">Next ▶</button>
+            <button type="button" onclick="dimadCal.goToday()" class="bg-slate-950 hover:bg-slate-800 border border-slate-700 text-slate-200 px-3 py-1.5 rounded-xl text-xs font-semibold">Today</button>
+            <h3 class="text-sm font-bold text-white ml-2">${this.getDateRangeString()}</h3>
+          </div>
+          <div class="flex items-center space-x-2">
+            <div class="bg-slate-950 border border-slate-800 p-1 rounded-xl flex space-x-1">
+              <button type="button" onclick="dimadCal.changeView('day')" class="px-3 py-1 text-xs font-semibold rounded-lg ${active('day')}">Day</button>
+              <button type="button" onclick="dimadCal.changeView('week')" class="px-3 py-1 text-xs font-semibold rounded-lg ${active('week')}">Week</button>
+              <button type="button" onclick="dimadCal.changeView('month')" class="px-3 py-1 text-xs font-semibold rounded-lg ${active('month')}">Month</button>
+            </div>
+            <button type="button" onclick="dimadCal.openQuickCreateModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-4 py-2 rounded-xl transition shadow">＋ New Event</button>
+          </div>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 overflow-x-auto min-h-[280px]">
+          ${this.renderViewContent()}
+        </div>
+      </div>`;
+    DIMAD_CAL.renderAgenda();
+  }
+
+  goToday() {
+    this.currentDate = new Date();
+    DIMAD_CAL.dayOffset = 0;
+    this.render();
+  }
+
+  renderViewContent() {
+    if (this.currentView === 'month') return this.renderMonthGridView();
+    if (this.currentView === 'week') return this.renderWeekGridView();
+    return this.renderHourlyGridView();
+  }
+
+  eventsOn(dateStr) {
+    return this.events.filter((e) => e.date === dateStr);
+  }
+
+  eventAt(dateStr, hour) {
+    return this.eventsOn(dateStr).find((e) => DIMAD_CAL.coversHour(e, hour));
+  }
+
+  renderHourlyGridView() {
+    const dateStr = this.formatDateKey(this.currentDate);
+    const events = this.eventsOn(dateStr);
+    return `
+      <div class="space-y-2">
+        <div class="text-[10px] font-mono text-slate-500">24-hour overview — click an event to view or edit; click an open hour to add.</div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
+          <div>${DIMAD_CAL.renderHourColumn(dateStr, this.hours.slice(0, 12), events)}</div>
+          <div>${DIMAD_CAL.renderHourColumn(dateStr, this.hours.slice(12), events)}</div>
+        </div>
+      </div>`;
+  }
+
+  renderWeekGridView() {
+    const start = CALENDAR_NAV.weekStart(this.currentDate);
+    const days = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      return d;
+    });
+    const hourPx = DIMAD_CAL.HOUR_PX;
+    const header = `<div class="text-[9px] font-mono text-slate-500 py-1">Time</div>${days.map((d) => `<div class="text-center text-[9px] font-mono text-slate-400 py-1">${d.toLocaleDateString('en-US', { weekday: 'short' })} ${d.getDate()}</div>`).join('')}`;
+    const gutter = this.hours.map((h) => `<div class="text-[10px] font-mono text-slate-500 border-t border-slate-800/80" style="height:${hourPx}px;line-height:${hourPx}px">${String(h).padStart(2, '0')}:00</div>`).join('');
+    const dayCols = days.map((d) => {
+      const key = this.formatDateKey(d);
+      return DIMAD_CAL.renderHourColumn(key, this.hours, this.eventsOn(key), { showGutter: false });
+    }).join('');
+    return `<div class="min-w-[860px] space-y-1">
+      <div class="grid gap-1" style="grid-template-columns: 42px repeat(7, minmax(0, 1fr))">${header}</div>
+      <div class="grid gap-1" style="grid-template-columns: 42px repeat(7, minmax(0, 1fr))">
+        <div class="select-none">${gutter}</div>
+        ${dayCols}
+      </div>
+    </div>`;
+  }
+
+  renderMonthGridView() {
+    const year = this.currentDate.getFullYear();
+    const month = this.currentDate.getMonth();
+    const start = CALENDAR_NAV.weekStart(new Date(year, month, 1));
+    const todayKey = this.formatDateKey(new Date());
+    const weekday = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((n) => `<div class="text-center text-[9px] font-mono text-slate-500 py-1">${n}</div>`).join('');
+    const cells = Array.from({ length: 42 }, (_, i) => {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      const key = this.formatDateKey(d);
+      const items = this.eventsOn(key).slice(0, 3);
+      const inMonth = d.getMonth() === month;
+      const isToday = key === todayKey;
+      return `<button type="button" onclick="dimadCal.promptQuickSlot('${key}', '09:00')" class="min-h-[88px] rounded-md border text-left px-1.5 py-1 ${isToday ? 'border-amber-500/40 bg-amber-500/10' : 'border-slate-800 bg-slate-950/40'} ${inMonth ? '' : 'opacity-40'}">
+        <div class="text-[11px] font-semibold ${isToday ? 'text-amber-400' : 'text-slate-200'}">${d.getDate()}</div>
+        ${items.map((ev) => `<div onclick="event.stopPropagation(); DIMAD_CAL.openEvent('${ev.id}')" class="text-[8px] text-indigo-200 truncate hover:text-amber-300">${ev.startTime || ev.time} ${DIMAD_CAL.escape(ev.title)}</div>`).join('') || '<div class="text-[8px] text-slate-600 italic">add event</div>'}
+      </button>`;
+    }).join('');
+    return `<div class="grid grid-cols-7 gap-1">${weekday}${cells}</div>`;
+  }
+
+  promptQuickSlot(date, time) {
+    DIMAD_CAL.openComposer({ date, time });
+  }
+
+  openQuickCreateModal() {
+    DIMAD_CAL.openComposer({ date: this.formatDateKey(this.currentDate) });
+  }
+}
+
+let dimadCal = null;
+
+function ensureDimadCalendar() {
+  const el = document.getElementById('dimad-calendar-container');
+  if (!el) return null;
+  if (!dimadCal || dimadCal.container !== el) {
+    const prior = dimadCal;
+    dimadCal = new DimadCalendar('dimad-calendar-container');
+    if (prior) {
+      dimadCal.currentView = prior.currentView;
+      dimadCal.currentDate = prior.currentDate;
+      dimadCal.render();
+    }
+  }
+  return dimadCal;
+}
 
 const CALENDAR_NAV = {
   mode: 'hourly',
@@ -1719,22 +3382,8 @@ const CALENDAR_NAV = {
   bookedForDay(date) {
     const key = this.dateKey(date);
     const extras = this.extraEvents[key] || {};
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1);
-    let seeded = {};
-    if (date.getTime() === today.getTime()) {
-      seeded = {
-        '10:00': { title: 'Client Strategy & Onboarding Call', source: 'Synced via Google Calendar', tone: 'indigo' },
-        '13:00': { title: 'Dimad AI Code Sprint & Review', source: 'Execution Queue', tone: 'amber' }
-      };
-    } else if (date.getTime() === tomorrow.getTime()) {
-      seeded = {
-        '11:00': { title: 'Investor update write-up', source: 'Execution Queue', tone: 'amber' }
-      };
-    }
-    return Object.assign({}, seeded, extras);
+    const stored = typeof DIMAD_CAL !== 'undefined' ? DIMAD_CAL.eventsForDay(date) : {};
+    return Object.assign({}, extras, stored);
   },
 
   openSlotHtml(time) {
@@ -1746,19 +3395,19 @@ const CALENDAR_NAV = {
       </div>`;
   },
 
-  bookedSlotHtml(time, title, source, tone) {
+  bookedSlotHtml(time, title, source, tone, span = 1) {
     const palette = tone === 'indigo'
       ? { wrap: 'bg-indigo-500/10 border-indigo-500/30', time: 'text-indigo-400', source: 'text-indigo-300/80', badge: 'bg-indigo-500/20 text-indigo-300', badgeText: 'Locked' }
       : { wrap: 'bg-amber-500/10 border-amber-500/30', time: 'text-amber-400', source: 'text-amber-300/80', badge: 'bg-amber-500/20 text-amber-300', badgeText: 'Active' };
     const sourceAttr = tone === 'indigo' ? ' data-cal-locked-source' : '';
     return `
-      <div class="${palette.wrap} border h-5 px-1 rounded-md flex items-center justify-between gap-1.5 my-px">
-        <div class="flex items-center gap-2 min-w-0">
+      <div class="${palette.wrap} border px-1 rounded-md flex items-start justify-between gap-1.5 min-h-0" style="grid-row: span ${span}">
+        <div class="flex items-start gap-2 min-w-0 pt-0.5">
           <span class="text-[10px] font-mono ${palette.time} w-[42px] flex-shrink-0">${time}</span>
-          <h5 class="text-[10px] font-semibold text-slate-200 truncate">${title}</h5>
+          <h5 class="text-[10px] font-semibold text-slate-200 truncate leading-tight">${title}</h5>
           <span class="text-[8px] ${palette.source} font-mono hidden xl:inline truncate"${sourceAttr}>${source}</span>
         </div>
-        <span class="text-[8px] font-mono ${palette.badge} px-1 py-px rounded flex-shrink-0">${palette.badgeText}</span>
+        <span class="text-[8px] font-mono ${palette.badge} px-1 py-px rounded flex-shrink-0 mt-0.5">${palette.badgeText}</span>
       </div>`;
   },
 
@@ -1772,9 +3421,13 @@ const CALENDAR_NAV = {
   syncNavLabel() {
     const navLabel = document.getElementById('cal-nav-label');
     if (!navLabel) return;
-    if (this.mode === 'weekly') navLabel.innerText = 'Next week >';
-    else if (this.mode === 'monthly') navLabel.innerText = 'Next month >';
-    else navLabel.innerText = this.dayOffset === 0 ? 'Tomorrow >' : 'View Calendar >';
+    if (calendarClickCount >= 1) {
+      navLabel.innerText = 'View Calendar >';
+      return;
+    }
+    if (this.mode === 'weekly') navLabel.innerText = 'Next Week >';
+    else if (this.mode === 'monthly') navLabel.innerText = 'Next Month >';
+    else navLabel.innerText = 'Tomorrow >';
   },
 
   updateChrome(title, hint) {
@@ -1801,17 +3454,18 @@ const CALENDAR_NAV = {
     const container = document.getElementById('hourly-slots-container');
     if (!container) return;
     const date = this.anchorDate();
-    const booked = this.bookedForDay(date);
-    const column = (hours) => hours.map((time) => {
-      const event = booked[time];
-      return event ? this.bookedSlotHtml(time, event.title, event.source, event.tone) : this.openSlotHtml(time);
-    }).join('');
-    const morning = CALENDAR_HOURS.slice(0, 12);
-    const evening = CALENDAR_HOURS.slice(12);
+    const dateKey = this.dateKey(date);
+    const list = (typeof DIMAD_CAL !== 'undefined' ? DIMAD_CAL.eventsListForDay(dateKey) : []).map((ev) => ({
+      ...ev,
+      startTime: ev.startTime || ev.time,
+      endTime: ev.endTime || DIMAD_CAL.calculateEndTime(ev.startTime || ev.time)
+    }));
+    const morningHours = Array.from({ length: 12 }, (_, i) => i);
+    const eveningHours = Array.from({ length: 12 }, (_, i) => i + 12);
     container.innerHTML = `
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
-        <div class="flex flex-col">${column(morning)}</div>
-        <div class="flex flex-col">${column(evening)}</div>
+        <div>${DIMAD_CAL.renderHourColumn(dateKey, morningHours, list)}</div>
+        <div>${DIMAD_CAL.renderHourColumn(dateKey, eveningHours, list)}</div>
       </div>`;
     this.updateChrome(this.formatDayTitle(date), '24-hour overview — click any hour to add an event.');
   },
@@ -1881,7 +3535,7 @@ const CALENDAR_NAV = {
           const count = Object.keys(booked).length;
           const isToday = key === todayKey;
           return `
-            <button type="button" onclick="CALENDAR_NAV.openDayFromGrid('${key}')" class="h-12 rounded-md border text-left px-1.5 py-1 ${isToday ? 'border-amber-500/40 bg-amber-500/10' : 'border-slate-800 bg-slate-950/40'} ${inMonth ? '' : 'opacity-40'} hover:border-amber-500/30 transition">
+            <button type="button" onclick="DIMAD_CAL.openFromCommandCenter({dateKey:'${key}',mode:'hourly'})" class="h-12 rounded-md border text-left px-1.5 py-1 ${isToday ? 'border-amber-500/40 bg-amber-500/10' : 'border-slate-800 bg-slate-950/40'} ${inMonth ? '' : 'opacity-40'} hover:border-amber-500/30 transition">
               <div class="text-[11px] font-semibold ${isToday ? 'text-amber-400' : 'text-slate-200'}">${d.getDate()}</div>
               <div class="text-[8px] font-mono ${count ? 'text-amber-400/80' : 'text-slate-600'}">${count ? count + ' evt' : ''}</div>
             </button>`;
@@ -1889,7 +3543,7 @@ const CALENDAR_NAV = {
       </div>`;
     this.updateChrome(
       date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
-      'Monthly overview — click a day to open its 24-hour schedule.'
+      'Monthly overview — click a day to edit it in DIMAD Calendar.'
     );
   },
 
@@ -1912,7 +3566,7 @@ const CALENDAR_NAV = {
         this.render();
       } else {
         calendarClickCount = 0;
-        if (typeof switchTab === 'function') switchTab('dimad-calendar');
+        if (typeof DIMAD_CAL !== 'undefined') DIMAD_CAL.openFromCommandCenter({ mode: 'weekly' });
       }
       return;
     }
@@ -1926,7 +3580,7 @@ const CALENDAR_NAV = {
         this.render();
       } else {
         calendarClickCount = 0;
-        if (typeof switchTab === 'function') switchTab('dimad-calendar');
+        if (typeof DIMAD_CAL !== 'undefined') DIMAD_CAL.openFromCommandCenter({ mode: 'monthly' });
       }
       return;
     }
@@ -1935,11 +3589,15 @@ const CALENDAR_NAV = {
       this.render();
     } else {
       calendarClickCount = 0;
-      if (typeof switchTab === 'function') switchTab('dimad-calendar');
+      if (typeof DIMAD_CAL !== 'undefined') DIMAD_CAL.openFromCommandCenter({ mode: 'hourly' });
     }
   },
 
   clickSlot(timeString) {
+    if (typeof DIMAD_CAL !== 'undefined') {
+      DIMAD_CAL.openComposer({ date: this.dateKey(this.anchorDate()), time: timeString });
+      return;
+    }
     const taskName = prompt(`Add task or meeting for ${timeString}:`);
     if (!taskName) return;
     const key = this.dateKey(this.anchorDate());
@@ -2353,4 +4011,10 @@ window.onload = async function() {
   if (typeof CALENDAR_NAV !== 'undefined' && CALENDAR_NAV.render) CALENDAR_NAV.render();
   if (typeof FINNHUB_MARKETS !== 'undefined') FINNHUB_MARKETS.init();
   if (typeof COMMAND_CENTER !== 'undefined') COMMAND_CENTER.apply();
+  if (typeof DIMAD_CAL !== 'undefined') {
+    DIMAD_CAL.fillTimeSelect();
+    DIMAD_CAL.renderMiniMonth();
+    DIMAD_CAL.tickReminders();
+    setInterval(() => DIMAD_CAL.tickReminders(), 15000);
+  }
 };
