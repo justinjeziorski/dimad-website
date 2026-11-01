@@ -1,15 +1,26 @@
-<div id="view-creator-writespace" class="tab-view hidden w-full h-full overflow-hidden">
-  <div id="ws-root" class="h-full min-h-[640px] flex flex-col font-sans bg-[#0f0e13] text-amber-50">
+<div id="view-creator-writespace" class="tab-view hidden w-full h-[calc(100vh-7.25rem)] min-h-0 overflow-hidden">
+  <style>
+    #ws-tools-scroll {
+      overflow-y: scroll;
+      scrollbar-gutter: stable;
+    }
+    #ws-tools-scroll::-webkit-scrollbar { width: 8px; }
+    #ws-tools-scroll::-webkit-scrollbar-track { background: #0f0e13; border-radius: 8px; }
+    #ws-tools-scroll::-webkit-scrollbar-thumb { background: #b45309; border-radius: 8px; }
+    #ws-tools-scroll::-webkit-scrollbar-thumb:hover { background: #f59e0b; }
+    #ws-tools-scroll { scrollbar-color: #b45309 #0f0e13; scrollbar-width: thin; }
+  </style>
+  <div id="ws-root" class="h-full min-h-0 flex flex-col font-sans bg-[#0f0e13] text-amber-50">
 
     <header class="px-4 py-2.5 border-b border-amber-900/30 bg-[#16141d]/90 backdrop-blur-md flex items-center justify-between gap-3">
       <div class="flex items-center gap-3 min-w-0">
         <div class="flex items-center gap-2 font-bold text-lg tracking-tight">
           <span class="p-1.5 rounded-lg bg-gradient-to-tr from-amber-500 to-amber-600 text-slate-950 shadow-md"><i class="fa-solid fa-wand-magic-sparkles text-sm"></i></span>
-          <span class="text-amber-400">WriteSpace</span>
-          <span class="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-500 font-medium">Studio</span>
+          <span id="ws-brand-title" class="text-amber-400">WriteSpace</span>
+          <span id="ws-brand-journal" class="hidden ws-journal-wordmark italic">Journal</span>
         </div>
-        <div class="h-4 w-px bg-amber-900/40 mx-1 hidden sm:block"></div>
-        <div class="relative hidden sm:flex items-center">
+        <div id="ws-layout-rule" class="h-4 w-px bg-amber-900/40 mx-1 hidden sm:block"></div>
+        <div id="ws-layout-wrap" class="relative hidden sm:flex items-center">
           <i class="fa-solid fa-table-columns absolute left-2.5 text-[11px] opacity-60"></i>
           <select id="ws-layout" class="pl-8 pr-7 py-1 text-xs rounded-md font-medium border appearance-none cursor-pointer bg-[#1e1b26] border-amber-900/40 text-amber-200">
             <option value="substack">Substack Blog Layout</option>
@@ -18,14 +29,17 @@
         </div>
       </div>
       <div class="flex items-center gap-2">
+        <button type="button" onclick="WRITESPACE.toggleJournalMode()" id="ws-journal-btn" title="Journal" class="p-1.5 rounded-md border bg-[#1e1b26] border-amber-900/40 text-amber-300 text-xs font-medium flex items-center gap-1.5">
+          <i class="fa-solid fa-book"></i><span class="hidden sm:inline">Journal</span>
+        </button>
         <button type="button" onclick="WRITESPACE.toggleTheme()" id="ws-theme-btn" class="p-1.5 rounded-md border bg-[#1e1b26] border-amber-900/40 text-amber-300 text-xs font-medium flex items-center gap-1.5">
           <i class="fa-solid fa-sun text-blue-400"></i><span class="hidden sm:inline">Word Light</span>
         </button>
-        <button type="button" onclick="WRITESPACE.toggleSidebar()" id="ws-sidebar-btn" title="Collapse tools" class="p-1.5 rounded-md border bg-[#1e1b26] border-amber-900/40 text-amber-300 text-xs font-medium flex items-center gap-1.5">
-          <i class="fa-solid fa-table-columns"></i><span class="hidden sm:inline">Tools</span>
-        </button>
         <button type="button" onclick="WRITESPACE.toggleFullscreen()" id="ws-full-btn" title="Expand WriteSpace" class="p-1.5 rounded-md border bg-[#1e1b26] border-amber-900/40 text-amber-300 text-xs font-medium flex items-center gap-1.5">
           <i class="fa-solid fa-expand"></i><span class="hidden sm:inline">Expand</span>
+        </button>
+        <button type="button" onclick="WRITESPACE.openPreview()" id="ws-preview-btn" title="Preview document" class="p-1.5 rounded-md border bg-[#1e1b26] border-amber-900/40 text-amber-300 text-xs font-medium flex items-center gap-1.5">
+          <i class="fa-solid fa-eye"></i><span class="hidden sm:inline">Preview</span>
         </button>
         <button type="button" onclick="WRITESPACE.openOpenModal()" class="p-1.5 rounded-md border bg-[#1e1b26] border-amber-900/40 text-amber-300 text-xs font-medium flex items-center gap-1.5">
           <i class="fa-solid fa-folder-open"></i><span class="hidden sm:inline">Open</span>
@@ -69,6 +83,35 @@
     </div>
 
     <div class="flex-1 flex overflow-hidden min-h-0">
+      <aside id="ws-journal-nav" class="hidden w-64 shrink-0 border-r border-amber-900/30 bg-[#121018] flex-col min-h-0 text-amber-200">
+        <div class="px-3 py-3 border-b border-amber-900/30 space-y-2">
+          <div class="flex items-center justify-between gap-2">
+            <div class="relative flex-1 min-w-0">
+              <button type="button" id="ws-journal-folder-btn" onclick="WRITESPACE.toggleJournalFolderMenu(event)" class="w-full flex items-center justify-between gap-2 py-1.5 px-2 text-[11px] font-bold uppercase tracking-wide rounded-md bg-[#1e1b26] border border-amber-900/40 text-amber-400">
+                <span id="ws-journal-folder-label" class="truncate">Daily Journal</span>
+                <i class="fa-solid fa-chevron-down text-[8px] opacity-70 shrink-0"></i>
+              </button>
+              <div id="ws-journal-folder-menu" class="hidden absolute z-30 left-0 right-0 mt-1 rounded-md border border-amber-900/40 bg-[#16141d] shadow-xl py-1 max-h-64 overflow-y-auto"></div>
+            </div>
+            <button type="button" onclick="WRITESPACE.newJournalEntry()" class="px-2 py-1 rounded-md bg-amber-500 text-slate-950 text-[10px] font-bold hover:bg-amber-400 shrink-0">+ New</button>
+          </div>
+          <div class="relative">
+            <button type="button" id="ws-journal-year-btn" onclick="WRITESPACE.toggleJournalYearMenu(event)" class="w-full flex items-center justify-between gap-2 py-1.5 px-2 text-[11px] font-bold tracking-wide rounded-md bg-[#1e1b26] border border-amber-900/40 text-amber-400">
+              <span id="ws-journal-year-label">2026</span>
+              <i class="fa-solid fa-chevron-down text-[8px] opacity-70 shrink-0"></i>
+            </button>
+            <div id="ws-journal-year-menu" class="hidden absolute z-30 left-0 right-0 mt-1 rounded-md border border-amber-900/40 bg-[#16141d] shadow-xl py-1"></div>
+          </div>
+          <div class="relative">
+            <button type="button" id="ws-journal-month-btn" onclick="WRITESPACE.toggleJournalMonthMenu(event)" class="w-full flex items-center justify-between gap-2 py-1.5 px-2 text-[11px] font-bold tracking-wide rounded-md bg-[#1e1b26] border border-amber-900/40 text-amber-400">
+              <span id="ws-journal-month-label" class="truncate">November</span>
+              <i class="fa-solid fa-chevron-down text-[8px] opacity-70 shrink-0"></i>
+            </button>
+            <div id="ws-journal-month-menu" class="hidden absolute z-30 left-0 right-0 mt-1 rounded-md border border-amber-900/40 bg-[#16141d] shadow-xl py-1 max-h-64 overflow-y-auto"></div>
+          </div>
+        </div>
+        <div id="ws-journal-list" class="flex-1 overflow-y-auto p-2 space-y-1"></div>
+      </aside>
       <main id="ws-stage" class="flex-1 overflow-y-auto p-4 md:p-8 flex justify-center">
         <div id="ws-page-stack" class="flex flex-col items-center w-full max-w-[850px]">
         <div id="ws-word-ruler" class="hidden w-full max-w-[816px] h-6 bg-[#f3f3f3] border border-[#c8c8c8] border-b-0 text-[9px] text-[#666] font-sans relative overflow-hidden select-none">
@@ -109,6 +152,12 @@
           </div>
           <input id="ws-title-word" type="text" placeholder="Document Title" class="hidden w-full bg-transparent focus:outline-none text-black placeholder:text-neutral-400">
 
+          <div id="ws-journal-head" class="hidden mb-6 space-y-2">
+            <div id="ws-journal-date" class="text-[11px] font-semibold tracking-widest uppercase text-amber-500"></div>
+            <input id="ws-journal-title" type="text" placeholder="Optional title — or leave blank and just write" class="w-full bg-transparent focus:outline-none text-2xl font-bold text-amber-100 placeholder:text-amber-900/40">
+            <p class="text-[11px] text-amber-300/50">Strict free write. No SEO. No outline. Same fonts as WriteSpace.</p>
+          </div>
+
           <textarea id="ws-body" placeholder="Start typing your post or story..." class="w-full min-h-[450px] bg-transparent resize-none focus:outline-none leading-relaxed text-amber-50 placeholder:text-amber-900/40"></textarea>
           <div id="ws-grammar" class="mt-6 pt-4 border-t border-dashed border-amber-500/30 text-xs"></div>
 
@@ -119,7 +168,7 @@
         </div>
       </main>
 
-      <aside id="ws-aside" class="w-80 md:w-96 border-l border-amber-900/30 bg-[#121018] flex flex-col min-h-0 text-amber-200">
+      <aside id="ws-aside" class="w-80 md:w-96 border-l border-amber-900/30 bg-[#121018] flex flex-col min-h-0 h-full overflow-hidden text-amber-200">
         <div class="flex items-center border-b border-amber-900/30 bg-[#171520] text-xs font-medium">
           <button type="button" data-ws-tab="ai-editor" onclick="WRITESPACE.setTab('ai-editor')" class="ws-tab flex-1 py-3 flex items-center justify-center gap-1.5 border-b-2 border-amber-400 text-amber-400 font-semibold"><i class="fa-solid fa-sparkles"></i> AI Copilot</button>
           <button type="button" data-ws-tab="seo" onclick="WRITESPACE.setTab('seo')" class="ws-tab flex-1 py-3 flex items-center justify-center gap-1.5 border-b-2 border-transparent text-amber-200 hover:text-amber-300"><i class="fa-solid fa-magnifying-glass"></i> SEO Audit</button>
@@ -127,7 +176,7 @@
           <button type="button" onclick="WRITESPACE.toggleSidebar()" title="Collapse tools" class="px-2 py-3 text-amber-400/70 hover:text-amber-300"><i class="fa-solid fa-chevron-right"></i></button>
         </div>
 
-        <div class="flex-1 overflow-y-auto p-4 space-y-5 text-xs">
+        <div id="ws-tools-scroll" class="flex-1 min-h-0 overflow-y-scroll p-4 space-y-5 text-xs">
           <div id="ws-tab-ai-editor" class="ws-pane space-y-4">
             <div class="font-semibold text-sm flex items-center gap-1.5 text-amber-400"><i class="fa-solid fa-wand-magic-sparkles"></i> AI Editing &amp; Tone Tools</div>
             <div>
@@ -159,6 +208,10 @@
             <div class="w-full bg-amber-900/20 rounded-full h-2 overflow-hidden">
               <div id="ws-seo-bar" class="bg-gradient-to-r from-amber-500 to-emerald-400 h-2 rounded-full" style="width:0%"></div>
             </div>
+            <button type="button" onclick="WRITESPACE.seoFeedback()" class="w-full py-2 px-3 rounded-lg border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-200 font-semibold flex items-center justify-center gap-2">
+              <i class="fa-solid fa-sparkles text-amber-400"></i> SEO feedback
+            </button>
+            <div id="ws-seo-feedback" class="hidden p-3 rounded-lg border bg-[#171421] border-amber-900/40 space-y-2 text-amber-100"></div>
             <label class="block text-[11px] font-medium text-amber-300 mb-1">Focus Keyword</label>
             <input id="ws-keyword" type="text" class="w-full py-1.5 px-2.5 rounded border bg-[#1a1724] border-amber-900/40 text-amber-100">
             <label class="block text-[11px] font-medium text-amber-300 mb-1">Meta Title <span id="ws-meta-title-count"></span></label>
@@ -199,6 +252,22 @@
         <button type="button" onclick="WRITESPACE.openSidebarTab('seo')" title="SEO Audit" class="p-2 rounded-lg text-amber-300/80 hover:bg-amber-500/10"><i class="fa-solid fa-magnifying-glass"></i></button>
         <button type="button" onclick="WRITESPACE.openSidebarTab('export')" title="Publish" class="p-2 rounded-lg text-amber-300/80 hover:bg-amber-500/10"><i class="fa-solid fa-share-nodes"></i></button>
       </div>
+    </div>
+  </div>
+
+  <div id="ws-preview-modal" class="hidden fixed inset-0 z-[350] bg-slate-950/85 backdrop-blur-md items-center justify-center p-4" onclick="if(event.target===this)WRITESPACE.closePreview()">
+    <div class="w-full max-w-4xl max-h-[92vh] flex flex-col rounded-2xl border border-amber-900/40 bg-[#121018] shadow-2xl overflow-hidden">
+      <div class="px-4 py-2.5 border-b border-amber-900/30 bg-[#16141d] flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2 text-amber-300 text-xs font-semibold">
+          <i class="fa-solid fa-eye"></i>
+          <span>Preview</span>
+          <span id="ws-preview-kind" class="text-amber-400/70 font-medium"></span>
+        </div>
+        <button type="button" onclick="WRITESPACE.closePreview()" class="p-1.5 rounded-md border bg-[#1e1b26] border-amber-900/40 text-amber-300 text-xs font-medium flex items-center gap-1.5">
+          <i class="fa-solid fa-xmark"></i><span class="hidden sm:inline">Close</span>
+        </button>
+      </div>
+      <div id="ws-preview-stage" class="flex-1 overflow-y-auto p-4 md:p-8 flex justify-center"></div>
     </div>
   </div>
 
@@ -245,5 +314,12 @@
       </div>
       <div id="ws-open-list" class="flex-1 overflow-y-auto space-y-2 min-h-[160px]"></div>
     </div>
+  </div>
+
+  <div id="ws-journal-folder-ctx" class="hidden fixed z-[360] min-w-[160px] rounded-md border border-amber-900/40 bg-[#16141d] shadow-2xl py-1 text-[11px] text-amber-100">
+    <button type="button" onclick="WRITESPACE.journalFolderAction('rename')" class="w-full text-left px-3 py-1.5 hover:bg-amber-500/15">Edit name</button>
+    <button type="button" onclick="WRITESPACE.journalFolderAction('up')" class="w-full text-left px-3 py-1.5 hover:bg-amber-500/15">Move up</button>
+    <button type="button" onclick="WRITESPACE.journalFolderAction('down')" class="w-full text-left px-3 py-1.5 hover:bg-amber-500/15">Move down</button>
+    <button type="button" onclick="WRITESPACE.journalFolderAction('delete')" class="w-full text-left px-3 py-1.5 hover:bg-red-500/15 text-red-400">Delete folder</button>
   </div>
 </div>

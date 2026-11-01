@@ -1,4 +1,165 @@
-<div id="view-creator-pipeline" class="tab-view hidden p-4 border border-brand-border bg-brand-panel rounded">
-  <h2 class="text-sm font-bold text-brand-gold mb-2">CREATOR PIPELINE</h2>
-  <p class="text-slate-400">Content production stages and sponsorship flow.</p>
+<div id="view-creator-pipeline" class="tab-view hidden w-full overflow-hidden">
+  <div id="pl-root" class="h-[calc(100vh-7.25rem)] min-h-0 flex flex-col bg-[#0f0e0d] text-[#e6e2dd] p-5 font-sans selection:bg-[#d97706] selection:text-white rounded border border-[#221f1c]">
+
+    <header class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-4 pb-4 border-b border-[#262421] shrink-0">
+      <div>
+        <div class="flex items-center gap-3">
+          <span class="h-3 w-3 rounded-full bg-amber-500 animate-pulse"></span>
+          <h1 class="text-2xl font-bold tracking-tight text-white">Brand Outreach &amp; Content Pipeline</h1>
+        </div>
+        <p class="text-sm text-[#8c857b] mt-1">Spreadsheet view. Click a business to open the full pitch record.</p>
+      </div>
+      <div class="flex items-center gap-4">
+        <div class="bg-[#1a1816] border border-[#2a2724] px-4 py-2 rounded-xl text-xs flex gap-6">
+          <div>
+            <span class="block text-[#8c857b]">Total Pipeline</span>
+            <span id="pl-total" class="text-base font-semibold text-amber-400">$0</span>
+          </div>
+          <div class="border-l border-[#2a2724] pl-6">
+            <span class="block text-[#8c857b]">Visible Rows</span>
+            <span id="pl-count" class="text-base font-semibold text-white">0</span>
+          </div>
+        </div>
+        <button type="button" onclick="PIPELINE.openDetail()" class="bg-amber-600 hover:bg-amber-500 text-white font-medium px-4 py-2.5 rounded-xl text-sm transition-all shadow-lg shadow-amber-950/40 flex items-center gap-2">
+          <span>+</span> New Reach-Out
+        </button>
+      </div>
+    </header>
+
+    <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2 mb-3 shrink-0 text-[11px]">
+      <label class="space-y-1">
+        <span class="block text-[#8c857b] uppercase tracking-wider">Status</span>
+        <select id="pl-filter-status" onchange="PIPELINE.render()" class="w-full bg-[#11100f] border border-[#2d2925] rounded-lg px-2 py-1.5 text-[#e6e2dd] focus:outline-none focus:border-amber-500"></select>
+      </label>
+      <label class="space-y-1">
+        <span class="block text-[#8c857b] uppercase tracking-wider">Company sector</span>
+        <select id="pl-filter-sector" onchange="PIPELINE.render()" class="w-full bg-[#11100f] border border-[#2d2925] rounded-lg px-2 py-1.5 text-[#e6e2dd] focus:outline-none focus:border-amber-500"></select>
+      </label>
+      <label class="space-y-1">
+        <span class="block text-[#8c857b] uppercase tracking-wider">Website pitch</span>
+        <select id="pl-filter-website" onchange="PIPELINE.render()" class="w-full bg-[#11100f] border border-[#2d2925] rounded-lg px-2 py-1.5 text-[#e6e2dd] focus:outline-none focus:border-amber-500">
+          <option value="all">All</option>
+          <option value="has">Has website pitch</option>
+          <option value="none">No website pitch</option>
+        </select>
+      </label>
+      <label class="space-y-1">
+        <span class="block text-[#8c857b] uppercase tracking-wider">Who pitched</span>
+        <select id="pl-filter-origin" onchange="PIPELINE.render()" class="w-full bg-[#11100f] border border-[#2d2925] rounded-lg px-2 py-1.5 text-[#e6e2dd] focus:outline-none focus:border-amber-500">
+          <option value="all">All</option>
+          <option value="we">We pitched them</option>
+          <option value="them">They pitched us</option>
+        </select>
+      </label>
+      <label class="space-y-1">
+        <span class="block text-[#8c857b] uppercase tracking-wider">Due date</span>
+        <select id="pl-filter-due" onchange="PIPELINE.render()" class="w-full bg-[#11100f] border border-[#2d2925] rounded-lg px-2 py-1.5 text-[#e6e2dd] focus:outline-none focus:border-amber-500">
+          <option value="all">All</option>
+          <option value="week">This week</option>
+          <option value="month">This month</option>
+          <option value="year">This year</option>
+          <option value="overdue">Overdue</option>
+          <option value="none">No due date</option>
+        </select>
+      </label>
+      <label class="space-y-1">
+        <span class="block text-[#8c857b] uppercase tracking-wider">Website search</span>
+        <input id="pl-filter-site" type="text" oninput="PIPELINE.render()" placeholder="Filter by website…" class="w-full bg-[#11100f] border border-[#2d2925] rounded-lg px-2 py-1.5 text-[#e6e2dd] focus:outline-none focus:border-amber-500">
+      </label>
+    </div>
+
+    <div class="flex-1 min-h-0 overflow-auto border border-[#2a2622] rounded-lg bg-[#11100f]">
+      <table class="w-full text-left border-collapse text-[13px]">
+        <thead class="sticky top-0 z-10">
+          <tr class="bg-[#1b1916] text-[11px] uppercase tracking-wider text-[#8c857b]">
+            <th class="border-b border-[#2a2622] px-4 py-2 font-semibold w-[46%]">
+              <button type="button" onclick="PIPELINE.sortBy('name')" class="inline-flex items-center gap-1.5 uppercase tracking-wider hover:text-amber-400">
+                Business <span data-pl-sort="name" class="text-amber-500/80 font-mono text-[10px]"></span>
+              </button>
+            </th>
+            <th class="border-b border-[#2a2622] px-4 py-2 font-semibold w-[27%]">
+              <button type="button" onclick="PIPELINE.sortBy('status')" class="inline-flex items-center gap-1.5 uppercase tracking-wider hover:text-amber-400">
+                Status <span data-pl-sort="status" class="text-amber-500/80 font-mono text-[10px]"></span>
+              </button>
+            </th>
+            <th class="border-b border-[#2a2622] px-4 py-2 font-semibold">
+              <button type="button" onclick="PIPELINE.sortBy('pitchDate')" class="inline-flex items-center gap-1.5 uppercase tracking-wider hover:text-amber-400">
+                Pitch date <span data-pl-sort="pitchDate" class="text-amber-500/80 font-mono text-[10px]"></span>
+              </button>
+            </th>
+          </tr>
+        </thead>
+        <tbody id="pl-rows"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="pl-detail" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm items-center justify-center z-[350] p-4" onclick="if(event.target===this)PIPELINE.closeDetail()">
+    <div class="bg-[#171513] border border-[#2d2925] rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 shadow-2xl">
+      <div class="flex items-center justify-between mb-4">
+        <h2 id="pl-detail-title" class="text-lg font-bold text-white">Business record</h2>
+        <button type="button" onclick="PIPELINE.closeDetail()" class="text-[#8c857b] hover:text-white">✕</button>
+      </div>
+      <form onsubmit="PIPELINE.saveDetail(event)" class="space-y-4">
+        <input id="pl-id" type="hidden">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <label class="space-y-1 md:col-span-2">
+            <span class="block text-xs text-[#9c958b] font-medium">Business name</span>
+            <input id="pl-name" type="text" required class="w-full bg-[#11100f] border border-[#2d2925] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500">
+          </label>
+          <label class="space-y-1">
+            <span class="block text-xs text-[#9c958b] font-medium">Status</span>
+            <select id="pl-status" class="w-full bg-[#11100f] border border-[#2d2925] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500"></select>
+          </label>
+          <label class="space-y-1">
+            <span class="block text-xs text-[#9c958b] font-medium">Company sector</span>
+            <input id="pl-sector" type="text" placeholder="Beauty, Tech, Fitness" class="w-full bg-[#11100f] border border-[#2d2925] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500">
+          </label>
+          <label class="space-y-1">
+            <span class="block text-xs text-[#9c958b] font-medium">Contact info</span>
+            <input id="pl-contact" type="text" placeholder="name@brand.com / @handle" class="w-full bg-[#11100f] border border-[#2d2925] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500">
+          </label>
+          <label class="space-y-1">
+            <span class="block text-xs text-[#9c958b] font-medium">Profit</span>
+            <input id="pl-profit" type="text" placeholder="$1,000" class="w-full bg-[#11100f] border border-[#2d2925] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500">
+          </label>
+          <label class="space-y-1 md:col-span-2">
+            <span class="block text-xs text-[#9c958b] font-medium">Website pitch</span>
+            <input id="pl-website" type="text" placeholder="https://brand.com/creators or landing page pitched" class="w-full bg-[#11100f] border border-[#2d2925] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500">
+          </label>
+          <label class="space-y-1 md:col-span-2">
+            <span class="block text-xs text-[#9c958b] font-medium">Who pitched</span>
+            <select id="pl-origin" class="w-full bg-[#11100f] border border-[#2d2925] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500">
+              <option value="we">We pitched them</option>
+              <option value="them">They pitched us</option>
+            </select>
+          </label>
+          <label class="space-y-1 md:col-span-2">
+            <span class="block text-xs text-[#9c958b] font-medium">Pitch description</span>
+            <textarea id="pl-description" rows="4" placeholder="What was pitched, deliverables, talking points…" class="w-full bg-[#11100f] border border-[#2d2925] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500 resize-y"></textarea>
+          </label>
+          <label class="space-y-1">
+            <span class="block text-xs text-[#9c958b] font-medium">Pitch date</span>
+            <input id="pl-pitch" type="date" class="w-full bg-[#11100f] border border-[#2d2925] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500">
+          </label>
+          <label class="space-y-1">
+            <span class="block text-xs text-[#9c958b] font-medium">Start date</span>
+            <input id="pl-start" type="date" class="w-full bg-[#11100f] border border-[#2d2925] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500">
+          </label>
+          <label class="space-y-1">
+            <span class="block text-xs text-[#9c958b] font-medium">End date</span>
+            <input id="pl-end" type="date" class="w-full bg-[#11100f] border border-[#2d2925] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500">
+          </label>
+          <label class="space-y-1 md:col-span-2">
+            <span class="block text-xs text-[#9c958b] font-medium">Due date</span>
+            <input id="pl-due" type="date" class="w-full bg-[#11100f] border border-[#2d2925] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500">
+          </label>
+        </div>
+        <div class="flex justify-end gap-3 pt-4 border-t border-[#262320]">
+          <button type="button" onclick="PIPELINE.closeDetail()" class="px-4 py-2 rounded-xl text-xs font-medium text-[#9c958b] hover:text-white">Cancel</button>
+          <button type="submit" class="bg-amber-600 hover:bg-amber-500 text-white font-medium px-4 py-2 rounded-xl text-xs">Save record</button>
+        </div>
+      </form>
+    </div>
+  </div>
 </div>

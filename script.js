@@ -532,6 +532,12 @@ function switchTab(tabId) {
   if (tabId === 'dimad-dimdrive' && typeof DIMDRIVE !== 'undefined') {
     DIMDRIVE.render();
   }
+  if (tabId === 'creator-design' && typeof DESIGN_SUITE !== 'undefined') {
+    DESIGN_SUITE.mount();
+  }
+  if (tabId === 'creator-pipeline' && typeof PIPELINE !== 'undefined') {
+    PIPELINE.mount();
+  }
 }
 
 function resolveDimTier() {
@@ -1739,6 +1745,655 @@ const DIMAD_NOTEPAD = {
   }
 };
 
+const DESIGN_SUITE = {
+  elements: [],
+  selectedId: null,
+  zoom: 1,
+  size: { width: 1280, height: 720 },
+  bg: '#070A0F',
+  history: [],
+  historyStep: -1,
+  mounted: false,
+  dragging: false,
+  dragOffset: { x: 0, y: 0 },
+  grid: 8,
+  snap: 8,
+  editingId: null,
+  drawerCollapsed: false,
+  templatesCollapsed: false,
+  moved: false,
+
+  el(id) { return document.getElementById(id); },
+
+  mount() {
+    if (!this.el('ds-artboard')) return;
+    if (!this.mounted) {
+      this.mounted = true;
+      this.switchPanel('ai');
+      this.loadTemplate('nomad-quote');
+    }
+    requestAnimationFrame(() => this.fit());
+  },
+
+  toggleDrawer() {
+    this.drawerCollapsed = !this.drawerCollapsed;
+    const drawer = this.el('ds-sidebar-drawer');
+    const icon = this.el('ds-drawer-toggle') && this.el('ds-drawer-toggle').querySelector('i');
+    if (drawer) drawer.classList.toggle('ds-drawer-collapsed', this.drawerCollapsed);
+    if (icon) {
+      icon.classList.toggle('fa-chevron-left', !this.drawerCollapsed);
+      icon.classList.toggle('fa-chevron-right', this.drawerCollapsed);
+    }
+    requestAnimationFrame(() => this.fit());
+  },
+
+  toggleTemplates() {
+    this.templatesCollapsed = !this.templatesCollapsed;
+    const body = this.el('ds-templates-body');
+    const chev = this.el('ds-templates-chevron');
+    if (body) body.classList.toggle('hidden', this.templatesCollapsed);
+    if (chev) {
+      chev.classList.toggle('fa-chevron-down', !this.templatesCollapsed);
+      chev.classList.toggle('fa-chevron-up', this.templatesCollapsed);
+    }
+  },
+
+  switchPanel(name) {
+    if (this.drawerCollapsed) this.toggleDrawer();
+    document.querySelectorAll('#view-creator-design .ds-tab').forEach(btn => {
+      const on = btn.getAttribute('data-ds-tab') === name;
+      btn.classList.toggle('text-brand-gold', on);
+      btn.classList.toggle('text-slate-400', !on);
+    });
+    document.querySelectorAll('#view-creator-design .ds-panel').forEach(p => p.classList.add('hidden'));
+    const panel = this.el(`ds-panel-${name}`);
+    if (panel) panel.classList.remove('hidden');
+  },
+
+  changePreset(val) {
+    let w = 1280, h = 720;
+    if (val === '1080x1080') { w = 1080; h = 1080; }
+    else if (val === '1080x1920') { w = 1080; h = 1920; }
+    else if (val === '1280x720') { w = 1280; h = 720; }
+    else if (val === '1500x500') { w = 1500; h = 500; }
+    else if (val === '1200x630') { w = 1200; h = 630; }
+    else if (val === 'custom') {
+      const customW = prompt('Enter custom width (px):', '1200');
+      const customH = prompt('Enter custom height (px):', '800');
+      if (!customW || !customH) return;
+      w = parseInt(customW, 10) || 1200;
+      h = parseInt(customH, 10) || 800;
+    }
+    this.size = { width: w, height: h };
+    const preset = this.el('ds-preset');
+    if (preset && val !== 'custom') preset.value = val;
+    const board = this.el('ds-artboard');
+    if (board) {
+      board.style.width = `${w}px`;
+      board.style.height = `${h}px`;
+    }
+    this.fit();
+  },
+
+  adjustZoom(delta) {
+    this.zoom = Math.max(0.2, Math.min(2.5, this.zoom + delta));
+    this.applyZoom();
+  },
+
+  fit() {
+    const stage = this.el('ds-canvas-stage');
+    if (!stage) return;
+    const scaleW = (stage.clientWidth - 64) / this.size.width;
+    const scaleH = (stage.clientHeight - 64) / this.size.height;
+    this.zoom = Math.min(scaleW, scaleH, 1);
+    this.applyZoom();
+  },
+
+  applyZoom() {
+    const board = this.el('ds-artboard');
+    const wrap = this.el('ds-artboard-wrap');
+    if (!board) return;
+    board.style.transform = `scale(${this.zoom})`;
+    board.style.transformOrigin = 'top left';
+    if (wrap) {
+      wrap.style.width = `${this.size.width * this.zoom}px`;
+      wrap.style.height = `${this.size.height * this.zoom}px`;
+    }
+    const label = this.el('ds-zoom');
+    if (label) label.textContent = `${Math.round(this.zoom * 100)}%`;
+  },
+
+  nid() { return Date.now() + Math.floor(Math.random() * 99); },
+
+  addText(text, size, weight) {
+    const id = this.nid();
+    this.elements.push({
+      id, type: 'text', text: text || 'New text', x: 100, y: 100,
+      fontSize: size || 32, fontWeight: weight || '700', fontFamily: 'JetBrains Mono', fill: '#ffffff'
+    });
+    this.selectedId = id;
+    this.render();
+    this.saveHistory();
+    this.beginEdit(id);
+  },
+
+  generateText() {
+    this.generateTextFrom('ds-gen-text');
+  },
+
+  generateTextFrom(inputId) {
+    const input = this.el(inputId);
+    const text = (input && input.value.trim()) || 'BUILD HERE.';
+    this.addText(text, 42, '700');
+    if (input) input.value = '';
+  },
+
+  addShape(shape) {
+    this.elements.push({
+      id: this.nid(), type: 'shape', shape, x: 200, y: 200,
+      width: shape === 'line' ? 180 : 150,
+      height: shape === 'line' ? 6 : (shape === 'badge' ? 40 : 150),
+      fill: '#F59E0B'
+    });
+    this.selectedId = this.elements[this.elements.length - 1].id;
+    this.render();
+    this.saveHistory();
+  },
+
+  addIcon(icon) {
+    this.elements.push({
+      id: this.nid(), type: 'icon', icon, x: 250, y: 250, fontSize: 64, fill: '#F59E0B'
+    });
+    this.selectedId = this.elements[this.elements.length - 1].id;
+    this.render();
+    this.saveHistory();
+  },
+
+  addImage(src) {
+    this.elements.push({
+      id: this.nid(), type: 'image', src, x: 150, y: 150, width: 300, height: 200
+    });
+    this.selectedId = this.elements[this.elements.length - 1].id;
+    this.render();
+    this.saveHistory();
+  },
+
+  handleUpload(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => this.addImage(ev.target.result);
+    reader.readAsDataURL(file);
+  },
+
+  box(el) {
+    const node = this.el('ds-artboard') && this.el('ds-artboard').querySelector(`[data-id="${el.id}"]`);
+    const w = el.width || (node ? node.offsetWidth : 120);
+    const h = el.height || (node ? node.offsetHeight : (el.fontSize || 32));
+    return { x: el.x, y: el.y, w, h, cx: el.x + w / 2, cy: el.y + h / 2, r: el.x + w, b: el.y + h };
+  },
+
+  render() {
+    const board = this.el('ds-artboard');
+    if (!board) return;
+    board.style.backgroundColor = this.bg;
+    board.style.backgroundImage = 'linear-gradient(to right, rgba(56,189,248,0.07) 1px, transparent 1px), linear-gradient(to bottom, rgba(56,189,248,0.07) 1px, transparent 1px)';
+    board.style.backgroundSize = `${this.grid * 4}px ${this.grid * 4}px`;
+    board.innerHTML = '';
+    this.elements.forEach(el => {
+      const div = document.createElement('div');
+      div.style.position = 'absolute';
+      div.style.left = `${el.x}px`;
+      div.style.top = `${el.y}px`;
+      div.style.cursor = 'move';
+      div.dataset.id = String(el.id);
+      if (this.selectedId === el.id && this.editingId !== el.id) {
+        div.style.outline = '2px solid #F59E0B';
+        div.style.outlineOffset = '2px';
+      }
+      if (el.type === 'text') {
+        div.className = 'ds-text';
+        div.textContent = el.text;
+        div.style.color = el.fill;
+        div.style.fontSize = `${el.fontSize}px`;
+        div.style.fontFamily = el.fontFamily || 'JetBrains Mono';
+        div.style.fontWeight = el.fontWeight;
+        div.style.whiteSpace = 'pre';
+        div.setAttribute('spellcheck', 'false');
+        div.addEventListener('dblclick', (e) => {
+          e.stopPropagation();
+          this.beginEdit(el.id);
+        });
+      } else if (el.type === 'shape') {
+        div.style.width = `${el.width}px`;
+        div.style.height = `${el.height}px`;
+        div.style.backgroundColor = el.fill;
+        if (el.shape === 'circle') div.style.borderRadius = '50%';
+        if (el.shape === 'badge') div.style.borderRadius = '9999px';
+      } else if (el.type === 'icon') {
+        const i = document.createElement('i');
+        i.className = el.icon === 'plane' ? 'fa-solid fa-plane' : (el.icon === 'laptop' ? 'fa-solid fa-laptop-code' : 'fa-solid fa-globe');
+        i.style.fontSize = `${el.fontSize}px`;
+        i.style.color = el.fill;
+        div.appendChild(i);
+      } else if (el.type === 'image') {
+        const img = document.createElement('img');
+        img.src = el.src;
+        img.alt = '';
+        img.style.width = `${el.width}px`;
+        img.style.height = `${el.height}px`;
+        img.style.objectFit = 'cover';
+        img.style.borderRadius = '12px';
+        img.draggable = false;
+        div.appendChild(img);
+      }
+      div.addEventListener('mousedown', (e) => this.startDrag(e, el.id));
+      board.appendChild(div);
+      el._w = div.offsetWidth;
+      el._h = div.offsetHeight;
+    });
+    this.updateBar();
+  },
+
+  beginEdit(id) {
+    const el = this.elements.find(item => item.id === id);
+    const node = this.el('ds-artboard') && this.el('ds-artboard').querySelector(`[data-id="${id}"]`);
+    if (!el || el.type !== 'text' || !node) return;
+    this.editingId = id;
+    this.selectedId = id;
+    node.contentEditable = 'true';
+    node.style.cursor = 'text';
+    node.focus();
+    const range = document.createRange();
+    range.selectNodeContents(node);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    const commit = () => {
+      node.contentEditable = 'false';
+      node.style.cursor = 'move';
+      const next = (node.innerText || '').replace(/\n+$/, '');
+      if (next !== el.text) {
+        el.text = next || el.text;
+        this.saveHistory();
+      }
+      this.editingId = null;
+      node.removeEventListener('blur', commit);
+      this.updateBar();
+    };
+    node.addEventListener('blur', commit);
+    node.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        node.blur();
+      }
+      e.stopPropagation();
+    });
+    this.updateBar();
+  },
+
+  startDrag(e, id) {
+    e.stopPropagation();
+    if (this.editingId === id) return;
+    if (this.editingId) {
+      const active = document.activeElement;
+      if (active && active.blur) active.blur();
+    }
+    this.selectedId = id;
+    const el = this.elements.find(item => item.id === id);
+    if (!el) return;
+    this.dragging = true;
+    this.moved = false;
+    const board = this.el('ds-artboard').getBoundingClientRect();
+    this.dragOffset.x = (e.clientX - board.left) / this.zoom - el.x;
+    this.dragOffset.y = (e.clientY - board.top) / this.zoom - el.y;
+    const move = (ev) => this.onDrag(ev);
+    const up = () => {
+      document.removeEventListener('mousemove', move);
+      document.removeEventListener('mouseup', up);
+      this.clearGuides();
+      if (this.dragging) {
+        this.dragging = false;
+        if (this.moved) this.saveHistory();
+      }
+    };
+    document.addEventListener('mousemove', move);
+    document.addEventListener('mouseup', up);
+    this.updateBar();
+    const node = this.el('ds-artboard').querySelector(`[data-id="${id}"]`);
+    if (node) {
+      node.style.outline = '2px solid #F59E0B';
+      node.style.outlineOffset = '2px';
+    }
+  },
+
+  onDrag(e) {
+    if (!this.dragging || !this.selectedId) return;
+    const el = this.elements.find(item => item.id === this.selectedId);
+    const board = this.el('ds-artboard');
+    if (!el || !board) return;
+    this.moved = true;
+    const rect = board.getBoundingClientRect();
+    let x = (e.clientX - rect.left) / this.zoom - this.dragOffset.x;
+    let y = (e.clientY - rect.top) / this.zoom - this.dragOffset.y;
+    const snapped = this.snapToGridAndPeers(el, x, y);
+    el.x = snapped.x;
+    el.y = snapped.y;
+    const node = board.querySelector(`[data-id="${el.id}"]`);
+    if (node) {
+      node.style.left = `${el.x}px`;
+      node.style.top = `${el.y}px`;
+    }
+    this.drawGuides(snapped.guides);
+  },
+
+  snapToGridAndPeers(el, x, y) {
+    const w = el._w || el.width || 120;
+    const h = el._h || el.height || el.fontSize || 32;
+    const xs = [0, this.size.width / 2 - w / 2, this.size.width - w];
+    const ys = [0, this.size.height / 2 - h / 2, this.size.height - h];
+    const vLines = [0, this.size.width / 2, this.size.width];
+    const hLines = [0, this.size.height / 2, this.size.height];
+    this.elements.forEach(other => {
+      if (other.id === el.id) return;
+      const b = this.box(other);
+      xs.push(b.x, b.cx - w / 2, b.r - w, b.r, b.x - w);
+      ys.push(b.y, b.cy - h / 2, b.b - h, b.b, b.y - h);
+      vLines.push(b.x, b.cx, b.r);
+      hLines.push(b.y, b.cy, b.b);
+    });
+    const snapAxis = (val, targets) => {
+      let best = Math.round(val / this.grid) * this.grid;
+      let dist = Math.abs(val - best);
+      let hit = null;
+      targets.forEach(t => {
+        const d = Math.abs(val - t);
+        if (d <= this.snap && d < dist) {
+          dist = d;
+          best = t;
+          hit = t;
+        }
+      });
+      return { val: best, hit };
+    };
+    const sx = snapAxis(x, xs);
+    const sy = snapAxis(y, ys);
+    const guides = [];
+    const left = sx.val;
+    const top = sy.val;
+    const cx = left + w / 2;
+    const cy = top + h / 2;
+    vLines.forEach(line => {
+      if (Math.abs(left - line) < 1 || Math.abs(cx - line) < 1 || Math.abs(left + w - line) < 1) {
+        guides.push({ axis: 'v', pos: line });
+      }
+    });
+    hLines.forEach(line => {
+      if (Math.abs(top - line) < 1 || Math.abs(cy - line) < 1 || Math.abs(top + h - line) < 1) {
+        guides.push({ axis: 'h', pos: line });
+      }
+    });
+    return { x: sx.val, y: sy.val, guides };
+  },
+
+  drawGuides(guides) {
+    const board = this.el('ds-artboard');
+    if (!board) return;
+    board.querySelectorAll('.ds-guide').forEach(n => n.remove());
+    (guides || []).forEach(g => {
+      const line = document.createElement('div');
+      line.className = `ds-guide ${g.axis === 'v' ? 'ds-guide-v' : 'ds-guide-h'}`;
+      if (g.axis === 'v') line.style.left = `${g.pos}px`;
+      else line.style.top = `${g.pos}px`;
+      board.appendChild(line);
+    });
+  },
+
+  clearGuides() {
+    const board = this.el('ds-artboard');
+    if (board) board.querySelectorAll('.ds-guide').forEach(n => n.remove());
+  },
+
+  align(edge) {
+    const el = this.elements.find(item => item.id === this.selectedId);
+    if (!el) return;
+    const w = el._w || el.width || 120;
+    const h = el._h || el.height || el.fontSize || 32;
+    if (edge === 'left') el.x = 0;
+    if (edge === 'center') el.x = (this.size.width - w) / 2;
+    if (edge === 'right') el.x = this.size.width - w;
+    if (edge === 'top') el.y = 0;
+    if (edge === 'middle') el.y = (this.size.height - h) / 2;
+    if (edge === 'bottom') el.y = this.size.height - h;
+    this.render();
+    this.saveHistory();
+  },
+
+  clearSelect(e) {
+    if (e.target && e.target.id === 'ds-canvas-stage') {
+      this.selectedId = null;
+      this.render();
+    }
+  },
+
+  updateBar() {
+    const label = this.el('ds-selected-label');
+    const textControls = this.el('ds-text-controls');
+    const colorPicker = this.el('ds-element-color');
+    const el = this.elements.find(item => item.id === this.selectedId);
+    if (!el) {
+      if (label) label.textContent = 'No Selection';
+      if (textControls) textControls.classList.add('hidden');
+      return;
+    }
+    if (label) label.textContent = `Selected: ${el.type.toUpperCase()}`;
+    if (el.fill && colorPicker) colorPicker.value = el.fill;
+    if (el.type === 'text') {
+      textControls.classList.remove('hidden');
+      textControls.classList.add('flex');
+      const textVal = this.el('ds-text-value');
+      if (textVal && document.activeElement !== textVal) textVal.value = el.text || '';
+      this.el('ds-font-family').value = el.fontFamily || 'JetBrains Mono';
+      this.el('ds-font-size').value = el.fontSize || 32;
+    } else {
+      textControls.classList.add('hidden');
+      textControls.classList.remove('flex');
+    }
+  },
+
+  updateSelected(prop, val) {
+    const el = this.elements.find(item => item.id === this.selectedId);
+    if (!el) return;
+    el[prop] = prop === 'fontSize' ? (parseInt(val, 10) || 16) : val;
+    if (prop === 'text') {
+      const node = this.el('ds-artboard') && this.el('ds-artboard').querySelector(`[data-id="${el.id}"]`);
+      if (node) node.textContent = el.text;
+      return;
+    }
+    this.render();
+    this.saveHistory();
+  },
+
+  deleteSelected() {
+    if (!this.selectedId) return;
+    this.elements = this.elements.filter(item => item.id !== this.selectedId);
+    this.selectedId = null;
+    this.render();
+    this.saveHistory();
+  },
+
+  moveLayer(dir) {
+    const idx = this.elements.findIndex(item => item.id === this.selectedId);
+    if (idx === -1) return;
+    if (dir === 'up' && idx < this.elements.length - 1) {
+      const tmp = this.elements[idx];
+      this.elements[idx] = this.elements[idx + 1];
+      this.elements[idx + 1] = tmp;
+    } else if (dir === 'down' && idx > 0) {
+      const tmp = this.elements[idx];
+      this.elements[idx] = this.elements[idx - 1];
+      this.elements[idx - 1] = tmp;
+    }
+    this.render();
+    this.saveHistory();
+  },
+
+  applyColor(hex) {
+    if (this.selectedId) this.updateSelected('fill', hex);
+    else this.setBg(hex);
+  },
+
+  applyFont(fontName) {
+    if (this.selectedId) this.updateSelected('fontFamily', fontName);
+  },
+
+  setBg(hex) {
+    this.bg = hex;
+    this.render();
+  },
+
+  loadTemplate(tpl) {
+    this.elements = [];
+    this.bg = '#070A0F';
+    const F = 'JetBrains Mono';
+    if (tpl === 'nomad-quote') {
+      this.changePreset('1280x720');
+      this.elements = [
+        { id: 1, type: 'text', text: 'BUILD HERE.', x: 120, y: 180, fontSize: 64, fontWeight: '700', fontFamily: F, fill: '#ffffff' },
+        { id: 2, type: 'text', text: 'LIVE EVERYWHERE.', x: 120, y: 260, fontSize: 64, fontWeight: '700', fontFamily: F, fill: '#F59E0B' },
+        { id: 3, type: 'text', text: 'THE OPERATING SYSTEM FOR BORDERLESS EXECUTION', x: 120, y: 360, fontSize: 16, fontWeight: 'normal', fontFamily: F, fill: '#94a3b8' },
+        { id: 4, type: 'icon', icon: 'globe', x: 120, y: 430, fontSize: 36, fill: '#F59E0B' }
+      ];
+    } else if (tpl === 'youtube-thumb') {
+      this.changePreset('1280x720');
+      this.elements = [
+        { id: 1, type: 'shape', shape: 'badge', x: 80, y: 80, width: 220, height: 40, fill: '#F59E0B' },
+        { id: 2, type: 'text', text: 'EPISODE 04', x: 125, y: 88, fontSize: 16, fontWeight: '700', fontFamily: F, fill: '#070A0F' },
+        { id: 3, type: 'text', text: 'DA NANG WORKSPACE', x: 80, y: 160, fontSize: 48, fontWeight: '700', fontFamily: F, fill: '#ffffff' },
+        { id: 4, type: 'image', src: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=600&auto=format&fit=crop&q=80', x: 650, y: 140, width: 550, height: 400 }
+      ];
+    } else if (tpl === 'minimal-card') {
+      this.changePreset('1200x630');
+      this.bg = '#0B0F17';
+      this.elements = [
+        { id: 1, type: 'text', text: 'SOVEREIGN FOUNDER', x: 80, y: 200, fontSize: 42, fontWeight: '700', fontFamily: F, fill: '#ffffff' },
+        { id: 2, type: 'text', text: 'DIMAD OS  ·  GOLD / SLATE', x: 80, y: 270, fontSize: 16, fontWeight: 'normal', fontFamily: F, fill: '#10B981' }
+      ];
+    } else if (tpl === 'story-promo') {
+      this.changePreset('1080x1920');
+      this.elements = [
+        { id: 1, type: 'text', text: 'WORKSTATION', x: 80, y: 640, fontSize: 56, fontWeight: '700', fontFamily: F, fill: '#ffffff' },
+        { id: 2, type: 'text', text: 'SETUP', x: 80, y: 720, fontSize: 56, fontWeight: '700', fontFamily: F, fill: '#F59E0B' },
+        { id: 3, type: 'text', text: 'DIMAD DESIGN SUITE', x: 80, y: 820, fontSize: 18, fontWeight: 'normal', fontFamily: F, fill: '#38BDF8' }
+      ];
+    }
+    this.selectedId = null;
+    this.render();
+    this.saveHistory();
+  },
+
+  generateAi() {
+    const promptEl = this.el('ds-ai-prompt');
+    const styleEl = this.el('ds-ai-style');
+    const promptText = (promptEl && promptEl.value.trim()) || 'NOMAD MASTERCLASS';
+    const style = (styleEl && styleEl.value) || 'sovereign';
+    const palettes = {
+      sovereign: { bg: '#070A0F', accent: '#F59E0B', text: '#ffffff' },
+      minimal: { bg: '#ffffff', accent: '#070A0F', text: '#070A0F' },
+      cyber: { bg: '#070A0F', accent: '#38BDF8', text: '#F59E0B' },
+      luxury: { bg: '#000000', accent: '#F59E0B', text: '#ffffff' }
+    };
+    const pal = palettes[style] || palettes.sovereign;
+    this.bg = pal.bg;
+    this.changePreset('1280x720');
+    this.elements = [
+      { id: 1, type: 'shape', shape: 'rectangle', x: 60, y: 60, width: 8, height: 120, fill: pal.accent },
+      { id: 2, type: 'text', text: promptText.toUpperCase(), x: 90, y: 70, fontSize: 36, fontWeight: '700', fontFamily: 'JetBrains Mono', fill: pal.text },
+      { id: 3, type: 'text', text: 'Generated via DIMAD Design Suite', x: 90, y: 150, fontSize: 14, fontWeight: 'normal', fontFamily: 'JetBrains Mono', fill: pal.accent }
+    ];
+    this.selectedId = null;
+    this.render();
+    this.saveHistory();
+  },
+
+  saveHistory() {
+    this.historyStep += 1;
+    this.history = this.history.slice(0, this.historyStep);
+    this.history.push(JSON.stringify({ elements: this.elements, bg: this.bg, size: this.size }));
+  },
+
+  undo() {
+    if (this.historyStep > 0) {
+      this.historyStep -= 1;
+      this.applySnapshot(this.history[this.historyStep]);
+    }
+  },
+
+  redo() {
+    if (this.historyStep < this.history.length - 1) {
+      this.historyStep += 1;
+      this.applySnapshot(this.history[this.historyStep]);
+    }
+  },
+
+  applySnapshot(raw) {
+    const snap = JSON.parse(raw);
+    this.elements = snap.elements || [];
+    this.bg = snap.bg || '#070A0F';
+    if (snap.size) this.size = snap.size;
+    const board = this.el('ds-artboard');
+    if (board) {
+      board.style.width = `${this.size.width}px`;
+      board.style.height = `${this.size.height}px`;
+    }
+    this.render();
+  },
+
+  exportPng() {
+    const canvas = document.createElement('canvas');
+    canvas.width = this.size.width;
+    canvas.height = this.size.height;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = this.bg;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    this.elements.forEach(el => {
+      if (el.type === 'shape') {
+        ctx.fillStyle = el.fill;
+        if (el.shape === 'circle') {
+          ctx.beginPath();
+          ctx.ellipse(el.x + el.width / 2, el.y + el.height / 2, el.width / 2, el.height / 2, 0, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          ctx.fillRect(el.x, el.y, el.width, el.height);
+        }
+      } else if (el.type === 'text') {
+        ctx.fillStyle = el.fill;
+        ctx.font = `${el.fontWeight || 'normal'} ${el.fontSize}px ${el.fontFamily || 'JetBrains Mono'}`;
+        ctx.fillText(el.text, el.x, el.y + el.fontSize);
+      }
+    });
+    const a = document.createElement('a');
+    a.href = canvas.toDataURL('image/png');
+    a.download = 'dimad-design.png';
+    a.click();
+  },
+
+  openCanva() {
+    const modal = this.el('ds-canva-modal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  },
+
+  closeCanva() {
+    const modal = this.el('ds-canva-modal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }
+};
+window.DESIGN_SUITE = DESIGN_SUITE;
+
 const DIMDRIVE = {
   storageKey: 'dimad_dimdrive',
 
@@ -1942,6 +2597,642 @@ const WRITESPACE = {
     localStorage.setItem(this.storageKey, JSON.stringify(state));
   },
 
+  escape(value) {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  },
+
+  previewBodyHtml(text) {
+    const raw = String(text || '').trim();
+    if (!raw) return '<p class="opacity-50 italic">Nothing to preview yet.</p>';
+    return raw.split(/\n{2,}/).map((block) => {
+      const lines = this.escape(block).replace(/\n/g, '<br>');
+      return `<p class="mb-4 last:mb-0">${lines}</p>`;
+    }).join('');
+  },
+
+  openPreview() {
+    this.saveFromDom();
+    const s = this.state();
+    const modal = document.getElementById('ws-preview-modal');
+    const stage = document.getElementById('ws-preview-stage');
+    const kind = document.getElementById('ws-preview-kind');
+    if (!modal || !stage) return;
+    const layout = s.layoutStyle || 'substack';
+    const face = `'${s.fontFamily || 'Georgia'}', Georgia, serif`;
+    const size = this.sizePx(s.fontSize);
+    const light = s.themeMode === 'light';
+    let title = s.title || 'Untitled';
+    let subtitle = s.subtitle || '';
+    let body = s.bodyText || '';
+    let dateLabel = '';
+    if (layout === 'journal') {
+      const j = this.ensureJournalEntry();
+      const entry = j.entries.find((e) => e.id === j.currentId) || {};
+      title = entry.title || '';
+      body = entry.body || '';
+      dateLabel = this.formatJournalDate(entry.date || this.todayStamp());
+    }
+    const bodyHtml = this.previewBodyHtml(body);
+    if (kind) {
+      kind.textContent = layout === 'word' ? '· Microsoft Word' : layout === 'journal' ? '· Journal' : '· Substack';
+    }
+    if (layout === 'word') {
+      stage.style.backgroundColor = '#e6e6e6';
+      stage.innerHTML = `
+        <article class="w-full max-w-[816px] min-h-[1056px] bg-white text-black shadow-2xl border border-[#c6c6c6] px-24 py-16 select-text cursor-default" style="font-family:${face}">
+          <div class="flex items-center justify-between text-[10px] tracking-wide text-[#666] mb-10" style="font-family:Calibri, 'Segoe UI', sans-serif">
+            <span>${this.escape(title)}</span><span>Page 1</span>
+          </div>
+          <h1 class="text-[21.33px] font-bold leading-tight mb-4">${this.escape(title)}</h1>
+          <div class="leading-[1.15] text-black whitespace-normal" style="font-size:${size}">${bodyHtml}</div>
+        </article>`;
+    } else if (layout === 'journal') {
+      stage.style.backgroundColor = light ? '#f0f2f5' : '#0f0e13';
+      const paper = light ? 'bg-white text-slate-800 border-slate-200' : 'bg-[#16141d] text-amber-50 border-amber-900/30';
+      stage.innerHTML = `
+        <article class="w-full max-w-3xl ${paper} rounded-xl border shadow-xl p-8 md:p-12 select-text cursor-default" style="font-family:${face}">
+          <div class="text-[11px] font-semibold tracking-widest uppercase text-amber-500 mb-2">${this.escape(dateLabel)}</div>
+          ${title ? `<h1 class="text-2xl font-bold mb-6">${this.escape(title)}</h1>` : ''}
+          <div class="leading-relaxed whitespace-normal" style="font-size:${size}">${bodyHtml}</div>
+        </article>`;
+    } else {
+      stage.style.backgroundColor = light ? '#f0f2f5' : '#0f0e13';
+      const paper = light ? 'bg-white text-slate-800 border-slate-200' : 'bg-[#16141d] text-amber-50 border-amber-900/30';
+      const cover = s.coverImage
+        ? `<div class="rounded-lg overflow-hidden border border-amber-900/30 h-48 sm:h-64 mb-6"><img alt="" class="w-full h-full object-cover" src="${this.escape(s.coverImage)}"></div>`
+        : '';
+      stage.innerHTML = `
+        <article class="w-full max-w-3xl ${paper} rounded-xl border shadow-xl p-8 md:p-12 select-text cursor-default" style="font-family:${face}">
+          ${cover}
+          <h1 class="text-3xl sm:text-4xl font-extrabold mb-2">${this.escape(title)}</h1>
+          ${subtitle ? `<p class="text-lg opacity-80 mb-6">${this.escape(subtitle)}</p>` : ''}
+          <div class="flex items-center gap-3 mt-2 mb-8 pt-4 border-t border-amber-900/20 text-xs opacity-75">
+            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-slate-950 font-bold">WS</div>
+            <div>
+              <div class="font-semibold text-amber-500">WriteSpace Author</div>
+              <div>${new Date().toLocaleDateString()}</div>
+            </div>
+          </div>
+          <div class="leading-relaxed whitespace-normal" style="font-size:${size}">${bodyHtml}</div>
+        </article>`;
+    }
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    this._previewEsc = (ev) => { if (ev.key === 'Escape') this.closePreview(); };
+    document.addEventListener('keydown', this._previewEsc);
+  },
+
+  closePreview() {
+    const modal = document.getElementById('ws-preview-modal');
+    if (modal) {
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+    if (this._previewEsc) {
+      document.removeEventListener('keydown', this._previewEsc);
+      this._previewEsc = null;
+    }
+  },
+
+  journalKey: 'dimad_writespace_journal',
+
+  defaultJournalFolders() {
+    return [{ id: 'daily', name: 'Daily Journal' }];
+  },
+
+  loadJournal() {
+    try {
+      const data = JSON.parse(localStorage.getItem(this.journalKey) || '{}');
+      const folders = Array.isArray(data.folders) && data.folders.length
+        ? data.folders
+        : this.defaultJournalFolders();
+      if (!folders.some((f) => f.id === 'daily')) folders.unshift({ id: 'daily', name: 'Daily Journal' });
+      const entries = (Array.isArray(data.entries) ? data.entries : []).map((entry) => ({
+        ...entry,
+        folderId: entry.folderId || 'daily'
+      }));
+      const currentFolder = folders.some((f) => f.id === data.currentFolder) ? data.currentFolder : 'daily';
+      const inFolder = entries.filter((e) => e.folderId === currentFolder);
+      const now = new Date();
+      const nowYear = now.getFullYear();
+      const year = Number(data.year) || nowYear;
+      const lastMonth = this.lastJournalMonth(year);
+      let month = Number(data.month);
+      if (!month || month < 1 || month > 12) month = year === nowYear ? now.getMonth() + 1 : lastMonth;
+      if (month > lastMonth) month = lastMonth;
+      return {
+        folders,
+        currentFolder,
+        entries,
+        currentId: data.currentId || (inFolder[0] && inFolder[0].id) || (entries[0] && entries[0].id) || '',
+        year,
+        month
+      };
+    } catch (err) {
+      const now = new Date();
+      return { folders: this.defaultJournalFolders(), currentFolder: 'daily', entries: [], currentId: '', year: now.getFullYear(), month: now.getMonth() + 1 };
+    }
+  },
+
+  persistJournal(data) {
+    localStorage.setItem(this.journalKey, JSON.stringify(data));
+  },
+
+  todayStamp() {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  },
+
+  formatJournalDate(iso) {
+    const d = new Date(`${iso}T12:00:00`);
+    if (Number.isNaN(d.getTime())) return iso;
+    return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+  },
+
+  folderEntries(j) {
+    return (j.entries || []).filter((e) => (e.folderId || 'daily') === (j.currentFolder || 'daily'));
+  },
+
+  ensureJournalEntry() {
+    const j = this.loadJournal();
+    let folderItems = this.folderEntries(j);
+    if (!folderItems.length) {
+      const entry = {
+        id: `j-${Date.now()}`,
+        date: this.todayStamp(),
+        title: '',
+        body: '',
+        folderId: j.currentFolder || 'daily',
+        updatedAt: Date.now()
+      };
+      j.entries.unshift(entry);
+      j.currentId = entry.id;
+      this.persistJournal(j);
+      folderItems = [entry];
+    }
+    const current = j.entries.find((e) => e.id === j.currentId);
+    if (!current || (current.folderId || 'daily') !== j.currentFolder) {
+      j.currentId = folderItems[0].id;
+      this.persistJournal(j);
+    }
+    return j;
+  },
+
+  enterJournal() {
+    this._inJournal = true;
+    this.ensureJournalEntry();
+    this.applyJournalToDom();
+    this.renderJournalNav();
+    this.syncLayout();
+    this.syncTheme();
+  },
+
+  applyJournalToDom() {
+    const j = this.ensureJournalEntry();
+    const entry = j.entries.find((e) => e.id === j.currentId) || j.entries[0];
+    const body = document.getElementById('ws-body');
+    const title = document.getElementById('ws-journal-title');
+    const dateEl = document.getElementById('ws-journal-date');
+    if (body) {
+      body.value = entry.body || '';
+      body.placeholder = 'Write freely. No outline. No audience. Just the page.';
+    }
+    if (title) title.value = entry.title || '';
+    if (dateEl) dateEl.textContent = this.formatJournalDate(entry.date);
+  },
+
+  saveCurrentJournalEntry() {
+    const j = this.ensureJournalEntry();
+    const entry = j.entries.find((e) => e.id === j.currentId);
+    if (!entry) return;
+    entry.body = document.getElementById('ws-body')?.value || '';
+    entry.title = document.getElementById('ws-journal-title')?.value || '';
+    entry.updatedAt = Date.now();
+    this.persistJournal(j);
+    this.renderJournalList();
+  },
+
+  openJournalEntry(id) {
+    this.saveCurrentJournalEntry();
+    const j = this.loadJournal();
+    if (!j.entries.some((e) => e.id === id)) return;
+    j.currentId = id;
+    this.persistJournal(j);
+    this.applyJournalToDom();
+    this.renderJournalNav();
+    this.syncMetrics();
+  },
+
+  newJournalEntry() {
+    this.saveCurrentJournalEntry();
+    const j = this.loadJournal();
+    const entry = {
+      id: `j-${Date.now()}`,
+      date: this.todayStamp(),
+      title: '',
+      body: '',
+      folderId: j.currentFolder || 'daily',
+      updatedAt: Date.now()
+    };
+    j.entries.unshift(entry);
+    j.currentId = entry.id;
+    j.year = new Date().getFullYear();
+    j.month = new Date().getMonth() + 1;
+    this.persistJournal(j);
+    this.applyJournalToDom();
+    this.renderJournalNav();
+    const body = document.getElementById('ws-body');
+    if (body) body.focus();
+  },
+
+  customFolderCount(j) {
+    return (j.folders || []).filter((f) => f.id !== 'daily').length;
+  },
+
+  bindJournalFolderUi() {
+    if (this._folderUiBound) return;
+    this._folderUiBound = true;
+    document.addEventListener('click', (e) => {
+      const menu = document.getElementById('ws-journal-folder-menu');
+      const btn = document.getElementById('ws-journal-folder-btn');
+      const ctx = document.getElementById('ws-journal-folder-ctx');
+      if (menu && !menu.contains(e.target) && btn && !btn.contains(e.target) && !this._folderComposer && !this._renamingFolderId) {
+        menu.classList.add('hidden');
+      }
+      const yearMenu = document.getElementById('ws-journal-year-menu');
+      const yearBtn = document.getElementById('ws-journal-year-btn');
+      if (yearMenu && yearBtn && !yearMenu.contains(e.target) && !yearBtn.contains(e.target)) {
+        yearMenu.classList.add('hidden');
+      }
+      const monthMenu = document.getElementById('ws-journal-month-menu');
+      const monthBtn = document.getElementById('ws-journal-month-btn');
+      if (monthMenu && monthBtn && !monthMenu.contains(e.target) && !monthBtn.contains(e.target)) {
+        monthMenu.classList.add('hidden');
+      }
+      if (ctx && !ctx.contains(e.target)) ctx.classList.add('hidden');
+    });
+  },
+
+  toggleJournalFolderMenu(e) {
+    if (e) e.stopPropagation();
+    this.bindJournalFolderUi();
+    const menu = document.getElementById('ws-journal-folder-menu');
+    if (!menu) return;
+    const willOpen = menu.classList.contains('hidden');
+    menu.classList.toggle('hidden', !willOpen);
+    if (willOpen) {
+      this._folderComposer = false;
+      this._renamingFolderId = '';
+      this.renderJournalFolders(this.loadJournal());
+    }
+  },
+
+  startNewFolder(e) {
+    if (e) e.stopPropagation();
+    const j = this.loadJournal();
+    if (this.customFolderCount(j) >= 10) return;
+    this._folderComposer = true;
+    this._renamingFolderId = '';
+    const menu = document.getElementById('ws-journal-folder-menu');
+    if (menu) menu.classList.remove('hidden');
+    this.renderJournalFolders(j);
+    const input = document.getElementById('ws-journal-folder-new');
+    if (input) {
+      input.focus();
+      input.select();
+    }
+  },
+
+  commitNewFolder() {
+    const input = document.getElementById('ws-journal-folder-new');
+    const name = (input && input.value ? input.value : '').trim();
+    this._folderComposer = false;
+    if (!name) {
+      this.renderJournalFolders(this.loadJournal());
+      return;
+    }
+    const j = this.loadJournal();
+    if (this.customFolderCount(j) >= 10) {
+      this.renderJournalFolders(j);
+      return;
+    }
+    this.saveCurrentJournalEntry();
+    const fresh = this.loadJournal();
+    const id = `folder-${Date.now()}`;
+    fresh.folders.push({ id, name });
+    fresh.currentFolder = id;
+    fresh.entries.unshift({
+      id: `j-${Date.now()}`,
+      date: this.todayStamp(),
+      title: '',
+      body: '',
+      folderId: id,
+      updatedAt: Date.now()
+    });
+    fresh.currentId = fresh.entries[0].id;
+    this.persistJournal(fresh);
+    this.applyJournalToDom();
+    this.renderJournalNav();
+    const menu = document.getElementById('ws-journal-folder-menu');
+    if (menu) menu.classList.add('hidden');
+    const body = document.getElementById('ws-body');
+    if (body) body.focus();
+  },
+
+  switchJournalFolder(folderId) {
+    this._folderComposer = false;
+    this._renamingFolderId = '';
+    this.saveCurrentJournalEntry();
+    const j = this.loadJournal();
+    if (!j.folders.some((f) => f.id === folderId)) return;
+    j.currentFolder = folderId;
+    const inFolder = this.folderEntries(j);
+    j.currentId = inFolder[0] ? inFolder[0].id : '';
+    this.persistJournal(j);
+    this.ensureJournalEntry();
+    this.applyJournalToDom();
+    this.renderJournalNav();
+    this.syncMetrics();
+    const menu = document.getElementById('ws-journal-folder-menu');
+    if (menu) menu.classList.add('hidden');
+  },
+
+  openJournalFolderCtx(e, folderId) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (folderId === 'daily') return;
+    this.bindJournalFolderUi();
+    this._ctxFolderId = folderId;
+    const ctx = document.getElementById('ws-journal-folder-ctx');
+    if (!ctx) return;
+    ctx.classList.remove('hidden');
+    const x = Math.min(e.clientX, window.innerWidth - 180);
+    const y = Math.min(e.clientY, window.innerHeight - 160);
+    ctx.style.left = `${x}px`;
+    ctx.style.top = `${y}px`;
+  },
+
+  journalFolderAction(action) {
+    const id = this._ctxFolderId;
+    const ctx = document.getElementById('ws-journal-folder-ctx');
+    if (ctx) ctx.classList.add('hidden');
+    if (!id || id === 'daily') return;
+    if (action === 'rename') this.startRenameFolder(id);
+    if (action === 'up') this.moveJournalFolder(id, -1);
+    if (action === 'down') this.moveJournalFolder(id, 1);
+    if (action === 'delete') this.deleteJournalFolder(id);
+  },
+
+  startRenameFolder(id) {
+    this._renamingFolderId = id;
+    this._folderComposer = false;
+    const menu = document.getElementById('ws-journal-folder-menu');
+    if (menu) menu.classList.remove('hidden');
+    this.renderJournalFolders(this.loadJournal());
+    const input = document.getElementById('ws-journal-folder-rename');
+    if (input) {
+      input.focus();
+      input.select();
+    }
+  },
+
+  commitRenameFolder() {
+    const id = this._renamingFolderId;
+    const input = document.getElementById('ws-journal-folder-rename');
+    const name = (input && input.value ? input.value : '').trim();
+    this._renamingFolderId = '';
+    if (!id || !name) {
+      this.renderJournalFolders(this.loadJournal());
+      return;
+    }
+    const j = this.loadJournal();
+    const folder = j.folders.find((f) => f.id === id);
+    if (folder) folder.name = name;
+    this.persistJournal(j);
+    this.renderJournalFolders(j);
+  },
+
+  moveJournalFolder(id, dir) {
+    const j = this.loadJournal();
+    const custom = j.folders.filter((f) => f.id !== 'daily');
+    const daily = j.folders.find((f) => f.id === 'daily') || { id: 'daily', name: 'Daily Journal' };
+    const idx = custom.findIndex((f) => f.id === id);
+    if (idx < 0) return;
+    const next = idx + dir;
+    if (next < 0 || next >= custom.length) return;
+    const tmp = custom[idx];
+    custom[idx] = custom[next];
+    custom[next] = tmp;
+    j.folders = [daily, ...custom];
+    this.persistJournal(j);
+    this.renderJournalFolders(j);
+  },
+
+  deleteJournalFolder(id) {
+    if (id === 'daily') return;
+    const j = this.loadJournal();
+    const folder = j.folders.find((f) => f.id === id);
+    if (!folder) return;
+    const ok = confirm(`Delete folder “${folder.name}” and its pages?`);
+    if (!ok) return;
+    this.saveCurrentJournalEntry();
+    const fresh = this.loadJournal();
+    fresh.folders = fresh.folders.filter((f) => f.id !== id);
+    fresh.entries = fresh.entries.filter((e) => (e.folderId || 'daily') !== id);
+    if (fresh.currentFolder === id) fresh.currentFolder = 'daily';
+    this.persistJournal(fresh);
+    this.ensureJournalEntry();
+    this.applyJournalToDom();
+    this.renderJournalNav();
+  },
+
+  renderJournalFolders(j) {
+    const menu = document.getElementById('ws-journal-folder-menu');
+    const label = document.getElementById('ws-journal-folder-label');
+    if (!j) j = this.loadJournal();
+    const current = j.currentFolder || 'daily';
+    const folder = (j.folders || []).find((f) => f.id === current);
+    if (label) label.textContent = folder ? folder.name : 'Daily Journal';
+    if (!menu) return;
+    const esc = (value) => String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const atCap = this.customFolderCount(j) >= 10;
+    const rows = (j.folders || this.defaultJournalFolders()).map((f) => {
+      const on = f.id === current;
+      if (this._renamingFolderId === f.id) {
+        return `<div class="px-2 py-1 flex items-center gap-1" onclick="event.stopPropagation()">
+          <input id="ws-journal-folder-rename" type="text" value="${esc(f.name)}" class="flex-1 min-w-0 bg-[#0f0e13] border border-amber-500/50 rounded px-1.5 py-1 text-[11px] text-amber-100 font-semibold uppercase" onkeydown="if(event.key==='Enter'){event.preventDefault();WRITESPACE.commitRenameFolder();}">
+          <button type="button" onclick="WRITESPACE.commitRenameFolder()" class="w-6 h-6 rounded bg-amber-500 text-slate-950 flex items-center justify-center" title="Save"><i class="fa-solid fa-check text-[10px]"></i></button>
+        </div>`;
+      }
+      const ctx = f.id === 'daily' ? '' : `oncontextmenu="WRITESPACE.openJournalFolderCtx(event, '${f.id}')"`;
+      return `<button type="button" ${ctx} onclick="WRITESPACE.switchJournalFolder('${f.id}')" class="w-full text-left px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide ${on ? 'bg-amber-500/15 text-amber-400' : 'text-amber-200 hover:bg-amber-500/10'}">${esc(f.name)}</button>`;
+    }).join('');
+    let composer = '';
+    if (this._folderComposer) {
+      composer = `<div class="px-2 py-1.5 flex items-center gap-1 border-t border-amber-900/30" onclick="event.stopPropagation()">
+        <input id="ws-journal-folder-new" type="text" placeholder="Folder name" class="flex-1 min-w-0 bg-[#0f0e13] border border-amber-500/50 rounded px-1.5 py-1 text-[11px] text-amber-100 font-semibold uppercase" onkeydown="if(event.key==='Enter'){event.preventDefault();WRITESPACE.commitNewFolder();}">
+        <button type="button" onclick="WRITESPACE.commitNewFolder()" class="w-6 h-6 rounded bg-amber-500 text-slate-950 flex items-center justify-center shrink-0" title="Save folder"><i class="fa-solid fa-check text-[10px]"></i></button>
+      </div>`;
+    } else {
+      composer = `<button type="button" onclick="WRITESPACE.startNewFolder(event)" class="w-full text-left px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide border-t border-amber-900/30 ${atCap ? 'text-amber-700 cursor-not-allowed' : 'text-amber-400 hover:bg-amber-500/10'}">${atCap ? 'Folder limit reached (10)' : '+ New Folder'}</button>`;
+    }
+    menu.innerHTML = rows + composer;
+  },
+
+  journalYears() {
+    const years = new Set([2024, 2025, 2026, new Date().getFullYear()]);
+    const j = this.loadJournal();
+    (j.entries || []).forEach((entry) => {
+      const y = Number(String(entry.date || '').slice(0, 4));
+      if (y >= 2000 && y <= 2100) years.add(y);
+    });
+    return [...years].sort((a, b) => a - b);
+  },
+
+  journalMonthNames() {
+    return ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  },
+
+  lastJournalMonth(year) {
+    const now = new Date();
+    if (Number(year) === now.getFullYear()) return now.getMonth() + 1;
+    return 12;
+  },
+
+  journalMonthCounts(j, year) {
+    const counts = {};
+    this.folderEntries(j).forEach((entry) => {
+      const d = new Date(`${entry.date}T12:00:00`);
+      if (Number.isNaN(d.getTime()) || d.getFullYear() !== year) return;
+      const m = d.getMonth() + 1;
+      counts[m] = (counts[m] || 0) + 1;
+    });
+    return counts;
+  },
+
+  toggleJournalYearMenu(e) {
+    if (e) e.stopPropagation();
+    this.bindJournalFolderUi();
+    const menu = document.getElementById('ws-journal-year-menu');
+    if (!menu) return;
+    const open = menu.classList.contains('hidden');
+    menu.classList.toggle('hidden', !open);
+    if (open) this.renderJournalYearMenu();
+  },
+
+  renderJournalYearMenu() {
+    const menu = document.getElementById('ws-journal-year-menu');
+    const label = document.getElementById('ws-journal-year-label');
+    const j = this.loadJournal();
+    const year = j.year || new Date().getFullYear();
+    if (label) label.textContent = String(year);
+    if (!menu) return;
+    menu.innerHTML = this.journalYears().map((y) => `<button type="button" onclick="WRITESPACE.setJournalYear(${y})" class="w-full text-left px-3 py-1.5 text-[11px] font-bold tracking-wide ${y === year ? 'bg-amber-500/15 text-amber-400' : 'text-amber-200 hover:bg-amber-500/10'}">${y}</button>`).join('');
+  },
+
+  setJournalYear(year) {
+    const j = this.loadJournal();
+    j.year = Number(year);
+    const last = this.lastJournalMonth(j.year);
+    if (!j.month || j.month > last) j.month = last;
+    this.persistJournal(j);
+    const menu = document.getElementById('ws-journal-year-menu');
+    if (menu) menu.classList.add('hidden');
+    this.renderJournalYearMenu();
+    this.renderJournalMonthMenu();
+    this.renderJournalList();
+  },
+
+  toggleJournalMonthMenu(e) {
+    if (e) e.stopPropagation();
+    this.bindJournalFolderUi();
+    const menu = document.getElementById('ws-journal-month-menu');
+    if (!menu) return;
+    const open = menu.classList.contains('hidden');
+    menu.classList.toggle('hidden', !open);
+    if (open) this.renderJournalMonthMenu();
+  },
+
+  renderJournalMonthMenu() {
+    const menu = document.getElementById('ws-journal-month-menu');
+    const label = document.getElementById('ws-journal-month-label');
+    const j = this.loadJournal();
+    const year = j.year || new Date().getFullYear();
+    const last = this.lastJournalMonth(year);
+    let month = Number(j.month) || last;
+    if (month > last) month = last;
+    const names = this.journalMonthNames();
+    const counts = this.journalMonthCounts(j, year);
+    const count = counts[month] || 0;
+    if (label) label.textContent = `${names[month - 1]} · ${count} ${count === 1 ? 'entry' : 'entries'}`;
+    if (!menu) return;
+    menu.innerHTML = Array.from({ length: last }, (_, i) => i + 1).map((m) => {
+      const n = counts[m] || 0;
+      const on = m === month;
+      return `<button type="button" onclick="WRITESPACE.setJournalMonth(${m})" class="w-full flex items-center justify-between gap-2 px-3 py-1.5 text-[11px] font-bold tracking-wide ${on ? 'bg-amber-500/15 text-amber-400' : 'text-amber-200 hover:bg-amber-500/10'}">
+        <span>${names[m - 1]}</span>
+        <span class="${on ? 'text-amber-400' : 'text-amber-300/50'}">${n}</span>
+      </button>`;
+    }).join('');
+  },
+
+  setJournalMonth(month) {
+    const j = this.loadJournal();
+    j.month = Number(month);
+    this.persistJournal(j);
+    const menu = document.getElementById('ws-journal-month-menu');
+    if (menu) menu.classList.add('hidden');
+    this.renderJournalMonthMenu();
+    this.renderJournalList();
+  },
+
+  renderJournalList() {
+    const root = document.getElementById('ws-journal-list');
+    if (!root) return;
+    const j = this.loadJournal();
+    const year = j.year || new Date().getFullYear();
+    const last = this.lastJournalMonth(year);
+    let month = Number(j.month) || last;
+    if (month > last) month = last;
+    const yearLabel = document.getElementById('ws-journal-year-label');
+    if (yearLabel) yearLabel.textContent = String(year);
+    this.renderJournalMonthMenu();
+    const items = this.folderEntries(j).filter((entry) => {
+      const d = new Date(`${entry.date}T12:00:00`);
+      return !Number.isNaN(d.getTime()) && d.getFullYear() === year && (d.getMonth() + 1) === month;
+    }).sort((a, b) => (a.date || '').localeCompare(b.date || '') || (a.updatedAt || 0) - (b.updatedAt || 0));
+    const esc = (value) => String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    if (!items.length) {
+      root.innerHTML = '<p class="px-2.5 py-3 text-[10px] text-amber-300/40">No pages this month. Click + New to write.</p>';
+      return;
+    }
+    root.innerHTML = items.map((entry) => {
+      const d = new Date(`${entry.date}T12:00:00`);
+      const dayLabel = Number.isNaN(d.getTime()) ? entry.date : d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+      const preview = (entry.title || entry.body || 'Blank page').replace(/\s+/g, ' ').trim().slice(0, 48);
+      const on = entry.id === j.currentId;
+      return `<button type="button" onclick="WRITESPACE.openJournalEntry('${entry.id}')" class="w-full text-left px-2.5 py-2 rounded-lg border ${on ? 'bg-amber-500/15 border-amber-500/40 text-amber-100' : 'border-transparent hover:bg-amber-500/10 text-amber-200'}">
+        <div class="text-[10px] font-semibold text-amber-400 leading-snug">${esc(dayLabel)}</div>
+        <div class="text-[11px] truncate opacity-80">${esc(preview)}</div>
+      </button>`;
+    }).join('');
+  },
+
+  renderJournalNav() {
+    this.bindJournalFolderUi();
+    this.renderJournalFolders(this.loadJournal());
+    this.renderJournalYearMenu();
+    this.renderJournalMonthMenu();
+    this.renderJournalList();
+  },
+
   state() {
     if (!this._state) this._state = this.load();
     return this._state;
@@ -1949,17 +3240,25 @@ const WRITESPACE = {
 
   saveFromDom() {
     const s = this.state();
-    s.title = document.getElementById('ws-title')?.value || '';
-    s.subtitle = document.getElementById('ws-subtitle')?.value || '';
-    s.bodyText = document.getElementById('ws-body')?.value || '';
     s.fontFamily = document.getElementById('ws-font')?.value || s.fontFamily;
     s.fontSize = document.getElementById('ws-size')?.value || s.fontSize;
-    s.layoutStyle = document.getElementById('ws-layout')?.value || s.layoutStyle;
+    const layoutEl = document.getElementById('ws-layout');
+    if (layoutEl && s.layoutStyle !== 'journal') s.layoutStyle = layoutEl.value || s.layoutStyle;
     s.focusKeyword = document.getElementById('ws-keyword')?.value || '';
     s.metaTitle = document.getElementById('ws-meta-title')?.value || '';
     s.metaDescription = document.getElementById('ws-meta-desc')?.value || '';
     s.slug = document.getElementById('ws-slug')?.value || '';
     s.aiPrompt = document.getElementById('ws-ai-prompt')?.value || '';
+    if (this._inJournal && s.layoutStyle === 'journal') {
+      this.persist(s);
+      this.saveCurrentJournalEntry();
+      this.syncMetrics();
+      this.syncLayout();
+      return;
+    }
+    s.title = document.getElementById('ws-title')?.value || '';
+    s.subtitle = document.getElementById('ws-subtitle')?.value || '';
+    s.bodyText = document.getElementById('ws-body')?.value || '';
     this.persist(s);
     this.syncMetrics();
     this.syncLayout();
@@ -1991,13 +3290,14 @@ const WRITESPACE = {
     if (title) title.value = s.title;
     if (titleWord) titleWord.value = s.title;
     if (sub) sub.value = s.subtitle;
-    body.value = s.bodyText;
+    if (s.layoutStyle === 'journal') this.applyJournalToDom();
+    else body.value = s.bodyText;
     const font = document.getElementById('ws-font');
     const size = document.getElementById('ws-size');
     const layout = document.getElementById('ws-layout');
     if (font) font.value = s.fontFamily;
     if (size) size.value = s.fontSize;
-    if (layout) layout.value = s.layoutStyle;
+    if (layout && s.layoutStyle !== 'journal') layout.value = s.layoutStyle;
     const kw = document.getElementById('ws-keyword');
     const mt = document.getElementById('ws-meta-title');
     const md = document.getElementById('ws-meta-desc');
@@ -2019,11 +3319,15 @@ const WRITESPACE = {
     this.syncLayout();
     this.syncTheme();
     this.syncChrome();
+    if (s.layoutStyle === 'journal') {
+      this._inJournal = true;
+      this.enterJournal();
+    }
     this.syncFormats();
     this.syncGrammar();
     this.syncMetrics();
     if (!this.bound) {
-      ['ws-title', 'ws-subtitle', 'ws-body', 'ws-font', 'ws-size', 'ws-layout', 'ws-keyword', 'ws-meta-title', 'ws-meta-desc', 'ws-slug', 'ws-ai-prompt'].forEach((id) => {
+      ['ws-title', 'ws-subtitle', 'ws-body', 'ws-font', 'ws-size', 'ws-layout', 'ws-keyword', 'ws-meta-title', 'ws-meta-desc', 'ws-slug', 'ws-ai-prompt', 'ws-journal-title'].forEach((id) => {
         const el = document.getElementById(id);
         if (el) el.addEventListener('input', () => {
           if (id === 'ws-title' && titleWord) titleWord.value = title.value;
@@ -2031,6 +3335,16 @@ const WRITESPACE = {
           this.saveFromDom();
         });
         if (el && el.tagName === 'SELECT') el.addEventListener('change', () => {
+          const prevLayout = this.state().layoutStyle;
+          if (id === 'ws-layout' && prevLayout === 'journal' && el.value !== 'journal') {
+            this.saveCurrentJournalEntry();
+            this._inJournal = false;
+            this.state().layoutStyle = el.value;
+            const bodyEl = document.getElementById('ws-body');
+            if (bodyEl) bodyEl.value = this.state().bodyText || '';
+            const titleEl = document.getElementById('ws-title');
+            if (titleEl) titleEl.value = this.state().title || '';
+          }
           if (id === 'ws-layout' && el.value === 'word') {
             const st = this.state();
             if (st.fontFamily === 'Georgia') {
@@ -2045,6 +3359,7 @@ const WRITESPACE = {
             }
           }
           this.saveFromDom();
+          if (id === 'ws-layout' && el.value === 'journal') this.enterJournal();
         });
       });
       if (titleWord) titleWord.addEventListener('input', () => {
@@ -2128,7 +3443,6 @@ const WRITESPACE = {
     const aside = document.getElementById('ws-aside');
     const rail = document.getElementById('ws-aside-rail');
     const fullBtn = document.getElementById('ws-full-btn');
-    const sideBtn = document.getElementById('ws-sidebar-btn');
     if (root) {
       root.classList.toggle('fixed', !!s.fullscreen);
       root.classList.toggle('inset-0', !!s.fullscreen);
@@ -2153,11 +3467,61 @@ const WRITESPACE = {
         : '<i class="fa-solid fa-expand"></i><span class="hidden sm:inline">Expand</span>';
       fullBtn.title = s.fullscreen ? 'Exit full screen' : 'Expand WriteSpace';
     }
-    if (sideBtn) {
-      sideBtn.innerHTML = s.sidebarCollapsed
-        ? '<i class="fa-solid fa-table-columns"></i><span class="hidden sm:inline">Tools</span>'
-        : '<i class="fa-solid fa-table-columns"></i><span class="hidden sm:inline">Hide tools</span>';
+    this.syncJournalButton();
+  },
+
+  syncJournalButton() {
+    const btn = document.getElementById('ws-journal-btn');
+    const brand = document.getElementById('ws-brand-title');
+    const brandJournal = document.getElementById('ws-brand-journal');
+    const layoutWrap = document.getElementById('ws-layout-wrap');
+    const layoutRule = document.getElementById('ws-layout-rule');
+    const on = this.state().layoutStyle === 'journal';
+    if (btn) {
+      btn.className = on
+        ? 'p-1.5 rounded-md border border-amber-500/50 bg-amber-500/15 text-amber-400 text-xs font-medium flex items-center gap-1.5'
+        : 'p-1.5 rounded-md border bg-[#1e1b26] border-amber-900/40 text-amber-300 text-xs font-medium flex items-center gap-1.5';
+      btn.title = on ? 'Back' : 'Journal';
+      btn.innerHTML = on
+        ? '<i class="fa-solid fa-arrow-left"></i><span class="hidden sm:inline">Back</span>'
+        : '<i class="fa-solid fa-book"></i><span class="hidden sm:inline">Journal</span>';
     }
+    if (brand) brand.textContent = 'WriteSpace';
+    if (brandJournal) brandJournal.classList.toggle('hidden', !on);
+    if (layoutWrap) {
+      layoutWrap.classList.add('hidden');
+      layoutWrap.classList.toggle('sm:flex', !on);
+    }
+    if (layoutRule) {
+      layoutRule.classList.add('hidden');
+      layoutRule.classList.toggle('sm:block', !on);
+    }
+  },
+
+  toggleJournalMode() {
+    const s = this.state();
+    const layoutEl = document.getElementById('ws-layout');
+    if (s.layoutStyle === 'journal') {
+      this.saveCurrentJournalEntry();
+      this._inJournal = false;
+      s.layoutStyle = s.prevLayout && s.prevLayout !== 'journal' ? s.prevLayout : 'substack';
+      if (layoutEl) layoutEl.value = s.layoutStyle;
+      this.persist(s);
+      const bodyEl = document.getElementById('ws-body');
+      if (bodyEl && s.bodyText) bodyEl.value = s.bodyText;
+      const titleEl = document.getElementById('ws-title');
+      if (titleEl && s.title) titleEl.value = s.title;
+      this.syncLayout();
+      this.syncTheme();
+      this.syncChrome();
+      this.syncMetrics();
+      return;
+    }
+    s.prevLayout = layoutEl ? layoutEl.value : s.layoutStyle;
+    s.layoutStyle = 'journal';
+    this.persist(s);
+    this.enterJournal();
+    this.syncJournalButton();
   },
 
   syncTheme() {
@@ -2236,14 +3600,61 @@ const WRITESPACE = {
     const stage = document.getElementById('ws-stage');
     const canvas = document.getElementById('ws-canvas');
     const grammar = document.getElementById('ws-grammar');
+    const grammarBtn = document.getElementById('ws-grammar-btn');
+    const journalNav = document.getElementById('ws-journal-nav');
+    const journalHead = document.getElementById('ws-journal-head');
+    const aside = document.getElementById('ws-aside');
+    const rail = document.getElementById('ws-aside-rail');
     const isWord = s.layoutStyle === 'word';
-    if (sub) sub.classList.toggle('hidden', isWord);
+    const isJournal = s.layoutStyle === 'journal';
+    if (sub) sub.classList.toggle('hidden', isWord || isJournal);
     if (wordH) wordH.classList.toggle('hidden', !isWord);
     if (wordT) wordT.classList.toggle('hidden', !isWord);
     if (wordF) wordF.classList.toggle('hidden', !isWord);
     if (ruler) ruler.classList.toggle('hidden', !isWord);
+    if (journalHead) journalHead.classList.toggle('hidden', !isJournal);
+    if (journalNav) {
+      journalNav.classList.toggle('hidden', !isJournal);
+      journalNav.classList.toggle('flex', isJournal);
+    }
+    if (isJournal) {
+      if (aside) aside.classList.add('hidden');
+      if (rail) {
+        rail.classList.add('hidden');
+        rail.classList.remove('flex');
+      }
+    }
     const body = document.getElementById('ws-body');
-    if (isWord) {
+    if (isJournal) {
+      if (stage) stage.style.backgroundColor = s.themeMode === 'light' ? '#f0f2f5' : '#0f0e13';
+      if (canvas) {
+        canvas.style.width = '';
+        canvas.style.maxWidth = '';
+        canvas.style.minHeight = '720px';
+        canvas.style.padding = '';
+        canvas.style.borderRadius = '';
+        canvas.style.border = '';
+        canvas.style.boxShadow = '';
+        canvas.classList.add('w-full', 'max-w-3xl', 'p-8', 'md:p-12', 'rounded-xl');
+      }
+      if (body) {
+        body.style.fontFamily = s.fontFamily;
+        body.style.fontSize = this.sizePx(s.fontSize);
+        body.style.lineHeight = '1.7';
+        body.style.minHeight = '560px';
+        body.placeholder = 'Write freely. No outline. No audience. Just the page.';
+      }
+      const jTitle = document.getElementById('ws-journal-title');
+      if (jTitle) {
+        jTitle.style.fontFamily = s.fontFamily;
+      }
+      if (grammar) {
+        grammar.innerHTML = '';
+        grammar.classList.add('hidden');
+      }
+      if (grammarBtn) grammarBtn.classList.add('hidden');
+      this.renderJournalNav();
+    } else if (isWord) {
       if (!this._wordDefaultsApplied) {
         this._wordDefaultsApplied = true;
         if (s.fontFamily === 'Georgia') {
@@ -2292,7 +3703,11 @@ const WRITESPACE = {
       }
       const headerLeft = document.getElementById('ws-word-header-left');
       if (headerLeft) headerLeft.textContent = s.title || '';
-      if (grammar) grammar.classList.add('text-neutral-600');
+      if (grammar) {
+        grammar.classList.remove('hidden');
+        grammar.classList.add('text-neutral-600');
+      }
+      if (grammarBtn) grammarBtn.classList.remove('hidden');
     } else {
       if (stage) stage.style.backgroundColor = '';
       if (canvas) {
@@ -2312,12 +3727,15 @@ const WRITESPACE = {
         body.style.minHeight = '';
         body.placeholder = 'Start typing your post or story...';
       }
+      if (grammar) grammar.classList.remove('hidden');
+      if (grammarBtn) grammarBtn.classList.remove('hidden');
     }
     if (body) {
       body.classList.toggle('font-bold', !!s.bold);
       body.classList.toggle('italic', !!s.italic);
       body.classList.toggle('underline', !!s.underline);
     }
+    if (!isJournal) this.syncChrome();
   },
 
   toggleFormat(key) {
@@ -2485,6 +3903,49 @@ const WRITESPACE = {
     this.syncMetrics();
   },
 
+  seoFeedback() {
+    this.saveFromDom();
+    const s = this.state();
+    const box = document.getElementById('ws-seo-feedback');
+    if (!box) return;
+    box.classList.remove('hidden');
+    box.innerHTML = '<div class="flex items-center gap-1.5 font-semibold text-amber-400"><i class="fa-solid fa-rotate animate-spin"></i> Generating SEO feedback...</div>';
+    const score = this.seoScore();
+    const words = this.wordCount();
+    const kw = (s.focusKeyword || '').trim();
+    const title = s.title || '';
+    const body = s.bodyText || '';
+    const meta = s.metaDescription || '';
+    const slug = s.slug || '';
+    const first200 = body.slice(0, 400).toLowerCase();
+    setTimeout(() => {
+      const lines = [];
+      lines.push(`Score ${score}/100. ${score >= 70 ? 'Solid foundation — tighten on-page details below.' : 'This draft is under-optimized. Fix the gaps first, then expand the argument.'}`);
+      if (!kw) lines.push('Set a focus keyword. Search engines need one primary phrase to rank.');
+      else {
+        if (!title.toLowerCase().includes(kw.toLowerCase())) lines.push(`Put “${kw}” in the title, ideally near the front.`);
+        else lines.push(`Title already includes “${kw}”. Keep it natural — don’t stack the phrase.`);
+        if (!first200.includes(kw.toLowerCase())) lines.push(`Use “${kw}” in the first 100–150 words so the opener matches search intent.`);
+        const hits = (body.toLowerCase().match(new RegExp(kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length;
+        if (hits < 2) lines.push(`The keyword appears only ${hits} time(s). Add 1–2 more uses in H2-style lines or a closing takeaway.`);
+        if (hits > 12) lines.push('Keyword density looks high. Swap a few repeats for related phrases.');
+      }
+      if (meta.length < 100) lines.push(`Meta description is ${meta.length} characters. Aim for 120–155 characters with the keyword and a reason to click.`);
+      else if (meta.length > 160) lines.push(`Meta description is ${meta.length} characters and will truncate. Cut it under 160.`);
+      else lines.push('Meta description length is in the click-range. Lead with the benefit, not a summary of paragraph one.');
+      if (words < 300) lines.push(`Word count is ${words}. Build to 600–900 words with one example, one objection, and a clear CTA.`);
+      else if (words < 600) lines.push(`You’re at ${words} words. Add a concrete example or FAQ block to pass thin-content filters.`);
+      else lines.push(`${words} words is enough depth. Next: one descriptive subhead every 150–200 words.`);
+      if (slug && kw && !slug.toLowerCase().includes(kw.toLowerCase().split(' ')[0])) lines.push(`Slug “${slug}” doesn’t echo the keyword. Use a short hyphenated version of the focus phrase.`);
+      lines.push('Add internal links to one related DIMAD post and one outbound source. Search engines treat that as topical confidence.');
+      const text = lines.map((line, i) => `${i + 1}. ${line}`).join('\n');
+      s.lastSeoFeedback = text;
+      this.persist(s);
+      box.innerHTML = `<div class="font-semibold text-amber-400 mb-1"><i class="fa-solid fa-sparkles"></i> SEO feedback</div>
+        <p class="whitespace-pre-wrap leading-relaxed text-amber-100/90">${text.replace(/</g, '&lt;')}</p>`;
+    }, 650);
+  },
+
   publish(platform) {
     const banner = document.getElementById('ws-publish-banner');
     if (!banner) return;
@@ -2623,6 +4084,301 @@ const WRITESPACE = {
     modal.classList.remove('flex');
   }
 };
+
+const PIPELINE = {
+  storageKey: 'dimad_content_pipeline',
+  statuses: ['Target', 'Pitched', 'Negotiating', 'Active Collab', 'Paid'],
+  sortKey: '',
+  sortDir: 'asc',
+  seed: [
+    { id: 1, name: 'Glossier', contact: 'sarah@glossier.com', sector: 'Beauty / Skincare', status: 'Negotiating', profit: '$1,200', websitePitch: 'https://glossier.com/pages/creators', origin: 'we', description: 'UGC skincare routine + unboxing for new cloud paint.', pitchDate: '2026-10-18', startDate: '2026-10-20', endDate: '2026-11-30', dueDate: '2026-11-07' },
+    { id: 2, name: 'Gymshark', contact: 'partnerships@gymshark.com', sector: 'Fitness', status: 'Pitched', profit: '$800', websitePitch: 'https://gymshark.com/pages/influencers', origin: 'we', description: 'Training-day reel series in new seamless drop.', pitchDate: '2026-10-28', startDate: '', endDate: '', dueDate: '2026-11-12' },
+    { id: 3, name: 'Article', contact: 'ugc@article.com', sector: 'Home / Living', status: 'Active Collab', profit: '$2,500', websitePitch: 'https://article.com/collabs', origin: 'them', description: 'They reached out for a living-room styling video.', pitchDate: '2026-09-22', startDate: '2026-10-01', endDate: '2026-12-15', dueDate: '2026-11-21' },
+    { id: 4, name: 'Notion', contact: 'creators@notion.so', sector: 'Tech / Productivity', status: 'Target', profit: '$1,500', websitePitch: '', origin: 'we', description: 'Shorts walkthrough of creator CRM in Notion.', pitchDate: '', startDate: '', endDate: '', dueDate: '2026-12-01' },
+    { id: 5, name: 'AG1 Athletic Greens', contact: 'influencers@drinkag1.com', sector: 'Wellness', status: 'Paid', profit: '$3,000', websitePitch: 'https://drinkag1.com/creators', origin: 'them', description: '30-day morning routine integration. Paid in full.', pitchDate: '2026-08-14', startDate: '2026-09-01', endDate: '2026-09-30', dueDate: '2026-09-30' }
+  ],
+
+  escape(value) {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  },
+
+  emptyRecord() {
+    return {
+      id: '',
+      name: '',
+      status: 'Target',
+      sector: '',
+      contact: '',
+      profit: '',
+      websitePitch: '',
+      origin: 'we',
+      description: '',
+      pitchDate: '',
+      startDate: '',
+      endDate: '',
+      dueDate: ''
+    };
+  },
+
+  normalize(row) {
+    const base = this.emptyRecord();
+    return {
+      ...base,
+      ...row,
+      sector: row.sector || row.niche || '',
+      profit: row.profit || row.value || '',
+      websitePitch: row.websitePitch || row.website || '',
+      origin: row.origin === 'them' ? 'them' : 'we',
+      description: row.description || '',
+      pitchDate: row.pitchDate || row.startDate || '',
+      startDate: row.startDate || '',
+      endDate: row.endDate || '',
+      dueDate: row.dueDate || ''
+    };
+  },
+
+  load() {
+    try {
+      const rows = JSON.parse(localStorage.getItem(this.storageKey) || 'null');
+      if (Array.isArray(rows) && rows.length) return rows.map((row) => this.normalize(row));
+    } catch (err) { /* empty */ }
+    const seed = this.seed.map((row) => this.normalize(row));
+    this.persist(seed);
+    return seed;
+  },
+
+  persist(brands) {
+    localStorage.setItem(this.storageKey, JSON.stringify(brands));
+  },
+
+  pipelineValue(brands) {
+    return brands.reduce((acc, curr) => acc + (parseInt(String(curr.profit || '').replace(/[^0-9]/g, ''), 10) || 0), 0);
+  },
+
+  parseDate(value) {
+    if (!value) return null;
+    const d = new Date(`${value}T00:00:00`);
+    return Number.isNaN(d.getTime()) ? null : d;
+  },
+
+  startOfWeek(date) {
+    const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() - d.getDay());
+    return d;
+  },
+
+  matchesDue(row, filter) {
+    if (filter === 'all') return true;
+    const due = this.parseDate(row.dueDate);
+    if (filter === 'none') return !due;
+    if (!due) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (filter === 'overdue') return due < today;
+    if (filter === 'week') {
+      const start = this.startOfWeek(today);
+      const end = new Date(start);
+      end.setDate(end.getDate() + 7);
+      return due >= start && due < end;
+    }
+    if (filter === 'month') return due.getFullYear() === today.getFullYear() && due.getMonth() === today.getMonth();
+    if (filter === 'year') return due.getFullYear() === today.getFullYear();
+    return true;
+  },
+
+  filtered() {
+    const brands = this.load();
+    const status = document.getElementById('pl-filter-status')?.value || 'all';
+    const sector = document.getElementById('pl-filter-sector')?.value || 'all';
+    const website = document.getElementById('pl-filter-website')?.value || 'all';
+    const origin = document.getElementById('pl-filter-origin')?.value || 'all';
+    const due = document.getElementById('pl-filter-due')?.value || 'all';
+    const siteQ = (document.getElementById('pl-filter-site')?.value || '').trim().toLowerCase();
+    return brands.filter((row) => {
+      if (status !== 'all' && row.status !== status) return false;
+      if (sector !== 'all' && row.sector !== sector) return false;
+      const hasSite = !!(row.websitePitch || '').trim();
+      if (website === 'has' && !hasSite) return false;
+      if (website === 'none' && hasSite) return false;
+      if (origin !== 'all' && row.origin !== origin) return false;
+      if (!this.matchesDue(row, due)) return false;
+      if (siteQ && !(row.websitePitch || '').toLowerCase().includes(siteQ)) return false;
+      return true;
+    });
+  },
+
+  fillFilters(brands) {
+    const statusEl = document.getElementById('pl-filter-status');
+    const sectorEl = document.getElementById('pl-filter-sector');
+    if (statusEl && !statusEl.dataset.ready) {
+      statusEl.innerHTML = `<option value="all">All statuses</option>${this.statuses.map((s) => `<option value="${this.escape(s)}">${this.escape(s)}</option>`).join('')}`;
+      statusEl.dataset.ready = '1';
+    }
+    if (sectorEl) {
+      const current = sectorEl.value || 'all';
+      const sectors = [...new Set(brands.map((b) => b.sector).filter(Boolean))].sort();
+      sectorEl.innerHTML = `<option value="all">All sectors</option>${sectors.map((s) => `<option value="${this.escape(s)}">${this.escape(s)}</option>`).join('')}`;
+      sectorEl.value = sectors.includes(current) || current === 'all' ? current : 'all';
+    }
+  },
+
+  sortBy(key) {
+    if (this.sortKey === key) this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+    else {
+      this.sortKey = key;
+      this.sortDir = 'asc';
+    }
+    this.render();
+  },
+
+  sorted(rows) {
+    const key = this.sortKey;
+    if (!key) return rows;
+    const dir = this.sortDir === 'desc' ? -1 : 1;
+    return [...rows].sort((a, b) => {
+      if (key === 'pitchDate') {
+        const av = a.pitchDate || '';
+        const bv = b.pitchDate || '';
+        if (!av && !bv) return 0;
+        if (!av) return 1;
+        if (!bv) return -1;
+        return av < bv ? -1 * dir : av > bv ? dir : 0;
+      }
+      const av = String(a[key] || '').toLowerCase();
+      const bv = String(b[key] || '').toLowerCase();
+      if (av < bv) return -1 * dir;
+      if (av > bv) return dir;
+      return 0;
+    });
+  },
+
+  formatPitchDate(value) {
+    const d = this.parseDate(value);
+    if (!d) return '—';
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  },
+
+  syncSortMarks() {
+    document.querySelectorAll('[data-pl-sort]').forEach((el) => {
+      const key = el.getAttribute('data-pl-sort');
+      el.textContent = this.sortKey === key ? (this.sortDir === 'asc' ? '▲' : '▼') : '';
+    });
+  },
+
+  mount() {
+    const statusSelect = document.getElementById('pl-status');
+    if (statusSelect && !statusSelect.dataset.ready) {
+      statusSelect.innerHTML = this.statuses.map((s) => `<option value="${this.escape(s)}">${this.escape(s)}</option>`).join('');
+      statusSelect.dataset.ready = '1';
+    }
+    this.render();
+  },
+
+  render() {
+    const body = document.getElementById('pl-rows');
+    const total = document.getElementById('pl-total');
+    const count = document.getElementById('pl-count');
+    if (!body) return;
+    const all = this.load();
+    this.fillFilters(all);
+    const rows = this.sorted(this.filtered());
+    this.syncSortMarks();
+    if (total) total.textContent = `$${this.pipelineValue(rows).toLocaleString()}`;
+    if (count) count.textContent = `${rows.length} of ${all.length}`;
+    if (!rows.length) {
+      body.innerHTML = '<tr><td colspan="3" class="px-4 py-10 text-center text-[#666058] text-xs">No businesses match these filters.</td></tr>';
+      return;
+    }
+    body.innerHTML = rows.map((row, i) => {
+      const zebra = i % 2 ? 'bg-[#141210]' : 'bg-[#11100f]';
+      return `<tr onclick="PIPELINE.openDetail(${Number(row.id)})" class="${zebra} hover:bg-amber-950/30 cursor-pointer border-b border-[#2a2622]">
+        <td class="px-4 py-2.5 text-white font-medium whitespace-nowrap">${this.escape(row.name)}</td>
+        <td class="px-4 py-2.5 text-amber-400 whitespace-nowrap">${this.escape(row.status)}</td>
+        <td class="px-4 py-2.5 text-[#c4bbb2] whitespace-nowrap font-mono text-[12px]">${this.escape(this.formatPitchDate(row.pitchDate))}</td>
+      </tr>`;
+    }).join('');
+  },
+
+  fillForm(row) {
+    const set = (id, value) => {
+      const el = document.getElementById(id);
+      if (el) el.value = value || '';
+    };
+    set('pl-id', row.id);
+    set('pl-name', row.name);
+    set('pl-status', row.status || 'Target');
+    set('pl-sector', row.sector);
+    set('pl-contact', row.contact);
+    set('pl-profit', row.profit);
+    set('pl-website', row.websitePitch);
+    set('pl-origin', row.origin || 'we');
+    set('pl-description', row.description);
+    set('pl-pitch', row.pitchDate);
+    set('pl-start', row.startDate);
+    set('pl-end', row.endDate);
+    set('pl-due', row.dueDate);
+    const title = document.getElementById('pl-detail-title');
+    if (title) title.textContent = row.id ? row.name || 'Business record' : 'New reach-out';
+  },
+
+  openDetail(id) {
+    const row = id
+      ? this.load().find((b) => Number(b.id) === Number(id))
+      : this.emptyRecord();
+    if (!row) return;
+    this.fillForm(this.normalize(row));
+    const modal = document.getElementById('pl-detail');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  },
+
+  closeDetail() {
+    const modal = document.getElementById('pl-detail');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  },
+
+  saveDetail(event) {
+    event.preventDefault();
+    const name = (document.getElementById('pl-name')?.value || '').trim();
+    if (!name) return;
+    const record = this.normalize({
+      id: document.getElementById('pl-id')?.value,
+      name,
+      status: document.getElementById('pl-status')?.value || 'Target',
+      sector: (document.getElementById('pl-sector')?.value || '').trim(),
+      contact: (document.getElementById('pl-contact')?.value || '').trim(),
+      profit: (document.getElementById('pl-profit')?.value || '').trim(),
+      websitePitch: (document.getElementById('pl-website')?.value || '').trim(),
+      origin: document.getElementById('pl-origin')?.value || 'we',
+      description: (document.getElementById('pl-description')?.value || '').trim(),
+      pitchDate: document.getElementById('pl-pitch')?.value || '',
+      startDate: document.getElementById('pl-start')?.value || '',
+      endDate: document.getElementById('pl-end')?.value || '',
+      dueDate: document.getElementById('pl-due')?.value || ''
+    });
+    const brands = this.load();
+    if (record.id) {
+      const idx = brands.findIndex((b) => String(b.id) === String(record.id));
+      if (idx >= 0) brands[idx] = { ...brands[idx], ...record };
+      else brands.push({ ...record, id: Date.now() });
+    } else {
+      brands.push({ ...record, id: Date.now() });
+    }
+    this.persist(brands);
+    this.closeDetail();
+    this.render();
+  }
+};
+
+window.PIPELINE = PIPELINE;
 
 let calendarClickCount = 0;
 

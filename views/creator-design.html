@@ -1,4 +1,257 @@
-<div id="view-creator-design" class="tab-view hidden p-4 border border-brand-border bg-brand-panel rounded">
-  <h2 class="text-sm font-bold text-amber-400 mb-2">DESIGN SUITE</h2>
-  <p class="text-slate-400">Visual design workspace and brand kits.</p>
+<div id="view-creator-design" class="tab-view hidden w-full h-full overflow-hidden">
+  <style>
+    #view-creator-design { font-family: 'JetBrains Mono', monospace; }
+    #view-creator-design .ds-checker {
+      background-color: #070A0F;
+      background-image: linear-gradient(45deg, #0B0F17 25%, transparent 25%), linear-gradient(-45deg, #0B0F17 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #0B0F17 75%), linear-gradient(-45deg, transparent 75%, #0B0F17 75%);
+      background-size: 20px 20px;
+      background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+    }
+    #ds-artboard { box-shadow: 0 25px 60px -15px rgba(0,0,0,.9), 0 0 0 1px rgba(245,158,11,.15); }
+    #ds-artboard .ds-guide { position: absolute; z-index: 40; pointer-events: none; background: #38BDF8; }
+    #ds-artboard .ds-guide-v { top: 0; bottom: 0; width: 1px; }
+    #ds-artboard .ds-guide-h { left: 0; right: 0; height: 1px; }
+    #ds-artboard .ds-text { outline: none; white-space: pre; min-width: 1ch; }
+    #ds-artboard .ds-text[contenteditable="true"] { cursor: text; outline: 2px solid #F59E0B; outline-offset: 2px; }
+    #ds-sidebar-drawer.ds-drawer-collapsed { width: 0 !important; border-width: 0; overflow: hidden; padding: 0; }
+  </style>
+  <div class="h-[calc(100vh-5.5rem)] min-h-[520px] flex flex-col bg-brand-black text-slate-100 overflow-hidden rounded border border-brand-border">
+    <header class="h-12 border-b border-brand-border bg-brand-panel px-3 flex items-center justify-between shrink-0 gap-2">
+      <div class="flex items-center gap-3 min-w-0">
+        <div class="flex items-center gap-2 font-bold text-lg tracking-tight">
+          <span class="p-1.5 rounded-lg bg-gradient-to-tr from-amber-500 to-amber-600 text-slate-950 shadow-md"><i class="fa-solid fa-pen-ruler text-sm"></i></span>
+          <span class="text-amber-400">DesignSuite</span>
+          <span class="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-500 font-medium">Studio</span>
+        </div>
+        <div class="h-4 w-px bg-brand-border hidden sm:block"></div>
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-expand text-slate-500 text-[10px]"></i>
+          <select id="ds-preset" onchange="DESIGN_SUITE.changePreset(this.value)" class="bg-brand-black text-[10px] text-slate-200 border border-brand-border rounded-lg px-2 py-1.5 focus:outline-none focus:border-brand-gold">
+            <option value="1080x1080">Instagram Post (1080 × 1080)</option>
+            <option value="1080x1920">Instagram Story / Reel (1080 × 1920)</option>
+            <option value="1280x720" selected>YouTube Thumbnail (1280 × 720)</option>
+            <option value="1500x500">Twitter Header (1500 × 500)</option>
+            <option value="1200x630">LinkedIn Banner (1200 × 630)</option>
+            <option value="custom">Custom Dimensions…</option>
+          </select>
+        </div>
+      </div>
+      <div class="hidden md:flex items-center gap-2">
+        <div class="flex items-center bg-brand-black rounded-lg border border-brand-border p-0.5">
+          <button type="button" onclick="DESIGN_SUITE.undo()" class="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-brand-gold rounded-md"><i class="fa-solid fa-rotate-left text-[10px]"></i></button>
+          <button type="button" onclick="DESIGN_SUITE.redo()" class="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-brand-gold rounded-md"><i class="fa-solid fa-rotate-right text-[10px]"></i></button>
+        </div>
+        <div class="flex items-center gap-1 bg-brand-black rounded-lg border border-brand-border px-2 py-1 text-[10px]">
+          <button type="button" onclick="DESIGN_SUITE.adjustZoom(-0.1)" class="text-slate-400 hover:text-white px-1"><i class="fa-solid fa-minus text-[9px]"></i></button>
+          <span id="ds-zoom" class="text-slate-300 font-mono w-10 text-center">100%</span>
+          <button type="button" onclick="DESIGN_SUITE.adjustZoom(0.1)" class="text-slate-400 hover:text-white px-1"><i class="fa-solid fa-plus text-[9px]"></i></button>
+          <button type="button" onclick="DESIGN_SUITE.fit()" class="text-brand-gold hover:underline ml-1">Fit</button>
+        </div>
+        <button type="button" onclick="DESIGN_SUITE.switchPanel('brand')" class="bg-brand-gold/10 hover:bg-brand-gold/20 border border-brand-gold/30 text-brand-gold text-[10px] font-semibold px-2.5 py-1.5 rounded-lg flex items-center gap-1.5">
+          <span class="w-1.5 h-1.5 rounded-full bg-brand-gold"></span> DIMAD Palette
+        </button>
+      </div>
+      <div class="flex items-center gap-2">
+        <button type="button" onclick="DESIGN_SUITE.openCanva()" class="bg-brand-black hover:bg-slate-800 text-slate-200 border border-brand-border text-[10px] font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5">
+          <i class="fa-solid fa-crown text-brand-gold"></i><span class="hidden sm:inline">Open in Canva Pro</span>
+        </button>
+        <button type="button" onclick="DESIGN_SUITE.exportPng()" class="bg-brand-gold hover:bg-amber-400 text-brand-black font-extrabold text-[10px] px-3 py-1.5 rounded-xl flex items-center gap-1.5">
+          <i class="fa-solid fa-download"></i> Export Design
+        </button>
+      </div>
+    </header>
+
+    <div class="flex-1 flex overflow-hidden min-h-0">
+      <div class="w-14 bg-brand-black border-r border-brand-border flex flex-col items-center py-3 gap-2 shrink-0">
+        <button type="button" data-ds-tab="ai" onclick="DESIGN_SUITE.switchPanel('ai')" class="ds-tab text-brand-gold flex flex-col items-center justify-center w-11 h-12 rounded-xl hover:bg-brand-panel"><i class="fa-solid fa-wand-magic-sparkles text-brand-gold"></i><span class="text-[8px] font-bold mt-0.5 leading-none">AI</span></button>
+        <button type="button" data-ds-tab="elements" onclick="DESIGN_SUITE.switchPanel('elements')" class="ds-tab text-slate-400 flex flex-col items-center justify-center w-11 h-12 rounded-xl hover:bg-brand-panel hover:text-slate-200"><i class="fa-solid fa-shapes"></i><span class="text-[8px] font-bold mt-0.5 leading-none">Els</span></button>
+        <button type="button" data-ds-tab="brand" onclick="DESIGN_SUITE.switchPanel('brand')" class="ds-tab text-slate-400 flex flex-col items-center justify-center w-11 h-12 rounded-xl hover:bg-brand-panel hover:text-slate-200"><i class="fa-solid fa-palette"></i><span class="text-[8px] font-bold mt-0.5 leading-none">Kit</span></button>
+        <button type="button" data-ds-tab="backgrounds" onclick="DESIGN_SUITE.switchPanel('backgrounds')" class="ds-tab text-slate-400 flex flex-col items-center justify-center w-11 h-12 rounded-xl hover:bg-brand-panel hover:text-slate-200"><i class="fa-solid fa-image"></i><span class="text-[8px] font-bold mt-0.5 leading-none">BGs</span></button>
+        <button type="button" data-ds-tab="uploads" onclick="DESIGN_SUITE.switchPanel('uploads')" class="ds-tab text-slate-400 flex flex-col items-center justify-center w-11 h-12 rounded-xl hover:bg-brand-panel hover:text-slate-200"><i class="fa-solid fa-cloud-arrow-up"></i><span class="text-[8px] font-bold mt-0.5 leading-none">Up</span></button>
+        <button type="button" id="ds-drawer-toggle" onclick="DESIGN_SUITE.toggleDrawer()" title="Collapse panel" class="mt-auto mb-1 w-11 h-10 rounded-xl text-slate-400 hover:text-brand-gold hover:bg-brand-panel"><i class="fa-solid fa-chevron-left text-[10px]"></i></button>
+      </div>
+
+      <div id="ds-sidebar-drawer" class="w-72 bg-brand-panel border-r border-brand-border flex flex-col shrink-0 overflow-y-auto">
+        <div class="p-3 border-b border-brand-border">
+          <button type="button" onclick="DESIGN_SUITE.toggleTemplates()" class="w-full flex items-center justify-between gap-2">
+            <span class="flex items-center gap-2 min-w-0">
+              <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-200">Preset Templates</h2>
+              <span class="text-[9px] text-brand-gold bg-brand-gold/10 px-1.5 py-0.5 rounded border border-brand-gold/30 shrink-0">DIMAD Curated</span>
+            </span>
+            <i id="ds-templates-chevron" class="fa-solid fa-chevron-down text-[9px] text-slate-500"></i>
+          </button>
+          <div id="ds-templates-body" class="space-y-3 pt-3">
+          <p class="text-[10px] text-slate-400 leading-relaxed">Layouts for operators and creators. Click to load onto the board.</p>
+          <div class="grid grid-cols-2 gap-2">
+            <button type="button" onclick="DESIGN_SUITE.loadTemplate('nomad-quote')" class="text-left bg-brand-black border border-brand-border hover:border-brand-gold/50 rounded-xl p-2.5 h-28 flex flex-col justify-between">
+              <span class="text-[8px] font-bold text-brand-gold uppercase">Quote Card</span>
+              <p class="text-[10px] font-bold text-white leading-tight">Build here.<br>Live everywhere.</p>
+              <span class="text-[8px] text-slate-500">1280 × 720</span>
+            </button>
+            <button type="button" onclick="DESIGN_SUITE.loadTemplate('youtube-thumb')" class="text-left bg-brand-black border border-brand-border hover:border-brand-gold/50 rounded-xl p-2.5 h-28 flex flex-col justify-between">
+              <span class="text-[8px] font-bold text-brand-gold uppercase">YouTube Cover</span>
+              <p class="text-[10px] font-bold text-white">NOMAD OS 2026</p>
+              <span class="text-[8px] text-slate-500">1280 × 720</span>
+            </button>
+            <button type="button" onclick="DESIGN_SUITE.loadTemplate('minimal-card')" class="text-left bg-brand-black border border-brand-border hover:border-brand-gold/50 rounded-xl p-2.5 h-28 flex flex-col justify-between">
+              <span class="text-[8px] font-bold text-brand-mint uppercase">Business Card</span>
+              <p class="text-[10px] font-bold text-white">SOVEREIGN FOUNDER</p>
+              <span class="text-[8px] text-slate-500">Minimal Slate</span>
+            </button>
+            <button type="button" onclick="DESIGN_SUITE.loadTemplate('story-promo')" class="text-left bg-brand-black border border-brand-border hover:border-brand-gold/50 rounded-xl p-2.5 h-28 flex flex-col justify-between">
+              <span class="text-[8px] font-bold text-brand-accent uppercase">Story Reel</span>
+              <p class="text-[10px] font-bold text-white">WORKSTATION SETUP</p>
+              <span class="text-[8px] text-slate-500">1080 × 1920</span>
+            </button>
+          </div>
+          </div>
+        </div>
+
+        <div id="ds-panel-ai" class="ds-panel p-3 space-y-3">
+          <div class="flex items-center gap-2"><i class="fa-solid fa-wand-magic-sparkles text-brand-gold"></i><h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-200">AI Design Generator</h2></div>
+          <p class="text-[10px] text-slate-400">Prompt a layout. Compositions use the DIMAD gold/slate kit.</p>
+          <textarea id="ds-ai-prompt" rows="3" placeholder="e.g. Da Nang coffee masterclass cover with amber accents..." class="w-full bg-brand-black border border-brand-border rounded-xl p-2.5 text-[10px] text-slate-100 placeholder-slate-600 focus:outline-none focus:border-brand-gold"></textarea>
+          <select id="ds-ai-style" class="w-full bg-brand-black border border-brand-border rounded-xl p-2 text-[10px] text-slate-100">
+            <option value="sovereign">Sovereign Dark (#070A0F)</option>
+            <option value="minimal">Ultra Minimal White &amp; Black</option>
+            <option value="cyber">Nomad Cyberpunk Amber</option>
+            <option value="luxury">High-Status Gold &amp; Noir</option>
+          </select>
+          <button type="button" onclick="DESIGN_SUITE.generateAi()" class="w-full bg-brand-gold hover:bg-amber-400 text-brand-black font-extrabold text-[10px] py-2.5 rounded-xl flex items-center justify-center gap-1.5"><i class="fa-solid fa-bolt"></i> Generate Canvas Layout</button>
+          <div class="pt-1 space-y-1.5">
+            <span class="text-[9px] font-bold text-slate-500 uppercase">Generate text layer</span>
+            <input id="ds-gen-text" type="text" placeholder="Type copy, then generate…" class="w-full bg-brand-black border border-brand-border rounded-xl px-2.5 py-2 text-[10px] text-slate-100 placeholder-slate-600 focus:outline-none focus:border-brand-gold">
+            <button type="button" onclick="DESIGN_SUITE.generateText()" class="w-full border border-brand-gold/40 text-brand-gold hover:bg-brand-gold/10 font-bold text-[10px] py-2 rounded-xl">Add as editable text</button>
+          </div>
+        </div>
+
+        <div id="ds-panel-elements" class="ds-panel hidden p-3 space-y-4">
+          <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-200">Add Elements</h2>
+          <div class="space-y-1.5">
+            <span class="text-[9px] font-bold text-slate-500 uppercase">Typography</span>
+            <div class="flex gap-1.5">
+              <input id="ds-els-text" type="text" placeholder="Write text…" class="flex-1 bg-brand-black border border-brand-border rounded-xl px-2 py-2 text-[10px] text-slate-100 placeholder-slate-600 focus:outline-none focus:border-brand-gold">
+              <button type="button" onclick="DESIGN_SUITE.generateTextFrom('ds-els-text')" class="px-2.5 rounded-xl bg-brand-gold text-brand-black font-bold text-[10px]">Add</button>
+            </div>
+            <button type="button" onclick="DESIGN_SUITE.addText('Heading Text', 42, 'bold')" class="w-full text-left bg-brand-black border border-brand-border hover:border-brand-gold/50 p-2 rounded-xl"><span class="text-xs font-bold text-white block">Add a Heading</span><span class="text-[9px] text-slate-500">42pt · JetBrains Mono · double-click to edit</span></button>
+            <button type="button" onclick="DESIGN_SUITE.addText('Subheading text goes here', 24, 'normal')" class="w-full text-left bg-brand-black border border-brand-border hover:border-brand-gold/50 p-2 rounded-xl"><span class="text-[11px] font-semibold text-slate-200 block">Add a Subheading</span><span class="text-[9px] text-slate-500">24pt</span></button>
+            <button type="button" onclick="DESIGN_SUITE.addText('Body text for description and copy...', 16, 'normal')" class="w-full text-left bg-brand-black border border-brand-border hover:border-brand-gold/50 p-2 rounded-xl"><span class="text-[10px] text-slate-400 block">Add body copy</span><span class="text-[9px] text-slate-500">16pt</span></button>
+          </div>
+          <div class="space-y-1.5">
+            <span class="text-[9px] font-bold text-slate-500 uppercase">Shapes</span>
+            <div class="grid grid-cols-4 gap-1.5">
+              <button type="button" onclick="DESIGN_SUITE.addShape('rectangle')" class="bg-brand-black border border-brand-border hover:border-brand-gold/50 h-12 rounded-xl flex items-center justify-center"><span class="w-6 h-6 bg-brand-gold rounded-sm"></span></button>
+              <button type="button" onclick="DESIGN_SUITE.addShape('circle')" class="bg-brand-black border border-brand-border hover:border-brand-gold/50 h-12 rounded-xl flex items-center justify-center"><span class="w-6 h-6 bg-brand-gold rounded-full"></span></button>
+              <button type="button" onclick="DESIGN_SUITE.addShape('badge')" class="bg-brand-black border border-brand-border hover:border-brand-gold/50 h-12 rounded-xl flex items-center justify-center text-[8px] text-brand-gold font-bold">TAG</button>
+              <button type="button" onclick="DESIGN_SUITE.addShape('line')" class="bg-brand-black border border-brand-border hover:border-brand-gold/50 h-12 rounded-xl flex items-center justify-center"><span class="w-8 h-0.5 bg-brand-gold"></span></button>
+            </div>
+          </div>
+          <div class="space-y-1.5">
+            <span class="text-[9px] font-bold text-slate-500 uppercase">Icons</span>
+            <div class="grid grid-cols-3 gap-1.5">
+              <button type="button" onclick="DESIGN_SUITE.addIcon('globe')" class="bg-brand-black border border-brand-border hover:border-brand-gold/50 p-2 rounded-xl text-center"><i class="fa-solid fa-globe text-brand-gold"></i><div class="text-[8px] text-slate-400 mt-1">Globe</div></button>
+              <button type="button" onclick="DESIGN_SUITE.addIcon('plane')" class="bg-brand-black border border-brand-border hover:border-brand-gold/50 p-2 rounded-xl text-center"><i class="fa-solid fa-plane text-brand-gold"></i><div class="text-[8px] text-slate-400 mt-1">Flight</div></button>
+              <button type="button" onclick="DESIGN_SUITE.addIcon('laptop')" class="bg-brand-black border border-brand-border hover:border-brand-gold/50 p-2 rounded-xl text-center"><i class="fa-solid fa-laptop-code text-brand-gold"></i><div class="text-[8px] text-slate-400 mt-1">Desk</div></button>
+            </div>
+          </div>
+        </div>
+
+        <div id="ds-panel-uploads" class="ds-panel hidden p-3 space-y-3">
+          <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-200">Asset Uploads</h2>
+          <button type="button" onclick="document.getElementById('ds-image-uploader').click()" class="w-full border-2 border-dashed border-brand-border hover:border-brand-gold/50 rounded-2xl p-5 text-center bg-brand-black/50">
+            <i class="fa-solid fa-cloud-arrow-up text-2xl text-brand-gold mb-1"></i>
+            <p class="text-[10px] font-bold text-slate-200">Drop or click to upload</p>
+            <p class="text-[9px] text-slate-500">PNG, JPG, SVG, WebP</p>
+          </button>
+          <input type="file" id="ds-image-uploader" accept="image/*" class="hidden" onchange="DESIGN_SUITE.handleUpload(event)">
+          <div class="grid grid-cols-2 gap-2">
+            <img src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&auto=format&fit=crop&q=80" onclick="DESIGN_SUITE.addImage(this.src)" class="rounded-xl border border-brand-border hover:border-brand-gold cursor-pointer object-cover h-20 w-full" alt="">
+            <img src="https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=400&auto=format&fit=crop&q=80" onclick="DESIGN_SUITE.addImage(this.src)" class="rounded-xl border border-brand-border hover:border-brand-gold cursor-pointer object-cover h-20 w-full" alt="">
+            <img src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&auto=format&fit=crop&q=80" onclick="DESIGN_SUITE.addImage(this.src)" class="rounded-xl border border-brand-border hover:border-brand-gold cursor-pointer object-cover h-20 w-full" alt="">
+            <img src="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=400&auto=format&fit=crop&q=80" onclick="DESIGN_SUITE.addImage(this.src)" class="rounded-xl border border-brand-border hover:border-brand-gold cursor-pointer object-cover h-20 w-full" alt="">
+          </div>
+        </div>
+
+        <div id="ds-panel-brand" class="ds-panel hidden p-3 space-y-4">
+          <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-200">Brand Kit</h2>
+          <div>
+            <span class="text-[9px] font-bold text-slate-500 uppercase block mb-1.5">Official DIMAD Palette</span>
+            <div class="grid grid-cols-5 gap-1.5">
+              <button type="button" onclick="DESIGN_SUITE.applyColor('#070A0F')" class="h-7 rounded-lg bg-[#070A0F] border border-brand-border" title="Black"></button>
+              <button type="button" onclick="DESIGN_SUITE.applyColor('#F59E0B')" class="h-7 rounded-lg bg-brand-gold border border-brand-border" title="Gold"></button>
+              <button type="button" onclick="DESIGN_SUITE.applyColor('#0B0F17')" class="h-7 rounded-lg bg-brand-panel border border-brand-border" title="Panel"></button>
+              <button type="button" onclick="DESIGN_SUITE.applyColor('#38BDF8')" class="h-7 rounded-lg bg-brand-accent border border-brand-border" title="Accent"></button>
+              <button type="button" onclick="DESIGN_SUITE.applyColor('#10B981')" class="h-7 rounded-lg bg-brand-mint border border-brand-border" title="Mint"></button>
+            </div>
+          </div>
+          <div>
+            <span class="text-[9px] font-bold text-slate-500 uppercase block mb-1.5">Brand Fonts</span>
+            <button type="button" onclick="DESIGN_SUITE.applyFont('JetBrains Mono')" class="w-full text-left bg-brand-black border border-brand-border hover:border-brand-gold p-2 rounded-xl text-[10px] text-white font-mono">JetBrains Mono (OS default)</button>
+            <button type="button" onclick="DESIGN_SUITE.applyFont('Georgia')" class="w-full text-left bg-brand-black border border-brand-border hover:border-brand-gold p-2 rounded-xl text-[10px] text-white mt-1.5 font-serif">Georgia (Display serif)</button>
+            <button type="button" onclick="DESIGN_SUITE.applyFont('Arial')" class="w-full text-left bg-brand-black border border-brand-border hover:border-brand-gold p-2 rounded-xl text-[10px] text-white mt-1.5">Arial (System sans)</button>
+          </div>
+        </div>
+
+        <div id="ds-panel-backgrounds" class="ds-panel hidden p-3 space-y-3">
+          <h2 class="text-[11px] font-bold uppercase tracking-wider text-slate-200">Backgrounds</h2>
+          <div class="grid grid-cols-4 gap-1.5">
+            <button type="button" onclick="DESIGN_SUITE.setBg('#070A0F')" class="h-10 rounded-xl bg-[#070A0F] border border-brand-border"></button>
+            <button type="button" onclick="DESIGN_SUITE.setBg('#000000')" class="h-10 rounded-xl bg-black border border-brand-border"></button>
+            <button type="button" onclick="DESIGN_SUITE.setBg('#0B0F17')" class="h-10 rounded-xl bg-brand-panel border border-brand-border"></button>
+            <button type="button" onclick="DESIGN_SUITE.setBg('#064e3b')" class="h-10 rounded-xl bg-[#064e3b] border border-brand-border"></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex-1 flex flex-col overflow-hidden bg-brand-black min-w-0">
+        <div class="h-10 border-b border-brand-border bg-brand-panel px-3 flex items-center justify-between shrink-0 text-[10px]">
+          <div class="flex items-center gap-2 overflow-x-auto">
+            <span id="ds-selected-label" class="text-slate-500 font-mono uppercase">No Selection</span>
+            <span class="h-3 w-px bg-brand-border"></span>
+            <label class="text-slate-500">Color</label>
+            <input type="color" id="ds-element-color" onchange="DESIGN_SUITE.updateSelected('fill', this.value)" class="w-6 h-6 rounded cursor-pointer bg-transparent border-0">
+            <div id="ds-text-controls" class="hidden items-center gap-1.5">
+              <input id="ds-text-value" type="text" oninput="DESIGN_SUITE.updateSelected('text', this.value)" placeholder="Edit text" class="w-44 bg-brand-black text-slate-200 border border-brand-border rounded px-1.5 py-0.5 text-[10px]">
+              <select id="ds-font-family" onchange="DESIGN_SUITE.updateSelected('fontFamily', this.value)" class="bg-brand-black text-slate-200 border border-brand-border rounded px-1.5 py-0.5 text-[10px]">
+                <option value="JetBrains Mono">JetBrains Mono</option>
+                <option value="Georgia">Georgia</option>
+                <option value="Arial">Arial</option>
+              </select>
+              <input type="number" id="ds-font-size" min="8" max="200" value="32" onchange="DESIGN_SUITE.updateSelected('fontSize', this.value)" class="w-12 bg-brand-black text-slate-200 border border-brand-border rounded px-1 py-0.5 text-[10px] text-center">
+            </div>
+            <div class="flex bg-brand-black rounded border border-brand-border">
+              <button type="button" onclick="DESIGN_SUITE.align('left')" title="Align left" class="px-1.5 py-1 text-slate-400 hover:text-brand-gold"><i class="fa-solid fa-align-left text-[9px]"></i></button>
+              <button type="button" onclick="DESIGN_SUITE.align('center')" title="Align center" class="px-1.5 py-1 text-slate-400 hover:text-brand-gold"><i class="fa-solid fa-align-center text-[9px]"></i></button>
+              <button type="button" onclick="DESIGN_SUITE.align('right')" title="Align right" class="px-1.5 py-1 text-slate-400 hover:text-brand-gold"><i class="fa-solid fa-align-right text-[9px]"></i></button>
+              <button type="button" onclick="DESIGN_SUITE.align('top')" title="Align top" class="px-1.5 py-1 text-slate-400 hover:text-brand-gold"><i class="fa-solid fa-arrow-up text-[9px]"></i></button>
+              <button type="button" onclick="DESIGN_SUITE.align('middle')" title="Align middle" class="px-1.5 py-1 text-slate-400 hover:text-brand-gold"><i class="fa-solid fa-grip-lines text-[9px]"></i></button>
+              <button type="button" onclick="DESIGN_SUITE.align('bottom')" title="Align bottom" class="px-1.5 py-1 text-slate-400 hover:text-brand-gold"><i class="fa-solid fa-arrow-down text-[9px]"></i></button>
+            </div>
+            <div class="flex bg-brand-black rounded border border-brand-border">
+              <button type="button" onclick="DESIGN_SUITE.moveLayer('up')" class="px-2 py-1 text-slate-400 hover:text-white"><i class="fa-solid fa-layer-group text-[9px]"></i></button>
+              <button type="button" onclick="DESIGN_SUITE.moveLayer('down')" class="px-2 py-1 text-slate-400 hover:text-white"><i class="fa-solid fa-layer-group text-[9px] opacity-50"></i></button>
+            </div>
+          </div>
+          <button type="button" onclick="DESIGN_SUITE.deleteSelected()" class="text-brand-alert hover:text-red-300 font-bold px-2 py-1 rounded hover:bg-red-500/10 flex items-center gap-1"><i class="fa-solid fa-trash-can"></i><span class="hidden sm:inline">Delete</span></button>
+        </div>
+        <div id="ds-canvas-stage" class="flex-1 ds-checker flex items-center justify-center p-6 overflow-auto" onclick="DESIGN_SUITE.clearSelect(event)">
+          <div id="ds-artboard-wrap" class="shrink-0">
+            <div id="ds-artboard" class="bg-brand-black relative overflow-hidden" style="width:1280px;height:720px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="ds-canva-modal" class="hidden fixed inset-0 bg-brand-black/90 backdrop-blur-md z-[340] items-center justify-center p-4">
+    <div class="bg-brand-panel border border-brand-border rounded-2xl w-full max-w-2xl p-8 text-center space-y-4">
+      <div class="w-14 h-14 mx-auto bg-brand-accent/20 border border-brand-accent/40 rounded-2xl flex items-center justify-center text-brand-accent font-black">C</div>
+      <h3 class="text-lg font-bold text-white">Canva Pro Integration</h3>
+      <p class="text-[11px] text-slate-400 max-w-md mx-auto">Launch Canva for motion and print work, then bring assets back into dimDrive.</p>
+      <div class="flex items-center justify-center gap-3">
+        <a href="https://www.canva.com" target="_blank" rel="noopener noreferrer" class="bg-brand-gold text-brand-black font-bold text-xs px-5 py-2.5 rounded-xl">Launch Canva Studio</a>
+        <button type="button" onclick="DESIGN_SUITE.closeCanva()" class="bg-brand-black border border-brand-border text-slate-300 font-semibold text-xs px-4 py-2.5 rounded-xl">Return to Design Suite</button>
+      </div>
+    </div>
+  </div>
 </div>
