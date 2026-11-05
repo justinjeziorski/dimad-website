@@ -6,26 +6,26 @@
   <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
       <div class="flex items-center space-x-4">
-        <div class="h-[4.5rem] w-[4.5rem] rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col items-center justify-center text-amber-400 font-black shadow-inner">
+        <div class="h-[4.5rem] w-[4.5rem] rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col items-center justify-center text-brand-gold font-black shadow-inner">
           <span class="text-2xl leading-none">🔥</span>
-          <span id="goals-streak-badge" class="text-xs font-bold mt-0.5 leading-none">14d</span>
-          <span class="text-[9px] font-bold tracking-wide uppercase text-amber-400/80 mt-0.5 leading-none">Streak</span>
+          <span id="goals-streak-badge" class="text-xs font-bold mt-0.5 leading-none">0d</span>
+          <span class="text-[9px] font-bold tracking-wide uppercase text-brand-gold/80 mt-0.5 leading-none">Days</span>
         </div>
         <div>
           <div class="flex items-center space-x-2">
             <h1 class="text-lg font-black text-white">Goals & Achievements</h1>
-            <span class="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
-              Active Streak
+            <span class="text-[10px] font-bold text-brand-gold bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+              Clock-in year
             </span>
           </div>
-          <p id="goals-streak-next" class="text-[11px] font-mono text-slate-400 mt-1">Next Milestone: 21 Days</p>
+          <p id="goals-streak-next" class="text-[11px] font-mono text-slate-400 mt-1">Next Milestone: 10 Days</p>
         </div>
       </div>
 
       <div class="flex items-center space-x-4 md:border-l border-slate-800 md:pl-5">
         <div class="text-right">
           <div class="text-[10px] font-mono text-slate-400 uppercase tracking-wider">Earned Balance</div>
-          <div class="text-base font-black text-amber-400 font-mono dim-balance-display">18,400 $DIM</div>
+          <div class="text-base font-black text-brand-gold font-mono dim-balance-display">18,400 $DIM</div>
         </div>
         <button type="button" onclick="toggleNotificationModal()" class="p-2.5 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-slate-400 hover:text-white transition flex items-center gap-2 text-xs">
           🔔 Reminders
@@ -35,8 +35,30 @@
         </button>
       </div>
     </div>
+  </div>
 
-    <div id="dim-streak-track" class="w-full"></div>
+  <!-- CLOCK-IN YEAR TRACKER -->
+  <div id="goals-focus-log" class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 scroll-mt-4">
+    <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+      <div>
+        <h2 class="text-sm font-black text-white tracking-wide uppercase">Focus Log</h2>
+        <p class="text-[11px] text-slate-400 mt-0.5">Each Clock In adds one day toward $DIM milestones. Resets on your membership anniversary.</p>
+      </div>
+      <div class="text-right">
+        <p class="text-[10px] font-mono text-slate-500" id="focus-log-range">Membership year</p>
+        <p class="text-[11px] font-mono font-bold text-brand-gold" id="focus-log-earned">0 $DIM</p>
+      </div>
+    </div>
+    <div class="flex flex-wrap items-center gap-3 text-[11px]">
+      <span class="font-mono text-brand-gold font-bold" id="focus-log-hours">0 / 365 days</span>
+      <span class="text-slate-600">·</span>
+      <span class="font-mono text-brand-mint font-bold" id="focus-log-freq">Next 10d · 1,000 $DIM</span>
+    </div>
+    <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-3">
+      <svg id="focus-log-chart" viewBox="0 0 900 130" class="w-full h-36" role="img" aria-label="Clock-in year progress"></svg>
+      <div id="focus-log-dots" class="flex flex-wrap gap-[3px]"></div>
+      <div id="focus-log-milestones" class="grid grid-cols-4 sm:grid-cols-6 gap-1.5"></div>
+    </div>
   </div>
 
   <!-- 2. TIME HORIZON SELECTOR & TARGET LIST -->
@@ -44,7 +66,7 @@
     <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-800 pb-4 gap-3">
       <div class="flex items-center space-x-3">
         <label for="goal-horizon-select" class="text-xs font-bold uppercase tracking-wider text-slate-400">Horizon:</label>
-        <select id="goal-horizon-select" class="bg-slate-950 text-amber-400 font-bold text-sm border border-slate-800 rounded-xl px-3 py-2 focus:outline-none focus:border-amber-500">
+        <select id="goal-horizon-select" class="bg-slate-950 text-brand-gold font-bold text-sm border border-slate-800 rounded-xl px-3 py-2 focus:outline-none focus:border-amber-500">
           <option value="daily" selected>⚡ Daily Targets (Today)</option>
           <option value="weekly">📅 Weekly Objectives</option>
           <option value="monthly">🎯 Monthly Focus</option>
@@ -71,35 +93,35 @@
           <input type="checkbox" class="h-4 w-4 accent-amber-500 rounded">
           <span class="text-sm font-semibold text-slate-200">Configure daily 8:00 AM push notification popup</span>
         </div>
-        <span class="text-xs font-mono text-amber-400 font-bold bg-amber-500/10 px-2.5 py-1 rounded-lg">Pending Today</span>
+        <span class="text-xs font-mono text-brand-gold font-bold bg-amber-500/10 px-2.5 py-1 rounded-lg">Pending Today</span>
       </div>
     </div>
 
     <div class="space-y-3 hidden" data-goal-horizon="weekly">
       <div class="p-4 bg-slate-950 border border-slate-800 rounded-xl flex items-center justify-between">
         <span class="text-sm font-semibold text-slate-200">Ship Goals &amp; Achievements $DIM milestone UI</span>
-        <span class="text-xs font-mono text-amber-400 font-bold bg-amber-500/10 px-2.5 py-1 rounded-lg">This Week</span>
+        <span class="text-xs font-mono text-brand-gold font-bold bg-amber-500/10 px-2.5 py-1 rounded-lg">This Week</span>
       </div>
     </div>
 
     <div class="space-y-3 hidden" data-goal-horizon="monthly">
       <div class="p-4 bg-slate-950 border border-slate-800 rounded-xl flex items-center justify-between">
-        <span class="text-sm font-semibold text-slate-200">Reach the 30-day streak and claim 2,500 $DIM</span>
-        <span class="text-xs font-mono text-amber-400 font-bold bg-amber-500/10 px-2.5 py-1 rounded-lg">This Month</span>
+        <span class="text-sm font-semibold text-slate-200">Clock in 30 days this year and claim 2,000 $DIM</span>
+        <span class="text-xs font-mono text-brand-gold font-bold bg-amber-500/10 px-2.5 py-1 rounded-lg">This Month</span>
       </div>
     </div>
 
     <div class="space-y-3 hidden" data-goal-horizon="quarterly">
       <div class="p-4 bg-slate-950 border border-slate-800 rounded-xl flex items-center justify-between">
         <span class="text-sm font-semibold text-slate-200">Launch paid membership with redeemable $DIM perks</span>
-        <span class="text-xs font-mono text-amber-400 font-bold bg-amber-500/10 px-2.5 py-1 rounded-lg">Q Sprint</span>
+        <span class="text-xs font-mono text-brand-gold font-bold bg-amber-500/10 px-2.5 py-1 rounded-lg">Q Sprint</span>
       </div>
     </div>
 
     <div class="space-y-3 hidden" data-goal-horizon="yearly">
       <div class="p-4 bg-slate-950 border border-slate-800 rounded-xl flex items-center justify-between">
-        <span class="text-sm font-semibold text-slate-200">Complete a 365-day streak for 27,500 $DIM</span>
-        <span class="text-xs font-mono text-amber-400 font-bold bg-amber-500/10 px-2.5 py-1 rounded-lg">Year Vision</span>
+        <span class="text-sm font-semibold text-slate-200">Clock in 365 days this year and claim 12,000 $DIM</span>
+        <span class="text-xs font-mono text-brand-gold font-bold bg-amber-500/10 px-2.5 py-1 rounded-lg">Year Vision</span>
       </div>
     </div>
   </div>

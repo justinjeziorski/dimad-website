@@ -1,4 +1,27 @@
-<div id="view-nomad-toolbox" class="tab-view hidden p-4 border border-brand-border bg-brand-panel rounded">
-  <h2 class="text-sm font-bold text-brand-mint mb-2">TRAVEL TOOLBOX</h2>
-  <p class="text-slate-400">Converters, timezone tools, and documentation.</p>
+<div id="view-nomad-toolbox" class="tab-view hidden w-full h-[calc(100vh-7.25rem)] min-h-0 overflow-y-scroll">
+  <style>
+    #view-nomad-toolbox { scrollbar-gutter: stable; scrollbar-color: #b45309 #070A0F; scrollbar-width: thin; }
+    #view-nomad-toolbox::-webkit-scrollbar { width: 8px; }
+    #view-nomad-toolbox::-webkit-scrollbar-track { background: #070A0F; border-radius: 8px; }
+    #view-nomad-toolbox::-webkit-scrollbar-thumb { background: #b45309; border-radius: 8px; }
+    #view-nomad-toolbox::-webkit-scrollbar-thumb:hover { background: #f59e0b; }
+    #tb-root { font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+    #tb-root .tb-flag {
+      display: inline-block;
+      width: 1.35em;
+      height: 0.9em;
+      border-radius: 2px;
+      vertical-align: middle;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.08);
+    }
+    #tb-root .tb-flag-am { background: linear-gradient(to bottom, #D90012 0 33.33%, #0033A0 33.33% 66.66%, #F2A800 66.66% 100%); }
+    #tb-root .tb-flag-mx { background: linear-gradient(to right, #006847 0 33.33%, #fff 33.33% 66.66%, #CE1126 66.66% 100%); }
+    #tb-root .tb-flag-vn { background: #DA251D; }
+    #tb-root .tb-flag-th { background: linear-gradient(to bottom, #A51931 0 20%, #fff 20% 40%, #2D2A4A 40% 60%, #fff 60% 80%, #A51931 80% 100%); }
+    #tb-root .tb-flag-id { background: linear-gradient(to bottom, #CE1126 0 50%, #fff 50% 100%); }
+    #tb-cats { scrollbar-width: thin; }
+    #tb-cats::-webkit-scrollbar { height: 6px; }
+    #tb-cats::-webkit-scrollbar-thumb { background: #1E293B; border-radius: 4px; }
+  </style>
+  <div id="tb-root" class="min-h-full bg-brand-black text-slate-100"></div>
 </div>

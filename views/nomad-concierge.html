@@ -1,4 +1,15 @@
-<div id="view-nomad-concierge" class="tab-view hidden p-4 border border-brand-border bg-brand-panel rounded">
-  <h2 class="text-sm font-bold text-brand-gold mb-2">DIMAD CONCIERGE</h2>
-  <p class="text-slate-400">Premium travel and advisory assistance.</p>
+<div id="view-nomad-concierge" class="tab-view hidden fixed inset-0 z-[200] min-h-screen bg-brand-black text-slate-100">
+  <style>
+    #view-nomad-concierge, #cg-root {
+      font-family: 'JetBrains Mono', monospace;
+      background-color: #070A0F;
+      color: #f8fafc;
+      font-size: 11px;
+    }
+    #cg-main::-webkit-scrollbar, #cg-chat-scroll::-webkit-scrollbar { width: 4px; height: 4px; }
+    #cg-main::-webkit-scrollbar-track, #cg-chat-scroll::-webkit-scrollbar-track { background: #070A0F; }
+    #cg-main::-webkit-scrollbar-thumb, #cg-chat-scroll::-webkit-scrollbar-thumb { background: #1E293B; border-radius: 2px; }
+    #cg-main::-webkit-scrollbar-thumb:hover, #cg-chat-scroll::-webkit-scrollbar-thumb:hover { background: #38BDF8; }
+  </style>
+  <div id="cg-root" class="h-full min-h-0 w-full bg-brand-black text-slate-100 font-mono"></div>
 </div>

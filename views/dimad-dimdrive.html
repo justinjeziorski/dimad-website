@@ -1,19 +1,128 @@
-<div id="view-dimad-dimdrive" class="tab-view hidden w-full h-full overflow-y-auto">
-  <div class="p-6 max-w-5xl mx-auto space-y-5">
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-        <h2 class="text-lg font-black text-white flex items-center gap-2">☁️ dimDrive</h2>
-        <p class="text-[12px] text-slate-400 mt-0.5">Cloud locker for dashboard files. Open WriteSpace drafts, download copies, or upload files to this device vault.</p>
-      </div>
-      <div class="flex items-center gap-2">
-        <label class="bg-slate-950 hover:bg-slate-800 border border-slate-700 text-[11px] font-semibold text-slate-200 px-3 py-1.5 rounded-xl cursor-pointer">
-          + Upload
-          <input id="dimdrive-upload" type="file" class="hidden" onchange="DIMDRIVE.upload(this)">
-        </label>
-        <button type="button" onclick="switchTab('creator-writespace')" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[11px] px-3 py-1.5 rounded-xl">Open WriteSpace</button>
+<div id="view-dimad-dimdrive" class="tab-view hidden fixed inset-0 z-[400] min-h-screen bg-slate-950 text-slate-100 flex-col">
+  <style>
+    #view-dimad-dimdrive { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 11px; }
+    #view-dimad-dimdrive ::-webkit-scrollbar { width: 5px; height: 5px; }
+    #view-dimad-dimdrive ::-webkit-scrollbar-track { background: #0B0F19; }
+    #view-dimad-dimdrive ::-webkit-scrollbar-thumb { background: #1E293B; border-radius: 9999px; }
+    #view-dimad-dimdrive ::-webkit-scrollbar-thumb:hover { background: #F59E0B; }
+  </style>
+
+  <header class="h-11 bg-slate-900 border-b border-slate-800 px-3 flex items-center justify-between shrink-0 z-30 gap-2">
+    <div class="flex items-center gap-2 shrink-0">
+      <button type="button" onclick="DIMDRIVE.close()" class="flex items-center gap-1.5 bg-slate-950 hover:bg-slate-800 border border-slate-700 text-slate-200 text-[10px] font-semibold px-2.5 py-1 rounded-lg transition">
+        <i class="fa-solid fa-arrow-left text-[9px]"></i> Back
+      </button>
+      <div class="flex items-center gap-2 pl-1">
+        <div class="w-6 h-6 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 text-slate-950 font-black flex items-center justify-center text-[11px] shadow-sm shadow-amber-500/20">D</div>
+        <span class="text-[12px] font-extrabold text-white tracking-tight leading-tight">dimDrive</span>
       </div>
     </div>
+    <div class="flex-1 max-w-xl">
+      <div class="relative">
+        <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-[9px]"></i>
+        <input id="dimdrive-search" type="text" placeholder="Search files in dimDrive..." oninput="DIMDRIVE.setSearch(this.value)" class="w-full bg-slate-950 border border-slate-800 rounded-lg pl-7 pr-7 py-1 text-[11px] text-slate-200 placeholder-slate-500 focus:outline-none focus:border-amber-500 transition">
+        <button type="button" id="dimdrive-search-clear" onclick="DIMDRIVE.setSearch('')" class="hidden absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white text-[10px]"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+    </div>
+    <div class="flex items-center gap-2 shrink-0">
+      <div class="hidden lg:flex items-center gap-2 bg-slate-950 border border-slate-800 px-2 py-1 rounded-lg text-[10px]">
+        <i class="fa-solid fa-cloud text-amber-500 text-[10px]"></i>
+        <div>
+          <div class="flex items-center justify-between gap-2 text-[9px] text-slate-400">
+            <span id="dimdrive-storage-copy">4.2 GB of 15 GB</span>
+            <span id="dimdrive-storage-pct" class="text-amber-500 font-bold">28%</span>
+          </div>
+          <div class="w-20 bg-slate-800 h-1 rounded-full mt-0.5 overflow-hidden">
+            <div id="dimdrive-storage-bar" class="bg-amber-500 h-full w-[28%] rounded-full"></div>
+          </div>
+        </div>
+      </div>
+      <button type="button" id="dimdrive-info-btn" onclick="DIMDRIVE.toggleDetails()" title="Toggle Info Inspector" class="p-1.5 rounded-lg border text-[10px] bg-amber-500/10 text-brand-gold border-amber-500/30">
+        <i class="fa-solid fa-circle-info"></i>
+      </button>
+      <button type="button" onclick="DIMDRIVE.openWriteSpace()" class="hidden md:inline-flex bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[10px] px-2.5 py-1 rounded-lg">Open WriteSpace</button>
+    </div>
+  </header>
 
-    <div id="dimdrive-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+  <div class="flex-1 flex min-h-0 overflow-hidden">
+    <aside class="w-48 bg-slate-900/90 border-r border-slate-800 flex flex-col justify-between p-2.5 shrink-0 z-20">
+      <div class="space-y-3 min-h-0 overflow-y-auto">
+        <div class="relative">
+          <button type="button" onclick="DIMDRIVE.toggleNewMenu()" class="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-[10px] py-1.5 px-3 rounded-lg shadow-md shadow-amber-500/20 flex items-center justify-between transition">
+            <span class="flex items-center gap-1.5"><i class="fa-solid fa-plus text-[10px]"></i> New Upload</span>
+            <i id="dimdrive-new-chevron" class="fa-solid fa-chevron-down text-[8px]"></i>
+          </button>
+          <div id="dimdrive-new-menu" class="hidden absolute top-full left-0 right-0 mt-1 bg-slate-900 border border-slate-700 rounded-lg shadow-2xl p-1 z-50 text-[10px] space-y-0.5">
+            <label class="w-full text-left px-2 py-1.5 rounded-md hover:bg-slate-800 flex items-center gap-2 text-slate-200 cursor-pointer">
+              <i class="fa-solid fa-file-arrow-up text-amber-500"></i> Upload File
+              <input id="dimdrive-upload" type="file" class="hidden" onchange="DIMDRIVE.upload(this)">
+            </label>
+            <label class="w-full text-left px-2 py-1.5 rounded-md hover:bg-slate-800 flex items-center gap-2 text-slate-200 cursor-pointer">
+              <i class="fa-solid fa-folder-plus text-brand-gold"></i> Upload Folder
+              <input id="dimdrive-upload-folder" type="file" class="hidden" webkitdirectory multiple onchange="DIMDRIVE.uploadFolder(this)">
+            </label>
+            <div class="border-t border-slate-800 my-0.5"></div>
+            <button type="button" onclick="DIMDRIVE.startNewFolder()" class="w-full text-left px-2 py-1.5 rounded-md hover:bg-slate-800 flex items-center gap-2 text-slate-200">
+              <i class="fa-solid fa-folder-plus text-brand-gold"></i> New Folder
+            </button>
+            <button type="button" onclick="DIMDRIVE.scanId()" class="w-full text-left px-2 py-1.5 rounded-md hover:bg-slate-800 flex items-center gap-2 text-slate-200">
+              <i class="fa-solid fa-passport text-rose-400"></i> Scan Passport / ID
+            </button>
+          </div>
+        </div>
+        <nav id="dimdrive-nav" class="space-y-0.5"></nav>
+        <div class="pt-2 border-t border-slate-800/80">
+          <div class="flex items-center justify-between gap-1 mb-1.5 px-1">
+            <span class="text-[8px] font-bold text-slate-400 uppercase tracking-wider">Folders</span>
+            <button type="button" onclick="DIMDRIVE.startNewFolder()" title="New folder" class="text-brand-gold hover:text-amber-300 px-1 text-[10px]"><i class="fa-solid fa-plus"></i></button>
+          </div>
+          <div id="dimdrive-folder-nav" class="space-y-0.5"></div>
+        </div>
+      </div>
+      <div class="bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-[10px] space-y-1.5 mt-2">
+        <div class="flex items-center justify-between text-slate-300 font-bold">
+          <span>dimDrive Storage</span>
+          <span class="text-[8px] text-brand-gold bg-amber-500/10 px-1 py-0.5 rounded border border-amber-500/20">Pro Tier</span>
+        </div>
+        <p class="text-[9px] text-slate-400 leading-snug">Need more space for high-res passport scans &amp; travel media?</p>
+        <button type="button" onclick="DIMDRIVE.upgradeStorage()" class="w-full bg-slate-800 hover:bg-slate-700 text-brand-gold font-semibold text-[10px] py-1 rounded-md border border-slate-700 transition">Upgrade to 2TB</button>
+      </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col bg-slate-950 overflow-hidden min-w-0">
+      <div class="px-3 py-2 border-b border-slate-800/80 flex flex-wrap items-center justify-between gap-2 shrink-0">
+        <div class="flex items-center gap-2">
+          <h2 id="dimdrive-title" class="text-[13px] font-bold text-white capitalize">My Drive</h2>
+          <span id="dimdrive-filter-chip" class="hidden text-[9px] bg-amber-500/10 text-brand-gold border border-amber-500/20 px-1.5 py-0.5 rounded font-medium"></span>
+        </div>
+        <div class="flex items-center gap-2">
+          <div class="flex items-center gap-1 text-[10px] bg-slate-900 border border-slate-800 rounded-md px-1.5 py-0.5">
+            <span class="text-slate-500 text-[8px] uppercase font-bold">Sort</span>
+            <select id="dimdrive-sort" onchange="DIMDRIVE.setSort(this.value)" class="bg-transparent text-slate-200 text-[10px] focus:outline-none cursor-pointer">
+              <option value="name" class="bg-slate-900">Name</option>
+              <option value="date" class="bg-slate-900">Last Modified</option>
+              <option value="size" class="bg-slate-900">File Size</option>
+            </select>
+          </div>
+          <div class="flex items-center bg-slate-900 border border-slate-800 p-0.5 rounded-md text-[10px]">
+            <button type="button" id="dimdrive-view-grid" onclick="DIMDRIVE.setView('grid')" class="px-2 py-0.5 rounded text-slate-400 hover:text-white" title="Grid view">
+              <i class="fa-solid fa-border-all text-[9px]"></i> Grid
+            </button>
+            <button type="button" id="dimdrive-view-list" onclick="DIMDRIVE.setView('list')" class="px-2 py-0.5 rounded font-bold bg-slate-800 text-brand-gold" title="List view">
+              <i class="fa-solid fa-list text-[9px]"></i> List
+            </button>
+          </div>
+        </div>
+      </div>
+      <div id="dimdrive-body" class="flex-1 overflow-y-auto p-3 space-y-4"></div>
+    </main>
+
+    <aside id="dimdrive-inspector" class="w-64 bg-slate-900 border-l border-slate-800 flex flex-col justify-between p-3 shrink-0 overflow-y-auto z-20 space-y-4"></aside>
+  </div>
+
+  <div id="dimdrive-toast" class="hidden fixed bottom-6 right-6 z-[360] flex items-center gap-2 bg-amber-500 text-slate-950 px-3 py-2 rounded-lg font-bold text-[10px] shadow-2xl shadow-amber-500/30"></div>
+  <div id="dimdrive-folder-ctx" onclick="event.stopPropagation()" class="hidden fixed z-[410] min-w-[150px] bg-slate-950 border border-slate-700 rounded-lg overflow-hidden shadow-2xl font-mono text-[10px]">
+    <button type="button" onclick="DIMDRIVE.folderCtxAction('rename')" class="w-full text-left px-3 py-1.5 text-slate-200 hover:bg-slate-900">Rename</button>
+    <button type="button" onclick="DIMDRIVE.folderCtxAction('delete')" class="w-full text-left px-3 py-1.5 text-rose-400 hover:bg-slate-900">Delete</button>
   </div>
 </div>

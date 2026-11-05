@@ -1,4 +1,13 @@
-<div id="view-nomad-guides" class="tab-view hidden p-4 border border-brand-border bg-brand-panel rounded">
-  <h2 class="text-sm font-bold text-brand-gold mb-2">TRAVEL GUIDES</h2>
-  <p class="text-slate-400">Curated city guides and intel.</p>
+<div id="view-nomad-guides" class="tab-view hidden w-full h-[calc(100vh-7.25rem)] min-h-0 overflow-y-scroll">
+  <style>
+    #view-nomad-guides { scrollbar-gutter: stable; scrollbar-color: #b45309 #070A0F; scrollbar-width: thin; }
+    #view-nomad-guides::-webkit-scrollbar { width: 8px; }
+    #view-nomad-guides::-webkit-scrollbar-track { background: #070A0F; border-radius: 8px; }
+    #view-nomad-guides::-webkit-scrollbar-thumb { background: #b45309; border-radius: 8px; }
+    #view-nomad-guides::-webkit-scrollbar-thumb:hover { background: #f59e0b; }
+    #wg-root { font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+    #wg-cats { scrollbar-width: none; }
+    #wg-cats::-webkit-scrollbar { display: none; }
+  </style>
+  <div id="wg-root" class="min-h-full bg-brand-black text-slate-100"></div>
 </div>

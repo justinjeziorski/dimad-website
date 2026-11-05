@@ -1,4 +1,171 @@
-<div id="view-creator-scheduler" class="tab-view hidden p-4 border border-brand-border bg-brand-panel rounded">
-  <h2 class="text-sm font-bold text-brand-accent mb-2">CONTENT SCHEDULER</h2>
-  <p class="text-slate-400">Publish calendar and distribution slots.</p>
+<div id="view-creator-scheduler" class="tab-view hidden w-full h-[calc(100vh-7.25rem)] min-h-0 overflow-y-scroll">
+  <style>
+    #view-creator-scheduler { scrollbar-gutter: stable; scrollbar-color: #F59E0B #070A0F; scrollbar-width: thin; }
+    #view-creator-scheduler::-webkit-scrollbar { width: 8px; }
+    #view-creator-scheduler::-webkit-scrollbar-track { background: #070A0F; border-radius: 8px; }
+    #view-creator-scheduler::-webkit-scrollbar-thumb { background: #F59E0B; border-radius: 8px; }
+    #view-creator-scheduler::-webkit-scrollbar-thumb:hover { background: #FBBF24; }
+  </style>
+  <div id="sch-root" class="min-h-full bg-brand-black text-slate-200 p-6 selection:bg-brand-gold selection:text-slate-950 rounded border border-brand-border">
+
+    <header class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 border-b border-slate-800 pb-6 gap-4">
+      <div>
+        <div class="flex items-center gap-3">
+          <span class="h-3 w-3 rounded-full bg-amber-500 animate-pulse"></span>
+          <h1 class="text-2xl font-bold tracking-tight text-white">Content Scheduler</h1>
+        </div>
+        <p class="text-sm text-slate-400 mt-1">Cross-platform editorial calendar tied to your brand pipeline and content suite.</p>
+      </div>
+      <div class="flex flex-nowrap items-center gap-2 shrink-0">
+        <div class="bg-slate-900 border border-slate-800 rounded-lg p-0.5 flex text-[11px] whitespace-nowrap">
+          <button type="button" id="sch-view-calendar" onclick="SCHEDULER.setView('calendar')" class="px-2.5 py-1 rounded-md transition-all bg-amber-600 text-white font-medium">🗓️ Calendar</button>
+          <button type="button" id="sch-view-list" onclick="SCHEDULER.setView('list')" class="px-2.5 py-1 rounded-md transition-all text-slate-400 hover:text-white">📋 Production List</button>
+        </div>
+        <button type="button" onclick="SCHEDULER.openModal()" class="bg-amber-600 hover:bg-amber-500 text-white font-medium px-2.5 py-1 rounded-lg text-[11px] transition-all shadow-md shadow-amber-950/40 flex items-center gap-1 whitespace-nowrap">
+          <span>+</span> Schedule Content
+        </button>
+        <button type="button" onclick="SCHEDULER.openProdModal()" class="bg-amber-600 hover:bg-amber-500 text-white font-medium px-2.5 py-1 rounded-lg text-[11px] transition-all shadow-md shadow-amber-950/40 flex items-center gap-1 whitespace-nowrap">
+          <span>+</span> New Production
+        </button>
+      </div>
+    </header>
+
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 mb-6 flex flex-col gap-3">
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="text-xs text-slate-500 font-mono uppercase tracking-wider">Profile:</span>
+        <select id="sch-profile" onchange="SCHEDULER.setProfile(this.value)" class="bg-slate-900 text-xs text-brand-gold border border-slate-800 rounded-xl px-3 py-1.5 focus:outline-none focus:border-amber-500 cursor-pointer min-w-[160px]"></select>
+        <button type="button" id="sch-add-profile" onclick="SCHEDULER.openAddProfile()" class="text-xs px-3 py-1.5 rounded-xl border border-amber-500/40 bg-amber-500/10 text-brand-gold font-medium hover:bg-amber-500/20">+ Add Profile</button>
+        <span id="sch-profile-count" class="text-[10px] text-slate-500 font-mono"></span>
+      </div>
+      <div class="flex items-start gap-2 w-full">
+        <span class="text-xs text-slate-500 font-mono uppercase tracking-wider mt-1.5 shrink-0">Platform:</span>
+        <div id="sch-platforms" class="flex flex-wrap items-center gap-2"></div>
+      </div>
+      <div class="flex items-center gap-3 justify-end">
+        <span class="text-xs text-slate-500 font-mono uppercase tracking-wider">Type:</span>
+        <select id="sch-type" onchange="SCHEDULER.setType(this.value)" class="bg-slate-900 text-xs text-brand-gold border border-slate-800 rounded-xl px-3 py-1.5 focus:outline-none focus:border-amber-500 cursor-pointer"></select>
+      </div>
+    </div>
+
+    <div id="sch-body"></div>
+  </div>
+
+  <div id="sch-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm items-center justify-center z-[350] p-4" onclick="if(event.target===this)SCHEDULER.closeModal()">
+    <div class="bg-brand-panel border border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl">
+      <h2 class="text-lg font-bold text-white mb-4">Schedule New Content</h2>
+      <form onsubmit="SCHEDULER.addItem(event)" class="space-y-4 text-xs">
+        <div>
+          <label class="block text-slate-400 mb-1 font-medium">Profile</label>
+          <select id="sch-item-profile" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500"></select>
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1 font-medium">Content / Episode Title</label>
+          <input id="sch-title" type="text" required placeholder="e.g. Summer Skincare Review or Podcast Ep 4" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-slate-400 mb-1 font-medium">Platform</label>
+            <select id="sch-platform" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500"></select>
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1 font-medium">Content Category</label>
+            <select id="sch-category" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500"></select>
+          </div>
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1 font-medium">Deal / Brand</label>
+          <input id="sch-brand" type="text" placeholder="Self or partner brand" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-slate-400 mb-1 font-medium">Publish Date</label>
+            <input id="sch-date" type="date" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1 font-medium">Publish Time</label>
+            <input id="sch-time" type="time" value="12:00" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-slate-400 mb-1 font-medium">Format</label>
+            <input id="sch-format" type="text" placeholder="Short Video, Newsletter…" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1 font-medium">Production Stage</label>
+            <select id="sch-status" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500"></select>
+          </div>
+        </div>
+        <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-slate-800">
+          <button type="button" onclick="SCHEDULER.closeModal()" class="px-4 py-2 rounded-xl font-medium text-slate-400 hover:text-white transition-colors">Cancel</button>
+          <button type="submit" class="bg-amber-600 hover:bg-amber-500 text-white font-medium px-4 py-2 rounded-xl transition-all shadow-md shadow-amber-950/40">Add to Scheduler</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="sch-prod-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm items-center justify-center z-[355] p-4" onclick="if(event.target===this)SCHEDULER.closeProdModal()">
+    <div class="bg-brand-panel border border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl">
+      <h2 class="text-lg font-bold text-white mb-4">New Production</h2>
+      <form onsubmit="SCHEDULER.addProduction(event)" class="space-y-4 text-xs">
+        <div>
+          <label class="block text-slate-400 mb-1 font-medium">Title</label>
+          <input id="prod-new-title" type="text" required placeholder="e.g. Brand UGC, episode, or newsletter issue" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-slate-400 mb-1 font-medium">Format / Type</label>
+            <select id="prod-new-type" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500">
+              <option>UGC Video</option>
+              <option>Short Video</option>
+              <option>Podcast</option>
+              <option>Carousel</option>
+              <option>Newsletter</option>
+              <option>Article</option>
+              <option>Live</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1 font-medium">Stage</label>
+            <select id="prod-new-stage" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500"></select>
+          </div>
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1 font-medium">Deal / Brand</label>
+          <input id="prod-new-brand" type="text" placeholder="Self or partner brand" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-slate-400 mb-1 font-medium">Due Date</label>
+            <input id="prod-new-due" type="date" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1 font-medium">Fee / Value</label>
+            <input id="prod-new-fee" type="text" placeholder="$0 or Owned" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500">
+          </div>
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1 font-medium">Drive / Assets Folder</label>
+          <input id="prod-new-drive" type="text" placeholder="https://drive.google.com/…" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500">
+        </div>
+        <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-slate-800">
+          <button type="button" onclick="SCHEDULER.closeProdModal()" class="px-4 py-2 rounded-xl font-medium text-slate-400 hover:text-white transition-colors">Cancel</button>
+          <button type="submit" class="bg-amber-600 hover:bg-amber-500 text-white font-medium px-4 py-2 rounded-xl transition-all shadow-md shadow-amber-950/40">Add Production</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="sch-profile-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm items-center justify-center z-[360] p-4" onclick="if(event.target===this)SCHEDULER.closeAddProfile()">
+    <div class="bg-brand-panel border border-slate-800 rounded-2xl w-full max-w-sm p-5 shadow-2xl space-y-3">
+      <h2 class="text-sm font-bold text-white">Add Profile</h2>
+      <p class="text-[11px] text-slate-400">Save a named account (up to 8). Use this when you post from more than one handle on the same platforms.</p>
+      <input id="sch-profile-name" type="text" maxlength="40" placeholder="e.g. Personal, Brand, Client A" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500">
+      <div class="flex justify-end gap-2 pt-2">
+        <button type="button" onclick="SCHEDULER.closeAddProfile()" class="px-3 py-1.5 rounded-xl text-xs text-slate-400">Cancel</button>
+        <button type="button" onclick="SCHEDULER.saveProfile()" class="px-3 py-1.5 rounded-xl text-xs bg-amber-600 text-white font-medium">Save Profile</button>
+      </div>
+    </div>
+  </div>
 </div>

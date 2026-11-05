@@ -86,6 +86,15 @@
     .sidebar-collapsed .nav-sub-container { display: none !important; }
     .sidebar-collapsed .nav-item-btn { justify-content: center !important; padding-left: 0 !important; padding-right: 0 !important; }
     .sidebar-collapsed .nav-header-box { justify-content: center !important; padding-left: 0 !important; padding-right: 0 !important; }
+
+    .cc-rail-card { width: fit-content; max-width: 100%; }
+    .cc-rail-card.cc-rail-open { width: 100%; }
+    .cal-dual-condensed, #cal-dual.cal-dual-condensed {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 0.75rem;
+      align-items: start;
+    }
   </style>
 </head>
 <body>
@@ -101,19 +110,26 @@
       </div>
       <div class="h-4 w-[1px] bg-brand-border"></div>
 
-      <!-- STATIC TRACK YOUR PROGRESS WIDGET -->
+      <!-- WEEKLY + DAILY FOCUS TRACKERS -->
       <div class="flex items-center space-x-2 bg-brand-black/60 border border-brand-border/80 px-2.5 py-1 rounded">
-        <div class="flex items-center space-x-1.5">
-          <i class="fa-solid fa-stopwatch text-brand-mint text-xs"></i>
-          <span class="text-[9px] text-slate-400 font-semibold tracking-wide hidden sm:inline">PROGRESS:</span>
-          <span id="weekly-progress-text" class="text-[10px] text-brand-accent font-bold">14.5 / 40.0 HRS</span>
+        <i class="fa-solid fa-stopwatch text-brand-mint text-xs shrink-0"></i>
+        <div class="flex items-center gap-1.5" title="Weekly focus toward 40 hours">
+          <span class="text-[9px] text-slate-400 font-semibold tracking-wide hidden lg:inline">WEEK</span>
+          <span id="weekly-progress-text" class="text-[10px] text-brand-accent font-bold font-mono whitespace-nowrap">14:30:00 / 40:00:00</span>
+          <div class="w-14 bg-brand-border/60 rounded-full h-1 overflow-hidden hidden sm:block">
+            <div id="weekly-progress-bar" class="bg-brand-mint h-full w-[36%] transition-all duration-500"></div>
+          </div>
         </div>
-        <div class="w-20 bg-brand-border/60 rounded-full h-1 overflow-hidden hidden sm:block">
-          <div id="weekly-progress-bar" class="bg-brand-mint h-full w-[36%] transition-all duration-500"></div>
+        <div class="h-4 w-px bg-brand-border shrink-0"></div>
+        <div class="flex items-center gap-1.5" title="Daily tracker resets at midnight">
+          <span class="text-[9px] text-slate-400 font-semibold tracking-wide hidden lg:inline">DAY</span>
+          <span id="daily-progress-text" class="text-[10px] text-brand-gold font-bold font-mono whitespace-nowrap">0:00:00 / 8:00:00</span>
+          <div class="w-14 bg-brand-border/60 rounded-full h-1 overflow-hidden hidden sm:block">
+            <div id="daily-progress-bar" class="bg-amber-500 h-full w-0 transition-all duration-500"></div>
+          </div>
         </div>
-        <div class="flex items-center space-x-1 pl-1 border-l border-brand-border">
-          <button id="btn-timer-start" onclick="toggleTimer()" class="bg-brand-mint/20 hover:bg-brand-mint/30 text-brand-mint px-2 py-0.5 rounded text-[9px] font-bold border border-brand-mint/40 transition-all">START</button>
-          <button onclick="resetTimer()" class="text-slate-400 hover:text-slate-200 px-1 py-0.5 text-[9px]">RESET</button>
+        <div class="flex items-center pl-1 border-l border-brand-border">
+          <button id="btn-timer-pause" type="button" onclick="pauseFocusTimer()" class="hidden bg-amber-500/15 hover:bg-amber-500/25 text-brand-gold px-2 py-0.5 rounded text-[9px] font-bold border border-amber-500/40 transition-all">PAUSE</button>
         </div>
       </div>
     </div>
@@ -191,7 +207,7 @@
           </button>
 
           <button onclick="switchTab('dimad-notepad')" title="DIMAD Notepad" class="nav-item-btn w-full bg-brand-black/40 hover:bg-brand-border border border-brand-border text-slate-200 py-2 px-2.5 rounded font-semibold flex items-center gap-2 transition-all">
-            <i class="fa-solid fa-note-sticky text-amber-400 text-xs"></i>
+            <i class="fa-solid fa-note-sticky text-brand-gold text-xs"></i>
             <span class="nav-text-label">DIMAD Notepad</span>
           </button>
 
@@ -288,7 +304,7 @@
 
       <div class="space-y-1">
         <div class="text-[10px] font-mono text-slate-500 uppercase tracking-wider px-2 mb-1">AI Sub-Engines</div>
-        <button type="button" onclick="switchAiMode('business')" class="ai-mode-btn w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-amber-400 bg-amber-500/10 border border-amber-500/20 font-bold text-xs transition" data-mode="business">
+        <button type="button" onclick="switchAiMode('business')" class="ai-mode-btn w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-brand-gold bg-amber-500/10 border border-amber-500/20 font-bold text-xs transition" data-mode="business">
           <span>💼</span> <span>Business AI</span>
         </button>
         <button type="button" onclick="switchAiMode('creator')" class="ai-mode-btn w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 text-xs transition" data-mode="creator">
@@ -303,7 +319,7 @@
 
       <div class="space-y-2">
         <div class="flex items-center justify-between px-2">
-          <span class="text-[10px] font-mono text-amber-400 uppercase tracking-wider">💬 Chats</span>
+          <span class="text-[10px] font-mono text-brand-gold uppercase tracking-wider">💬 Chats</span>
           <span id="chat-count" class="text-[10px] font-mono bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded">0</span>
         </div>
         <div id="chat-history-list" class="space-y-1.5 max-h-56 overflow-y-auto text-xs">
@@ -315,7 +331,7 @@
     <div class="bg-slate-950 p-3.5 rounded-xl border border-slate-800 space-y-1 text-xs">
       <div class="flex justify-between text-slate-400 font-mono text-[11px] gap-2">
         <span>Dimad AI Credits</span>
-        <span id="ai-credits-label" class="text-amber-400 text-right">UNLIMITED Standard AI Active</span>
+        <span id="ai-credits-label" class="text-brand-gold text-right">UNLIMITED Standard AI Active</span>
       </div>
       <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
         <div class="bg-amber-400 h-full w-full"></div>
@@ -333,7 +349,7 @@
         </div>
       </div>
       <div class="flex items-center space-x-2">
-        <span id="ai-active-model-badge" class="text-[10px] font-mono bg-slate-800 text-amber-400 px-2 py-1 rounded-lg border border-slate-700">UNLIMITED Standard AI Active</span>
+        <span id="ai-active-model-badge" class="text-[10px] font-mono bg-slate-800 text-brand-gold px-2 py-1 rounded-lg border border-slate-700">UNLIMITED Standard AI Active</span>
         <button type="button" onclick="openPinnedChatsPage()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-3 py-1.5 rounded-xl transition flex items-center space-x-1.5">
           <span>📌 View Pinned Chats</span>
         </button>
@@ -342,7 +358,7 @@
 
     <div id="chat-messages-container" class="flex-1 overflow-y-auto p-6 space-y-6">
       <div class="flex items-start space-x-3 max-w-2xl">
-        <div class="w-8 h-8 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 font-bold text-xs flex-shrink-0">
+        <div class="w-8 h-8 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-brand-gold font-bold text-xs flex-shrink-0">
           AI
         </div>
         <div class="space-y-2 group relative">
@@ -428,7 +444,7 @@
 
     <div class="space-y-4 text-xs">
       <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
-        <div class="text-[10px] font-mono text-amber-400 uppercase">Original Snippet</div>
+        <div class="text-[10px] font-mono text-brand-gold uppercase">Original Snippet</div>
         <p id="modal-pinned-snippet" class="text-slate-300 italic">"Here is your high-agency growth loop framework..."</p>
       </div>
 
@@ -474,7 +490,7 @@
         <span>🧳</span> <span>Travel Vault</span>
       </button>
 
-      <button type="button" onclick="switchVaultTab('dim-wallet')" class="vault-tab-btn w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-amber-400 bg-amber-500/10 border border-amber-500/20 font-bold transition" data-tab="dim-wallet">
+      <button type="button" onclick="switchVaultTab('dim-wallet')" class="vault-tab-btn w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-brand-gold bg-amber-500/10 border border-amber-500/20 font-bold transition" data-tab="dim-wallet">
         <div class="flex items-center space-x-3">
           <span>💎</span> <span>$DIM Wallet</span>
         </div>
@@ -515,7 +531,7 @@
         <div>
           <div class="flex items-center space-x-3">
             <h2 class="text-2xl font-black text-white tracking-tight">$DIM Token Vault</h2>
-            <span class="user-tier-badge text-[11px] font-mono font-bold uppercase bg-amber-500/10 border border-amber-500/30 text-amber-400 px-2.5 py-1 rounded-lg">Premium (1.15x Yield)</span>
+            <span class="user-tier-badge text-[11px] font-mono font-bold uppercase bg-amber-500/10 border border-amber-500/30 text-brand-gold px-2.5 py-1 rounded-lg">Premium (1.15x Yield)</span>
           </div>
           <p class="text-xs text-slate-400 mt-1">Proof-of-Work Sovereign Yield. Minted from focus hours, streak momentum, and target clears.</p>
         </div>
@@ -528,7 +544,7 @@
           <div class="h-6 w-px bg-slate-800"></div>
           <div class="text-right">
             <div class="text-[10px] font-mono text-slate-400 uppercase tracking-wider">Active Multiplier</div>
-            <div class="dim-multiplier-display text-sm font-black font-mono text-amber-400">1.15x Yield</div>
+            <div class="dim-multiplier-display text-sm font-black font-mono text-brand-gold">1.15x Yield</div>
           </div>
         </div>
       </div>
@@ -551,7 +567,7 @@
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div class="bg-slate-900 border border-amber-500/20 p-5 rounded-2xl space-y-2 relative overflow-hidden shadow-xl">
           <span class="text-xs font-mono text-slate-400 uppercase tracking-wider">Total Vault Balance</span>
-          <div class="dim-balance-display text-3xl font-black font-mono text-amber-400">18,400 $DIM</div>
+          <div class="dim-balance-display text-3xl font-black font-mono text-brand-gold">18,400 $DIM</div>
           <div class="text-xs text-slate-400">Est. Cash Value: <strong class="dim-usd-value text-emerald-400 font-mono">$11.50 USD</strong></div>
         </div>
 
@@ -584,7 +600,7 @@
                   <div class="text-[10px] text-slate-500">200 $DIM/hr base rate</div>
                 </div>
               </div>
-              <span class="font-mono font-bold text-amber-400">+10,350 $DIM</span>
+              <span class="font-mono font-bold text-brand-gold">+10,350 $DIM</span>
             </div>
 
             <div class="flex justify-between items-center bg-slate-950 p-3 rounded-xl border border-slate-800">
@@ -595,7 +611,7 @@
                   <div class="text-[10px] text-slate-500">14-Day Active Execution</div>
                 </div>
               </div>
-              <span class="font-mono font-bold text-amber-400">+3,450 $DIM</span>
+              <span class="font-mono font-bold text-brand-gold">+3,450 $DIM</span>
             </div>
 
             <div class="flex justify-between items-center bg-slate-950 p-3 rounded-xl border border-slate-800">
@@ -606,14 +622,14 @@
                   <div class="text-[10px] text-slate-500">Premium Deposit</div>
                 </div>
               </div>
-              <span class="font-mono font-bold text-amber-400">+10,000 $DIM</span>
+              <span class="font-mono font-bold text-brand-gold">+10,000 $DIM</span>
             </div>
           </div>
         </div>
 
         <div class="bg-gradient-to-br from-slate-900 to-slate-950 border border-amber-500/30 rounded-2xl p-6 space-y-4 relative overflow-hidden flex flex-col justify-between">
           <div class="space-y-3">
-            <div class="inline-block bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded">
+            <div class="inline-block bg-amber-500/10 border border-amber-500/30 text-brand-gold text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded">
               Yield Optimization
             </div>
             <h4 class="text-base font-bold text-white">Unlock 1.50x Yield (+50% Boost)</h4>
@@ -638,7 +654,7 @@
               <h4 class="text-sm font-bold text-white">Concierge Flight & Hotel Stay</h4>
               <p class="text-xs text-slate-400 leading-relaxed">Book global flight routes or boutique stay itineraries directly through our sovereign concierge desk.</p>
             </div>
-            <button type="button" onclick="DIM_ENGINE.redeemConcierge()" class="w-full bg-slate-950 hover:bg-slate-800 border border-slate-700 text-xs font-semibold text-amber-400 py-2.5 rounded-xl transition">
+            <button type="button" onclick="DIM_ENGINE.redeemConcierge()" class="w-full bg-slate-950 hover:bg-slate-800 border border-slate-700 text-xs font-semibold text-brand-gold py-2.5 rounded-xl transition">
               Book with Concierge
             </button>
           </div>
@@ -685,6 +701,22 @@
   </main>
 </div>
 
+<!-- DAILY CLOCK IN -->
+<div id="clock-in-modal" class="fixed inset-0 bg-brand-black/80 z-[1000] hidden items-center justify-center p-4">
+  <div class="border border-brand-gold/40 bg-brand-panel max-w-md w-full p-6 rounded-2xl space-y-5 shadow-2xl">
+    <div class="space-y-1">
+      <p class="text-[10px] font-bold uppercase tracking-wider text-brand-gold">Clock In</p>
+      <h3 id="clock-in-greeting" class="text-lg font-black text-white">Have a good day.</h3>
+      <p class="text-[12px] text-slate-400 pt-1">Clock in to earn $DIM points and travel rewards.</p>
+    </div>
+    <div class="border border-brand-gold/30 bg-slate-950/60 rounded-xl p-4 space-y-2">
+      <span class="text-[8px] text-brand-gold font-bold tracking-wider uppercase">Quote of the day</span>
+      <p id="clock-in-quote" class="text-[12px] text-slate-200 italic leading-relaxed"></p>
+    </div>
+    <button type="button" onclick="CLOCK_IN.confirm()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-2.5 rounded-xl text-sm">Clock In</button>
+  </div>
+</div>
+
 <!-- GOAL STREAK REMINDER MODAL -->
 <div id="goal-reminder-modal" class="fixed inset-0 bg-brand-black/80 z-[999] hidden flex items-center justify-center p-4">
   <div class="border border-brand-gold/40 bg-brand-panel max-w-md w-full p-5 rounded-lg space-y-4 shadow-2xl font-mono text-[11px]">
@@ -692,7 +724,7 @@
       <h3 class="font-bold text-brand-gold">🔔 Streak Reminders</h3>
       <button type="button" onclick="toggleNotificationModal()" class="text-slate-400 hover:text-white font-bold text-xs">✕</button>
     </div>
-    <p class="text-slate-300">Daily 8:00 AM popup to protect your 🔥 14d streak and keep progress toward 2,000 $DIM (30 Days).</p>
+    <p class="text-slate-300">Daily 8:00 AM popup to Clock In and keep progress toward 2,000 $DIM (30 days this membership year).</p>
     <label class="flex items-center gap-2 text-slate-200">
       <input type="checkbox" checked class="accent-amber-500">
       Enable daily streak reminder
@@ -722,10 +754,13 @@
 <div id="dimad-cal-composer" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[320] items-center justify-center p-4">
   <div class="bg-slate-900 border border-slate-700 max-w-md w-full rounded-2xl p-5 space-y-3 font-mono">
     <div class="flex items-center justify-between">
-      <h3 id="cal-event-heading" class="text-sm font-bold text-amber-400">Add meeting / event</h3>
+      <h3 id="cal-event-heading" class="text-sm font-bold text-brand-gold">Add meeting / event</h3>
       <input type="hidden" id="cal-event-id" value="">
       <button type="button" onclick="DIMAD_CAL.closeComposer()" class="text-slate-400 hover:text-white">✕</button>
     </div>
+    <p id="cal-event-origin" class="hidden text-[10px] text-slate-400">
+      Built in <button type="button" id="cal-event-source-link" onclick="DIMAD_CAL.openEventSource()" class="text-sky-300 hover:text-sky-200 underline underline-offset-2 font-semibold"></button>
+    </p>
     <label class="block space-y-1">
       <span class="text-[10px] text-slate-500">Title</span>
       <input id="cal-event-title" type="text" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-[12px] text-slate-100" placeholder="Strategy call">
@@ -766,22 +801,67 @@
         <option value="60">1 hour before</option>
       </select>
     </label>
-    <div class="flex gap-2 pt-1">
+    <div class="flex flex-wrap gap-2 pt-1">
       <button type="button" onclick="DIMAD_CAL.saveComposer()" class="flex-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[11px] py-2 rounded-xl">Save event</button>
+      <button type="button" id="cal-event-cancel" onclick="DIMAD_CAL.cancelFromComposer()" class="hidden px-3 text-[11px] text-slate-300 border border-slate-600 rounded-xl">Cancel event</button>
       <button type="button" id="cal-event-delete" onclick="DIMAD_CAL.deleteFromComposer()" class="hidden px-3 text-[11px] text-rose-400 border border-rose-500/40 rounded-xl">Delete</button>
-      <button type="button" onclick="DIMAD_CAL.closeComposer()" class="px-3 text-[11px] text-slate-400 border border-slate-700 rounded-xl">Cancel</button>
+      <button type="button" onclick="DIMAD_CAL.closeComposer()" class="px-3 text-[11px] text-slate-400 border border-slate-700 rounded-xl">Close</button>
     </div>
+  </div>
+</div>
+
+<div id="notepad-ctx" onclick="event.stopPropagation()" class="hidden fixed z-[340] min-w-[160px] bg-slate-950 border border-slate-700 rounded-xl overflow-hidden shadow-2xl font-mono text-[11px]">
+  <button type="button" onclick="DIMAD_NOTEPAD.ctxAction('rename')" class="w-full text-left px-3 py-2 text-slate-200 hover:bg-slate-900">Rename</button>
+  <button type="button" onclick="DIMAD_NOTEPAD.ctxAction('delete')" class="w-full text-left px-3 py-2 text-rose-400 hover:bg-slate-900">Delete</button>
+</div>
+
+<div id="dimad-cal-ctx" onclick="event.stopPropagation()" class="hidden fixed z-[340] min-w-[160px] bg-slate-950 border border-slate-700 rounded-xl overflow-hidden shadow-2xl font-mono text-[11px]">
+  <button type="button" onclick="DIMAD_CAL.ctxAction('edit')" class="w-full text-left px-3 py-2 text-slate-200 hover:bg-slate-900">Edit</button>
+  <button type="button" onclick="DIMAD_CAL.ctxAction('cancel')" class="w-full text-left px-3 py-2 text-slate-200 hover:bg-slate-900">Cancel</button>
+  <button type="button" onclick="DIMAD_CAL.ctxAction('delete')" class="w-full text-left px-3 py-2 text-rose-400 hover:bg-slate-900">Delete</button>
+</div>
+
+<div id="dimad-cal-delete-confirm" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[350] items-center justify-center p-4">
+  <div class="bg-slate-900 border border-rose-500/40 max-w-sm w-full rounded-2xl p-5 space-y-4 font-mono">
+    <h3 class="text-sm font-bold text-rose-300">Delete event</h3>
+    <p class="text-[12px] text-slate-200 leading-relaxed">Are you sure you want to permanently delete this event?</p>
+    <div class="flex gap-2">
+      <button type="button" onclick="DIMAD_CAL.confirmDelete(true)" class="flex-1 bg-rose-500 hover:bg-rose-400 text-slate-950 font-bold text-[11px] py-2 rounded-xl">Yes</button>
+      <button type="button" onclick="DIMAD_CAL.confirmDelete(false)" class="flex-1 bg-slate-950 hover:bg-slate-800 border border-slate-700 text-slate-200 font-bold text-[11px] py-2 rounded-xl">No</button>
+    </div>
+  </div>
+</div>
+
+<div id="dimad-cal-settings" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[345] items-center justify-center p-4">
+  <div class="bg-slate-900 border border-slate-700 max-w-md w-full rounded-2xl p-5 space-y-4 font-mono">
+    <div class="flex items-center justify-between">
+      <h3 class="text-sm font-bold text-brand-gold">Calendar settings</h3>
+      <button type="button" onclick="CAL_SETTINGS.close()" class="text-slate-400 hover:text-white">✕</button>
+    </div>
+    <p class="text-[11px] text-slate-400 leading-relaxed">Customize how Command Center and DIMAD Calendar display weeks and days.</p>
+    <div class="space-y-2">
+      <div class="text-[10px] font-semibold text-slate-300">Week starts on</div>
+      <label class="flex items-center gap-2 text-[12px] text-slate-200 cursor-pointer">
+        <input type="radio" name="cal-week-start" value="monday" onchange="CAL_SETTINGS.setWeekStartsOn(this.value)" class="accent-amber-500">
+        Monday
+      </label>
+      <label class="flex items-center gap-2 text-[12px] text-slate-200 cursor-pointer">
+        <input type="radio" name="cal-week-start" value="sunday" onchange="CAL_SETTINGS.setWeekStartsOn(this.value)" class="accent-amber-500">
+        Sunday
+      </label>
+    </div>
+    <button type="button" onclick="CAL_SETTINGS.close()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[11px] py-2 rounded-xl">Done</button>
   </div>
 </div>
 
 <div id="dimad-cal-reminder" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[330] items-center justify-center p-4">
   <div class="bg-slate-900 border border-amber-500/40 max-w-sm w-full rounded-2xl p-5 space-y-3 font-mono">
-    <h3 class="text-sm font-bold text-amber-400">📅 Calendar reminder</h3>
+    <h3 class="text-sm font-bold text-brand-gold">📅 Calendar reminder</h3>
     <p id="dimad-cal-reminder-text" class="text-[12px] text-slate-200">Upcoming event</p>
     <button type="button" onclick="DIMAD_CAL.dismissReminder()" class="w-full bg-amber-500 text-slate-950 font-bold text-[11px] py-2 rounded-xl">Dismiss</button>
   </div>
 </div>
 
-<script src="../script.js?v=pipeline-sort"></script>
+<script src="../script.js?v=open-writespace-nav"></script>
 </body>
 </html>

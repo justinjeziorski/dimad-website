@@ -1,11 +1,11 @@
 <!-- TAB: YOUR CITY (NOMAD GEOLOCATION COCKPIT) -->
 <div id="view-nomad-city" class="tab-view hidden space-y-3 w-full">
-  <div class="border border-brand-border bg-brand-panel p-4 rounded flex items-center justify-between">
+  <div class="border border-brand-gold/40 bg-brand-panel p-4 rounded flex items-center justify-between">
     <div>
-      <h2 class="text-sm font-bold text-brand-mint flex items-center gap-2"><i class="fa-solid fa-city"></i> YOUR CITY: YEREVAN, ARMENIA</h2>
+      <h2 class="text-sm font-bold text-brand-gold flex items-center gap-2"><i class="fa-solid fa-city"></i> YOUR CITY: YEREVAN, ARMENIA</h2>
       <p class="text-[10px] text-slate-400">Geolocation operational node. Local emergency numbers, delivery services, and pinned nomad spots.</p>
     </div>
-    <span class="text-[9px] bg-brand-mint/10 text-brand-mint border border-brand-mint/30 px-2 py-1 rounded">NODE ONLINE</span>
+    <span class="text-[9px] bg-brand-gold/10 text-brand-gold border border-brand-gold/30 px-2 py-1 rounded">NODE ONLINE</span>
   </div>
 
   <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -14,22 +14,34 @@
         <i class="fa-solid fa-truck-fast text-brand-mint"></i> Logistics, Public Transit & Delivery
       </h3>
       <div class="grid grid-cols-2 gap-2 text-[10px]">
-        <div class="bg-brand-black/50 p-2.5 rounded border border-brand-border/60">
-          <span class="font-bold text-slate-200 block">🚗 Rideshare</span>
-          <span class="text-slate-400">GG / Yandex Taxi</span>
-        </div>
-        <div class="bg-brand-black/50 p-2.5 rounded border border-brand-border/60">
-          <span class="font-bold text-slate-200 block">🍔 Food Delivery</span>
-          <span class="text-slate-400">Menu.am / Glovo</span>
-        </div>
-        <div class="bg-brand-black/50 p-2.5 rounded border border-brand-border/60">
-          <span class="font-bold text-slate-200 block">🛒 Grocery Delivery</span>
-          <span class="text-slate-400">Yerevan City / SAS</span>
-        </div>
-        <div class="bg-brand-black/50 p-2.5 rounded border border-brand-border/60">
-          <span class="font-bold text-slate-200 block">🚇 Public Transit</span>
-          <span class="text-slate-400">Yerevan Metro & Bus Pass</span>
-        </div>
+        <a href="https://go.yandex/en_am/" target="_blank" rel="noopener noreferrer" class="bg-brand-black/50 p-2.5 rounded border border-brand-border/60 hover:border-brand-gold/50 transition flex items-center justify-between gap-2">
+          <span>
+            <span class="font-bold text-slate-200 block">Rideshare</span>
+            <span class="text-slate-400">YandexGo</span>
+          </span>
+          <i class="fa-solid fa-car text-lg text-brand-gold"></i>
+        </a>
+        <a href="https://eats.yandex.com/" target="_blank" rel="noopener noreferrer" class="bg-brand-black/50 p-2.5 rounded border border-brand-border/60 hover:border-brand-gold/50 transition flex items-center justify-between gap-2">
+          <span>
+            <span class="font-bold text-slate-200 block">Food Delivery</span>
+            <span class="text-slate-400">YandexEats</span>
+          </span>
+          <i class="fa-solid fa-utensils text-lg text-brand-gold"></i>
+        </a>
+        <a href="https://eats.yandex.com/" target="_blank" rel="noopener noreferrer" class="bg-brand-black/50 p-2.5 rounded border border-brand-border/60 hover:border-brand-gold/50 transition flex items-center justify-between gap-2">
+          <span>
+            <span class="font-bold text-slate-200 block">Grocery Delivery</span>
+            <span class="text-slate-400">YandexEats</span>
+          </span>
+          <i class="fa-solid fa-cart-shopping text-lg text-brand-gold"></i>
+        </a>
+        <a href="https://yandex.com/metro/yerevan" target="_blank" rel="noopener noreferrer" class="bg-brand-black/50 p-2.5 rounded border border-brand-border/60 hover:border-brand-gold/50 transition flex items-center justify-between gap-2">
+          <span>
+            <span class="font-bold text-slate-200 block">Public Transit</span>
+            <span class="text-slate-400">Yerevan Metro &amp; Bus Pass</span>
+          </span>
+          <i class="fa-solid fa-train-subway text-lg text-brand-gold"></i>
+        </a>
       </div>
     </div>
 
@@ -52,33 +64,62 @@
 
   <div class="border border-brand-border bg-brand-panel p-4 rounded space-y-3">
     <h3 class="font-bold text-slate-200 text-xs border-b border-brand-border/60 pb-2 flex items-center gap-2">
-      <i class="fa-solid fa-star text-brand-gold"></i> Your City Preferred (Pinned Operations)
+      <i class="fa-solid fa-star text-brand-gold"></i> Your City Preferred
     </h3>
-    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 text-[10px]">
-      <div class="bg-brand-black/40 border border-brand-border p-3 rounded space-y-1">
-        <span class="text-[8px] text-brand-gold font-bold">🏋️‍♂️ PREFERRED GYM</span>
-        <p class="font-bold text-slate-100">Grand Sport Fitness Club</p>
-        <p class="text-slate-400 text-[9px]">Argishti St.</p>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 text-[10px]">
+      <div class="bg-brand-black/40 border border-brand-border p-3 rounded space-y-2">
+        <span class="text-[8px] text-brand-gold font-bold tracking-wider uppercase flex items-center justify-between gap-2">Preferred Hotel <i class="fa-solid fa-hotel text-base"></i></span>
+        <a href="https://www.ariamboutiquehotel.com/home" target="_blank" rel="noopener noreferrer" class="block p-2 rounded border border-brand-border/60 hover:border-brand-gold/50 transition">
+          <span class="text-[8px] text-slate-500 font-bold uppercase">Budget</span>
+          <span class="font-bold text-slate-100 block">Ariam Boutique Hotel</span>
+        </a>
+        <a href="https://www.marriott.com/en-us/hotels/evnmc-armenia-marriott-hotel-yerevan/overview/" target="_blank" rel="noopener noreferrer" class="block p-2 rounded border border-brand-border/60 hover:border-brand-gold/50 transition">
+          <span class="text-[8px] text-slate-500 font-bold uppercase">Premium</span>
+          <span class="font-bold text-slate-100 block">Armenia Marriott Yerevan</span>
+        </a>
+        <a href="https://www.marriott.com/en-us/hotels/evnlc-the-alexander-a-luxury-collection-hotel-yerevan/overview/" target="_blank" rel="noopener noreferrer" class="block p-2 rounded border border-brand-border/60 hover:border-brand-gold/50 transition">
+          <span class="text-[8px] text-slate-500 font-bold uppercase">Luxury</span>
+          <span class="font-bold text-slate-100 block">The Alexander, a Luxury Collection Hotel</span>
+        </a>
       </div>
-      <div class="bg-brand-black/40 border border-brand-border p-3 rounded space-y-1">
-        <span class="text-[8px] text-brand-accent font-bold">💻 PREFERRED COWORK</span>
-        <p class="font-bold text-slate-100">Impact Hub Yerevan</p>
-        <p class="text-slate-400 text-[9px]">Saryan St.</p>
+      <div class="bg-brand-black/40 border border-brand-border p-3 rounded space-y-2">
+        <span class="text-[8px] text-brand-gold font-bold tracking-wider uppercase flex items-center justify-between gap-2">Preferred Cafe <i class="fa-solid fa-mug-saucer text-base"></i></span>
+        <a href="https://www.instagram.com/surfcoffee.am/" target="_blank" rel="noopener noreferrer" class="block p-2 rounded border border-brand-border/60 hover:border-brand-gold/50 transition">
+          <span class="text-[8px] text-slate-500 font-bold uppercase">Workspace</span>
+          <span class="font-bold text-slate-100 block">Surf Coffee</span>
+        </a>
+        <a href="https://www.instagram.com/sweet__coast" target="_blank" rel="noopener noreferrer" class="block p-2 rounded border border-brand-border/60 hover:border-brand-gold/50 transition">
+          <span class="text-[8px] text-slate-500 font-bold uppercase">Experiential</span>
+          <span class="font-bold text-slate-100 block">Sweet Coast</span>
+        </a>
       </div>
-      <div class="bg-brand-black/40 border border-brand-border p-3 rounded space-y-1">
-        <span class="text-[8px] text-brand-mint font-bold">🛒 PREFERRED GROCERY</span>
-        <p class="font-bold text-slate-100">SAS Supermarket</p>
-        <p class="text-slate-400 text-[9px]">Northern Ave</p>
+      <div class="bg-brand-black/40 border border-brand-border p-3 rounded space-y-2">
+        <span class="text-[8px] text-brand-gold font-bold tracking-wider uppercase flex items-center justify-between gap-2">Preferred Gym <i class="fa-solid fa-dumbbell text-base"></i></span>
+        <a href="https://www.instagram.com/fitness_eleven_11" target="_blank" rel="noopener noreferrer" class="block p-2 rounded border border-brand-border/60 hover:border-brand-gold/50 transition">
+          <span class="text-[8px] text-slate-500 font-bold uppercase">Budget</span>
+          <span class="font-bold text-slate-100 block">Fitness Eleven 11</span>
+        </a>
+        <a href="https://reeboksportsclub.com/" target="_blank" rel="noopener noreferrer" class="block p-2 rounded border border-brand-border/60 hover:border-brand-gold/50 transition">
+          <span class="text-[8px] text-slate-500 font-bold uppercase">Premium</span>
+          <span class="font-bold text-slate-100 block">Reebok Sports Club</span>
+        </a>
       </div>
-      <div class="bg-brand-black/40 border border-brand-border p-3 rounded space-y-1">
-        <span class="text-[8px] text-brand-gold font-bold">☕ PREFERRED CAFE</span>
-        <p class="font-bold text-slate-100">Green Bean Cafe</p>
-        <p class="text-slate-400 text-[9px]">Tumanyan St.</p>
+      <div class="bg-brand-black/40 border border-brand-border p-3 rounded space-y-2">
+        <span class="text-[8px] text-brand-gold font-bold tracking-wider uppercase flex items-center justify-between gap-2">Preferred Grocery <i class="fa-solid fa-basket-shopping text-base"></i></span>
+        <a href="https://yerevan-city.am/shop/home" target="_blank" rel="noopener noreferrer" class="block p-2 rounded border border-brand-border/60 hover:border-brand-gold/50 transition">
+          <span class="text-[8px] text-slate-500 font-bold uppercase">Budget</span>
+          <span class="font-bold text-slate-100 block">Yerevan City</span>
+        </a>
+        <a href="https://www.sas.am/en/" target="_blank" rel="noopener noreferrer" class="block p-2 rounded border border-brand-border/60 hover:border-brand-gold/50 transition">
+          <span class="text-[8px] text-slate-500 font-bold uppercase">Premium</span>
+          <span class="font-bold text-slate-100 block">SAS Supermarket</span>
+        </a>
       </div>
-      <div class="bg-brand-black/40 border border-brand-border p-3 rounded space-y-1">
-        <span class="text-[8px] text-brand-accent font-bold">🏨 PREFERRED HOTEL HQ</span>
-        <p class="font-bold text-slate-100">Marriott Armenia Hotel</p>
-        <p class="text-slate-400 text-[9px]">Republic Square</p>
+      <div class="bg-brand-black/40 border border-brand-border p-3 rounded space-y-2">
+        <span class="text-[8px] text-brand-gold font-bold tracking-wider uppercase flex items-center justify-between gap-2">Preferred Cowork <i class="fa-solid fa-laptop text-base"></i></span>
+        <a href="https://yerevan.impacthub.net/" target="_blank" rel="noopener noreferrer" class="block p-2 rounded border border-brand-border/60 hover:border-brand-gold/50 transition">
+          <span class="font-bold text-slate-100 block">Impact Hub Yerevan</span>
+        </a>
       </div>
     </div>
   </div>

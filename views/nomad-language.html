@@ -1,4 +1,28 @@
-<div id="view-nomad-language" class="tab-view hidden p-4 border border-brand-border bg-brand-panel rounded">
-  <h2 class="text-sm font-bold text-brand-accent mb-2">LANGUAGE SURVIVAL GUIDE</h2>
-  <p class="text-slate-400">Local language phrases and translation shortcuts.</p>
+<div id="view-nomad-language" class="tab-view hidden w-full h-[calc(100vh-7.25rem)] min-h-0 overflow-y-scroll">
+  <style>
+    #view-nomad-language { scrollbar-gutter: stable; scrollbar-color: #b45309 #070A0F; scrollbar-width: thin; }
+    #view-nomad-language::-webkit-scrollbar { width: 8px; }
+    #view-nomad-language::-webkit-scrollbar-track { background: #070A0F; border-radius: 8px; }
+    #view-nomad-language::-webkit-scrollbar-thumb { background: #b45309; border-radius: 8px; }
+    #view-nomad-language::-webkit-scrollbar-thumb:hover { background: #f59e0b; }
+    #lk-root { font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+    #lk-root .lk-native { font-family: 'Segoe UI', 'Noto Sans', 'Noto Sans Armenian', 'Noto Sans Thai', sans-serif; }
+    #lk-root .lk-flag {
+      display: inline-block;
+      width: 1.5em;
+      height: 1em;
+      border-radius: 2px;
+      vertical-align: middle;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.08);
+    }
+    #lk-root .lk-flag-am { background: linear-gradient(to bottom, #D90012 0 33.33%, #0033A0 33.33% 66.66%, #F2A800 66.66% 100%); }
+    #lk-root .lk-flag-gb { background: #012169; }
+    #lk-root .lk-flag-es { background: linear-gradient(to bottom, #AA151B 0 25%, #F1BF00 25% 75%, #AA151B 75% 100%); }
+    #lk-root .lk-flag-vn { background: #DA251D; }
+    #lk-root .lk-flag-id { background: linear-gradient(to bottom, #CE1126 0 50%, #fff 50% 100%); }
+    #lk-root .lk-flag-th { background: linear-gradient(to bottom, #A51931 0 20%, #fff 20% 40%, #2D2A4A 40% 60%, #fff 60% 80%, #A51931 80% 100%); }
+    #lk-cats { scrollbar-width: none; }
+    #lk-cats::-webkit-scrollbar { display: none; }
+  </style>
+  <div id="lk-root" class="min-h-full bg-brand-black text-slate-100"></div>
 </div>

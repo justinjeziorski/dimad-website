@@ -1,4 +1,10 @@
-<div id="view-creator-vault" class="tab-view hidden p-4 border border-brand-border bg-brand-panel rounded">
-  <h2 class="text-sm font-bold text-amber-400 mb-2">ASSET & MEDIA VAULT</h2>
-  <p class="text-slate-400">Media library, files, and reusable creative assets.</p>
+<div id="view-creator-vault" class="tab-view hidden w-full h-[calc(100vh-7.25rem)] min-h-0 overflow-hidden">
+  <style>
+    #view-creator-vault, #mv-root { font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+    #mv-main::-webkit-scrollbar { width: 4px; height: 4px; }
+    #mv-main::-webkit-scrollbar-track { background: #070A0F; }
+    #mv-main::-webkit-scrollbar-thumb { background: #1E293B; border-radius: 2px; }
+    #mv-main::-webkit-scrollbar-thumb:hover { background: #38BDF8; }
+  </style>
+  <div id="mv-root" class="h-full min-h-0 bg-brand-black text-slate-100"></div>
 </div>

@@ -74,7 +74,10 @@
       const email = document.getElementById('auth-email').value.trim();
       const password = document.getElementById('auth-password').value;
       if (!email || !password) return;
-      localStorage.setItem('dimad_user', JSON.stringify({ email: email }));
+      const today = new Date();
+      const pad = (n) => String(n).padStart(2, '0');
+      const membershipStart = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+      localStorage.setItem('dimad_user', JSON.stringify({ email: email, membershipStart }));
       window.location.replace('/dashboard/index.html');
     });
   </script>

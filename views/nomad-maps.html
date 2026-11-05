@@ -1,4 +1,11 @@
-<div id="view-nomad-maps" class="tab-view hidden p-4 border border-brand-border bg-brand-panel rounded">
-  <h2 class="text-sm font-bold text-brand-accent mb-2">DIGITAL MAPS</h2>
-  <p class="text-slate-400">Interactive offline and online mapping nodes.</p>
+<div id="view-nomad-maps" class="tab-view hidden w-full h-[calc(100vh-7.25rem)] min-h-0 overflow-hidden">
+  <style>
+    #view-nomad-maps, #dm-root { font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+    #dm-list::-webkit-scrollbar, #dm-chips::-webkit-scrollbar { width: 6px; height: 6px; }
+    #dm-list::-webkit-scrollbar-track, #dm-chips::-webkit-scrollbar-track { background: #070A0F; }
+    #dm-list::-webkit-scrollbar-thumb, #dm-chips::-webkit-scrollbar-thumb { background: #1E293B; border-radius: 4px; }
+    #dm-list::-webkit-scrollbar-thumb:hover, #dm-chips::-webkit-scrollbar-thumb:hover { background: #F59E0B; }
+    #dm-chips { scrollbar-width: thin; }
+  </style>
+  <div id="dm-root" class="h-full min-h-0 bg-brand-black text-slate-100"></div>
 </div>
