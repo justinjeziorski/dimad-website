@@ -1,25 +1,40 @@
-<div id="view-dimad-notepad" class="tab-view hidden p-4 border border-brand-border bg-brand-panel rounded space-y-3">
-  <div class="flex items-center justify-between gap-3">
-    <div>
-      <h2 class="text-sm font-bold text-brand-gold">DIMAD NOTEPAD</h2>
-      <p class="text-[11px] text-slate-400 mt-0.5">Scratchpad for meetings, ops notes, and execution drafts. Saved locally on this device.</p>
+<div id="view-dimad-notepad" class="tab-view hidden w-full min-h-full flex flex-col gap-2">
+  <div class="border border-brand-gold/40 bg-brand-panel p-3 rounded flex flex-wrap items-start justify-between gap-3">
+    <div class="flex items-center gap-3 min-w-0">
+      <div class="w-8 h-8 rounded bg-brand-gold/15 border border-brand-gold/40 flex items-center justify-center shrink-0">
+        <i class="fa-solid fa-note-sticky text-brand-gold text-sm"></i>
+      </div>
+      <div class="min-w-0">
+        <h2 class="text-sm font-bold text-brand-gold">DIMAD NOTEPAD</h2>
+        <p class="text-[10px] text-slate-400">Cloud-based notepad that auto-saves to dimDrive. Save your thoughts here.</p>
+      </div>
     </div>
     <button type="button" onclick="DIMAD_NOTEPAD.create()" class="bg-slate-950 hover:bg-slate-800 border border-slate-700 text-[11px] font-semibold text-slate-200 px-3 py-1.5 rounded-xl transition">
       + New Note
     </button>
   </div>
 
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 min-h-[420px]">
-    <div class="lg:col-span-1 border border-slate-800 rounded-xl bg-slate-950/50 overflow-hidden flex flex-col">
-      <div class="px-3 py-2 border-b border-slate-800 text-[10px] font-mono text-slate-500 uppercase tracking-wide">Notes</div>
-      <div id="notepad-list" class="flex-1 overflow-y-auto p-1.5 space-y-1"></div>
-    </div>
-    <div class="lg:col-span-2 border border-slate-800 rounded-xl bg-slate-950/50 p-3 flex flex-col space-y-2">
-      <textarea id="notepad-body" placeholder="draft notes here..." oninput="DIMAD_NOTEPAD.markDirty()" class="flex-1 min-h-[280px] bg-transparent outline-none text-[13px] leading-relaxed text-slate-300 resize-none font-mono placeholder:text-slate-600"></textarea>
-      <div class="flex items-center justify-between gap-3 text-[10px] text-slate-500 pt-1 border-t border-slate-800">
-        <span id="notepad-meta">No note selected</span>
-        <button type="button" id="notepad-quick-save" onclick="DIMAD_NOTEPAD.save()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[11px] px-3 py-1.5 rounded-xl transition shadow-lg shadow-amber-500/10">Quick Save</button>
-      </div>
+  <div class="flex-1 min-h-[560px] border border-slate-800 bg-brand-panel rounded flex flex-col overflow-hidden p-3 space-y-2">
+    <button type="button" id="notepad-title" onclick="DIMAD_NOTEPAD.beginTitleEdit(event, 'full')" title="Click to edit title" class="text-left text-[13px] font-semibold text-slate-100 truncate hover:text-brand-gold cursor-text">Untitled</button>
+    <input id="notepad-title-input" type="text" class="hidden w-full bg-slate-950 border border-amber-500/40 rounded-lg px-2 py-1.5 text-[13px] text-slate-100 outline-none" onkeydown="DIMAD_NOTEPAD.titleKey(event)" onblur="DIMAD_NOTEPAD.commitTitleEdit()">
+    <textarea id="notepad-body" placeholder="draft notes here..." oninput="DIMAD_NOTEPAD.markDirty('full')" class="flex-1 min-h-[280px] bg-transparent outline-none text-[13px] leading-relaxed text-slate-300 resize-none font-mono placeholder:text-slate-600"></textarea>
+    <div class="flex items-center justify-between gap-3 text-[10px] text-slate-500 pt-1 border-t border-slate-800">
+      <span id="notepad-meta">No note selected</span>
+      <button type="button" id="notepad-quick-save" onclick="DIMAD_NOTEPAD.save()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[11px] px-3 py-1.5 rounded-xl transition shadow-lg shadow-amber-500/10">Quick Save</button>
     </div>
   </div>
 </div>
+
+<aside id="np-rail" class="hidden flex flex-col bg-brand-panel border-r border-brand-gold/30 font-mono text-[11px]">
+  <div class="px-2 py-2 border-b border-brand-border">
+    <button type="button" onclick="DIMAD_NOTEPAD.backToDashboard()" class="w-full flex items-center gap-2 px-2 py-1.5 rounded text-[10px] font-bold text-slate-200 border border-brand-border bg-brand-black hover:border-brand-gold hover:text-brand-gold">
+      <i class="fa-solid fa-arrow-left text-[9px]"></i>
+      Back to dashboard
+    </button>
+  </div>
+  <div class="px-3 py-2.5 border-b border-brand-border flex items-center justify-between gap-2">
+    <span class="text-[10px] font-bold text-brand-gold tracking-wide">NOTES</span>
+    <button type="button" onclick="DIMAD_NOTEPAD.create()" class="text-[9px] font-bold bg-brand-gold text-slate-950 px-2 py-1 rounded hover:bg-amber-400">+ New</button>
+  </div>
+  <div id="notepad-list" class="flex-1 overflow-y-auto p-2 space-y-1"></div>
+</aside>

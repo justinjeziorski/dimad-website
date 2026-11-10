@@ -1,4 +1,106 @@
-<div id="view-nomad-ai" class="tab-view hidden p-4 border border-brand-border bg-brand-panel rounded">
-  <h2 class="text-sm font-bold text-brand-mint mb-2">AI TRAVEL PLANNER</h2>
-  <p class="text-slate-400">Intelligent itinerary builder and routing.</p>
+<div id="view-nomad-ai" class="tab-view hidden w-full min-h-full flex flex-col gap-2">
+  <div class="border border-brand-gold/40 bg-brand-panel p-3 rounded flex flex-wrap items-start justify-between gap-3">
+    <div class="flex items-center gap-3 min-w-0">
+      <div class="w-8 h-8 rounded bg-brand-gold/15 border border-brand-gold/40 flex items-center justify-center shrink-0">
+        <i class="fa-solid fa-plane text-brand-gold text-sm"></i>
+      </div>
+      <div class="min-w-0">
+        <h2 class="text-sm font-bold text-brand-gold">NOMAD AI</h2>
+        <p id="nai-active-title" class="text-[10px] text-slate-400 truncate">Chat for strategy, pricing, offers, sales, and ops.</p>
+      </div>
+    </div>
+    <div class="bg-brand-black border border-brand-border rounded px-3 py-1.5 flex items-center gap-3 min-w-[240px] max-w-md w-full sm:w-auto">
+      <span class="text-[10px] text-slate-300 font-medium flex items-center gap-1.5 whitespace-nowrap"><i class="fa-solid fa-bolt text-brand-gold"></i> Monthly AI Usage</span>
+      <div class="flex-1 min-w-[88px] bg-slate-800 rounded-full h-1.5 overflow-hidden border border-slate-700">
+        <div id="nai-usage-bar" class="h-full bg-brand-mint rounded-full" style="width:42%"></div>
+      </div>
+      <span id="nai-usage-pct" class="text-[10px] font-mono font-bold text-white">42%</span>
+      <button type="button" onclick="NOMAD_AI.openUsageInfo()" title="AI usage info" class="shrink-0 w-5 h-5 rounded-full border border-brand-border text-slate-400 hover:text-brand-gold hover:border-brand-gold/50 text-[10px] flex items-center justify-center">?</button>
+    </div>
+  </div>
+
+  <div class="flex-1 min-h-[560px] border border-brand-border bg-brand-panel rounded flex flex-col overflow-hidden">
+    <div id="nai-feed" class="flex-1 overflow-y-auto px-3 py-4 space-y-5"></div>
+    <div class="shrink-0 border-t border-brand-border bg-brand-black/40 p-3 space-y-2">
+      <div id="nai-starters" class="flex flex-wrap gap-1.5"></div>
+      <form onsubmit="NOMAD_AI.send(event)" class="space-y-2">
+        <textarea id="nai-input" rows="2" onkeydown="NOMAD_AI.inputKey(event)" placeholder="Message Nomad AI — pricing, unit economics, offers, sales scripts, hiring..." class="w-full bg-brand-black border border-brand-border rounded px-3 py-2.5 text-[13px] leading-relaxed text-slate-200 placeholder-slate-500 focus:outline-none focus:border-brand-gold resize-none"></textarea>
+        <div class="flex flex-wrap items-center justify-end gap-1.5">
+          <button type="button" id="nai-model-flash" onclick="NOMAD_AI.setModel('flash')" class="px-2.5 py-1.5 rounded text-[10px] font-semibold bg-brand-mint text-slate-950">
+            <i class="fa-solid fa-bolt mr-1"></i> Gemini Flash
+          </button>
+          <button type="button" id="nai-model-pro" onclick="NOMAD_AI.setModel('pro')" class="px-2.5 py-1.5 rounded text-[10px] font-semibold bg-brand-black text-slate-400 hover:text-white">
+            <i class="fa-solid fa-brain mr-1"></i> Deep Reasoning
+          </button>
+          <button type="submit" id="nai-send" class="px-3 py-1.5 rounded bg-brand-gold hover:bg-amber-400 text-[10px] font-bold text-slate-950 disabled:opacity-40">
+            Send <i class="fa-solid fa-paper-plane ml-1"></i>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<aside id="nai-rail" class="hidden flex flex-col bg-brand-panel border-r border-brand-gold/30 font-mono text-[11px]">
+  <div class="px-2 py-2 border-b border-brand-border">
+    <button type="button" onclick="NOMAD_AI.backToDashboard()" class="w-full flex items-center gap-2 px-2 py-1.5 rounded text-[10px] font-bold text-slate-200 border border-brand-border bg-brand-black hover:border-brand-gold hover:text-brand-gold">
+      <i class="fa-solid fa-arrow-left text-[9px]"></i>
+      Back to dashboard
+    </button>
+  </div>
+  <div class="px-3 py-2.5 border-b border-brand-border flex items-center justify-between gap-2">
+    <span id="nai-rail-heading" class="text-[10px] font-bold text-brand-gold tracking-wide">SAVED CHATS</span>
+    <button type="button" id="nai-rail-new" onclick="NOMAD_AI.newChat()" class="text-[9px] font-bold bg-brand-gold text-slate-950 px-2 py-1 rounded hover:bg-amber-400">+ New</button>
+  </div>
+  <div id="nai-chat-list" class="flex-1 overflow-y-auto p-2 space-y-3"></div>
+  <div class="px-2 py-2 border-t border-brand-border">
+    <button type="button" id="nai-rail-switch" onclick="NOMAD_AI.toggleArchivedView()" class="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 rounded text-[10px] font-bold text-slate-300 border border-brand-border bg-brand-black hover:border-brand-gold hover:text-brand-gold">
+      <i class="fa-solid fa-box-archive text-[9px]"></i>
+      <span id="nai-rail-switch-label">Archived</span>
+    </button>
+  </div>
+</aside>
+
+<div id="nai-ctx" onclick="event.stopPropagation()" class="hidden fixed z-[430] min-w-[170px] bg-slate-950 border border-slate-700 rounded overflow-hidden shadow-2xl font-mono text-[11px]">
+  <button type="button" onclick="NOMAD_AI.ctxAction('pin')" class="w-full text-left px-3 py-2 text-slate-200 hover:bg-slate-900" id="nai-ctx-pin">Pin</button>
+  <button type="button" onclick="NOMAD_AI.ctxAction('rename')" class="w-full text-left px-3 py-2 text-slate-200 hover:bg-slate-900">Rename</button>
+  <button type="button" onclick="NOMAD_AI.ctxAction('archive')" class="w-full text-left px-3 py-2 text-slate-200 hover:bg-slate-900" id="nai-ctx-archive">Archive</button>
+  <button type="button" onclick="NOMAD_AI.ctxAction('summary')" class="w-full text-left px-3 py-2 text-slate-200 hover:bg-slate-900">Summary</button>
+  <button type="button" onclick="NOMAD_AI.ctxAction('delete')" class="w-full text-left px-3 py-2 text-rose-400 hover:bg-slate-900">Delete</button>
+</div>
+
+<div id="nai-usage-modal" class="hidden fixed inset-0 z-[420] bg-slate-950/80 backdrop-blur-md items-center justify-center p-4">
+  <div class="bg-brand-panel border border-brand-border rounded max-w-sm w-full p-5 text-slate-200 space-y-3 relative">
+    <button type="button" onclick="NOMAD_AI.closeUsageInfo()" class="absolute right-3 top-3 text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+    <div class="flex items-center gap-3 border-b border-brand-border pb-3 pr-6">
+      <div class="w-9 h-9 rounded bg-brand-gold/15 border border-brand-gold/40 flex items-center justify-center text-brand-gold"><i class="fa-solid fa-bolt"></i></div>
+      <div>
+        <h3 class="text-sm font-bold text-white">Monthly AI Usage</h3>
+        <p id="nai-usage-tip-pct" class="text-[11px] text-brand-mint font-mono">42% Used</p>
+      </div>
+    </div>
+    <p class="text-[11px] text-slate-400 leading-relaxed">This bar is your monthly compute guardrail. It covers Nomad AI chat, research briefs, and long-context reasoning on your plan.</p>
+    <div class="space-y-1.5 text-[11px] text-slate-300 bg-brand-black p-3 rounded border border-brand-border">
+      <div class="flex justify-between"><span>0–80% Standard zone</span> <span class="text-brand-mint font-semibold">Unthrottled Pro</span></div>
+      <div class="flex justify-between"><span>80–100% Soft threshold</span> <span class="text-brand-gold font-semibold">Flash Auto-Route</span></div>
+      <div class="flex justify-between"><span>At 100%</span> <span class="text-brand-alert font-semibold">Queue + Flash only</span></div>
+    </div>
+    <button type="button" onclick="NOMAD_AI.closeUsageInfo()" class="w-full py-2 rounded bg-brand-black border border-brand-border text-[11px] font-bold text-slate-200 hover:border-brand-gold">Got it</button>
+  </div>
+</div>
+
+<div id="nai-summary-modal" class="hidden fixed inset-0 z-[430] bg-slate-950/80 backdrop-blur-md items-center justify-center p-4">
+  <div class="bg-brand-panel border border-brand-gold/40 rounded max-w-lg w-full p-5 text-slate-200 space-y-3 relative">
+    <button type="button" onclick="NOMAD_AI.closeSummary()" class="absolute right-3 top-3 text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+    <div class="pr-6 border-b border-brand-border pb-3">
+      <h3 class="text-sm font-bold text-brand-gold">Executive summary</h3>
+      <p id="nai-summary-title" class="text-[11px] text-slate-400 mt-0.5"></p>
+    </div>
+    <textarea id="nai-summary-body" rows="12" class="w-full bg-brand-black border border-brand-border rounded px-3 py-2 text-[12px] text-slate-200 font-mono leading-relaxed focus:outline-none focus:border-brand-gold"></textarea>
+    <div class="flex flex-wrap gap-2">
+      <button type="button" onclick="NOMAD_AI.saveSummaryNote()" class="flex-1 py-2 rounded bg-brand-gold hover:bg-amber-400 text-slate-950 font-bold text-[11px]">Save as document</button>
+      <button type="button" onclick="NOMAD_AI.closeSummary()" class="px-3 py-2 rounded border border-brand-border text-[11px] font-bold text-slate-300">Close</button>
+    </div>
+    <p id="nai-summary-status" class="text-[10px] text-brand-mint hidden">Saved to DIMAD Notepad and dimDrive → Notepad.</p>
+  </div>
 </div>

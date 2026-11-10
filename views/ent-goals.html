@@ -1,24 +1,23 @@
 <!-- GOALS & ACHIEVEMENTS ($DIM REWARD SYSTEM) -->
 <div id="view-ent-goals" class="tab-view hidden w-full h-full overflow-y-auto">
-<div class="p-6 max-w-5xl mx-auto space-y-6">
+<div class="p-6 max-w-6xl mx-auto space-y-6">
 
-  <!-- 1. TOP HEADER: STREAK & $DIM REWARD MILESTONE BAR -->
   <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
       <div class="flex items-center space-x-4">
         <div class="h-[4.5rem] w-[4.5rem] rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col items-center justify-center text-brand-gold font-black shadow-inner">
           <span class="text-2xl leading-none">🔥</span>
-          <span id="goals-streak-badge" class="text-xs font-bold mt-0.5 leading-none">0d</span>
+          <span id="goals-streak-badge" data-streak-badge class="text-xs font-bold mt-0.5 leading-none">0d</span>
           <span class="text-[9px] font-bold tracking-wide uppercase text-brand-gold/80 mt-0.5 leading-none">Days</span>
         </div>
         <div>
           <div class="flex items-center space-x-2">
             <h1 class="text-lg font-black text-white">Goals & Achievements</h1>
             <span class="text-[10px] font-bold text-brand-gold bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
-              Clock-in year
+              Year-to-date
             </span>
           </div>
-          <p id="goals-streak-next" class="text-[11px] font-mono text-slate-400 mt-1">Next Milestone: 10 Days</p>
+          <p id="goals-streak-next" data-streak-next class="text-[11px] font-mono text-slate-400 mt-1">Next Milestone: 10 Days</p>
         </div>
       </div>
 
@@ -30,14 +29,56 @@
         <button type="button" onclick="toggleNotificationModal()" class="p-2.5 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-slate-400 hover:text-white transition flex items-center gap-2 text-xs">
           🔔 Reminders
         </button>
-        <button type="button" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs px-4 py-2.5 rounded-xl transition shadow-lg shadow-amber-500/10 whitespace-nowrap">
-          + New Goal
-        </button>
       </div>
     </div>
   </div>
 
-  <!-- CLOCK-IN YEAR TRACKER -->
+  <section class="grid md:grid-cols-3 gap-4">
+    <button type="button" onclick="DIMAD_GOALS.openIdentity('brand')" class="text-left relative overflow-hidden rounded-2xl border border-brand-gold/35 bg-gradient-to-br from-amber-500/10 via-slate-900 to-slate-950 p-4 min-h-[148px] hover:border-brand-gold transition">
+      <div class="flex items-center justify-between gap-2">
+        <div class="text-[9px] font-bold tracking-[0.22em] uppercase text-brand-gold">My Brand</div>
+        <span class="text-[9px] font-mono text-amber-200/50">Edit</span>
+      </div>
+      <p id="goal-brand" class="mt-2 text-[11px] leading-snug text-amber-50 overflow-hidden" style="font-family:Georgia, 'Times New Roman', serif; display:-webkit-box; -webkit-line-clamp:6; -webkit-box-orient:vertical;"></p>
+    </button>
+    <button type="button" onclick="DIMAD_GOALS.openIdentity('purpose')" class="text-left relative overflow-hidden rounded-2xl border border-brand-gold/35 bg-gradient-to-br from-amber-500/10 via-slate-900 to-slate-950 p-4 min-h-[148px] hover:border-brand-gold transition">
+      <div class="flex items-center justify-between gap-2">
+        <div class="text-[9px] font-bold tracking-[0.22em] uppercase text-brand-gold">My Purpose</div>
+        <span class="text-[9px] font-mono text-amber-200/50">Edit</span>
+      </div>
+      <p id="goal-purpose" class="mt-2 text-[11px] leading-snug text-amber-50 overflow-hidden" style="font-family:Georgia, 'Times New Roman', serif; display:-webkit-box; -webkit-line-clamp:6; -webkit-box-orient:vertical;"></p>
+    </button>
+    <button type="button" onclick="DIMAD_GOALS.openIdentity('vision')" class="text-left relative overflow-hidden rounded-2xl border border-brand-gold/35 bg-gradient-to-br from-amber-500/10 via-slate-900 to-slate-950 p-4 min-h-[148px] hover:border-brand-gold transition">
+      <div class="flex items-center justify-between gap-2">
+        <div class="text-[9px] font-bold tracking-[0.22em] uppercase text-brand-gold">My Vision</div>
+        <span class="text-[9px] font-mono text-amber-200/50">Edit</span>
+      </div>
+      <p id="goal-vision" class="mt-2 text-[11px] leading-snug text-amber-50 overflow-hidden" style="font-family:Georgia, 'Times New Roman', serif; display:-webkit-box; -webkit-line-clamp:6; -webkit-box-orient:vertical;"></p>
+    </button>
+  </section>
+
+  <section class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+    <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+      <div class="min-w-0 flex-1">
+        <div class="flex items-center gap-2">
+          <h2 class="text-sm font-black text-white tracking-wide uppercase">Accountability Log</h2>
+          <button type="button" onclick="DIMAD_GOALS.openSettings()" title="Goal settings" class="w-7 h-7 rounded-lg border border-slate-700 text-slate-400 hover:text-brand-gold hover:border-brand-gold/50 flex items-center justify-center">
+            <i class="fa-solid fa-gear text-[11px]"></i>
+          </button>
+        </div>
+        <p class="text-[11px] text-slate-400 mt-0.5">Week, month, quarter, and year boards. Ten slots per period.</p>
+        <div id="dimad-goals-toggles" class="flex flex-wrap gap-1.5 mt-2.5"></div>
+      </div>
+      <button type="button" onclick="DIMAD_GOALS.openComposer()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs px-4 py-2.5 rounded-xl transition shadow-lg shadow-amber-500/10 whitespace-nowrap shrink-0">
+        + New Goal
+      </button>
+    </div>
+    <div id="dimad-goals-score" class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2"></div>
+    <div id="dimad-goals-board" class="rounded-xl border border-slate-800 bg-slate-950 p-2 space-y-2"></div>
+    <div id="dimad-goals-list" class="hidden"></div>
+    <p id="dimad-goals-cap" class="text-[10px] font-mono text-slate-500 pt-1"></p>
+  </section>
+
   <div id="goals-focus-log" class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 scroll-mt-4">
     <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
       <div>
@@ -55,76 +96,174 @@
       <span class="font-mono text-brand-mint font-bold" id="focus-log-freq">Next 10d · 1,000 $DIM</span>
     </div>
     <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-3">
-      <svg id="focus-log-chart" viewBox="0 0 900 130" class="w-full h-36" role="img" aria-label="Clock-in year progress"></svg>
+      <svg id="focus-log-chart" viewBox="0 0 900 130" class="w-full h-36" role="img" aria-label="Year-to-date progress"></svg>
       <div id="focus-log-dots" class="flex flex-wrap gap-[3px]"></div>
       <div id="focus-log-milestones" class="grid grid-cols-4 sm:grid-cols-6 gap-1.5"></div>
     </div>
+    <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-3">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h3 class="text-[11px] font-black text-white uppercase tracking-wide">Login trends</h3>
+          <p class="text-[10px] text-slate-500 mt-0.5">Hours on the clock — daily, weekly, and yearly.</p>
+        </div>
+        <div class="flex rounded-lg border border-slate-800 overflow-hidden self-start">
+          <button type="button" id="focus-trend-daily" onclick="FOCUS_LOG.setTrend('daily')" class="px-2.5 py-1 text-[10px] font-bold text-brand-gold bg-amber-500/10">Daily</button>
+          <button type="button" id="focus-trend-weekly" onclick="FOCUS_LOG.setTrend('weekly')" class="px-2.5 py-1 text-[10px] font-bold text-slate-400 hover:text-slate-200 border-l border-slate-800">Weekly</button>
+          <button type="button" id="focus-trend-yearly" onclick="FOCUS_LOG.setTrend('yearly')" class="px-2.5 py-1 text-[10px] font-bold text-slate-400 hover:text-slate-200 border-l border-slate-800">Yearly</button>
+        </div>
+      </div>
+      <div class="grid grid-cols-3 gap-2">
+        <div class="rounded-lg border border-slate-800 bg-brand-black/60 px-2.5 py-2">
+          <div class="text-[9px] uppercase tracking-wider text-slate-500">Today</div>
+          <div class="text-sm font-black font-mono text-brand-gold" id="focus-trend-today">0h</div>
+        </div>
+        <div class="rounded-lg border border-slate-800 bg-brand-black/60 px-2.5 py-2">
+          <div class="text-[9px] uppercase tracking-wider text-slate-500">This week</div>
+          <div class="text-sm font-black font-mono text-brand-gold" id="focus-trend-week">0h</div>
+        </div>
+        <div class="rounded-lg border border-slate-800 bg-brand-black/60 px-2.5 py-2">
+          <div class="text-[9px] uppercase tracking-wider text-slate-500">This year</div>
+          <div class="text-sm font-black font-mono text-brand-gold" id="focus-trend-year">0h</div>
+        </div>
+      </div>
+      <svg id="focus-trend-chart" viewBox="0 0 900 168" class="w-full h-40" role="img" aria-label="Login hour trends"></svg>
+    </div>
   </div>
 
-  <!-- 2. TIME HORIZON SELECTOR & TARGET LIST -->
-  <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-5">
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-800 pb-4 gap-3">
-      <div class="flex items-center space-x-3">
-        <label for="goal-horizon-select" class="text-xs font-bold uppercase tracking-wider text-slate-400">Horizon:</label>
-        <select id="goal-horizon-select" class="bg-slate-950 text-brand-gold font-bold text-sm border border-slate-800 rounded-xl px-3 py-2 focus:outline-none focus:border-amber-500">
-          <option value="daily" selected>⚡ Daily Targets (Today)</option>
-          <option value="weekly">📅 Weekly Objectives</option>
-          <option value="monthly">🎯 Monthly Focus</option>
-          <option value="quarterly">🚀 Quarterly Sprint</option>
-          <option value="yearly">🌐 Yearly Vision</option>
+</div>
+
+<div id="goal-settings-modal" class="hidden fixed inset-0 z-[365] bg-slate-950/80 backdrop-blur-md items-center justify-center p-4" onclick="if(event.target===this)DIMAD_GOALS.closeSettings()">
+  <div class="w-full max-w-lg rounded-2xl border border-brand-gold/40 bg-brand-panel p-5 space-y-4 text-amber-50 max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between">
+      <h3 class="text-sm font-bold text-brand-gold tracking-wide uppercase">Accountability settings</h3>
+      <button type="button" onclick="DIMAD_GOALS.closeSettings()" class="text-slate-400 hover:text-white">✕</button>
+    </div>
+    <div>
+      <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Visible time frames</div>
+      <p class="text-[11px] text-slate-500 mb-2">Uncheck a horizon to hide its scorecard, toggle, and list.</p>
+      <div id="goal-settings-visible" class="grid grid-cols-2 gap-1.5"></div>
+    </div>
+    <div class="border-t border-slate-800 pt-3 space-y-3">
+      <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Reminders · first login</div>
+      <label class="flex items-start gap-2 text-[12px] text-slate-200">
+        <input id="gs-rem-daily" type="checkbox" class="mt-0.5 accent-amber-500">
+        <span><span class="font-semibold text-white">Daily</span> — first login each day.</span>
+      </label>
+      <label class="flex flex-wrap items-center gap-2 text-[12px] text-slate-200">
+        <input id="gs-rem-weekly" type="checkbox" class="accent-amber-500">
+        <span class="font-semibold text-white">Weekly</span>
+        <span class="text-slate-500">first login on</span>
+        <select id="gs-rem-weekly-day" class="bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-[11px] text-amber-100">
+          <option value="1">Monday</option>
+          <option value="2">Tuesday</option>
+          <option value="3">Wednesday</option>
+          <option value="4">Thursday</option>
+          <option value="5">Friday</option>
+          <option value="6">Saturday</option>
+          <option value="0">Sunday</option>
         </select>
-      </div>
-
-      <span class="text-xs font-mono text-slate-500">Streak Status: <span class="text-emerald-400 font-bold">Protected for Today</span></span>
-    </div>
-
-    <!-- Active Task List -->
-    <div class="space-y-3" data-goal-horizon="daily">
-      <div class="p-4 bg-slate-950 border border-slate-800 rounded-xl flex items-center justify-between group hover:border-slate-700 transition">
-        <div class="flex items-center space-x-3">
-          <input type="checkbox" checked class="h-4 w-4 accent-amber-500 rounded">
-          <span class="text-sm font-semibold text-slate-200 line-through">Deploy live Vercel pipeline for waitlist form</span>
+      </label>
+      <label class="flex flex-wrap items-center gap-2 text-[12px] text-slate-200">
+        <input id="gs-rem-monthly" type="checkbox" class="accent-amber-500">
+        <span class="font-semibold text-white">Monthly</span>
+        <span class="text-slate-500">day</span>
+        <input id="gs-rem-monthly-day" type="number" min="1" max="31" class="w-14 bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-[11px] text-amber-100">
+      </label>
+      <div class="space-y-1.5 text-[12px] text-slate-200">
+        <label class="flex flex-wrap items-center gap-2">
+          <input id="gs-rem-quarterly" type="checkbox" class="accent-amber-500">
+          <span class="font-semibold text-white">Quarterly</span>
+          <span class="text-slate-500">Q1 date, then +4 months × 4</span>
+        </label>
+        <div class="flex flex-wrap items-center gap-2 pl-6">
+          <select id="gs-rem-quarterly-month" class="bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-[11px] text-amber-100">
+            <option value="1">January</option>
+            <option value="2">February</option>
+            <option value="3">March</option>
+          </select>
+          <input id="gs-rem-quarterly-day" type="number" min="1" max="31" class="w-14 bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-[11px] text-amber-100">
         </div>
-        <span class="text-xs font-mono text-emerald-400 font-bold bg-emerald-500/10 px-2.5 py-1 rounded-lg">Complete</span>
       </div>
-
-      <div class="p-4 bg-slate-950 border border-slate-800 rounded-xl flex items-center justify-between group hover:border-slate-700 transition">
-        <div class="flex items-center space-x-3">
-          <input type="checkbox" class="h-4 w-4 accent-amber-500 rounded">
-          <span class="text-sm font-semibold text-slate-200">Configure daily 8:00 AM push notification popup</span>
-        </div>
-        <span class="text-xs font-mono text-brand-gold font-bold bg-amber-500/10 px-2.5 py-1 rounded-lg">Pending Today</span>
-      </div>
+      <label class="flex flex-wrap items-center gap-2 text-[12px] text-slate-200">
+        <input id="gs-rem-yearly" type="checkbox" class="accent-amber-500">
+        <span class="font-semibold text-white">Yearly</span>
+        <select id="gs-rem-yearly-month" class="bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-[11px] text-amber-100">
+          <option value="1">January</option><option value="2">February</option><option value="3">March</option>
+          <option value="4">April</option><option value="5">May</option><option value="6">June</option>
+          <option value="7">July</option><option value="8">August</option><option value="9">September</option>
+          <option value="10">October</option><option value="11">November</option><option value="12">December</option>
+        </select>
+        <input id="gs-rem-yearly-day" type="number" min="1" max="31" class="w-14 bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-[11px] text-amber-100">
+      </label>
     </div>
+    <button type="button" onclick="DIMAD_GOALS.saveSettings()" class="w-full py-2.5 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs">Save settings</button>
+  </div>
+</div>
 
-    <div class="space-y-3 hidden" data-goal-horizon="weekly">
-      <div class="p-4 bg-slate-950 border border-slate-800 rounded-xl flex items-center justify-between">
-        <span class="text-sm font-semibold text-slate-200">Ship Goals &amp; Achievements $DIM milestone UI</span>
-        <span class="text-xs font-mono text-brand-gold font-bold bg-amber-500/10 px-2.5 py-1 rounded-lg">This Week</span>
-      </div>
+<div id="goal-nudge-modal" class="hidden fixed inset-0 z-[370] bg-slate-950/80 backdrop-blur-md items-center justify-center p-4" onclick="if(event.target===this)DIMAD_GOALS.dismissNudge()">
+  <div class="w-full max-w-md rounded-2xl border border-brand-gold/40 bg-brand-panel p-5 space-y-3 text-amber-50">
+    <div class="flex items-center justify-between">
+      <h3 class="text-sm font-bold text-brand-gold uppercase tracking-wide">Accountability check</h3>
+      <button type="button" onclick="DIMAD_GOALS.dismissNudge()" class="text-slate-400 hover:text-white">✕</button>
     </div>
-
-    <div class="space-y-3 hidden" data-goal-horizon="monthly">
-      <div class="p-4 bg-slate-950 border border-slate-800 rounded-xl flex items-center justify-between">
-        <span class="text-sm font-semibold text-slate-200">Clock in 30 days this year and claim 2,000 $DIM</span>
-        <span class="text-xs font-mono text-brand-gold font-bold bg-amber-500/10 px-2.5 py-1 rounded-lg">This Month</span>
-      </div>
-    </div>
-
-    <div class="space-y-3 hidden" data-goal-horizon="quarterly">
-      <div class="p-4 bg-slate-950 border border-slate-800 rounded-xl flex items-center justify-between">
-        <span class="text-sm font-semibold text-slate-200">Launch paid membership with redeemable $DIM perks</span>
-        <span class="text-xs font-mono text-brand-gold font-bold bg-amber-500/10 px-2.5 py-1 rounded-lg">Q Sprint</span>
-      </div>
-    </div>
-
-    <div class="space-y-3 hidden" data-goal-horizon="yearly">
-      <div class="p-4 bg-slate-950 border border-slate-800 rounded-xl flex items-center justify-between">
-        <span class="text-sm font-semibold text-slate-200">Clock in 365 days this year and claim 12,000 $DIM</span>
-        <span class="text-xs font-mono text-brand-gold font-bold bg-amber-500/10 px-2.5 py-1 rounded-lg">Year Vision</span>
-      </div>
+    <p class="text-[11px] text-slate-400">First login reminder for the time frames due today.</p>
+    <div id="goal-nudge-body" class="space-y-3 max-h-[50vh] overflow-y-auto"></div>
+    <div class="flex gap-2">
+      <button type="button" onclick="DIMAD_GOALS.openFromNudge()" class="flex-1 py-2.5 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs">Review goals</button>
+      <button type="button" onclick="DIMAD_GOALS.dismissNudge()" class="px-3 py-2.5 rounded-xl border border-slate-700 text-slate-300 font-semibold text-xs">Dismiss</button>
     </div>
   </div>
+</div>
 
+<div id="goal-new-modal" class="hidden fixed inset-0 z-[368] bg-slate-950/80 backdrop-blur-md items-center justify-center p-4" onclick="if(event.target===this)DIMAD_GOALS.closeComposer()">
+  <div class="w-full max-w-lg rounded-2xl border border-brand-gold/40 bg-brand-panel p-5 space-y-3 text-amber-50 max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between">
+      <h3 id="gn-title" class="text-sm font-bold text-brand-gold tracking-wide uppercase">New Goal</h3>
+      <button type="button" onclick="DIMAD_GOALS.closeComposer()" class="text-slate-400 hover:text-white">✕</button>
+    </div>
+    <label class="block space-y-1.5">
+      <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Target</span>
+      <textarea id="gn-text" rows="2" placeholder="A direct, measurable target..." class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-[13px] text-amber-50 placeholder:text-slate-600 focus:outline-none focus:border-brand-gold resize-none"></textarea>
+    </label>
+    <div>
+      <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Horizon</div>
+      <div id="gn-horizons" class="flex flex-wrap gap-1.5"></div>
+    </div>
+    <div>
+      <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">When</div>
+      <p class="text-[11px] text-slate-500 mb-2">Set it on today or pick a future period.</p>
+      <div id="gn-when"></div>
+    </div>
+    <label class="flex items-start gap-2 text-[12px] text-slate-200 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5">
+      <input id="gn-recurring" type="checkbox" class="mt-0.5 accent-amber-500" onchange="DIMAD_GOALS.syncWeekdaysPanel()">
+      <span><span class="font-semibold text-white">Recurring</span> — repeats every <span id="gn-recurring-hint">day</span> from this date forward.</span>
+    </label>
+    <div id="gn-weekdays-wrap" class="hidden space-y-1.5">
+      <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Repeat on</div>
+      <div id="gn-weekdays" class="flex flex-wrap gap-1"></div>
+    </div>
+    <p class="text-[10px] text-slate-500">Skip days by turning chips off. Saving an update only changes this date forward — past history stays as it was.</p>
+    <p id="gn-error" class="hidden text-[11px] text-rose-400"></p>
+    <div class="flex gap-2">
+      <button type="button" id="gn-save" onclick="DIMAD_GOALS.saveComposer()" class="flex-1 py-2.5 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs">Save goal</button>
+      <button type="button" onclick="DIMAD_GOALS.closeComposer()" class="px-3 py-2.5 rounded-xl border border-slate-700 text-slate-300 font-semibold text-xs">Close</button>
+    </div>
+    <button type="button" id="gn-cancel-goal" onclick="DIMAD_GOALS.cancelGoal()" class="hidden w-full py-2 rounded-xl border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 font-semibold text-[11px]">Cancel goal</button>
+  </div>
+</div>
+
+<div id="goal-identity-modal" class="hidden fixed inset-0 z-[360] bg-slate-950/80 backdrop-blur-md items-center justify-center p-4" onclick="if(event.target===this)DIMAD_GOALS.closeIdentity()">
+  <div class="w-full max-w-lg rounded-2xl border border-brand-gold/40 bg-brand-panel p-5 space-y-3 text-amber-50">
+    <div class="flex items-center justify-between">
+      <h3 id="goal-identity-title" class="text-sm font-bold text-brand-gold tracking-[0.18em] uppercase">My Brand</h3>
+      <button type="button" onclick="DIMAD_GOALS.closeIdentity()" class="text-slate-400 hover:text-white">✕</button>
+    </div>
+    <p class="text-[11px] text-amber-200/70 leading-relaxed">Write it like a manifesto. This sits above your Accountability Log.</p>
+    <textarea id="goal-identity-body" rows="8" class="w-full bg-slate-950 border border-amber-900/40 rounded-xl px-3 py-2.5 text-[13px] leading-relaxed text-amber-50 focus:outline-none focus:border-brand-gold resize-none" style="font-family:Georgia, 'Times New Roman', serif"></textarea>
+    <div class="flex gap-2">
+      <button type="button" onclick="DIMAD_GOALS.saveIdentity()" class="flex-1 py-2.5 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs">Save</button>
+      <button type="button" onclick="DIMAD_GOALS.closeIdentity()" class="px-3 py-2.5 rounded-xl border border-slate-700 text-slate-300 font-semibold text-xs">Cancel</button>
+    </div>
+  </div>
 </div>
 </div>

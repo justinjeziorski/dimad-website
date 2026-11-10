@@ -41,7 +41,7 @@ const MODE_NAV = {
     defaultTab: 'ent-dashboard',
     items: [
       { id: 'ent-dashboard', label: 'Command Center', highlight: true },
-      { id: 'ent-ai-business', label: '⚡ AI Business' },
+      { id: 'ent-ai-business', label: '⚡ Business AI' },
       { id: 'ent-crm', label: 'Sales & Revenue' },
       { id: 'ent-stocks', label: 'Stocks & Finance' },
       { id: 'ent-invoices', label: 'Invoices & Proposals' },
@@ -54,7 +54,7 @@ const MODE_NAV = {
     defaultTab: 'creator-studio',
     items: [
       { id: 'creator-studio', label: 'Dimad Studio', highlight: true },
-      { id: 'creator-ai', label: '⚡ AI Creator' },
+      { id: 'creator-ai', label: '⚡ Creator AI' },
       { id: 'creator-writespace', label: 'WriteSpace' },
       { id: 'creator-design', label: 'Design Suite' },
       { id: 'creator-pipeline', label: 'Creator Pipeline' },
@@ -67,7 +67,7 @@ const MODE_NAV = {
     defaultTab: 'nomad-city',
     items: [
       { id: 'nomad-city', label: 'Your City', highlight: true },
-      { id: 'nomad-ai', label: '⚡ AI Travel Planner' },
+      { id: 'nomad-ai', label: '⚡ Nomad AI' },
       { id: 'nomad-concierge', label: 'Dimad Concierge', premium: true },
       { id: 'nomad-maps', label: 'Digital Maps' },
       { id: 'nomad-guides', label: 'Travel Guides' },
@@ -233,6 +233,88 @@ const WORLD_CLOCK_CITIES = [
   { id: 'kiritimati', city: 'Kiritimati', tz: 'Pacific/Kiritimati', group: 'UTC+14' }
 ];
 
+const DIMAD_GEO = {
+  storageKey: 'dimad_geo_city',
+  watchId: null,
+  hubs: [
+    { city: 'Yerevan', lat: 40.1792, lon: 44.4991, km: 40 },
+    { city: 'London', lat: 51.5074, lon: -0.1278, km: 40 },
+    { city: 'New York', lat: 40.7128, lon: -74.006, km: 50 }
+  ],
+
+  init() {
+    const el = document.getElementById('geo-location-label');
+    if (!el) return;
+    const cached = this.readCache();
+    if (cached) el.textContent = cached;
+    if (!navigator.geolocation) return;
+    const opts = { enableHighAccuracy: false, timeout: 12000, maximumAge: 300000 };
+    const onOk = (pos) => this.resolve(pos.coords.latitude, pos.coords.longitude);
+    try {
+      this.watchId = navigator.geolocation.watchPosition(onOk, () => {}, opts);
+    } catch (_) {
+      navigator.geolocation.getCurrentPosition(onOk, () => {}, opts);
+    }
+  },
+
+  readCache() {
+    try { return localStorage.getItem(this.storageKey) || ''; } catch { return ''; }
+  },
+
+  writeCache(city) {
+    try { localStorage.setItem(this.storageKey, city); } catch {}
+  },
+
+  setLabel(city) {
+    const el = document.getElementById('geo-location-label');
+    if (el && city) el.textContent = city;
+  },
+
+  km(aLat, aLon, bLat, bLon) {
+    const toRad = (n) => n * Math.PI / 180;
+    const dLat = toRad(bLat - aLat);
+    const dLon = toRad(bLon - aLon);
+    const s = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(aLat)) * Math.cos(toRad(bLat)) * Math.sin(dLon / 2) ** 2;
+    return 2 * 6371 * Math.asin(Math.min(1, Math.sqrt(s)));
+  },
+
+  hubCity(lat, lon) {
+    let best = '';
+    let bestKm = Infinity;
+    this.hubs.forEach((hub) => {
+      const d = this.km(lat, lon, hub.lat, hub.lon);
+      if (d <= hub.km && d < bestKm) {
+        bestKm = d;
+        best = hub.city;
+      }
+    });
+    return best;
+  },
+
+  async resolve(lat, lon) {
+    const city = this.hubCity(lat, lon) || await this.reverse(lat, lon);
+    if (!city) return;
+    this.setLabel(city);
+    this.writeCache(city);
+  },
+
+  async reverse(lat, lon) {
+    try {
+      const url = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${encodeURIComponent(lat)}&longitude=${encodeURIComponent(lon)}&localityLanguage=en`;
+      const res = await fetch(url);
+      if (!res.ok) return '';
+      const data = await res.json();
+      const raw = data.city || data.locality || data.principalSubdivision || '';
+      const listed = typeof WORLD_CLOCK_CITIES !== 'undefined'
+        ? WORLD_CLOCK_CITIES.find((c) => c.city.toLowerCase() === String(raw).toLowerCase())
+        : null;
+      return listed ? listed.city : raw;
+    } catch {
+      return '';
+    }
+  }
+};
+
 const WORLD_CLOCKS = {
   storageKey: 'dimad_world_clocks',
   query: '',
@@ -298,16 +380,31 @@ const WORLD_CLOCKS = {
     const selected = this.selectedIds().map((id) => this.cityById(id)).filter(Boolean);
     grid.innerHTML = selected.map((city, idx) => {
       const tone = this.tones[idx] || this.tones[0];
+      const heroes = {
+        yerevan: '../assets/yerevan-clock-hero.jpg',
+        london: '../assets/london-clock-hero.jpg',
+        'new-york': '../assets/new-york-clock-hero.jpg'
+      };
+      const hero = heroes[city.id];
+      const shell = hero
+        ? 'relative overflow-hidden border border-amber-500/40 bg-cover bg-center p-2.5 rounded'
+        : 'border border-brand-border bg-brand-panel p-2.5 rounded';
+      const shellStyle = hero ? ` style="background-image:url('${hero}')"` : '';
+      const overlay = hero ? '<div class="pointer-events-none absolute inset-0 bg-gradient-to-r from-slate-950/80 via-slate-950/50 to-slate-950/25"></div>' : '';
+      const timeClass = hero ? 'text-amber-100' : tone.time;
+      const nameClass = hero ? 'text-amber-50' : 'text-slate-400';
+      const badgeClass = hero ? 'bg-amber-500/20 text-amber-100 border border-amber-200/20' : tone.badge;
       return `
-        <div class="border border-brand-border bg-brand-panel p-2.5 rounded flex items-center justify-between gap-2">
-          <div class="flex items-center gap-2.5 min-w-0 ${tone.time}">
+        <div class="${shell} flex items-center justify-between gap-2"${shellStyle}>
+          ${overlay}
+          <div class="relative z-10 flex items-center gap-2.5 min-w-0 ${timeClass}">
             ${this.analogFace(city.id)}
             <div class="min-w-0">
-              <p class="text-[9px] text-slate-400 font-bold">${city.city.toUpperCase()}</p>
-              <p data-world-clock="${city.id}" class="text-xs font-bold font-mono ${tone.time}">--:--:--</p>
+              <p class="text-[9px] ${nameClass} font-bold">${city.city.toUpperCase()}</p>
+              <p data-world-clock="${city.id}" class="text-xs font-bold font-mono ${timeClass}">--:--:--</p>
             </div>
           </div>
-          <span data-world-clock-offset="${city.id}" class="text-[8px] ${tone.badge} px-1.5 py-0.5 rounded shrink-0">${this.offsetLabel(city.tz)}</span>
+          <span data-world-clock-offset="${city.id}" class="relative z-10 text-[8px] ${badgeClass} px-1.5 py-0.5 rounded shrink-0">${this.offsetLabel(city.tz)}</span>
         </div>`;
     }).join('');
     this.tick();
@@ -603,8 +700,11 @@ function switchTab(tabId) {
     renderCustomWorkspaces();
     renderModePresets();
   }
+  if (typeof DIMAD_NOTEPAD !== 'undefined' && tabId !== 'dimad-notepad') {
+    DIMAD_NOTEPAD.unmount();
+  }
   if (tabId === 'dimad-notepad' && typeof DIMAD_NOTEPAD !== 'undefined') {
-    DIMAD_NOTEPAD.render();
+    DIMAD_NOTEPAD.mount();
   }
   if (tabId === 'ent-stocks' && typeof FINNHUB_MARKETS !== 'undefined') {
     FINNHUB_MARKETS.open();
@@ -612,8 +712,29 @@ function switchTab(tabId) {
   if (tabId === 'ent-dashboard' && typeof COMMAND_CENTER !== 'undefined') {
     COMMAND_CENTER.apply();
   }
+  if (tabId === 'creator-studio' && typeof DIMAD_STUDIO !== 'undefined') {
+    DIMAD_STUDIO.apply();
+  }
   if (tabId === 'dimad-calendar' && typeof DIMAD_CAL !== 'undefined') {
     DIMAD_CAL.renderFull();
+  }
+  if (typeof BUSINESS_AI !== 'undefined' && tabId !== 'ent-ai-business') {
+    BUSINESS_AI.unmount();
+  }
+  if (tabId === 'ent-ai-business' && typeof BUSINESS_AI !== 'undefined') {
+    BUSINESS_AI.mount();
+  }
+  if (typeof NOMAD_AI !== 'undefined' && tabId !== 'nomad-ai') {
+    NOMAD_AI.unmount();
+  }
+  if (tabId === 'nomad-ai' && typeof NOMAD_AI !== 'undefined') {
+    NOMAD_AI.mount();
+  }
+  if (typeof CREATOR_AI !== 'undefined' && tabId !== 'creator-ai') {
+    CREATOR_AI.unmount();
+  }
+  if (tabId === 'creator-ai' && typeof CREATOR_AI !== 'undefined') {
+    CREATOR_AI.mount();
   }
   if (tabId === 'creator-writespace' && typeof WRITESPACE !== 'undefined') {
     WRITESPACE.mount();
@@ -645,6 +766,15 @@ function switchTab(tabId) {
   if (tabId === 'ent-goals') {
     initGoalsRewards();
     if (typeof FOCUS_LOG !== 'undefined') FOCUS_LOG.render();
+  }
+  if (tabId === 'ent-tasks' && typeof TASK_MANAGER !== 'undefined') {
+    TASK_MANAGER.mount();
+  }
+  if (tabId === 'ent-crm' && typeof DIMAD_SHEET !== 'undefined') {
+    DIMAD_SHEET.mount();
+  }
+  if (tabId === 'ent-invoices' && typeof INVOICES !== 'undefined') {
+    INVOICES.mount();
   }
 }
 
@@ -905,17 +1035,15 @@ const DIM_ENGINE = {
     this.user.streakDays = days;
     const milestones = this.streakMilestones;
     const next = milestones.find((m) => m.days > days);
-    const badge = document.getElementById('goals-streak-badge');
-    const nextEl = document.getElementById('goals-streak-next');
-    if (badge) badge.textContent = `${days}d`;
-    if (nextEl) {
-      if (next) {
-        const remaining = next.days - days;
-        nextEl.innerHTML = `Next Milestone: <strong class="text-slate-200">${next.days} Days</strong> · ${next.baseReward.toLocaleString()} $DIM · ${remaining} day${remaining === 1 ? '' : 's'} remaining`;
-      } else {
-        nextEl.textContent = '365 clock-in days complete — all year milestones claimed';
-      }
-    }
+    const label = next
+      ? `Next Milestone: <strong class="text-slate-200">${next.days} Days</strong> · ${next.baseReward.toLocaleString()} $DIM · ${next.days - days} day${next.days - days === 1 ? '' : 's'} remaining`
+      : '365 clock-in days complete — all year milestones claimed';
+    document.querySelectorAll('[data-streak-badge]').forEach((el) => {
+      el.textContent = `${days}d`;
+    });
+    document.querySelectorAll('[data-streak-next]').forEach((el) => {
+      el.innerHTML = label;
+    });
   }
 };
 
@@ -977,9 +1105,9 @@ const DIMAD_AI_STATE = {
     },
     travel: {
       icon: '✈️',
-      title: 'AI Travel Planner',
+      title: 'Nomad AI',
       desc: 'Nomad routes, boutique stays, and flight coordination.',
-      placeholder: 'Ask AI Travel Planner anything... (e.g. 10-day Yerevan to Tbilisi)'
+      placeholder: 'Ask Nomad AI anything... (e.g. 10-day Yerevan to Tbilisi)'
     }
   }
 };
@@ -1691,12 +1819,1132 @@ function switchGoalHorizon(value) {
   });
 }
 
+const DIMAD_GOALS = {
+  storageKey: 'dimad_operator_goals',
+  max: 10,
+  horizons: [
+    { id: 'daily', label: 'Daily', sub: 'Today' },
+    { id: 'weekly', label: 'Weekly', sub: 'This week' },
+    { id: 'monthly', label: 'Monthly', sub: 'This month' },
+    { id: 'quarterly', label: 'Quarterly', sub: 'This quarter' },
+    { id: 'yearly', label: 'Yearly', sub: 'This year' }
+  ],
+
+  pad(n) {
+    return String(n).padStart(2, '0');
+  },
+
+  iso(date) {
+    const d = date instanceof Date ? date : this.parseIso(date);
+    return `${d.getFullYear()}-${this.pad(d.getMonth() + 1)}-${this.pad(d.getDate())}`;
+  },
+
+  parseIso(stamp) {
+    const parts = String(stamp || '').split('-').map(Number);
+    return new Date(parts[0] || new Date().getFullYear(), (parts[1] || 1) - 1, parts[2] || 1);
+  },
+
+  weekStart(date) {
+    const x = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const day = x.getDay();
+    x.setDate(x.getDate() + (day === 0 ? -6 : 1 - day));
+    return x;
+  },
+
+  viewDate() {
+    if (!this._calDate) this._calDate = new Date();
+    return this._calDate;
+  },
+
+  periodStart(horizon, date) {
+    const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    if (horizon === 'daily') return this.iso(d);
+    if (horizon === 'weekly') return this.iso(this.weekStart(d));
+    if (horizon === 'monthly') return `${d.getFullYear()}-${this.pad(d.getMonth() + 1)}-01`;
+    if (horizon === 'quarterly') {
+      const m = Math.floor(d.getMonth() / 3) * 3 + 1;
+      return `${d.getFullYear()}-${this.pad(m)}-01`;
+    }
+    return `${d.getFullYear()}-01-01`;
+  },
+
+  periodLabel(horizon, startIso) {
+    const nowKey = this.periodStart(horizon, new Date());
+    if (startIso === nowKey) {
+      const h = this.horizons.find((x) => x.id === horizon);
+      return h ? h.sub : startIso;
+    }
+    const d = this.parseIso(startIso);
+    if (horizon === 'daily') return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+    if (horizon === 'weekly') return 'Week of ' + d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    if (horizon === 'monthly') return d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+    if (horizon === 'quarterly') return 'Q' + (Math.floor(d.getMonth() / 3) + 1) + ' ' + d.getFullYear();
+    return String(d.getFullYear());
+  },
+
+  defaults() {
+    return {
+      brand: 'DIMAD is the dark-gold command center for operators who build companies with their own hands — one OS, one voice, no split attention.',
+      purpose: 'To turn focused hours into shipped work, clean books, and geographic freedom. Execution is the brand. Distraction is the enemy.',
+      vision: 'A generation of sovereign founders who run product, finance, and travel from one room in the world — and still out-ship the studio down the street.',
+      activeHorizon: 'daily',
+      hiddenHorizons: [],
+      reminders: {
+        daily: { on: true },
+        weekly: { on: false, weekday: 1 },
+        monthly: { on: false, day: 1 },
+        quarterly: { on: false, month: 1, day: 1 },
+        yearly: { on: false, month: 1, day: 1 }
+      },
+      reminderFired: {},
+      goals: {
+        daily: [
+          { id: 'd1', text: 'Close 3 qualified outbound conversations.', done: false },
+          { id: 'd2', text: 'Ship one production-ready product increment.', done: true },
+          { id: 'd3', text: 'Review cash, pipeline, and today’s bottleneck in 15 minutes.', done: false }
+        ],
+        weekly: [
+          { id: 'w1', text: 'Publish one brief that moves Explore → Premium.', done: false },
+          { id: 'w2', text: 'Clear the invoice queue and send all payment links.', done: false },
+          { id: 'w3', text: 'Complete a 40-hour focus week with documented Clock Ins.', done: false }
+        ],
+        monthly: [
+          { id: 'm1', text: 'Convert 4 Explore trials into Premium seats.', done: false },
+          { id: 'm2', text: 'Hit 30 Clock-In days and lock the 2,000 $DIM milestone.', done: false },
+          { id: 'm3', text: 'Run one revenue experiment with a written kill/scale call.', done: false }
+        ],
+        quarterly: [
+          { id: 'q1', text: 'Launch paid membership with redeemable $DIM perks.', done: false },
+          { id: 'q2', text: 'Compress inbound-to-invoice to under 48 hours.', done: false },
+          { id: 'q3', text: 'Staff inbox SLA and weekly reporting to a named owner.', done: false }
+        ],
+        yearly: [
+          { id: 'y1', text: 'Reach 200 paying Premium operator seats.', done: false },
+          { id: 'y2', text: 'Clock in 365 days and claim the 12,000 $DIM year award.', done: false },
+          { id: 'y3', text: 'Make DIMAD the default execution OS for independent operators.', done: false }
+        ]
+      }
+    };
+  },
+
+  hydrateGoal(horizon, g, i) {
+    const weekdays = Array.isArray(g && g.weekdays)
+      ? g.weekdays.map(Number).filter((n) => n >= 0 && n <= 6)
+      : [0, 1, 2, 3, 4, 5, 6];
+    return {
+      id: (g && g.id) || `${horizon[0]}-${i}-${Date.now()}`,
+      text: String((g && g.text) || ''),
+      done: !!(g && g.done),
+      recurring: !!(g && g.recurring),
+      start: (g && g.start) || this.periodStart(horizon, new Date()),
+      until: (g && g.until) || '',
+      weekdays: weekdays.length ? weekdays : [0, 1, 2, 3, 4, 5, 6],
+      donePeriods: (g && g.donePeriods && typeof g.donePeriods === 'object') ? g.donePeriods : {}
+    };
+  },
+
+  load() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(this.storageKey) || 'null');
+      const base = this.defaults();
+      this.horizons.forEach((h) => {
+        base.goals[h.id] = (base.goals[h.id] || []).map((g, i) => this.hydrateGoal(h.id, g, i));
+      });
+      if (!saved || typeof saved !== 'object') return base;
+      const goals = { ...base.goals };
+      this.horizons.forEach((h) => {
+        const raw = (saved.goals && Array.isArray(saved.goals[h.id])) ? saved.goals[h.id] : goals[h.id];
+        goals[h.id] = (raw || []).map((g, i) => this.hydrateGoal(h.id, g, i));
+      });
+      return {
+        brand: saved.brand != null ? String(saved.brand) : base.brand,
+        purpose: saved.purpose != null ? String(saved.purpose) : base.purpose,
+        vision: saved.vision != null ? String(saved.vision) : base.vision,
+        activeHorizon: saved.activeHorizon === 'all' || this.horizons.some((h) => h.id === saved.activeHorizon) ? saved.activeHorizon : 'daily',
+        hiddenHorizons: Array.isArray(saved.hiddenHorizons) ? saved.hiddenHorizons.filter((id) => this.horizons.some((h) => h.id === id)) : [],
+        reminders: {
+          daily: { on: !!(saved.reminders && saved.reminders.daily && saved.reminders.daily.on) || (saved.reminders && saved.reminders.daily ? !!saved.reminders.daily.on : base.reminders.daily.on) },
+          weekly: { on: !!(saved.reminders && saved.reminders.weekly && saved.reminders.weekly.on), weekday: Number((saved.reminders && saved.reminders.weekly && saved.reminders.weekly.weekday) ?? 1) },
+          monthly: { on: !!(saved.reminders && saved.reminders.monthly && saved.reminders.monthly.on), day: Number((saved.reminders && saved.reminders.monthly && saved.reminders.monthly.day) || 1) },
+          quarterly: { on: !!(saved.reminders && saved.reminders.quarterly && saved.reminders.quarterly.on), month: Number((saved.reminders && saved.reminders.quarterly && saved.reminders.quarterly.month) || 1), day: Number((saved.reminders && saved.reminders.quarterly && saved.reminders.quarterly.day) || 1) },
+          yearly: { on: !!(saved.reminders && saved.reminders.yearly && saved.reminders.yearly.on), month: Number((saved.reminders && saved.reminders.yearly && saved.reminders.yearly.month) || 1), day: Number((saved.reminders && saved.reminders.yearly && saved.reminders.yearly.day) || 1) }
+        },
+        reminderFired: saved.reminderFired && typeof saved.reminderFired === 'object' ? saved.reminderFired : {},
+        goals
+      };
+    } catch (err) {
+      return this.defaults();
+    }
+  },
+
+  persist(state) {
+    localStorage.setItem(this.storageKey, JSON.stringify(state));
+  },
+
+  state() {
+    if (!this._state) this._state = this.load();
+    return this._state;
+  },
+
+  escape(value) {
+    return String(value == null ? '' : value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  },
+
+  mount() {
+    ['goal-identity-modal', 'goal-settings-modal', 'goal-nudge-modal', 'goal-new-modal'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el && el.parentElement !== document.body) document.body.appendChild(el);
+    });
+    this.ensureActiveVisible();
+    this.renderIdentity();
+    this.render();
+  },
+
+  identityLabels: {
+    brand: 'My Brand',
+    purpose: 'My Purpose',
+    vision: 'My Vision'
+  },
+
+  renderIdentity() {
+    const s = this.state();
+    ['brand', 'purpose', 'vision'].forEach((key) => {
+      const el = document.getElementById('goal-' + key);
+      if (el) el.textContent = s[key] || '';
+    });
+  },
+
+  openIdentity(field) {
+    const s = this.state();
+    this._identityField = field;
+    const title = document.getElementById('goal-identity-title');
+    const body = document.getElementById('goal-identity-body');
+    const modal = document.getElementById('goal-identity-modal');
+    if (title) title.textContent = this.identityLabels[field] || 'Edit';
+    if (body) {
+      body.value = s[field] || '';
+      body.focus();
+    }
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    if (body) setTimeout(() => body.focus(), 30);
+  },
+
+  closeIdentity() {
+    const modal = document.getElementById('goal-identity-modal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    this._identityField = null;
+  },
+
+  saveIdentity() {
+    const field = this._identityField;
+    const body = document.getElementById('goal-identity-body');
+    if (!field || !body) return;
+    const s = this.state();
+    s[field] = body.value;
+    this.persist(s);
+    this.renderIdentity();
+    this.closeIdentity();
+  },
+
+  list(horizon) {
+    const s = this.state();
+    if (!s.goals[horizon]) s.goals[horizon] = [];
+    return s.goals[horizon];
+  },
+
+  isDone(goal, periodKey) {
+    if (goal.recurring) return !!(goal.donePeriods && goal.donePeriods[periodKey]);
+    return !!goal.done;
+  },
+
+  previousPeriod(horizon, startIso) {
+    const d = this.parseIso(startIso);
+    if (horizon === 'daily') d.setDate(d.getDate() - 1);
+    else if (horizon === 'weekly') d.setDate(d.getDate() - 7);
+    else if (horizon === 'monthly') d.setMonth(d.getMonth() - 1);
+    else if (horizon === 'quarterly') d.setMonth(d.getMonth() - 3);
+    else d.setFullYear(d.getFullYear() - 1);
+    return this.periodStart(horizon, d);
+  },
+
+  appliesToPeriod(goal, horizon, key) {
+    const start = goal.start || key;
+    if (goal.until && key > goal.until) return false;
+    if (goal.recurring) {
+      if (start > key) return false;
+      if (horizon === 'daily' && Array.isArray(goal.weekdays) && goal.weekdays.length) {
+        const dow = this.parseIso(key).getDay();
+        if (!goal.weekdays.includes(dow)) return false;
+      }
+      return true;
+    }
+    return start === key;
+  },
+
+  itemsFor(horizon, date) {
+    const d = date || this.viewDate();
+    if (horizon === 'all') {
+      return this.visibleHorizons().flatMap((h) => this.itemsFor(h.id, d).map((g) => ({
+        ...g,
+        horizon: h.id,
+        horizonLabel: h.label,
+        horizonSub: this.periodLabel(h.id, this.periodStart(h.id, d))
+      })));
+    }
+    const key = this.periodStart(horizon, d);
+    return this.list(horizon).filter((g) => this.appliesToPeriod(g, horizon, key));
+  },
+
+  boardItems(horizon) {
+    const now = new Date();
+    if (horizon === 'all') {
+      return this.visibleHorizons().flatMap((h) => this.boardItems(h.id).map((g) => ({
+        ...g,
+        horizon: h.id,
+        horizonLabel: h.label,
+        horizonSub: this.periodLabel(h.id, g.start || this.periodStart(h.id, now))
+      })));
+    }
+    const key = this.periodStart(horizon, now);
+    return this.list(horizon)
+      .filter((g) => {
+        const start = g.start || key;
+        if (g.until && g.until < key) return false;
+        return g.recurring || start >= key;
+      })
+      .sort((a, b) => String(a.start || key).localeCompare(String(b.start || key)));
+  },
+
+  allItems() {
+    return this.itemsFor('all');
+  },
+
+  boardHorizons() {
+    return this.visibleHorizons().concat([{ id: 'all', label: 'All', sub: 'Every horizon' }]);
+  },
+
+  add() {
+    this.openComposer();
+  },
+
+  composerHint(horizon) {
+    return { daily: 'day', weekly: 'week', monthly: 'month', quarterly: 'quarter', yearly: 'year' }[horizon] || 'period';
+  },
+
+  fillComposerChips() {
+    const vis = this.visibleHorizons();
+    const chips = document.getElementById('gn-horizons');
+    if (!chips) return;
+    chips.innerHTML = vis.map((h) => {
+      const on = h.id === this._composerHorizon;
+      return `<button type="button" onclick="DIMAD_GOALS.setComposerHorizon('${h.id}')" class="px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wide border ${on ? 'bg-amber-500 text-slate-950 border-amber-500' : 'bg-slate-950 text-slate-300 border-slate-800 hover:border-brand-gold/40'}">${this.escape(h.label)}</button>`;
+    }).join('');
+  },
+
+  showComposer(edit) {
+    const title = document.getElementById('gn-title');
+    const del = document.getElementById('gn-cancel-goal');
+    const save = document.getElementById('gn-save');
+    if (title) title.textContent = edit ? 'Edit Goal' : 'New Goal';
+    if (save) save.textContent = edit ? 'Save changes' : 'Save goal';
+    if (del) del.classList.toggle('hidden', !edit);
+    const err = document.getElementById('gn-error');
+    if (err) { err.classList.add('hidden'); err.textContent = ''; }
+    this.fillComposerChips();
+    this.syncComposerWhen();
+    this.syncWeekdaysPanel();
+    const modal = document.getElementById('goal-new-modal');
+    if (!modal) return;
+    if (modal.parentElement !== document.body) document.body.appendChild(modal);
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    const text = document.getElementById('gn-text');
+    if (text) setTimeout(() => text.focus(), 30);
+  },
+
+  openComposer() {
+    this._editId = null;
+    this._editHorizon = null;
+    const vis = this.visibleHorizons();
+    const active = this.state().activeHorizon;
+    this._composerHorizon = active !== 'all' && vis.some((h) => h.id === active) ? active : vis[0].id;
+    this._composerQuarter = Math.floor(this.viewDate().getMonth() / 3) + 1;
+    const text = document.getElementById('gn-text');
+    const rec = document.getElementById('gn-recurring');
+    if (text) text.value = '';
+    if (rec) rec.checked = false;
+    this._composerDate = this.viewDate();
+    this._composerWeekdays = [0, 1, 2, 3, 4, 5, 6];
+    this.showComposer(false);
+  },
+
+  openEditor(horizon, id) {
+    const item = this.list(horizon).find((g) => g.id === id);
+    if (!item) return;
+    this._editId = id;
+    this._editHorizon = horizon;
+    this._composerHorizon = horizon;
+    const todayKey = this.periodStart(horizon, new Date());
+    const startKey = item.start || todayKey;
+    const editFrom = startKey < todayKey ? todayKey : startKey;
+    const start = this.parseIso(editFrom);
+    this._composerDate = start;
+    this._composerQuarter = Math.floor(start.getMonth() / 3) + 1;
+    this._composerWeekdays = (Array.isArray(item.weekdays) && item.weekdays.length)
+      ? item.weekdays.slice()
+      : [0, 1, 2, 3, 4, 5, 6];
+    const text = document.getElementById('gn-text');
+    const rec = document.getElementById('gn-recurring');
+    if (text) text.value = item.text || '';
+    if (rec) rec.checked = !!item.recurring;
+    this.showComposer(true);
+  },
+
+  setComposerHorizon(id) {
+    if (!this.visibleHorizons().some((h) => h.id === id)) return;
+    this._composerHorizon = id;
+    const chips = document.getElementById('gn-horizons');
+    if (chips) {
+      chips.querySelectorAll('button').forEach((btn, i) => {
+        const h = this.visibleHorizons()[i];
+        const on = h && h.id === id;
+        btn.className = `px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wide border ${on ? 'bg-amber-500 text-slate-950 border-amber-500' : 'bg-slate-950 text-slate-300 border-slate-800 hover:border-brand-gold/40'}`;
+      });
+    }
+    this.syncComposerWhen();
+    this.syncWeekdaysPanel();
+  },
+
+  weekdayDefs() {
+    return [
+      { n: 1, l: 'Mon' },
+      { n: 2, l: 'Tue' },
+      { n: 3, l: 'Wed' },
+      { n: 4, l: 'Thu' },
+      { n: 5, l: 'Fri' },
+      { n: 6, l: 'Sat' },
+      { n: 0, l: 'Sun' }
+    ];
+  },
+
+  toggleComposerDay(n) {
+    const set = new Set(this._composerWeekdays || []);
+    if (set.has(n)) set.delete(n);
+    else set.add(n);
+    this._composerWeekdays = Array.from(set).sort((a, b) => a - b);
+    this.renderWeekdayChips();
+  },
+
+  renderWeekdayChips() {
+    const root = document.getElementById('gn-weekdays');
+    if (!root) return;
+    const selected = new Set(this._composerWeekdays || []);
+    root.innerHTML = this.weekdayDefs().map((d) => {
+      const on = selected.has(d.n);
+      return `<button type="button" onclick="DIMAD_GOALS.toggleComposerDay(${d.n})" class="min-w-[2.4rem] px-2 py-1 rounded-lg text-[10px] font-bold uppercase border ${on ? 'bg-amber-500 text-slate-950 border-amber-500' : 'bg-slate-950 text-slate-400 border-slate-800'}">${d.l}</button>`;
+    }).join('');
+  },
+
+  syncWeekdaysPanel() {
+    const wrap = document.getElementById('gn-weekdays-wrap');
+    const rec = document.getElementById('gn-recurring');
+    const show = this._composerHorizon === 'daily' && rec && rec.checked;
+    if (wrap) wrap.classList.toggle('hidden', !show);
+    if (show) this.renderWeekdayChips();
+  },
+
+  weekdayBadge(g) {
+    const days = Array.isArray(g.weekdays) ? g.weekdays : [];
+    if (!days.length || days.length >= 7) return 'Recurring';
+    const labels = { 0: 'Su', 1: 'Mo', 2: 'Tu', 3: 'We', 4: 'Th', 5: 'Fr', 6: 'Sa' };
+    return this.weekdayDefs().filter((d) => days.includes(d.n)).map((d) => labels[d.n]).join(' ');
+  },
+
+  hasPastCoverage(item, horizon, newStart) {
+    if (!item) return false;
+    const start = item.start || newStart;
+    if (start < newStart) return true;
+    const done = item.donePeriods && typeof item.donePeriods === 'object' ? Object.keys(item.donePeriods) : [];
+    return done.some((k) => k < newStart);
+  },
+
+  spawnGoal(horizon, fields) {
+    this.list(horizon).push({
+      id: horizon + '-' + Date.now(),
+      text: fields.text,
+      done: false,
+      recurring: !!fields.recurring,
+      start: fields.start,
+      until: '',
+      weekdays: Array.isArray(fields.weekdays) ? fields.weekdays : [0, 1, 2, 3, 4, 5, 6],
+      donePeriods: {}
+    });
+  },
+
+  syncComposerWhen() {
+    const h = this._composerHorizon || 'daily';
+    const hint = document.getElementById('gn-recurring-hint');
+    if (hint) hint.textContent = this.composerHint(h);
+    const root = document.getElementById('gn-when');
+    if (!root) return;
+    const d = this._composerDate || this.viewDate();
+    const field = 'w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-[13px] text-amber-100';
+    if (h === 'daily' || h === 'weekly') {
+      root.innerHTML = `<input id="gn-date" type="date" value="${this.iso(d)}" class="${field}">${h === 'weekly' ? '<p class="text-[11px] text-slate-500 mt-1">Uses the week that contains this date.</p>' : ''}`;
+      return;
+    }
+    if (h === 'monthly') {
+      root.innerHTML = `<input id="gn-month" type="month" value="${d.getFullYear()}-${this.pad(d.getMonth() + 1)}" class="${field}">`;
+      return;
+    }
+    if (h === 'quarterly') {
+      const q = this._composerQuarter || 1;
+      root.innerHTML = `<div class="flex flex-wrap items-center gap-2">
+        <input id="gn-year" type="number" min="2020" max="2100" value="${d.getFullYear()}" class="w-24 ${field}">
+        ${[1, 2, 3, 4].map((n) => `<button type="button" onclick="DIMAD_GOALS.setComposerQuarter(${n})" class="px-3 py-1.5 rounded-lg text-[11px] font-bold border ${n === q ? 'bg-amber-500 text-slate-950 border-amber-500' : 'bg-slate-950 text-slate-300 border-slate-800'}">Q${n}</button>`).join('')}
+      </div>`;
+      return;
+    }
+    root.innerHTML = `<input id="gn-year" type="number" min="2020" max="2100" value="${d.getFullYear()}" class="w-28 ${field}">`;
+  },
+
+  setComposerQuarter(n) {
+    this._composerQuarter = n;
+    this.syncComposerWhen();
+  },
+
+  composerStart(horizon) {
+    const fallback = this.periodStart(horizon, this._composerDate || this.viewDate());
+    if (horizon === 'daily' || horizon === 'weekly') {
+      const el = document.getElementById('gn-date');
+      return el && el.value ? this.periodStart(horizon, this.parseIso(el.value)) : fallback;
+    }
+    if (horizon === 'monthly') {
+      const el = document.getElementById('gn-month');
+      if (!el || !el.value) return fallback;
+      const parts = el.value.split('-');
+      return `${parts[0]}-${parts[1]}-01`;
+    }
+    const yearEl = document.getElementById('gn-year');
+    const year = Number(yearEl && yearEl.value) || (this._composerDate || this.viewDate()).getFullYear();
+    if (horizon === 'quarterly') {
+      const m = ((this._composerQuarter || 1) - 1) * 3 + 1;
+      return `${year}-${this.pad(m)}-01`;
+    }
+    return `${year}-01-01`;
+  },
+
+  closeComposer() {
+    const modal = document.getElementById('goal-new-modal');
+    this._editId = null;
+    this._editHorizon = null;
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  },
+
+  cancelGoal() {
+    if (!this._editId || !this._editHorizon) return;
+    const horizon = this._editHorizon;
+    const id = this._editId;
+    const item = this.list(horizon).find((g) => g.id === id);
+    const todayKey = this.periodStart(horizon, new Date());
+    this.closeComposer();
+    if (!item) return;
+    if (item.until && item.until < todayKey) {
+      this.render();
+      return;
+    }
+    if (item.start && item.start < todayKey) {
+      item.until = this.previousPeriod(horizon, todayKey);
+      this.persist(this.state());
+      this.render();
+      return;
+    }
+    this.remove(horizon, id);
+  },
+
+  saveComposer() {
+    const textEl = document.getElementById('gn-text');
+    const err = document.getElementById('gn-error');
+    const text = String(textEl && textEl.value || '').trim();
+    const horizon = this._composerHorizon || 'daily';
+    const showErr = (msg) => { if (err) { err.textContent = msg; err.classList.remove('hidden'); } };
+    if (!text) { showErr('Write a measurable target.'); return; }
+    const rec = !!(document.getElementById('gn-recurring') && document.getElementById('gn-recurring').checked);
+    const weekdays = rec && horizon === 'daily'
+      ? (this._composerWeekdays || []).map(Number).filter((n) => n >= 0 && n <= 6)
+      : [0, 1, 2, 3, 4, 5, 6];
+    if (rec && horizon === 'daily' && !weekdays.length) {
+      showErr('Pick at least one day for this daily goal.');
+      return;
+    }
+    const todayKey = this.periodStart(horizon, new Date());
+    let start = this.composerStart(horizon);
+    if (this._editId && start < todayKey) start = todayKey;
+    const fields = { text, recurring: rec, start, weekdays };
+    if (this._editId) {
+      const from = this._editHorizon;
+      const item = this.list(from).find((g) => g.id === this._editId);
+      if (!item) return;
+      const splitStart = from === horizon ? start : this.periodStart(from, new Date());
+      const ended = !!(item.until && item.until < splitStart);
+      const shouldSplit = ended || this.hasPastCoverage(item, from, splitStart);
+      if (shouldSplit) {
+        const prevUntil = item.until;
+        if (!ended) item.until = this.previousPeriod(from, splitStart);
+        const inPeriod = this.itemsFor(horizon, this.parseIso(start));
+        if (inPeriod.length >= this.max) {
+          item.until = prevUntil;
+          showErr('This period already has 10 goals.');
+          return;
+        }
+        this.spawnGoal(horizon, fields);
+      } else {
+        const inPeriod = this.itemsFor(horizon, this.parseIso(start)).filter((g) => g.id !== item.id);
+        if (inPeriod.length >= this.max) { showErr('This period already has 10 goals.'); return; }
+        item.text = text;
+        item.recurring = rec;
+        item.start = start;
+        item.weekdays = weekdays;
+        if (from !== horizon) {
+          this.state().goals[from] = this.list(from).filter((g) => g.id !== item.id);
+          this.list(horizon).push(item);
+        }
+      }
+      this.state().activeHorizon = horizon;
+      this.persist(this.state());
+      this.closeComposer();
+      this.render();
+      return;
+    }
+    const inPeriod = this.itemsFor(horizon, this.parseIso(start));
+    if (inPeriod.length >= this.max) { showErr('This period already has 10 goals.'); return; }
+    this.spawnGoal(horizon, fields);
+    this.state().activeHorizon = horizon;
+    this.persist(this.state());
+    this.closeComposer();
+    this.render();
+  },
+
+  setHorizon(id) {
+    if (id !== 'all' && !this.visibleHorizons().some((h) => h.id === id)) return;
+    this.state().activeHorizon = id;
+    this.persist(this.state());
+    this.render();
+  },
+
+  visibleHorizons() {
+    const hidden = this.state().hiddenHorizons || [];
+    const shown = this.horizons.filter((h) => !hidden.includes(h.id));
+    return shown.length ? shown : this.horizons.slice(0, 1);
+  },
+
+  ensureActiveVisible() {
+    const s = this.state();
+    if (s.activeHorizon === 'all') return;
+    const vis = this.visibleHorizons();
+    if (!vis.some((h) => h.id === s.activeHorizon)) {
+      s.activeHorizon = vis[0].id;
+      this.persist(s);
+    }
+  },
+
+  clampDay(year, month, day) {
+    const last = new Date(year, month, 0).getDate();
+    return Math.max(1, Math.min(Number(day) || 1, last));
+  },
+
+  todayStamp() {
+    const d = new Date();
+    const p = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  },
+
+  openSettings() {
+    const s = this.state();
+    const visRoot = document.getElementById('goal-settings-visible');
+    if (visRoot) {
+      visRoot.innerHTML = this.horizons.map((h) => {
+        const on = !(s.hiddenHorizons || []).includes(h.id);
+        return `<label class="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-2 text-[12px] text-slate-200">
+          <input type="checkbox" data-gs-vis="${h.id}" ${on ? 'checked' : ''} class="accent-amber-500">
+          Show ${this.escape(h.label)}
+        </label>`;
+      }).join('');
+    }
+    const r = s.reminders || this.defaults().reminders;
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el[el.type === 'checkbox' ? 'checked' : 'value'] = val; };
+    set('gs-rem-daily', !!r.daily.on);
+    set('gs-rem-weekly', !!r.weekly.on);
+    set('gs-rem-weekly-day', String(r.weekly.weekday ?? 1));
+    set('gs-rem-monthly', !!r.monthly.on);
+    set('gs-rem-monthly-day', String(r.monthly.day || 1));
+    set('gs-rem-quarterly', !!r.quarterly.on);
+    set('gs-rem-quarterly-month', String(r.quarterly.month || 1));
+    set('gs-rem-quarterly-day', String(r.quarterly.day || 1));
+    set('gs-rem-yearly', !!r.yearly.on);
+    set('gs-rem-yearly-month', String(r.yearly.month || 1));
+    set('gs-rem-yearly-day', String(r.yearly.day || 1));
+    const modal = document.getElementById('goal-settings-modal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  },
+
+  closeSettings() {
+    const modal = document.getElementById('goal-settings-modal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  },
+
+  saveSettings() {
+    const s = this.state();
+    const hidden = [];
+    document.querySelectorAll('[data-gs-vis]').forEach((el) => {
+      if (!el.checked) hidden.push(el.getAttribute('data-gs-vis'));
+    });
+    s.hiddenHorizons = hidden.length === this.horizons.length ? hidden.slice(0, -1) : hidden;
+    const num = (id, fallback) => {
+      const el = document.getElementById(id);
+      const n = Number(el && el.value);
+      return Number.isFinite(n) ? n : fallback;
+    };
+    const on = (id) => !!(document.getElementById(id) && document.getElementById(id).checked);
+    s.reminders = {
+      daily: { on: on('gs-rem-daily') },
+      weekly: { on: on('gs-rem-weekly'), weekday: num('gs-rem-weekly-day', 1) },
+      monthly: { on: on('gs-rem-monthly'), day: Math.max(1, Math.min(31, num('gs-rem-monthly-day', 1))) },
+      quarterly: { on: on('gs-rem-quarterly'), month: Math.max(1, Math.min(3, num('gs-rem-quarterly-month', 1))), day: Math.max(1, Math.min(31, num('gs-rem-quarterly-day', 1))) },
+      yearly: { on: on('gs-rem-yearly'), month: Math.max(1, Math.min(12, num('gs-rem-yearly-month', 1))), day: Math.max(1, Math.min(31, num('gs-rem-yearly-day', 1))) }
+    };
+    this.persist(s);
+    this.ensureActiveVisible();
+    this.render();
+    this.closeSettings();
+  },
+
+  isQuarterlyDate(now, month, day) {
+    const m = now.getMonth() + 1;
+    const d = now.getDate();
+    const start = Math.max(1, Math.min(3, Number(month) || 1));
+    return [0, 4, 8, 12].some((offset) => {
+      const mm = ((start + offset - 1) % 12) + 1;
+      return mm === m && d === this.clampDay(now.getFullYear(), mm, day);
+    });
+  },
+
+  dueReminders() {
+    const s = this.state();
+    const r = s.reminders || this.defaults().reminders;
+    const fired = s.reminderFired || {};
+    const hidden = s.hiddenHorizons || [];
+    const now = new Date();
+    const today = this.todayStamp();
+    const monthKey = today.slice(0, 7);
+    const yearKey = String(now.getFullYear());
+    const due = [];
+    const visible = (id) => !hidden.includes(id);
+    if (r.daily && r.daily.on && visible('daily') && fired.daily !== today) due.push('daily');
+    if (r.weekly && r.weekly.on && visible('weekly') && now.getDay() === Number(r.weekly.weekday) && fired.weekly !== today) due.push('weekly');
+    if (r.monthly && r.monthly.on && visible('monthly') && now.getDate() === this.clampDay(now.getFullYear(), now.getMonth() + 1, r.monthly.day) && fired.monthly !== monthKey) due.push('monthly');
+    if (r.quarterly && r.quarterly.on && visible('quarterly') && this.isQuarterlyDate(now, r.quarterly.month, r.quarterly.day) && fired.quarterly !== today) due.push('quarterly');
+    if (r.yearly && r.yearly.on && visible('yearly') && (now.getMonth() + 1) === Number(r.yearly.month) && now.getDate() === this.clampDay(now.getFullYear(), r.yearly.month, r.yearly.day) && fired.yearly !== yearKey) due.push('yearly');
+    return due;
+  },
+
+  checkReminders() {
+    const due = this.dueReminders();
+    if (!due.length) return;
+    this._nudgeDue = due;
+    const body = document.getElementById('goal-nudge-body');
+    if (body) {
+      body.innerHTML = due.map((id) => {
+        const h = this.horizons.find((x) => x.id === id);
+        const open = this.itemsFor(id, new Date()).filter((g) => !this.isDone(g, this.periodStart(id, new Date())));
+        const rows = open.slice(0, 4).map((g) => `<li class="text-[12px] text-slate-200">${this.escape(g.text || 'Untitled target')}</li>`).join('')
+          || '<li class="text-[12px] text-slate-500">All targets in this horizon are complete.</li>';
+        return `<div class="rounded-xl border border-slate-800 bg-slate-950 p-3">
+          <div class="text-[10px] font-bold uppercase tracking-wider text-brand-gold mb-1.5">${this.escape(h ? h.label : id)}</div>
+          <ul class="space-y-1 list-disc pl-4">${rows}</ul>
+        </div>`;
+      }).join('');
+    }
+    const modal = document.getElementById('goal-nudge-modal');
+    if (!modal) return;
+    if (modal.parentElement !== document.body) document.body.appendChild(modal);
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  },
+
+  dismissNudge() {
+    const s = this.state();
+    const today = this.todayStamp();
+    const now = new Date();
+    s.reminderFired = s.reminderFired || {};
+    (this._nudgeDue || []).forEach((id) => {
+      if (id === 'daily' || id === 'weekly' || id === 'quarterly') s.reminderFired[id] = today;
+      if (id === 'monthly') s.reminderFired[id] = today.slice(0, 7);
+      if (id === 'yearly') s.reminderFired[id] = String(now.getFullYear());
+    });
+    this.persist(s);
+    this._nudgeDue = [];
+    const modal = document.getElementById('goal-nudge-modal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  },
+
+  openFromNudge() {
+    const first = (this._nudgeDue || [])[0];
+    this.dismissNudge();
+    if (typeof switchTab === 'function') switchTab('ent-goals');
+    if (first) this.setHorizon(first);
+  },
+
+  score(horizon) {
+    const now = new Date();
+    const items = this.itemsFor(horizon, now);
+    const keyFor = (g) => this.periodStart(g.horizon || horizon, now);
+    return { entered: items.length, complete: items.filter((g) => this.isDone(g, keyFor(g))).length };
+  },
+
+  setText(horizon, id, text) {
+    const item = this.list(horizon).find((g) => g.id === id);
+    if (!item) return;
+    item.text = text;
+    this.persist(this.state());
+  },
+
+  toggle(horizon, id) {
+    const item = this.list(horizon).find((g) => g.id === id);
+    if (!item) return;
+    const key = this.periodStart(horizon, this.viewDate());
+    this.setDone(horizon, id, !this.isDone(item, key));
+  },
+
+  setDone(horizon, id, done, periodKey) {
+    const item = this.list(horizon).find((g) => g.id === id);
+    if (!item) return;
+    const key = periodKey || this.periodStart(horizon, this.viewDate());
+    if (item.recurring) {
+      item.donePeriods = item.donePeriods || {};
+      item.donePeriods[key] = !!done;
+    } else {
+      item.done = !!done;
+    }
+    this.persist(this.state());
+    this.render();
+  },
+
+  remove(horizon, id) {
+    const s = this.state();
+    s.goals[horizon] = this.list(horizon).filter((g) => g.id !== id);
+    this.persist(s);
+    this.render();
+  },
+
+  addDays(date, days) {
+    const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    d.setDate(d.getDate() + days);
+    return d;
+  },
+
+  jumpToday() {
+    this._calDate = new Date();
+    this.render();
+  },
+
+  shiftBoard(dir) {
+    const d = this.viewDate();
+    const live = this.state().activeHorizon || 'daily';
+    if (live === 'daily' || live === 'all') this._calDate = this.addDays(d, dir * 7);
+    else if (live === 'weekly') this._calDate = this.addDays(d, dir * 28);
+    else if (live === 'yearly') this._calDate = new Date(d.getFullYear() + dir * 5, 0, 1);
+    else this._calDate = new Date(d.getFullYear() + dir, d.getMonth(), 1);
+    this.render();
+  },
+
+  boardNav(title) {
+    return `<div class="flex items-center justify-between gap-2">
+      <button type="button" onclick="DIMAD_GOALS.shiftBoard(-1)" class="w-6 h-6 rounded-md border border-slate-800 text-slate-300 hover:text-white hover:border-slate-600 text-xs">‹</button>
+      <div class="text-center">
+        <div class="text-[10px] font-black text-white">${this.escape(title)}</div>
+        <button type="button" onclick="DIMAD_GOALS.jumpToday()" class="text-[8px] font-bold uppercase tracking-wide text-brand-gold hover:text-amber-300">This period</button>
+      </div>
+      <button type="button" onclick="DIMAD_GOALS.shiftBoard(1)" class="w-6 h-6 rounded-md border border-slate-800 text-slate-300 hover:text-white hover:border-slate-600 text-xs">›</button>
+    </div>`;
+  },
+
+  goalCardHtml(g, horizon, date) {
+    const hid = g.horizon || horizon;
+    const key = this.periodStart(hid, date);
+    const done = this.isDone(g, key);
+    const rec = g.recurring
+      ? `<span class="shrink-0 text-[7px] font-black uppercase tracking-wide text-sky-300 bg-sky-500/15 px-1 py-px rounded">${this.escape(this.weekdayBadge(g))}</span>`
+      : '';
+    const complete = done
+      ? '<span class="shrink-0 text-[7px] font-black uppercase tracking-wide text-emerald-400 bg-emerald-500/10 px-1 py-px rounded">Complete</span>'
+      : '';
+    const horizonChip = g.horizonLabel
+      ? `<span class="shrink-0 text-[7px] font-black uppercase tracking-wide text-brand-gold bg-amber-500/10 px-1 py-px rounded">${this.escape(g.horizonLabel)}</span>`
+      : '';
+    return `<div class="flex items-center gap-1.5 min-w-0">
+      <div class="flex shrink-0 rounded overflow-hidden border ${done ? 'border-emerald-500/40' : 'border-slate-700'}">
+        <button type="button" onclick="DIMAD_GOALS.setDone('${hid}', '${g.id}', true, '${key}')" class="px-1.5 py-0.5 text-[8px] font-black uppercase ${done ? 'bg-emerald-500 text-slate-950' : 'bg-slate-950 text-slate-500 hover:text-emerald-300'}">Yes</button>
+        <button type="button" onclick="DIMAD_GOALS.setDone('${hid}', '${g.id}', false, '${key}')" class="px-1.5 py-0.5 text-[8px] font-black uppercase border-l ${done ? 'border-emerald-500/30 bg-slate-950 text-slate-500' : 'border-slate-700 bg-amber-500 text-slate-950'}">No</button>
+      </div>
+      <button type="button" onclick="DIMAD_GOALS.openEditor('${hid}', '${g.id}')" class="flex-1 min-w-0 text-left text-[10px] font-semibold leading-tight ${done ? 'line-through text-slate-500' : 'text-slate-200 hover:text-white'}">${g.text ? this.escape(g.text) : '<span class="text-slate-600">Untitled target</span>'}</button>
+      ${horizonChip}${rec}${complete}
+    </div>`;
+  },
+
+  periodRow(title, sub, items, horizon, date, highlight) {
+    const empty = '<p class="text-[9px] text-slate-600 py-px">No goals</p>';
+    return `<div class="rounded-lg border ${highlight ? 'border-brand-gold/50 bg-amber-500/5' : 'border-slate-800 bg-slate-900'} px-2 py-1 flex items-start gap-2">
+      <div class="w-[4.75rem] shrink-0">
+        <div class="text-[8px] font-black uppercase tracking-wide ${highlight ? 'text-brand-gold' : 'text-slate-200'}">${this.escape(title)}</div>
+        <div class="text-[8px] font-mono text-slate-500">${this.escape(sub)}</div>
+      </div>
+      <div class="flex-1 min-w-0 space-y-0.5">${items.map((g) => this.goalCardHtml(g, horizon, date)).join('') || empty}</div>
+    </div>`;
+  },
+
+  renderBoard() {
+    const root = document.getElementById('dimad-goals-board');
+    if (!root) return;
+    const live = this.state().activeHorizon || 'daily';
+    const d = this.viewDate();
+    const today = this.todayStamp();
+    if (live === 'daily' || live === 'all') {
+      const start = this.weekStart(d);
+      const end = this.addDays(start, 6);
+      const title = start.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' – ' + end.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+      const names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      const cols = names.map((name, i) => {
+        const day = this.addDays(start, i);
+        const stamp = this.iso(day);
+        const items = live === 'all'
+          ? this.visibleHorizons().flatMap((h) => {
+            const key = this.periodStart(h.id, day);
+            if (h.id !== 'daily' && key !== stamp) return [];
+            return this.itemsFor(h.id, day).map((g) => ({ ...g, horizon: h.id, horizonLabel: h.label }));
+          })
+          : this.itemsFor('daily', day);
+        return this.periodRow(name, String(day.getDate()), items, live === 'all' ? 'all' : 'daily', day, stamp === today);
+      }).join('');
+      root.innerHTML = this.boardNav(title) + `<div class="space-y-1">${cols}</div>`;
+      return;
+    }
+    if (live === 'weekly') {
+      const start = this.weekStart(d);
+      const last = this.addDays(start, 21);
+      const title = start.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' – ' + last.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+      const nowWeek = this.periodStart('weekly', new Date());
+      const cols = [0, 1, 2, 3].map((i) => {
+        const week = this.addDays(start, i * 7);
+        const key = this.periodStart('weekly', week);
+        const label = 'Week of ' + week.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+        return this.periodRow(label, this.periodLabel('weekly', key), this.itemsFor('weekly', week), 'weekly', week, key === nowWeek);
+      }).join('');
+      root.innerHTML = this.boardNav(title) + `<div class="space-y-1">${cols}</div>`;
+      return;
+    }
+    if (live === 'monthly') {
+      const year = d.getFullYear();
+      const nowKey = this.periodStart('monthly', new Date());
+      const names = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      const cols = names.map((name, i) => {
+        const monthDate = new Date(year, i, 1);
+        const key = this.periodStart('monthly', monthDate);
+        return this.periodRow(name, String(year), this.itemsFor('monthly', monthDate), 'monthly', monthDate, key === nowKey);
+      }).join('');
+      root.innerHTML = this.boardNav(String(year)) + `<div class="grid grid-cols-1 lg:grid-cols-2 gap-1">${cols}</div>`;
+      return;
+    }
+    if (live === 'quarterly') {
+      const year = d.getFullYear();
+      const nowKey = this.periodStart('quarterly', new Date());
+      const cols = [1, 2, 3, 4].map((q) => {
+        const qDate = new Date(year, (q - 1) * 3, 1);
+        const key = this.periodStart('quarterly', qDate);
+        return this.periodRow('Q' + q, String(year), this.itemsFor('quarterly', qDate), 'quarterly', qDate, key === nowKey);
+      }).join('');
+      root.innerHTML = this.boardNav(String(year)) + `<div class="space-y-1">${cols}</div>`;
+      return;
+    }
+    const year = d.getFullYear();
+    const nowYear = new Date().getFullYear();
+    const cols = [0, 1, 2, 3, 4].map((i) => {
+      const y = year + i;
+      const yDate = new Date(y, 0, 1);
+      return this.periodRow(String(y), 'Year', this.itemsFor('yearly', yDate), 'yearly', yDate, y === nowYear);
+    }).join('');
+    root.innerHTML = this.boardNav(year + ' – ' + (year + 4)) + `<div class="space-y-1">${cols}</div>`;
+  },
+
+  formatDueDate(date) {
+    return date.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+  },
+
+  periodDueDate(horizon, now) {
+    const d = now || new Date();
+    const today = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const r = (this.state().reminders || this.defaults().reminders);
+    if (horizon === 'daily') return today;
+    if (horizon === 'weekly') {
+      const want = Number((r.weekly && r.weekly.weekday) ?? 1);
+      const start = this.weekStart(today);
+      for (let i = 0; i < 7; i++) {
+        const day = this.addDays(start, i);
+        if (day.getDay() === want) return day;
+      }
+      return this.addDays(start, 4);
+    }
+    if (horizon === 'monthly') {
+      const month = today.getMonth() + 1;
+      const day = this.clampDay(today.getFullYear(), month, (r.monthly && r.monthly.day) || 1);
+      return new Date(today.getFullYear(), today.getMonth(), day);
+    }
+    if (horizon === 'quarterly') {
+      const qStart = Math.floor(today.getMonth() / 3) * 3;
+      const q1 = Math.max(1, Math.min(3, Number((r.quarterly && r.quarterly.month) || 1)));
+      const month = qStart + q1;
+      const day = this.clampDay(today.getFullYear(), month, (r.quarterly && r.quarterly.day) || 1);
+      return new Date(today.getFullYear(), month - 1, day);
+    }
+    const month = Math.max(1, Math.min(12, Number((r.yearly && r.yearly.month) || 1)));
+    const day = this.clampDay(today.getFullYear(), month, (r.yearly && r.yearly.day) || 1);
+    return new Date(today.getFullYear(), month - 1, day);
+  },
+
+  setDashHorizon(id) {
+    if (!this.horizons.some((h) => h.id === id)) return;
+    this._dashHorizon = id;
+    this.renderDash();
+  },
+
+  openFromDash() {
+    const h = this._dashHorizon || 'daily';
+    this.state().activeHorizon = h;
+    this.persist(this.state());
+    if (typeof switchTab === 'function') switchTab('ent-goals');
+  },
+
+  renderDash() {
+    const chips = document.getElementById('cc-goals-horizons');
+    const list = document.getElementById('cc-goals-list');
+    if (!chips && !list) return;
+    const horizon = this.horizons.some((h) => h.id === this._dashHorizon) ? this._dashHorizon : 'daily';
+    this._dashHorizon = horizon;
+    const now = new Date();
+    const key = this.periodStart(horizon, now);
+    const items = this.itemsFor(horizon, now);
+    const sc = this.score(horizon);
+    const pct = sc.entered ? Math.round((sc.complete / sc.entered) * 100) : 0;
+    const period = document.getElementById('cc-goals-period');
+    const pctEl = document.getElementById('cc-goals-pct');
+    const bar = document.getElementById('cc-goals-bar');
+    if (period) period.textContent = this.periodLabel(horizon, key);
+    if (pctEl) pctEl.textContent = sc.entered ? pct + '%' : '—';
+    const dueEl = document.getElementById('cc-goals-due');
+    if (dueEl) {
+      const due = this.periodDueDate(horizon, now);
+      dueEl.textContent = 'Due ' + this.formatDueDate(due);
+    }
+    if (bar) {
+      bar.style.width = (sc.entered ? pct : 0) + '%';
+      bar.className = `h-full ${pct === 100 && sc.entered ? 'bg-brand-mint' : 'bg-brand-gold'}`;
+    }
+    if (chips) {
+      chips.innerHTML = this.horizons.map((h) => {
+        const on = h.id === horizon;
+        return `<button type="button" onclick="DIMAD_GOALS.setDashHorizon('${h.id}')" class="px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wide border ${on ? 'bg-amber-500 text-slate-950 border-amber-500' : 'bg-slate-950 text-slate-400 border-slate-800 hover:border-brand-gold/40 hover:text-white'}">${this.escape(h.label)}</button>`;
+      }).join('');
+    }
+    if (list) {
+      const empty = `<p class="text-[10px] text-slate-500 py-1">No ${this.escape(horizon)} goals this period.</p>`;
+      list.innerHTML = items.map((g) => {
+        const done = this.isDone(g, key);
+        const rec = g.recurring
+          ? `<span class="shrink-0 text-[7px] font-black uppercase tracking-wide text-sky-300 bg-sky-500/15 px-1 py-px rounded">${this.escape(this.weekdayBadge(g))}</span>`
+          : '';
+        return `<div class="flex items-center gap-1.5 min-w-0 bg-brand-black/40 p-1.5 rounded border ${done ? 'border-emerald-500/30' : 'border-brand-border'}">
+          <div class="flex shrink-0 rounded overflow-hidden border ${done ? 'border-emerald-500/40' : 'border-slate-700'}">
+            <button type="button" onclick="DIMAD_GOALS.setDone('${horizon}', '${g.id}', true, '${key}')" class="px-1.5 py-0.5 text-[8px] font-black uppercase ${done ? 'bg-emerald-500 text-slate-950' : 'bg-slate-950 text-slate-500 hover:text-emerald-300'}">Yes</button>
+            <button type="button" onclick="DIMAD_GOALS.setDone('${horizon}', '${g.id}', false, '${key}')" class="px-1.5 py-0.5 text-[8px] font-black uppercase border-l ${done ? 'border-emerald-500/30 bg-slate-950 text-slate-500' : 'border-slate-700 bg-amber-500 text-slate-950'}">No</button>
+          </div>
+          <span class="flex-1 min-w-0 text-[10px] font-semibold leading-tight ${done ? 'line-through text-slate-500' : 'text-slate-200'}">${g.text ? this.escape(g.text) : 'Untitled target'}</span>
+          ${rec}
+        </div>`;
+      }).join('') || empty;
+    }
+  },
+
+  render() {
+    const s = this.state();
+    const active = s.activeHorizon || 'daily';
+    const scoreRoot = document.getElementById('dimad-goals-score');
+    const toggles = document.getElementById('dimad-goals-toggles');
+    const list = document.getElementById('dimad-goals-list');
+    const cap = document.getElementById('dimad-goals-cap');
+    const vis = this.visibleHorizons();
+    const shown = this.boardHorizons();
+    if (!shown.some((h) => h.id === active)) {
+      this.ensureActiveVisible();
+    }
+    const live = this.state().activeHorizon || shown[0].id;
+    if (scoreRoot) {
+      scoreRoot.innerHTML = shown.map((h) => {
+        const sc = this.score(h.id);
+        const on = h.id === live;
+        const pct = sc.entered ? Math.round((sc.complete / sc.entered) * 100) : 0;
+        return `<button type="button" onclick="DIMAD_GOALS.setHorizon('${h.id}')" class="text-left rounded-xl border px-3 py-2.5 ${on ? 'border-brand-gold/50 bg-amber-500/10' : 'border-slate-800 bg-slate-950 hover:border-slate-700'}">
+          <div class="text-[9px] font-bold uppercase tracking-wider ${on ? 'text-brand-gold' : 'text-slate-400'}">${this.escape(h.label)}</div>
+          <div class="mt-1 flex items-baseline justify-between gap-2">
+            <span class="text-sm font-black font-mono text-white">${sc.complete}<span class="text-slate-500 font-bold">/${sc.entered}</span></span>
+            <span class="text-[10px] font-mono ${pct === 100 && sc.entered ? 'text-brand-mint' : 'text-slate-500'}">${sc.entered ? pct + '%' : '—'}</span>
+          </div>
+          <div class="text-[9px] text-slate-500 mt-0.5">completed / entered</div>
+        </button>`;
+      }).join('');
+    }
+    if (toggles) {
+      toggles.innerHTML = shown.map((h) => {
+        const on = h.id === live;
+        return `<button type="button" onclick="DIMAD_GOALS.setHorizon('${h.id}')" class="px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wide border ${on ? 'bg-amber-500 text-slate-950 border-amber-500' : 'bg-slate-950 text-slate-300 border-slate-800 hover:border-brand-gold/40 hover:text-white'}">${this.escape(h.label)}</button>`;
+      }).join('');
+    }
+    this.renderBoard();
+    this.renderDash();
+    const current = this.itemsFor(live, new Date());
+    const h = live === 'all' ? { id: 'all', label: 'All' } : (this.horizons.find((x) => x.id === live) || vis[0]);
+    if (list) list.innerHTML = '';
+    if (cap) {
+      cap.textContent = live === 'all'
+        ? `${current.length} goals due this period · ${vis.length} horizon${vis.length === 1 ? '' : 's'}`
+        : `${current.length}/${this.max} current ${h.label.toLowerCase()} slots`;
+    }
+  }
+};
+window.DIMAD_GOALS = DIMAD_GOALS;
+
 function initGoalsRewards() {
   const select = document.getElementById('goal-horizon-select');
   if (select) {
     select.addEventListener('change', (e) => switchGoalHorizon(e.target.value));
     switchGoalHorizon(select.value);
   }
+  if (typeof DIMAD_GOALS !== 'undefined') DIMAD_GOALS.mount();
   if (typeof DIM_ENGINE !== 'undefined') DIM_ENGINE.renderStreakTrack();
 }
 
@@ -1904,7 +3152,11 @@ const FOCUS_TIMER = {
   syncPauseButton() {
     const btn = document.getElementById('btn-timer-pause');
     if (!btn) return;
-    btn.classList.toggle('hidden', !isTimerRunning);
+    btn.classList.remove('hidden');
+    btn.textContent = isTimerRunning ? 'Clock Out' : 'Clock In';
+    btn.className = isTimerRunning
+      ? 'bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 px-2 py-0.5 rounded text-[9px] font-bold border border-rose-500/40 transition-all whitespace-nowrap'
+      : 'bg-amber-500/15 hover:bg-amber-500/25 text-brand-gold px-2 py-0.5 rounded text-[9px] font-bold border border-amber-500/40 transition-all whitespace-nowrap';
   },
 
   render() {
@@ -1988,6 +3240,20 @@ function pauseFocusTimer() {
   FOCUS_TIMER.syncPauseButton();
 }
 
+function toggleFocusClock() {
+  if (isTimerRunning) {
+    pauseFocusTimer();
+    return;
+  }
+  const today = FOCUS_TIMER.dayKey();
+  if (FOCUS_TIMER.clockInDay === today) {
+    startFocusTimer();
+    return;
+  }
+  if (typeof CLOCK_IN !== 'undefined') CLOCK_IN.show();
+  else startFocusTimer();
+}
+
 function openFocusLog() {
   const sub = document.getElementById('subnav-entrepreneur');
   if (sub && sub.classList.contains('hidden')) {
@@ -2033,6 +3299,91 @@ const DAILY_QUOTE = {
   render() {
     const el = document.getElementById('cc-quote-text');
     if (el) el.innerHTML = this.html();
+  }
+};
+
+const DAILY_INSPO = {
+  seeds: [
+    {
+      id: 'inspo-day-03',
+      title: 'Scandinavian Minimalism',
+      promptText: 'Sunlit workspace with raw oak wood, matte ceramic mug, soft beige tones, top-down view, 35mm film grain.',
+      imageUrl: '../assets/daily-inspo-scandinavian.jpg',
+      philosophyTitle: 'Scandinavian Minimalism',
+      philosophyBody: 'Channel your inner "Lagom" which translates to "not too little, not too much," and "Hygge" translating to coziness.',
+      application: [
+        { icon: '📸', label: 'Visual / Render', text: 'Use crisp composition, flat lighting, and plenty of empty space to create an ambiance that feels deeply quiet, deliberate, and calm.' },
+        { icon: '🎥', label: 'Video Direction', text: 'Translate text rules into visual grammar, focusing on negative space, muted natural lighting, and long, static frames that let the environment speak.' },
+        { icon: '✍️', label: 'Writing & Scripting', text: 'Use bare, unadorned prose to let the quietness of the space between the words carry the emotional weight.' },
+        { icon: '📱', label: 'Social & Brand', text: 'Use a hyper-focused visual strategy to build instant trust through uncluttered layouts, generous whitespace, and a humble, human-centric voice while rejecting aggressive marketing tactics.' }
+      ]
+    }
+  ],
+
+  pick() {
+    return this.seeds[0];
+  },
+
+  render() {
+    const el = document.getElementById('cs-inspo-line');
+    if (!el) return;
+    const seed = this.pick();
+    el.innerHTML = `"${this.escape(seed.promptText)}" <span class="not-italic text-brand-gold font-semibold">— ${this.escape(seed.title)}</span>`;
+  },
+
+  escape(value) {
+    return String(value == null ? '' : value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  },
+
+  openPhilosophy() {
+    const seed = this.pick();
+    const modal = document.getElementById('cs-inspo-modal');
+    const title = document.getElementById('cs-inspo-philosophy-title');
+    const body = document.getElementById('cs-inspo-philosophy-body');
+    if (title) title.textContent = seed.philosophyTitle;
+    if (body) body.textContent = seed.philosophyBody;
+    if (!modal) return;
+    if (modal.parentElement !== document.body) document.body.appendChild(modal);
+    modal.style.zIndex = '420';
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  },
+
+  closePhilosophy() {
+    const modal = document.getElementById('cs-inspo-modal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  },
+
+  openApplication() {
+    const seed = this.pick();
+    const modal = document.getElementById('cs-inspo-app-modal');
+    const body = document.getElementById('cs-inspo-app-body');
+    if (body) {
+      body.innerHTML = (seed.application || []).map((row) => `
+        <div>
+          <div class="text-[10px] font-bold text-brand-gold mb-0.5">${row.icon} ${this.escape(row.label)}</div>
+          <p>${this.escape(row.text)}</p>
+        </div>
+      `).join('');
+    }
+    if (!modal) return;
+    if (modal.parentElement !== document.body) document.body.appendChild(modal);
+    modal.style.zIndex = '420';
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  },
+
+  closeApplication() {
+    const modal = document.getElementById('cs-inspo-app-modal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  },
+
+  openInCreatorAI() {
+    if (typeof CREATOR_AI !== 'undefined' && CREATOR_AI.loadDailyInspo) CREATOR_AI.loadDailyInspo(this.pick());
   }
 };
 
@@ -2171,6 +3522,9 @@ const CLOCK_IN = {
 
 const FOCUS_LOG = {
   lastChartAt: 0,
+  lastTrendAt: 0,
+  trendDirty: true,
+  trendMode: 'daily',
 
   fmtDate(key) {
     const d = FOCUS_TIMER.parseDayKey(key);
@@ -2196,11 +3550,169 @@ const FOCUS_LOG = {
     if (rangeEl) rangeEl.textContent = `${this.fmtDate(start)} – ${this.fmtDate(end)}`;
     const earnedEl = document.getElementById('focus-log-earned');
     if (earnedEl) earnedEl.textContent = `${earned.toLocaleString()} $DIM`;
-    if (now - this.lastChartAt < 4000 && this.lastChartAt && document.getElementById('focus-log-chart') && document.getElementById('focus-log-chart').children.length) return;
+    this.updateTrendStats(state, start, end);
+    const chartReady = document.getElementById('focus-log-chart') && document.getElementById('focus-log-chart').children.length;
+    if (now - this.lastChartAt < 4000 && this.lastChartAt && chartReady && !this.trendDirty) {
+      if (now - this.lastTrendAt >= 20000) this.drawTrend(state, start, end);
+      return;
+    }
     this.lastChartAt = now;
     this.drawBar(days);
     this.drawHeat(start, end, state.clockInDays || []);
     this.drawMilestones(days, claimed);
+    this.drawTrend(state, start, end);
+  },
+
+  fmtHours(sec) {
+    const n = Math.max(0, Math.floor(sec || 0));
+    if (n < 60) return `${n}s`;
+    if (n < 3600) return `${Math.round(n / 60)}m`;
+    const h = n / 3600;
+    if (h < 10) return `${h.toFixed(1)}h`;
+    return `${Math.round(h)}h`;
+  },
+
+  daySeconds(state, key) {
+    if (key === FOCUS_TIMER.dayKey()) return Math.max(0, state.dailySeconds || 0);
+    return Math.max(0, (state.log && state.log[key]) || 0);
+  },
+
+  rangeSeconds(state, from, to) {
+    let total = 0;
+    const startDate = FOCUS_TIMER.parseDayKey(from);
+    for (let i = 0; i < 400; i += 1) {
+      const d = new Date(startDate);
+      d.setDate(startDate.getDate() + i);
+      const key = FOCUS_TIMER.dayKey(d);
+      if (key >= to) break;
+      total += this.daySeconds(state, key);
+    }
+    return total;
+  },
+
+  setTrend(mode) {
+    this.trendMode = mode === 'weekly' || mode === 'yearly' ? mode : 'daily';
+    this.trendDirty = true;
+    this.lastTrendAt = 0;
+    this.render();
+  },
+
+  syncTrendTabs() {
+    ['daily', 'weekly', 'yearly'].forEach((mode) => {
+      const btn = document.getElementById(`focus-trend-${mode}`);
+      if (!btn) return;
+      const on = this.trendMode === mode;
+      btn.className = `px-2.5 py-1 text-[10px] font-bold ${mode === 'daily' ? '' : 'border-l border-slate-800 '}${on ? 'text-brand-gold bg-amber-500/10' : 'text-slate-400 hover:text-slate-200'}`;
+    });
+  },
+
+  updateTrendStats(state, start, end) {
+    const today = FOCUS_TIMER.dayKey();
+    const weekStart = FOCUS_TIMER.weekKey();
+    const weekEndDate = FOCUS_TIMER.parseDayKey(weekStart);
+    weekEndDate.setDate(weekEndDate.getDate() + 7);
+    const todayEl = document.getElementById('focus-trend-today');
+    const weekEl = document.getElementById('focus-trend-week');
+    const yearEl = document.getElementById('focus-trend-year');
+    if (todayEl) todayEl.textContent = this.fmtHours(this.daySeconds(state, today));
+    if (weekEl) weekEl.textContent = this.fmtHours(this.rangeSeconds(state, weekStart, FOCUS_TIMER.dayKey(weekEndDate)));
+    if (yearEl) yearEl.textContent = this.fmtHours(this.rangeSeconds(state, start, end));
+  },
+
+  trendSeries(state, start, end) {
+    const today = FOCUS_TIMER.dayKey();
+    const todayDate = FOCUS_TIMER.parseDayKey(today);
+    if (this.trendMode === 'weekly') {
+      return Array.from({ length: 12 }, (_, i) => {
+        const cursor = new Date(todayDate);
+        cursor.setDate(cursor.getDate() - ((11 - i) * 7));
+        const weekStart = FOCUS_TIMER.weekKey(cursor);
+        const weekEnd = FOCUS_TIMER.parseDayKey(weekStart);
+        weekEnd.setDate(weekEnd.getDate() + 7);
+        const to = FOCUS_TIMER.dayKey(weekEnd);
+        const d = FOCUS_TIMER.parseDayKey(weekStart);
+        return {
+          key: weekStart,
+          label: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          seconds: this.rangeSeconds(state, weekStart, to),
+          hint: `Week of ${this.fmtDate(weekStart)}`
+        };
+      });
+    }
+    if (this.trendMode === 'yearly') {
+      const yearStart = FOCUS_TIMER.parseDayKey(start);
+      return Array.from({ length: 12 }, (_, i) => {
+        const month = new Date(yearStart.getFullYear(), yearStart.getMonth() + i, 1);
+        const next = new Date(yearStart.getFullYear(), yearStart.getMonth() + i + 1, 1);
+        const from = FOCUS_TIMER.dayKey(month);
+        const to = FOCUS_TIMER.dayKey(next);
+        return {
+          key: from,
+          label: month.toLocaleDateString('en-US', { month: 'short' }),
+          seconds: this.rangeSeconds(state, from, to < end ? to : end),
+          hint: month.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+        };
+      });
+    }
+    return Array.from({ length: 14 }, (_, i) => {
+      const d = new Date(todayDate);
+      d.setDate(todayDate.getDate() - (13 - i));
+      const key = FOCUS_TIMER.dayKey(d);
+      return {
+        key,
+        label: String(d.getDate()),
+        seconds: this.daySeconds(state, key),
+        hint: this.fmtDate(key)
+      };
+    });
+  },
+
+  drawTrend(state, start, end) {
+    const svg = document.getElementById('focus-trend-chart');
+    if (!svg) return;
+    this.lastTrendAt = Date.now();
+    this.trendDirty = false;
+    this.syncTrendTabs();
+    const series = this.trendSeries(state, start, end);
+    const goal = this.trendMode === 'weekly' ? WEEKLY_GOAL_SECONDS : this.trendMode === 'yearly' ? MONTHLY_GOAL_SECONDS : DAILY_GOAL_SECONDS;
+    const maxSec = Math.max(goal, ...series.map((item) => item.seconds), 1);
+    const x0 = 44;
+    const x1 = 886;
+    const y0 = 16;
+    const y1 = 136;
+    const bw = x1 - x0;
+    const bh = y1 - y0;
+    const slot = bw / series.length;
+    const barW = Math.max(8, slot * 0.58);
+    const points = series.map((item, i) => {
+      const x = x0 + i * slot + slot / 2;
+      const h = (item.seconds / maxSec) * bh;
+      return { ...item, x, y: y1 - h, h };
+    });
+    const line = points.map((pt, i) => `${i ? 'L' : 'M'}${pt.x.toFixed(1)},${pt.y.toFixed(1)}`).join(' ');
+    const goalY = y1 - (goal / maxSec) * bh;
+    const bars = points.map((pt) => {
+      const on = pt.seconds > 0;
+      const x = pt.x - barW / 2;
+      return `<rect x="${x.toFixed(1)}" y="${pt.y.toFixed(1)}" width="${barW.toFixed(1)}" height="${Math.max(pt.h, on ? 2 : 0).toFixed(1)}" rx="3" fill="${on ? '#F59E0B' : '#1E293B'}" opacity="${on ? '0.92' : '0.7'}">
+        <title>${pt.hint}: ${this.fmtHours(pt.seconds)}</title>
+      </rect>`;
+    }).join('');
+    const labels = points.map((pt) => `<text x="${pt.x.toFixed(1)}" y="154" text-anchor="middle" fill="#64748B" font-size="9" font-weight="700" font-family="JetBrains Mono, monospace">${pt.label}</text>`).join('');
+    const ticks = [0, 0.5, 1].map((ratio) => {
+      const y = y1 - ratio * bh;
+      const sec = maxSec * ratio;
+      return `<line x1="${x0}" y1="${y.toFixed(1)}" x2="${x1}" y2="${y.toFixed(1)}" stroke="#1E293B" stroke-width="1"/>
+        <text x="40" y="${(y + 3).toFixed(1)}" text-anchor="end" fill="#64748B" font-size="8" font-family="JetBrains Mono, monospace">${this.fmtHours(sec)}</text>`;
+    }).join('');
+    svg.innerHTML = `
+      ${ticks}
+      <line x1="${x0}" y1="${goalY.toFixed(1)}" x2="${x1}" y2="${goalY.toFixed(1)}" stroke="#F59E0B" stroke-opacity="0.35" stroke-dasharray="4 4"/>
+      ${bars}
+      <path d="${line}" fill="none" stroke="#FDE68A" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" opacity="0.85"/>
+      ${points.map((pt) => pt.seconds ? `<circle cx="${pt.x.toFixed(1)}" cy="${pt.y.toFixed(1)}" r="2.6" fill="#FDE68A" stroke="#F59E0B" stroke-width="1"/>` : '').join('')}
+      ${labels}
+    `;
   },
 
   drawBar(days) {
@@ -2322,31 +3834,92 @@ const DIMAD_NOTEPAD = {
   renamingId: null,
   bound: false,
   saveFlash: null,
+  autoTimer: null,
 
-  load() {
-    const normalize = (note) => ({
+  normalize(note) {
+    return {
       ...note,
       createdAt: note.createdAt || note.updatedAt || Date.now(),
       updatedAt: note.updatedAt || note.createdAt || Date.now(),
       customTitle: !!note.customTitle
-    });
-    try {
-      const notes = JSON.parse(localStorage.getItem(this.storageKey) || '[]');
-      if (Array.isArray(notes) && notes.length) return notes.map(normalize);
-    } catch (err) { /* start empty */ }
-    const now = Date.now();
-    return [{
-      id: 'note-welcome',
-      title: 'Command scratchpad',
-      body: 'Use this notepad for meeting notes, ops checklists, and drafts. Notes stay on this device.',
-      createdAt: now,
-      updatedAt: now,
-      customTitle: true
-    }];
+    };
   },
 
-  persist(notes) {
+  load() {
+    let notes = [];
+    try {
+      const parsed = JSON.parse(localStorage.getItem(this.storageKey) || '[]');
+      if (Array.isArray(parsed)) notes = parsed.map((note) => this.normalize(note));
+    } catch (err) { /* start empty */ }
+    notes = this.mergeFromDrive(notes);
+    if (notes.length) {
+      if (notes.some((note) => !note.driveFileId) && typeof DIMDRIVE !== 'undefined' && DIMDRIVE.syncNotepad) {
+        this.persist(notes);
+        try {
+          return JSON.parse(localStorage.getItem(this.storageKey) || '[]');
+        } catch (err) {
+          return notes;
+        }
+      }
+      return notes;
+    }
+    const now = Date.now();
+    const welcome = [{
+      id: 'note-welcome',
+      title: 'Untitled',
+      body: 'Cloud-based notepad that auto-saves to dimDrive. Save your thoughts here.',
+      createdAt: now,
+      updatedAt: now,
+      customTitle: false
+    }];
+    this.persist(welcome);
+    return welcome;
+  },
+
+  mergeFromDrive(notes) {
+    if (typeof DIMDRIVE === 'undefined' || !DIMDRIVE.listNotepad) return notes;
+    const files = DIMDRIVE.listNotepad();
+    if (!files.length) return notes;
+    const byId = new Map(notes.map((note) => [String(note.id), note]));
+    let changed = false;
+    files.forEach((file) => {
+      const payload = file.payload || {};
+      const id = String(payload.noteId || file.id);
+      const incoming = this.normalize({
+        id,
+        title: payload.title || String(file.name || 'Untitled').replace(/\.txt$/i, ''),
+        body: payload.body != null ? payload.body : (payload.text || ''),
+        createdAt: payload.createdAt || file.createdAt,
+        updatedAt: payload.updatedAt || file.updatedAt,
+        customTitle: !!payload.customTitle,
+        driveFileId: file.id
+      });
+      const current = byId.get(id);
+      if (!current) {
+        notes.push(incoming);
+        byId.set(id, incoming);
+        changed = true;
+        return;
+      }
+      if (!current.driveFileId) {
+        current.driveFileId = file.id;
+        changed = true;
+      }
+      if (Number(incoming.updatedAt || 0) > Number(current.updatedAt || 0)) {
+        Object.assign(current, incoming);
+        changed = true;
+      }
+    });
+    if (changed) this.persist(notes, { skipDrive: true });
+    return notes;
+  },
+
+  persist(notes, opts = {}) {
     localStorage.setItem(this.storageKey, JSON.stringify(notes));
+    if (opts.skipDrive) return;
+    if (typeof DIMDRIVE === 'undefined' || !DIMDRIVE.syncNotepad) return;
+    const mapped = DIMDRIVE.syncNotepad(notes, opts.removedIds || []);
+    if (mapped) localStorage.setItem(this.storageKey, JSON.stringify(mapped));
   },
 
   titleFromBody(body) {
@@ -2369,9 +3942,18 @@ const DIMAD_NOTEPAD = {
   bindUi() {
     if (this.bound) return;
     this.bound = true;
-    document.addEventListener('click', () => this.closeCtx());
+    document.addEventListener('click', () => {
+      this.closeCtx();
+      this.closeRecent();
+    });
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') this.closeCtx();
+      if (e.key === 'Escape') {
+        this.closeCtx();
+        this.closeRecent();
+      }
+    });
+    window.addEventListener('resize', () => {
+      if (this.mounted) this.placeRail();
     });
   },
 
@@ -2417,9 +3999,14 @@ const DIMAD_NOTEPAD = {
       return;
     }
     if (!this.dirty) bodyEl.value = active.body || '';
-    if (metaEl) metaEl.textContent = `Created ${this.createdLabel(active)}`;
+    if (metaEl) metaEl.textContent = `Created ${this.createdLabel(active)} · dimDrive`;
+    const fullTitle = document.getElementById('notepad-title');
+    if (fullTitle && !(this._editingTitle && this._titleWhere === 'full')) {
+      fullTitle.textContent = this.displayTitle(active);
+      fullTitle.classList.remove('hidden');
+    }
     this.syncSaveButton();
-    this.renderPreview();
+    this.renderDash();
 
     if (this.renamingId) {
       const input = document.getElementById('notepad-rename-input');
@@ -2448,26 +4035,97 @@ const DIMAD_NOTEPAD = {
     this.dirty = false;
     this.persist(notes);
     this.render();
+    this.renderDash();
     const bodyEl = document.getElementById('notepad-body');
     if (bodyEl) bodyEl.focus();
   },
 
-  markDirty() {
+  createFromDash(prefix) {
+    this._editSource = prefix === 'cs' ? 'cs' : 'dash';
+    if (this.dirty) this.save({ silent: true });
+    const notes = this.load();
+    const now = Date.now();
+    const note = { id: `note-${now}`, title: 'Untitled', body: '', createdAt: now, updatedAt: now, customTitle: false };
+    notes.unshift(note);
+    this.activeId = note.id;
+    this.dirty = false;
+    this.persist(notes);
+    this.renderDash();
+    if (document.getElementById('notepad-list')) this.render();
+    const dash = document.getElementById(this._editSource === 'cs' ? 'cs-notepad-body' : 'cc-notepad-body');
+    if (dash) {
+      dash.value = '';
+      dash.focus();
+    }
+    const status = document.getElementById(this._editSource === 'cs' ? 'cs-notepad-status' : 'cc-notepad-status');
+    if (status) status.textContent = 'New note — start writing.';
+  },
+
+  editorEl() {
+    const studio = document.getElementById('cs-notepad-body');
+    const dash = document.getElementById('cc-notepad-body');
+    const full = document.getElementById('notepad-body');
+    if (this._editSource === 'cs' && studio) return studio;
+    if (this._editSource === 'dash' && dash) return dash;
+    if (this._editSource === 'full' && full) return full;
+    return dash || studio || full;
+  },
+
+  ensureActive() {
+    const notes = this.load();
+    if (this.activeId && notes.some((n) => n.id === this.activeId)) return this.activeId;
+    if (!notes.length) {
+      const now = Date.now();
+      const note = { id: `note-${now}`, title: 'Untitled', body: '', createdAt: now, updatedAt: now, customTitle: false };
+      this.persist([note]);
+      this.activeId = note.id;
+      return this.activeId;
+    }
+    this.activeId = notes[0].id;
+    return this.activeId;
+  },
+
+  markDirty(source) {
+    if (source) this._editSource = source === 'cs' ? 'cs' : source;
     this.dirty = true;
     this.syncSaveButton();
+    const statusId = this._editSource === 'cs' ? 'cs-notepad-status' : 'cc-notepad-status';
+    const status = document.getElementById(statusId);
+    if (status && (this._editSource === 'dash' || this._editSource === 'cs')) status.textContent = 'Saving…';
+    clearTimeout(this.autoTimer);
+    this.autoTimer = setTimeout(() => this.save({ silent: true }), 700);
   },
 
   syncSaveButton() {
     const btn = document.getElementById('notepad-quick-save');
-    if (!btn || this.saveFlash) return;
-    btn.textContent = this.dirty ? 'Quick Save' : 'Quick Save';
-    btn.classList.toggle('opacity-80', !this.dirty);
+    if (btn && !this.saveFlash) {
+      btn.textContent = 'Quick Save';
+      btn.classList.toggle('opacity-80', !this.dirty);
+    }
+    ['cc-notepad-save', 'cs-notepad-save'].forEach((id) => {
+      const dashBtn = document.getElementById(id);
+      if (dashBtn && !this.saveFlash) dashBtn.textContent = 'Save';
+    });
+  },
+
+  saveDash(prefix) {
+    this._editSource = prefix === 'cs' ? 'cs' : 'dash';
+    this.save({ silent: true, keepOpen: true });
+    const dashBtn = document.getElementById(prefix === 'cs' ? 'cs-notepad-save' : 'cc-notepad-save');
+    if (dashBtn) {
+      dashBtn.textContent = 'Saved';
+      this.saveFlash = setTimeout(() => {
+        this.saveFlash = null;
+        if (dashBtn) dashBtn.textContent = 'Save';
+      }, 1100);
+    }
   },
 
   save(opts = {}) {
-    const bodyEl = document.getElementById('notepad-body');
-    if (!bodyEl || !this.activeId) return;
-    const body = bodyEl.value;
+    const source = this.editorEl();
+    this.ensureActive();
+    if (!source || !this.activeId) return;
+    const body = source.value;
     const notes = this.load().map((note) => {
       if (note.id !== this.activeId) return note;
       const title = note.customTitle ? (note.title || this.titleFromBody(body)) : this.titleFromBody(body);
@@ -2475,10 +4133,16 @@ const DIMAD_NOTEPAD = {
     });
     this.persist(notes);
     this.dirty = false;
+    const fullEl = document.getElementById('notepad-body');
+    const dashEl = document.getElementById('cc-notepad-body');
+    const studioEl = document.getElementById('cs-notepad-body');
+    if (fullEl && fullEl !== source) fullEl.value = body;
+    if (dashEl && dashEl !== source) dashEl.value = body;
+    if (studioEl && studioEl !== source) studioEl.value = body;
     if (!opts.silent) {
       const btn = document.getElementById('notepad-quick-save');
       if (btn) {
-        btn.textContent = 'Saved';
+        btn.textContent = 'Saved to dimDrive';
         this.saveFlash = setTimeout(() => {
           this.saveFlash = null;
           if (btn) btn.textContent = 'Quick Save';
@@ -2486,7 +4150,16 @@ const DIMAD_NOTEPAD = {
         }, 1100);
       }
     }
-    this.render();
+    ['cc-notepad-status', 'cs-notepad-status'].forEach((id) => {
+      const status = document.getElementById(id);
+      if (status) status.textContent = 'Saved to DIMAD Notepad.';
+    });
+    if (opts.keepOpen || this._editSource === 'dash' || this._editSource === 'cs') {
+      this.renderDash();
+      return;
+    }
+    if (document.getElementById('notepad-list')) this.render();
+    else this.renderDash();
   },
 
   openCtx(event, id) {
@@ -2551,7 +4224,7 @@ const DIMAD_NOTEPAD = {
     const target = id || this.activeId;
     if (!target) return;
     const notes = this.load().filter((n) => n.id !== target);
-    this.persist(notes);
+    this.persist(notes, { removedIds: [target] });
     if (this.activeId === target) {
       this.activeId = notes[0] ? notes[0].id : null;
       this.dirty = false;
@@ -2564,22 +4237,249 @@ const DIMAD_NOTEPAD = {
   },
 
   renderPreview() {
-    const titleEl = document.getElementById('cc-notepad-title');
-    const bodyEl = document.getElementById('cc-notepad-preview');
-    if (!titleEl || !bodyEl) return;
+    this.renderDash();
+  },
+
+  recentNotes() {
+    return this.load()
+      .slice()
+      .sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0))
+      .slice(0, 3);
+  },
+
+  renderRecentMenu() {
+    const recent = this.recentNotes();
+    const html = !recent.length
+      ? '<p class="px-3 py-2 text-[10px] text-slate-500">No saved notes yet.</p>'
+      : recent.map((note) => {
+        const on = note.id === this.activeId;
+        return `<button type="button" onclick="DIMAD_NOTEPAD.openRecent('${note.id}')" class="w-full text-left px-3 py-1.5 ${on ? 'bg-amber-500/10 text-amber-100' : 'text-slate-200 hover:bg-slate-900'}">
+        <div class="text-[11px] font-semibold truncate">${this.escape(this.displayTitle(note))}</div>
+        <div class="text-[9px] text-slate-500 truncate">${this.escape((note.body || '').replace(/\s+/g, ' ').trim().slice(0, 48) || 'Empty note')}</div>
+      </button>`;
+      }).join('');
+    ['cc-notepad-recent', 'cs-notepad-recent'].forEach((id) => {
+      const menu = document.getElementById(id);
+      if (menu) menu.innerHTML = html;
+    });
+  },
+
+  toggleRecent(event, prefix) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    this.bindUi();
+    const menu = document.getElementById(`${prefix === 'cs' ? 'cs' : 'cc'}-notepad-recent`);
+    if (!menu) return;
+    const open = menu.classList.contains('hidden');
+    this.closeRecent();
+    if (open) {
+      this.renderRecentMenu();
+      menu.classList.remove('hidden');
+    }
+  },
+
+  closeRecent() {
+    ['cc-notepad-recent', 'cs-notepad-recent'].forEach((id) => {
+      const menu = document.getElementById(id);
+      if (menu) menu.classList.add('hidden');
+    });
+  },
+
+  openRecent(id) {
+    this.closeRecent();
+    if (this.dirty) this.save({ silent: true });
+    this.activeId = id;
+    this.dirty = false;
+    const studio = document.getElementById('view-creator-studio');
+    this._editSource = (studio && !studio.classList.contains('hidden')) ? 'cs' : 'dash';
+    this.renderDash();
+    if (document.getElementById('notepad-list')) this.render();
+  },
+
+  titleFields(where) {
+    if (where === 'full') {
+      return {
+        label: document.getElementById('notepad-title'),
+        input: document.getElementById('notepad-title-input')
+      };
+    }
+    if (where === 'cs') {
+      return {
+        label: document.getElementById('cs-notepad-title'),
+        input: document.getElementById('cs-notepad-title-input')
+      };
+    }
+    return {
+      label: document.getElementById('cc-notepad-title'),
+      input: document.getElementById('cc-notepad-title-input')
+    };
+  },
+
+  beginTitleEdit(event, where) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    this.ensureActive();
     const notes = this.load();
     const active = notes.find((n) => n.id === this.activeId) || notes[0];
-    if (!active) {
-      titleEl.textContent = 'No notes yet';
-      bodyEl.textContent = 'Expand to open DIMAD Notepad and start writing.';
-      return;
+    if (!active) return;
+    this._titleWhere = where === 'full' ? 'full' : (where === 'cs' ? 'cs' : 'dash');
+    this._editingTitle = true;
+    const { label, input } = this.titleFields(this._titleWhere);
+    if (!label || !input) return;
+    input.value = this.displayTitle(active);
+    label.classList.add('hidden');
+    input.classList.remove('hidden');
+    setTimeout(() => {
+      input.focus();
+      input.select();
+    }, 0);
+  },
+
+  titleKey(event) {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      this.commitTitleEdit();
     }
-    titleEl.textContent = this.displayTitle(active);
-    bodyEl.textContent = (active.body || '').split('\n').filter(Boolean).join(' ') || 'Empty note';
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      this.cancelTitleEdit();
+    }
+  },
+
+  hideTitleInputs() {
+    ['cc-notepad-title', 'cs-notepad-title', 'notepad-title'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.classList.remove('hidden');
+    });
+    ['cc-notepad-title-input', 'cs-notepad-title-input', 'notepad-title-input'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.classList.add('hidden');
+    });
+  },
+
+  cancelTitleEdit() {
+    this._editingTitle = false;
+    this.hideTitleInputs();
+    this.renderDash();
+    if (document.getElementById('notepad-list')) this.render();
+  },
+
+  commitTitleEdit() {
+    if (!this._editingTitle) return;
+    const { input } = this.titleFields(this._titleWhere || 'dash');
+    this._editingTitle = false;
+    const name = input ? String(input.value || '').trim() : '';
+    this.ensureActive();
+    const notes = this.load().map((note) => {
+      if (note.id !== this.activeId) return note;
+      if (!name) return { ...note, customTitle: false, title: this.titleFromBody(note.body), updatedAt: Date.now() };
+      return { ...note, title: name, customTitle: true, updatedAt: Date.now() };
+    });
+    this.persist(notes);
+    this.hideTitleInputs();
+    this.renderDash();
+    if (document.getElementById('notepad-list')) this.render();
+  },
+
+  renderDash() {
+    this.bindUi();
+    const notes = this.load();
+    const active = notes.find((n) => n.id === this.activeId) || notes[0];
+    let found = false;
+    ['cc', 'cs'].forEach((prefix) => {
+      const titleEl = document.getElementById(`${prefix}-notepad-title`);
+      const dashEl = document.getElementById(`${prefix}-notepad-body`);
+      if (!titleEl && !dashEl) return;
+      found = true;
+      const where = prefix === 'cs' ? 'cs' : 'dash';
+      if (!active) {
+        if (titleEl && !(this._editingTitle && this._titleWhere === where)) titleEl.textContent = 'No notes yet';
+        if (dashEl && !this.dirty) dashEl.value = '';
+        return;
+      }
+      this.activeId = active.id;
+      if (titleEl && !(this._editingTitle && this._titleWhere === where)) {
+        titleEl.textContent = this.displayTitle(active);
+        titleEl.classList.remove('hidden');
+      }
+      if (dashEl && !(this.dirty && this._editSource === where)) dashEl.value = active.body || '';
+    });
+    if (!found) return;
+    this.renderRecentMenu();
   },
 
   openTab() {
     if (typeof switchTab === 'function') switchTab('dimad-notepad');
+  },
+
+  mount() {
+    const rail = document.getElementById('np-rail');
+    if (rail && rail.parentElement !== document.body) document.body.appendChild(rail);
+    this.mounted = true;
+    this.bindUi();
+    this.placeRail();
+    this.render();
+  },
+
+  unmount() {
+    this.closeCtx();
+    const rail = document.getElementById('np-rail');
+    if (rail) {
+      rail.classList.add('hidden');
+      rail.classList.remove('flex');
+    }
+    this.mounted = false;
+  },
+
+  backToDashboard() {
+    this.closeCtx();
+    if (this.dirty) this.save({ silent: true });
+    const dest = (typeof currentActiveMode !== 'undefined' && typeof MODE_NAV !== 'undefined' && MODE_NAV[currentActiveMode])
+      ? MODE_NAV[currentActiveMode].defaultTab
+      : 'ent-dashboard';
+    if (typeof switchTab === 'function') switchTab(dest);
+  },
+
+  placeRail() {
+    const rail = document.getElementById('np-rail');
+    const nav = document.getElementById('main-sidebar');
+    if (!rail || !nav) return;
+    const box = nav.getBoundingClientRect();
+    rail.style.position = 'fixed';
+    rail.style.top = `${box.top}px`;
+    rail.style.left = `${box.left}px`;
+    rail.style.width = `${Math.max(box.width, 180)}px`;
+    rail.style.height = `${box.height}px`;
+    rail.style.zIndex = '355';
+    rail.classList.remove('hidden');
+    rail.classList.add('flex');
+  },
+
+  openDriveFile(file) {
+    if (!file) return;
+    const payload = file.payload || {};
+    const id = String(payload.noteId || file.id);
+    const notes = this.load();
+    const idx = notes.findIndex((n) => String(n.id) === id || String(n.driveFileId) === String(file.id));
+    const next = this.normalize({
+      id,
+      title: payload.title || String(file.name || 'Untitled').replace(/\.txt$/i, ''),
+      body: payload.body != null ? payload.body : (payload.text || ''),
+      createdAt: payload.createdAt || file.createdAt,
+      updatedAt: payload.updatedAt || file.updatedAt || Date.now(),
+      customTitle: !!payload.customTitle,
+      driveFileId: file.id
+    });
+    if (idx >= 0) notes[idx] = { ...notes[idx], ...next };
+    else notes.unshift(next);
+    this.activeId = id;
+    this.dirty = false;
+    this.persist(notes, { skipDrive: true });
+    this.render();
   }
 };
 
@@ -3258,10 +5158,12 @@ const DIMDRIVE = {
 
   seedFolders() {
     return [
-      { id: 'f1', name: '🇦🇲 Armenia Travel Docs & Visas', color: 'from-amber-500/20 to-amber-500/5', border: 'border-amber-500/30' },
-      { id: 'f2', name: '📄 Legal & Tax Registration', color: 'from-brand-accent/20 to-brand-accent/5', border: 'border-brand-accent/30' },
-      { id: 'f3', name: '✈️ Concierge Flight Tickets', color: 'from-emerald-500/20 to-emerald-500/5', border: 'border-emerald-500/30' },
-      { id: 'f4', name: '🎨 Dimad Brand Assets', color: 'from-rose-500/20 to-rose-500/5', border: 'border-rose-500/30' }
+      { id: 'f1', name: 'Personal Documents', color: 'from-amber-500/20 to-amber-500/5', border: 'border-amber-500/30' },
+      { id: 'f2', name: 'Travel', color: 'from-brand-accent/20 to-brand-accent/5', border: 'border-brand-accent/30' },
+      { id: 'f3', name: 'Brand Assets', color: 'from-emerald-500/20 to-emerald-500/5', border: 'border-emerald-500/30' },
+      { id: 'f4', name: 'Blog Posts', color: 'from-rose-500/20 to-rose-500/5', border: 'border-rose-500/30' },
+      { id: 'f-sheets', name: 'Sales Workbooks', color: 'from-amber-500/20 to-amber-500/5', border: 'border-amber-500/30' },
+      { id: 'f-notepad', name: 'Notepad', color: 'from-sky-500/20 to-sky-500/5', border: 'border-sky-500/30', locked: true }
     ];
   },
 
@@ -3299,6 +5201,14 @@ const DIMDRIVE = {
     if (file.type === 'writespace' && file.payload) {
       return String(file.payload.bodyText || file.payload.title || '').replace(/\s+/g, ' ').slice(0, 180);
     }
+    if (file.type === 'sheet' && file.payload && file.payload.workbook) {
+      const book = file.payload.workbook;
+      const first = book.sheets && book.sheets[book.sheetList && book.sheetList[0]] && book.sheets[book.sheetList[0]].A1;
+      return (first && first.raw) || file.name || 'Sales workbook';
+    }
+    if (file.type === 'notepad' && file.payload) {
+      return String(file.payload.body || file.payload.text || file.payload.title || '').replace(/\s+/g, ' ').slice(0, 180);
+    }
     if (file.payload && file.payload.text) return String(file.payload.text).slice(0, 180);
     return 'Stored in dimDrive on this device.';
   },
@@ -3306,6 +5216,8 @@ const DIMDRIVE = {
   extType(name, mime, fallback) {
     const lower = String(name || '').toLowerCase();
     if (fallback === 'writespace') return 'writespace';
+    if (fallback === 'sheet' || /\.dimsheet(\.json)?$/i.test(lower)) return 'sheet';
+    if (fallback === 'notepad' || /\.dimnote(\.json)?$/i.test(lower)) return 'notepad';
     if (lower.endsWith('.pdf') || mime === 'application/pdf') return 'pdf';
     if (lower.endsWith('.svg') || mime === 'image/svg+xml') return 'svg';
     if (/\.(png|jpe?g|gif|webp)$/.test(lower) || String(mime || '').startsWith('image/')) return lower.split('.').pop() || 'png';
@@ -3317,7 +5229,7 @@ const DIMDRIVE = {
     const type = this.extType(file.name, file.mime, file.type);
     return {
       ...file,
-      type,
+      type: file.type === 'sheet' || file.type === 'notepad' ? file.type : type,
       size: file.size || this.formatBytes(file.sizeBytes || (file.payload && file.payload.text ? file.payload.text.length : 0)),
       sizeBytes: file.sizeBytes || 0,
       folder: file.folder || 'user',
@@ -3331,11 +5243,37 @@ const DIMDRIVE = {
     };
   },
 
+  renameSeedFolders(folders) {
+    const map = {
+      f1: { old: 'Armenia Travel Docs & Visas', next: 'Personal Documents' },
+      f2: { old: 'Legal & Tax Registration', next: 'Travel' },
+      f3: { old: 'Concierge Flight Tickets', next: 'Brand Assets' },
+      f4: { old: 'Dimad Brand Assets', next: 'Blog Posts' },
+      'f-notepad': { old: 'DIMAD Notepad', next: 'Notepad' }
+    };
+    return (folders || []).map((folder) => {
+      const rule = map[folder.id];
+      if (folder.id === 'f-notepad') return { ...folder, name: 'Notepad', locked: true };
+      if (!rule) return folder;
+      if (folder.name === rule.next) return folder;
+      if (String(folder.name || '').includes(rule.old)) return { ...folder, name: rule.next };
+      return folder;
+    });
+  },
+
   workspace() {
     try {
       const raw = JSON.parse(localStorage.getItem(this.storageKey) || 'null');
       if (raw && Array.isArray(raw.files) && Array.isArray(raw.folders)) {
-        return { files: raw.files.map((f) => this.normalizeUser(f)), folders: raw.folders };
+        let folders = this.renameSeedFolders(raw.folders);
+        const files = raw.files.map((f) => this.normalizeUser(f));
+        if (!folders.some((f) => f.id === 'f-notepad')) {
+          folders = folders.concat([this.notepadFolder()]);
+        }
+        if (JSON.stringify(folders) !== JSON.stringify(raw.folders)) {
+          localStorage.setItem(this.storageKey, JSON.stringify({ files: raw.files, folders }));
+        }
+        return { files, folders };
       }
       const legacy = Array.isArray(raw) ? raw : [];
       const user = legacy.map((f) => this.normalizeUser(f));
@@ -3359,6 +5297,199 @@ const DIMDRIVE = {
 
   persistFolders(folders) {
     localStorage.setItem(this.storageKey, JSON.stringify({ files: this.load(), folders }));
+  },
+
+  notepadFolder() {
+    return { id: 'f-notepad', name: 'Notepad', color: 'from-sky-500/20 to-sky-500/5', border: 'border-sky-500/30', locked: true };
+  },
+
+  isLockedFolder(id) {
+    return id === 'f-notepad';
+  },
+
+  visibleFolders() {
+    return this.workspace().folders.filter((folder) => !this.isLockedFolder(folder.id) && !folder.locked);
+  },
+
+  ensureNotepadFolder() {
+    const ws = this.workspace();
+    if (ws.folders.some((f) => f.id === 'f-notepad')) return 'f-notepad';
+    this.persistFolders(ws.folders.concat([this.notepadFolder()]));
+    return 'f-notepad';
+  },
+
+  listNotepad() {
+    return this.load().filter((f) => f.type === 'notepad' && !f.trashed);
+  },
+
+  noteFileName(note) {
+    const title = String((note && (note.title || note.body)) || 'Untitled').replace(/\s+/g, ' ').trim() || 'Untitled';
+    const words = title.split(' ').slice(0, 8).join(' ');
+    const safe = words.replace(/[<>:"/\\|?*]+/g, '').replace(/\s+/g, '_').slice(0, 52) || 'Untitled';
+    return `${safe}.txt`;
+  },
+
+  syncNotepad(notes, removedIds) {
+    const folder = this.ensureNotepadFolder();
+    const gone = new Set((removedIds || []).map(String));
+    let rows = this.load();
+    const byNoteId = new Map();
+    rows.forEach((file) => {
+      if (file.type === 'notepad' && file.payload && file.payload.noteId) byNoteId.set(String(file.payload.noteId), file);
+    });
+    (notes || []).forEach((note) => {
+      const existing = byNoteId.get(String(note.id)) || rows.find((f) => String(f.id) === String(note.driveFileId));
+      const payload = {
+        kind: 'dimad-note',
+        version: 1,
+        noteId: note.id,
+        title: note.title || 'Untitled',
+        body: note.body || '',
+        customTitle: !!note.customTitle,
+        createdAt: note.createdAt,
+        updatedAt: note.updatedAt
+      };
+      const name = this.noteFileName({ title: payload.title, body: payload.body });
+      const sizeBytes = JSON.stringify(payload).length;
+      const previewText = this.previewFromFile({ type: 'notepad', payload });
+      if (existing) {
+        const idx = rows.findIndex((f) => String(f.id) === String(existing.id));
+        rows[idx] = {
+          ...existing,
+          name,
+          payload,
+          previewText,
+          updatedAt: note.updatedAt || Date.now(),
+          type: 'notepad',
+          category: 'Notes',
+          folder: existing.folder || folder,
+          size: this.formatBytes(sizeBytes),
+          sizeBytes,
+          trashed: false
+        };
+        note.driveFileId = existing.id;
+      } else {
+        const file = {
+          id: `drv_note_${note.id}`,
+          name,
+          type: 'notepad',
+          kind: 'Note',
+          createdAt: note.createdAt || Date.now(),
+          updatedAt: note.updatedAt || Date.now(),
+          payload,
+          folder,
+          category: 'Notes',
+          owner: 'You',
+          starred: false,
+          sharedWith: 'Private',
+          permission: 'Private',
+          previewText,
+          size: this.formatBytes(sizeBytes),
+          sizeBytes,
+          trashed: false
+        };
+        rows.unshift(file);
+        note.driveFileId = file.id;
+        byNoteId.set(String(note.id), file);
+      }
+    });
+    if (gone.size) {
+      rows = rows.map((file) => {
+        const noteId = file.payload && file.payload.noteId;
+        if (file.type === 'notepad' && noteId && gone.has(String(noteId))) return { ...file, trashed: true };
+        return file;
+      });
+    }
+    this.persist(rows);
+    if (document.getElementById('view-dimad-dimdrive') && this.render) {
+      try { this.render(); } catch (err) { /* drive tab not mounted */ }
+    }
+    return notes;
+  },
+
+  openInNotepad(id) {
+    const file = this.get(id);
+    if (!file || file.type !== 'notepad' || typeof DIMAD_NOTEPAD === 'undefined') return;
+    DIMAD_NOTEPAD.openDriveFile(file);
+    closeDimDriveNav();
+    if (typeof switchTab === 'function') switchTab('dimad-notepad');
+  },
+
+  ensureSheetFolder() {
+    const ws = this.workspace();
+    if (ws.folders.some((f) => f.id === 'f-sheets')) return 'f-sheets';
+    this.persistFolders(ws.folders.concat([{
+      id: 'f-sheets',
+      name: 'Sales Workbooks',
+      color: 'from-amber-500/20 to-amber-500/5',
+      border: 'border-amber-500/30'
+    }]));
+    return 'f-sheets';
+  },
+
+  listSheets() {
+    return this.load().filter((f) => f.type === 'sheet' && !f.trashed);
+  },
+
+  upsertSheet(draft) {
+    const folder = this.ensureSheetFolder();
+    const rows = this.load();
+    const now = Date.now();
+    const name = (draft.name || 'Sales_Revenue_Workbook.xlsx').trim();
+    const workbook = draft.payload && draft.payload.workbook ? draft.payload.workbook : (draft.workbook || draft.payload || {});
+    const payload = { workbook };
+    const previewText = this.previewFromFile({ type: 'sheet', name, payload });
+    const sizeBytes = JSON.stringify(payload).length;
+    if (draft.id) {
+      const idx = rows.findIndex((f) => String(f.id) === String(draft.id));
+      if (idx >= 0) {
+        rows[idx] = {
+          ...rows[idx],
+          name,
+          payload,
+          previewText,
+          updatedAt: now,
+          type: 'sheet',
+          category: 'Spreadsheets',
+          folder: rows[idx].folder || folder,
+          size: this.formatBytes(sizeBytes),
+          sizeBytes
+        };
+        this.persist(rows);
+        this.toast(`Saved "${name}" to dimDrive`);
+        return rows[idx];
+      }
+    }
+    const file = {
+      id: `drv_sheet_${now}`,
+      name,
+      type: 'sheet',
+      kind: 'Workbook',
+      createdAt: now,
+      updatedAt: now,
+      payload,
+      folder,
+      category: 'Spreadsheets',
+      owner: 'You',
+      starred: false,
+      sharedWith: 'Private',
+      permission: 'Private',
+      previewText,
+      size: this.formatBytes(sizeBytes),
+      sizeBytes,
+      trashed: false
+    };
+    rows.unshift(file);
+    this.persist(rows);
+    this.toast(`Saved "${name}" to dimDrive`);
+    return file;
+  },
+
+  openInSheet(id) {
+    if (typeof DIMAD_SHEET === 'undefined') return;
+    DIMAD_SHEET.pendingOpenId = id;
+    closeDimDriveNav();
+    if (typeof switchTab === 'function') switchTab('ent-crm');
   },
 
   escape(value) {
@@ -3438,7 +5569,35 @@ const DIMDRIVE = {
       const reader = new FileReader();
       reader.onload = () => {
         const now = Date.now();
-        const type = this.extType(file.name, file.type, 'file');
+        let type = this.extType(file.name, file.type, 'file');
+        let payload = { dataUrl: typeof reader.result === 'string' && String(reader.result).startsWith('data:') ? reader.result : '', text: typeof reader.result === 'string' && !String(reader.result).startsWith('data:') ? reader.result : '' };
+        let category = String(file.type || '').startsWith('image/') ? 'Photos & Scans' : 'Documents';
+        let folder = folderId || 'user';
+        if (typeof reader.result === 'string' && !String(reader.result).startsWith('data:')) {
+          try {
+            const parsed = JSON.parse(reader.result);
+            if (parsed && (parsed.kind === 'dimad-sheet' || parsed.sheets)) {
+              type = 'sheet';
+              payload = { workbook: parsed.sheets ? parsed : { sheets: parsed } };
+              category = 'Spreadsheets';
+              folder = this.ensureSheetFolder();
+            } else if (parsed && (parsed.kind === 'dimad-note' || parsed.noteId)) {
+              type = 'notepad';
+              payload = {
+                kind: 'dimad-note',
+                version: 1,
+                noteId: parsed.noteId || `note-${now}`,
+                title: parsed.title || file.name,
+                body: parsed.body || parsed.text || '',
+                customTitle: !!parsed.customTitle,
+                createdAt: parsed.createdAt || now,
+                updatedAt: now
+              };
+              category = 'Notes';
+              folder = this.ensureNotepadFolder();
+            }
+          } catch (err) { /* not json workbook */ }
+        }
         const image = String(file.type || '').startsWith('image/');
         resolve({
           id: `drv_${now}_${Math.random().toString(36).slice(2, 7)}`,
@@ -3448,20 +5607,20 @@ const DIMDRIVE = {
           createdAt: now,
           updatedAt: now,
           mime: file.type,
-          payload: { dataUrl: typeof reader.result === 'string' && String(reader.result).startsWith('data:') ? reader.result : '', text: typeof reader.result === 'string' && !String(reader.result).startsWith('data:') ? reader.result : '' },
-          folder: folderId || 'user',
-          category: image ? 'Photos & Scans' : 'Documents',
+          payload,
+          folder,
+          category,
           owner: 'You',
           starred: false,
           sharedWith: 'Private',
           permission: 'Private',
-          previewText: 'Uploaded to dimDrive on this device.',
+          previewText: type === 'sheet' ? this.previewFromFile({ type, name: file.name, payload }) : 'Uploaded to dimDrive on this device.',
           size: this.formatBytes(file.size),
           sizeBytes: file.size,
           trashed: false
         });
       };
-      if (file.type.startsWith('text/') || /\.(md|txt|json|html|csv)$/i.test(file.name)) reader.readAsText(file);
+      if (file.type.startsWith('text/') || /\.(md|txt|json|html|csv|dimsheet)$/i.test(file.name)) reader.readAsText(file);
       else reader.readAsDataURL(file);
     });
   },
@@ -3513,6 +5672,13 @@ const DIMDRIVE = {
       const body = `# ${(file.payload && file.payload.title) || file.name}\n\n${(file.payload && file.payload.subtitle) || ''}\n\n${(file.payload && file.payload.bodyText) || ''}`;
       blob = new Blob([body], { type: 'text/markdown' });
       if (!/\.md$/i.test(filename)) filename += '.md';
+    } else if (file.type === 'sheet') {
+      const book = (file.payload && file.payload.workbook) || {};
+      blob = new Blob([JSON.stringify({ kind: 'dimad-sheet', version: 1, name: file.name, ...book }, null, 2)], { type: 'application/json' });
+      if (!/\.dimsheet\.json$/i.test(filename)) filename = filename.replace(/\.xlsx$/i, '') + '.dimsheet.json';
+    } else if (file.type === 'notepad') {
+      blob = new Blob([(file.payload && file.payload.body) || (file.payload && file.payload.text) || ''], { type: 'text/plain' });
+      if (!/\.txt$/i.test(filename)) filename += '.txt';
     } else if (file.payload && file.payload.dataUrl && String(file.payload.dataUrl).startsWith('data:')) {
       const a = document.createElement('a');
       a.href = file.payload.dataUrl;
@@ -3598,6 +5764,11 @@ const DIMDRIVE = {
   },
 
   openFolder(id) {
+    if (this.isLockedFolder(id) || id === 'f-notepad') {
+      this.closeFolderCtx();
+      this.setTab('notepad');
+      return;
+    }
     this.folderId = id;
     this.tab = 'drive';
     this.closeFolderCtx();
@@ -3639,6 +5810,10 @@ const DIMDRIVE = {
   },
 
   startRenameFolder(id) {
+    if (this.isLockedFolder(id)) {
+      this.toast('Notepad is a system tab and cannot be renamed.');
+      return;
+    }
     this.renamingFolderId = id;
     this.composingFolder = false;
     this.render();
@@ -3680,7 +5855,10 @@ const DIMDRIVE = {
   },
 
   deleteFolder(id) {
-    if (!id || id === 'user') return;
+    if (!id || id === 'user' || this.isLockedFolder(id)) {
+      if (this.isLockedFolder(id)) this.toast('Notepad is a system tab and cannot be deleted.');
+      return;
+    }
     const folders = this.workspace().folders.filter((f) => f.id !== id);
     const files = this.load().map((f) => f.folder === id ? { ...f, folder: 'user' } : f);
     localStorage.setItem(this.storageKey, JSON.stringify({ files, folders }));
@@ -3763,7 +5941,9 @@ const DIMDRIVE = {
     if (type === 'svg') return '<i class="fa-solid fa-file-image text-emerald-400"></i>';
     if (type === 'png' || type === 'jpg' || type === 'jpeg' || type === 'gif' || type === 'webp') return '<i class="fa-solid fa-file-image text-brand-accent"></i>';
     if (type === 'csv') return '<i class="fa-solid fa-file-csv text-amber-500"></i>';
+    if (type === 'sheet') return '<i class="fa-solid fa-file-excel text-brand-gold"></i>';
     if (type === 'writespace') return '<i class="fa-solid fa-feather text-amber-400"></i>';
+    if (type === 'notepad') return '<i class="fa-solid fa-note-sticky text-sky-400"></i>';
     return '<i class="fa-solid fa-file-lines text-slate-400"></i>';
   },
 
@@ -3779,8 +5959,10 @@ const DIMDRIVE = {
       if (this.tab === 'trash') return !!f.trashed;
       if (f.trashed) return false;
       if (this.tab === 'starred' && !f.starred) return false;
+      if (this.tab === 'notepad' && !(f.folder === 'f-notepad' || f.type === 'notepad')) return false;
       if (this.tab === 'uploads' && !(f.folder === 'user' || String(f.id).startsWith('drv_'))) return false;
       if (this.tab === 'recent') return true;
+      if (this.tab === 'drive' && !this.folderId && (f.folder === 'f-notepad' || f.type === 'notepad')) return false;
       if (this.folderId && f.folder !== this.folderId) return false;
       if (q) {
         return f.name.toLowerCase().includes(q) || String(f.category || '').toLowerCase().includes(q) || String(f.owner || '').toLowerCase().includes(q);
@@ -3802,11 +5984,16 @@ const DIMDRIVE = {
       { id: 'uploads', label: 'Uploads', icon: 'fa-cloud-arrow-up' },
       { id: 'recent', label: 'Recent', icon: 'fa-clock' },
       { id: 'starred', label: 'Starred', icon: 'fa-star' },
+      { id: 'notepad', label: 'Notepad', icon: 'fa-note-sticky' },
       { id: 'trash', label: 'Trash', icon: 'fa-trash-can' }
     ];
     nav.innerHTML = items.map((item) => {
       const on = this.tab === item.id;
-      const count = item.id === 'starred' ? files.filter((f) => f.starred && !f.trashed).length : null;
+      const count = item.id === 'starred'
+        ? files.filter((f) => f.starred && !f.trashed).length
+        : item.id === 'notepad'
+          ? files.filter((f) => !f.trashed && (f.folder === 'f-notepad' || f.type === 'notepad')).length
+          : null;
       return `<button type="button" onclick="DIMDRIVE.setTab('${item.id}')" class="w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-[10px] font-semibold transition ${on ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'}">
         <span class="flex items-center gap-2"><i class="fa-solid ${item.icon} w-3.5 text-center text-[10px] ${on ? 'text-amber-500' : 'text-slate-400'}"></i>${item.label}</span>
         ${count != null ? `<span class="text-[8px] bg-slate-950 px-1 py-0.5 rounded text-amber-400 border border-slate-800 font-mono">${count}</span>` : ''}
@@ -3817,7 +6004,7 @@ const DIMDRIVE = {
   renderFolderNav() {
     const root = document.getElementById('dimdrive-folder-nav');
     if (!root) return;
-    const folders = this.workspace().folders;
+    const folders = this.visibleFolders();
     const files = this.load().filter((f) => !f.trashed);
     const rows = folders.map((folder) => {
       const count = files.filter((f) => f.folder === folder.id).length;
@@ -3841,25 +6028,25 @@ const DIMDRIVE = {
   renderFolders() {
     if (this.tab !== 'drive' || this.query || this.category !== 'All' || this.folderId) return '';
     const files = this.load().filter((f) => !f.trashed);
-    const folders = this.workspace().folders.slice();
+    const folders = this.visibleFolders().slice();
     if (files.some((f) => f.folder === 'user')) {
       folders.push({ id: 'user', name: '✍️ WriteSpace & Uploads', color: 'from-amber-500/20 to-amber-500/5', border: 'border-amber-500/30' });
     }
-    return `<div class="space-y-2">
+    return `<div class="space-y-1.5">
       <h3 class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Folders (${folders.length})</h3>
-      <div class="grid grid-cols-2 xl:grid-cols-4 gap-2">
+      <div class="grid grid-cols-2 xl:grid-cols-4 gap-1.5">
         ${folders.map((folder) => {
           const items = files.filter((f) => f.folder === folder.id);
           const bytes = items.reduce((n, f) => n + (f.sizeBytes || 0), 0);
-          return `<button type="button" onclick="DIMDRIVE.openFolder('${folder.id}')" class="p-2.5 rounded-xl border bg-gradient-to-br ${folder.color} ${folder.border} hover:border-amber-500/60 transition cursor-pointer group flex items-center justify-between text-left">
-            <div class="flex items-center gap-2 overflow-hidden min-w-0">
-              <i class="fa-solid fa-folder text-lg text-amber-500 group-hover:scale-110 transition-transform"></i>
+          return `<button type="button" onclick="DIMDRIVE.openFolder('${folder.id}')" class="px-2 py-1.5 rounded-lg border bg-gradient-to-br ${folder.color} ${folder.border} hover:border-amber-500/60 transition cursor-pointer group flex items-center justify-between text-left">
+            <div class="flex items-center gap-1.5 overflow-hidden min-w-0">
+              <i class="fa-solid fa-folder text-[11px] text-amber-500 group-hover:scale-110 transition-transform"></i>
               <div class="truncate">
-                <h4 class="text-[10px] font-bold text-slate-100 truncate group-hover:text-amber-400">${this.escape(folder.name)}</h4>
-                <p class="text-[9px] text-slate-400 font-mono mt-0.5">${items.length} items • ${this.formatBytes(bytes)}</p>
+                <h4 class="text-[9px] font-bold text-slate-100 truncate group-hover:text-amber-400">${this.escape(folder.name)}</h4>
+                <p class="text-[8px] text-slate-400 font-mono">${items.length} items • ${this.formatBytes(bytes)}</p>
               </div>
             </div>
-            <i class="fa-solid fa-chevron-right text-[9px] text-slate-600 group-hover:text-amber-500"></i>
+            <i class="fa-solid fa-chevron-right text-[8px] text-slate-600 group-hover:text-amber-500"></i>
           </button>`;
         }).join('')}
       </div>
@@ -3936,7 +6123,13 @@ const DIMDRIVE = {
       return;
     }
     panel.classList.remove('hidden');
-    const canOpen = selected.type === 'writespace';
+    const canOpen = selected.type === 'writespace' || selected.type === 'sheet' || selected.type === 'notepad';
+    const openLabel = selected.type === 'sheet' ? 'Open in Sales & Revenue' : selected.type === 'notepad' ? 'Open in DIMAD Notepad' : 'Open in WriteSpace';
+    const openFn = selected.type === 'sheet'
+      ? `DIMDRIVE.openInSheet('${selected.id}')`
+      : selected.type === 'notepad'
+        ? `DIMDRIVE.openInNotepad('${selected.id}')`
+        : `DIMDRIVE.openInWriteSpace('${selected.id}')`;
     panel.innerHTML = `
       <div class="space-y-3">
         <div class="flex items-center justify-between pb-2 border-b border-slate-800">
@@ -3966,7 +6159,7 @@ const DIMDRIVE = {
         </div>
       </div>
       <div class="space-y-1.5 pt-3 border-t border-slate-800">
-        ${canOpen ? `<button type="button" onclick="DIMDRIVE.openInWriteSpace('${selected.id}')" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[10px] py-1.5 rounded-lg transition">Open in WriteSpace</button>` : ''}
+        ${canOpen ? `<button type="button" onclick="${openFn}" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[10px] py-1.5 rounded-lg transition">${openLabel}</button>` : ''}
         <button type="button" onclick='DIMDRIVE.copyShareLink(${JSON.stringify(selected.name)})' class="w-full ${canOpen ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700' : 'bg-amber-500 hover:bg-amber-400 text-slate-950'} font-bold text-[10px] py-1.5 rounded-lg transition flex items-center justify-center gap-1.5"><i class="fa-solid fa-link"></i> Copy Public Link</button>
         <button type="button" onclick="DIMDRIVE.download('${selected.id}')" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-[10px] py-1.5 rounded-lg border border-slate-700 transition">Download</button>
         <button type="button" onclick="DIMDRIVE.remove('${selected.id}')" class="w-full bg-transparent hover:bg-rose-500/10 text-rose-400 font-medium text-[10px] py-1 rounded-lg transition flex items-center justify-center gap-1.5"><i class="fa-solid fa-trash-can"></i> Delete File</button>
@@ -3991,7 +6184,8 @@ const DIMDRIVE = {
         const folder = this.workspace().folders.concat([{ id: 'user', name: 'WriteSpace & Uploads' }]).find((f) => f.id === this.folderId);
         title.innerHTML = `<button type="button" onclick="DIMDRIVE.folderId=null; DIMDRIVE.render();" class="text-slate-400 hover:text-amber-400 mr-1"><i class="fa-solid fa-arrow-left"></i></button> ${this.escape(folder ? folder.name : 'Folder')}`;
       } else {
-        title.textContent = this.tab === 'drive' ? 'My Drive' : this.tab;
+        const labels = { drive: 'My Drive', uploads: 'Uploads', recent: 'Recent', starred: 'Starred', notepad: 'Notepad', trash: 'Trash' };
+        title.textContent = labels[this.tab] || this.tab;
       }
     }
     const chip = document.getElementById('dimdrive-filter-chip');
@@ -4045,6 +6239,17 @@ const WRITESPACE = {
       { id: 3, type: 'style', word: 'immensely valuable', fix: 'priceless', explanation: 'Wordiness: consider a more concise alternative.' }
     ],
     selectedTone: 'Conversational',
+    customToneName: '',
+    customToneDesc: '',
+    customTones: [
+      { id: 'c1', name: '', desc: '' },
+      { id: 'c2', name: '', desc: '' },
+      { id: 'c3', name: '', desc: '' },
+      { id: 'c4', name: '', desc: '' }
+    ],
+    selectedCustomToneId: 'c1',
+    writeAiMode: 'tools',
+    writeAiMessages: [],
     focusKeyword: 'deep work writing',
     metaTitle: 'The Art of Deep Work in Digital Era',
     metaDescription: 'Learn how modern writers build concentration reserves and publish high-impact essays consistently.',
@@ -4058,9 +6263,9 @@ const WRITESPACE = {
   load() {
     try {
       const saved = JSON.parse(localStorage.getItem(this.storageKey) || '{}');
-      return { ...this.defaults, ...saved };
+      return this.normalizeCustomTones({ ...this.defaults, ...saved });
     } catch (err) {
-      return { ...this.defaults };
+      return this.normalizeCustomTones({ ...this.defaults });
     }
   },
 
@@ -4263,6 +6468,7 @@ const WRITESPACE = {
     this.renderJournalNav();
     this.syncLayout();
     this.syncTheme();
+    this.syncChrome();
   },
 
   applyJournalToDom() {
@@ -4786,6 +6992,8 @@ const WRITESPACE = {
       } else wrap.classList.add('hidden');
     }
     this.renderTones();
+    this.setWriteAiMode(s.writeAiMode || 'tools');
+    this.renderWriteAiChat();
     this.setTab(s.tab || 'ai-editor');
     this.syncLayout();
     this.syncTheme();
@@ -4851,13 +7059,390 @@ const WRITESPACE = {
     const root = document.getElementById('ws-tones');
     if (!root) return;
     const s = this.state();
-    root.innerHTML = this.tones.map((tone) => `<button type="button" onclick="WRITESPACE.setTone('${tone}')" class="py-1.5 px-2 rounded text-center font-medium border ${s.selectedTone === tone ? 'bg-amber-500/20 border-amber-400 text-amber-300' : 'bg-[#1a1724] border-amber-900/40 text-amber-200'}">${tone}</button>`).join('');
+    const chips = this.tones.map((tone) => `<button type="button" onclick="WRITESPACE.setTone('${tone}')" class="py-1.5 px-2 rounded text-center font-medium border ${s.selectedTone === tone ? 'bg-amber-500/20 border-amber-400 text-amber-300' : 'bg-[#1a1724] border-amber-900/40 text-amber-200'}">${tone}</button>`);
+    root.innerHTML = chips.join('');
+    const btn = document.getElementById('ws-custom-tone-btn');
+    const hint = document.getElementById('ws-custom-tone-hint');
+    const filled = this.customToneSlots().filter((t) => (t.desc || '').trim());
+    const has = filled.length > 0;
+    const customOn = s.selectedTone === 'Custom';
+    const active = this.activeCustomTone();
+    if (btn) {
+      const span = btn.querySelector('span');
+      if (span) {
+        span.innerHTML = has
+          ? `<i class="fa-solid fa-pen-nib text-brand-gold"></i> Edit Custom Tone`
+          : `<i class="fa-solid fa-pen-nib text-brand-gold"></i> Set Custom Tone`;
+      }
+      btn.className = customOn
+        ? 'mt-1.5 w-full py-2 px-3 rounded-lg border border-amber-400 bg-amber-500/20 hover:bg-amber-500/10 text-left font-medium text-amber-200 flex items-center justify-between'
+        : 'mt-1.5 w-full py-2 px-3 rounded-lg border border-amber-500/40 bg-amber-500/5 hover:bg-amber-500/10 text-left font-medium text-amber-200 flex items-center justify-between';
+    }
+    if (hint) {
+      if (customOn && active) {
+        hint.classList.remove('hidden');
+        hint.textContent = `${active.name || 'Custom'} — ${active.desc}`;
+      } else if (has) {
+        hint.classList.remove('hidden');
+        hint.textContent = `${filled.length} custom tone${filled.length === 1 ? '' : 's'} saved. Open to pick the active voice.`;
+      } else {
+        hint.classList.add('hidden');
+        hint.textContent = '';
+      }
+    }
   },
 
   setTone(tone) {
     this.state().selectedTone = tone;
     this.persist(this.state());
     this.renderTones();
+  },
+
+  normalizeCustomTones(s) {
+    let list = Array.isArray(s.customTones) ? s.customTones.slice() : [];
+    if (!list.some((t) => t && (t.desc || t.name)) && (s.customToneDesc || s.customToneName)) {
+      list = [{ id: 'c1', name: s.customToneName || 'Custom', desc: s.customToneDesc || '' }];
+    }
+    const slots = [];
+    for (let i = 0; i < 4; i++) {
+      const prev = list[i] || {};
+      slots.push({
+        id: prev.id || ('c' + (i + 1)),
+        name: prev.name || '',
+        desc: prev.desc || ''
+      });
+    }
+    s.customTones = slots;
+    if (!slots.some((t) => t.id === s.selectedCustomToneId)) s.selectedCustomToneId = slots[0].id;
+    if (s.selectedTone === 'Custom' && !(this.slotById(slots, s.selectedCustomToneId) || {}).desc) {
+      const first = slots.find((t) => (t.desc || '').trim());
+      if (first) s.selectedCustomToneId = first.id;
+      else s.selectedTone = 'Conversational';
+    }
+    return s;
+  },
+
+  slotById(list, id) {
+    return (list || []).find((t) => t.id === id) || null;
+  },
+
+  customToneSlots() {
+    return this.normalizeCustomTones(this.state()).customTones;
+  },
+
+  activeCustomTone() {
+    const s = this.state();
+    const slots = this.customToneSlots();
+    return this.slotById(slots, s.selectedCustomToneId) || slots.find((t) => (t.desc || '').trim()) || null;
+  },
+
+  toneLabel() {
+    const s = this.state();
+    if (s.selectedTone === 'Custom') {
+      const active = this.activeCustomTone();
+      return (active && active.name) || 'custom tone';
+    }
+    return s.selectedTone || 'Conversational';
+  },
+
+  toneGuide() {
+    const s = this.state();
+    if (s.selectedTone === 'Custom') {
+      const active = this.activeCustomTone();
+      if (active && (active.desc || '').trim()) return active.desc.trim();
+    }
+    const map = {
+      Conversational: 'warm, direct, second-person, short paragraphs',
+      Professional: 'clear, composed, precise, no slang',
+      Persuasive: 'benefit-led, confident, end with a next action',
+      Academic: 'measured, evidence-first, qualified claims'
+    };
+    return map[s.selectedTone] || map.Conversational;
+  },
+
+  editingCustomToneId() {
+    const s = this.state();
+    const slots = this.customToneSlots();
+    if (this._editingToneId && slots.some((t) => t.id === this._editingToneId)) return this._editingToneId;
+    if (s.selectedCustomToneId && slots.some((t) => t.id === s.selectedCustomToneId)) return s.selectedCustomToneId;
+    return slots[0] ? slots[0].id : 'c1';
+  },
+
+  flushCustomToneEditor() {
+    const id = this._editingToneId || this.editingCustomToneId();
+    const nameEl = document.getElementById('ws-ct-name');
+    const descEl = document.getElementById('ws-ct-desc');
+    if (!nameEl && !descEl) return this.customToneSlots();
+    const s = this.state();
+    s.customTones = this.customToneSlots().map((tone) => {
+      if (tone.id !== id) return tone;
+      return {
+        id: tone.id,
+        name: ((nameEl && nameEl.value) || '').trim(),
+        desc: ((descEl && descEl.value) || '').trim()
+      };
+    });
+    return s.customTones;
+  },
+
+  renderCustomToneEditor() {
+    const pick = document.getElementById('ws-custom-tone-pick');
+    const editor = document.getElementById('ws-custom-tone-editor');
+    if (!pick || !editor) return;
+    const s = this.state();
+    const slots = this.customToneSlots();
+    const currentId = this.editingCustomToneId();
+    this._editingToneId = currentId;
+    const current = this.slotById(slots, currentId) || slots[0];
+    const active = s.selectedTone === 'Custom' && s.selectedCustomToneId === currentId;
+    pick.innerHTML = slots.map((tone, i) => {
+      const label = (tone.name || '').trim() || ((tone.desc || '').trim() ? `Tone ${i + 1}` : `Empty slot ${i + 1}`);
+      const mark = s.selectedTone === 'Custom' && s.selectedCustomToneId === tone.id ? ' · active' : '';
+      return `<option value="${tone.id}" ${tone.id === currentId ? 'selected' : ''}>${this.escape(label)}${mark}</option>`;
+    }).join('');
+    editor.innerHTML = `<div class="flex items-center justify-between gap-2">
+        <span class="text-[10px] font-bold uppercase tracking-wide text-amber-300">Voice</span>
+        <button type="button" onclick="WRITESPACE.useCustomTone()" class="text-[10px] font-bold px-2 py-1 rounded ${active ? 'bg-amber-500 text-slate-950' : 'border border-amber-900/40 text-amber-200 hover:border-amber-400'}">${active ? 'Active' : 'Use this tone'}</button>
+      </div>
+      <label class="block space-y-1">
+        <span class="text-[10px] text-amber-300/80">Tone name</span>
+        <input id="ws-ct-name" type="text" maxlength="40" value="${this.escape(current ? current.name : '')}" placeholder="e.g. Founder-to-founder" class="w-full bg-slate-950 border border-amber-900/40 rounded-lg px-2 py-1.5 text-[12px] text-amber-100">
+      </label>
+      <label class="block space-y-1">
+        <span class="text-[10px] text-amber-300/80">Audience tone description</span>
+        <textarea id="ws-ct-desc" rows="6" placeholder="Who they are, how they talk, what they refuse." class="w-full bg-slate-950 border border-amber-900/40 rounded-lg px-2 py-1.5 text-[12px] text-amber-100 resize-none">${this.escape(current ? current.desc : '')}</textarea>
+      </label>`;
+  },
+
+  pickCustomTone(id) {
+    this.flushCustomToneEditor();
+    this._editingToneId = id;
+    this.renderCustomToneEditor();
+  },
+
+  openCustomTone() {
+    this.normalizeCustomTones(this.state());
+    this._editingToneId = this.editingCustomToneId();
+    this.renderCustomToneEditor();
+    const modal = document.getElementById('ws-custom-tone-modal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  },
+
+  closeCustomTone() {
+    const modal = document.getElementById('ws-custom-tone-modal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  },
+
+  useCustomTone() {
+    const s = this.state();
+    s.customTones = this.flushCustomToneEditor();
+    const id = this.editingCustomToneId();
+    const slot = this.slotById(s.customTones, id);
+    if (!slot || !(slot.desc || '').trim()) return;
+    s.selectedCustomToneId = id;
+    s.selectedTone = 'Custom';
+    s.customToneName = slot.name;
+    s.customToneDesc = slot.desc;
+    this.persist(s);
+    this.renderCustomToneEditor();
+    this.renderTones();
+  },
+
+  saveCustomTone() {
+    const s = this.state();
+    s.customTones = this.flushCustomToneEditor();
+    const slot = this.slotById(s.customTones, this.editingCustomToneId());
+    if (slot && (slot.desc || '').trim()) {
+      s.selectedCustomToneId = slot.id;
+      s.selectedTone = 'Custom';
+      s.customToneName = slot.name;
+      s.customToneDesc = slot.desc;
+    } else if (s.selectedTone === 'Custom') {
+      const filled = s.customTones.find((t) => (t.desc || '').trim());
+      if (filled) {
+        s.selectedCustomToneId = filled.id;
+        s.customToneName = filled.name;
+        s.customToneDesc = filled.desc;
+      } else {
+        s.selectedTone = 'Conversational';
+        s.customToneName = '';
+        s.customToneDesc = '';
+      }
+    }
+    this.persist(s);
+    this.renderTones();
+    this.closeCustomTone();
+  },
+
+  deleteCustomTone() {
+    const s = this.state();
+    const id = this.editingCustomToneId();
+    s.customTones = this.flushCustomToneEditor().map((t) => t.id === id ? { ...t, name: '', desc: '' } : t);
+    if (s.selectedCustomToneId === id) {
+      const next = s.customTones.find((t) => (t.desc || '').trim());
+      if (next) {
+        s.selectedCustomToneId = next.id;
+        s.customToneName = next.name;
+        s.customToneDesc = next.desc;
+      } else {
+        s.selectedTone = 'Conversational';
+        s.customToneName = '';
+        s.customToneDesc = '';
+      }
+    }
+    this.persist(s);
+    this.renderCustomToneEditor();
+    this.renderTones();
+  },
+
+  setWriteAiMode(mode) {
+    const s = this.state();
+    s.writeAiMode = mode === 'chat' ? 'chat' : 'tools';
+    this.persist(s);
+    const tools = document.getElementById('ws-writeai-tools');
+    const chat = document.getElementById('ws-writeai-chat');
+    const toolsBtn = document.getElementById('ws-writeai-tools-btn');
+    const chatBtn = document.getElementById('ws-writeai-chat-btn');
+    if (tools) tools.classList.toggle('hidden', s.writeAiMode !== 'tools');
+    if (chat) chat.classList.toggle('hidden', s.writeAiMode !== 'chat');
+    const on = 'px-2.5 py-1 bg-amber-500/20 text-amber-300';
+    const off = 'px-2.5 py-1 bg-[#1a1724] text-amber-200/80';
+    if (toolsBtn) toolsBtn.className = s.writeAiMode === 'tools' ? on : off;
+    if (chatBtn) chatBtn.className = s.writeAiMode === 'chat' ? on : off;
+    if (s.writeAiMode === 'chat') this.renderWriteAiChat();
+  },
+
+  writeAiMessages() {
+    const s = this.state();
+    if (!Array.isArray(s.writeAiMessages)) s.writeAiMessages = [];
+    return s.writeAiMessages;
+  },
+
+  renderWriteAiChat() {
+    const feed = document.getElementById('ws-writeai-feed');
+    if (!feed) return;
+    const msgs = this.writeAiMessages();
+    if (!msgs.length) {
+      feed.innerHTML = `<div class="text-[11px] text-amber-200/70 leading-relaxed p-2">WriteAI reads the draft on the left. Hit <span class="text-brand-gold font-semibold">Revise Draft</span> to rewrite it in the selected audience tone, or type a revision note.</div>`;
+      return;
+    }
+    feed.innerHTML = msgs.map((m) => {
+      const you = m.role === 'user';
+      const apply = m.kind === 'revision'
+        ? `<button type="button" onclick="WRITESPACE.applyRevision('${m.id}')" class="mt-2 w-full py-1.5 bg-amber-500/20 text-amber-400 border border-amber-500/40 rounded font-medium text-[11px]">Replace draft with this revision</button>`
+        : '';
+      return `<div class="rounded-lg px-2.5 py-2 ${you ? 'bg-amber-500/15 border border-amber-500/30 ml-4' : 'bg-[#1a1724] border border-amber-900/40 mr-4'}">
+        <div class="text-[9px] font-bold uppercase tracking-wide ${you ? 'text-amber-300' : 'text-brand-gold'} mb-1">${you ? 'You' : 'WriteAI'}</div>
+        <div class="whitespace-pre-wrap leading-relaxed text-amber-100">${this.escape(m.text || '')}</div>
+        ${apply}
+      </div>`;
+    }).join('');
+    feed.scrollTop = feed.scrollHeight;
+  },
+
+  currentDraft() {
+    this.saveFromDom();
+    const s = this.state();
+    const title = (s.layoutStyle === 'journal' ? (document.getElementById('ws-journal-title')?.value || '') : (s.title || '')).trim();
+    const body = (s.bodyText || '').trim();
+    return { title, subtitle: (s.subtitle || '').trim(), body };
+  },
+
+  rewritePack(draft, instruction) {
+    const s = this.state();
+    const guide = this.toneGuide();
+    const label = this.toneLabel();
+    const paras = String(draft || '').split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
+    if (!paras.length) {
+      const empty = 'No draft on the page yet. Write a few lines, then hit Revise Draft.';
+      return { display: empty, draft: '' };
+    }
+    const rewritten = paras.map((p, i) => {
+      if (i === 0) {
+        if (s.selectedTone === 'Persuasive') return `Here’s the point, without the warmup: ${p.replace(/^In an age /i, 'Right now, ')}`;
+        if (s.selectedTone === 'Professional') return p.replace(/\bimmensely\b/gi, 'highly').replace(/!+/g, '.');
+        if (s.selectedTone === 'Academic') return `This draft argues that ${p.charAt(0).toLowerCase()}${p.slice(1)}`;
+        if (s.selectedTone === 'Custom') return p;
+        return p.replace(/\bwe\b/gi, 'you').replace(/\bFor essayists and newsletter creators, /i, 'If you write for a living, ');
+      }
+      return p;
+    });
+    if (s.selectedTone === 'Persuasive' || s.selectedTone === 'Custom') {
+      rewritten.push('Next action: keep one principle, cut one distraction, and ship the draft in this voice.');
+    }
+    const body = rewritten.join('\n\n');
+    const note = instruction ? `\n(Revision note: ${instruction})\n` : '';
+    return {
+      draft: body,
+      display: `Revision · ${label}\nVoice: ${guide}${note}\n${body}`
+    };
+  },
+
+  reviseDraft() {
+    const { body, title } = this.currentDraft();
+    const source = body || title;
+    if (!source) {
+      this.writeAiMessages().push({ id: 'm-' + Date.now(), role: 'ai', text: 'There is no draft to revise yet. Write on the canvas first.', kind: 'note' });
+      this.persist(this.state());
+      this.setWriteAiMode('chat');
+      this.renderWriteAiChat();
+      return;
+    }
+    this.writeAiMessages().push({
+      id: 'm-' + Date.now(),
+      role: 'user',
+      text: `Revise the current draft in a ${this.toneLabel()} voice.`
+    });
+    this.persist(this.state());
+    this.setWriteAiMode('chat');
+    this.renderWriteAiChat();
+    const draft = source;
+    setTimeout(() => {
+      const pack = this.rewritePack(draft);
+      const id = 'rev-' + Date.now();
+      this.state().lastAi = pack.draft;
+      this.writeAiMessages().push({ id, role: 'ai', text: pack.display, draft: pack.draft, kind: 'revision' });
+      this.persist(this.state());
+      this.renderWriteAiChat();
+    }, 700);
+  },
+
+  writeAiKey(event) {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      this.sendWriteAi();
+    }
+  },
+
+  sendWriteAi() {
+    const input = document.getElementById('ws-writeai-input');
+    const prompt = ((input && input.value) || '').trim();
+    if (!prompt) return;
+    if (input) input.value = '';
+    const { body, title } = this.currentDraft();
+    this.writeAiMessages().push({ id: 'm-' + Date.now(), role: 'user', text: prompt });
+    this.persist(this.state());
+    this.renderWriteAiChat();
+    setTimeout(() => {
+      const pack = this.rewritePack(body || title, prompt);
+      const id = 'rev-' + Date.now();
+      this.state().lastAi = pack.draft;
+      this.writeAiMessages().push({ id, role: 'ai', text: pack.display, draft: pack.draft, kind: 'revision' });
+      this.persist(this.state());
+      this.renderWriteAiChat();
+    }, 700);
+  },
+
+  applyRevision(id) {
+    const msg = this.writeAiMessages().find((m) => String(m.id) === String(id));
+    const text = (msg && (msg.draft || msg.text)) || this.state().lastAi;
+    if (!text) return;
+    this.state().lastAi = text;
+    this.applyAi();
   },
 
   setTab(tab) {
@@ -4883,6 +7468,7 @@ const WRITESPACE = {
     this.persist(s);
     this.syncTheme();
     this.syncChrome();
+    this.syncLayout();
   },
 
   toggleFullscreen() {
@@ -4894,6 +7480,7 @@ const WRITESPACE = {
 
   toggleSidebar() {
     const s = this.state();
+    if (s.layoutStyle === 'journal') return;
     s.sidebarCollapsed = !s.sidebarCollapsed;
     this.persist(s);
     this.syncChrome();
@@ -4901,6 +7488,7 @@ const WRITESPACE = {
 
   openSidebarTab(tab) {
     const s = this.state();
+    if (s.layoutStyle === 'journal') return;
     s.sidebarCollapsed = false;
     this.persist(s);
     this.syncChrome();
@@ -4927,10 +7515,12 @@ const WRITESPACE = {
       }
     }
     if (view && s.fullscreen) view.classList.remove('hidden');
-    if (aside) aside.classList.toggle('hidden', !!s.sidebarCollapsed);
+    const journal = s.layoutStyle === 'journal';
+    if (aside) aside.classList.toggle('hidden', journal || !!s.sidebarCollapsed);
     if (rail) {
-      rail.classList.toggle('hidden', !s.sidebarCollapsed);
-      rail.classList.toggle('flex', !!s.sidebarCollapsed);
+      const showRail = !journal && !!s.sidebarCollapsed;
+      rail.classList.toggle('hidden', !showRail);
+      rail.classList.toggle('flex', showRail);
     }
     if (fullBtn) {
       fullBtn.innerHTML = s.fullscreen
@@ -5015,8 +7605,8 @@ const WRITESPACE = {
     }
     if (btn) {
       btn.innerHTML = light
-        ? '<i class="fa-solid fa-moon text-amber-500"></i><span class="hidden sm:inline">Dark Amber</span>'
-        : '<i class="fa-solid fa-sun text-blue-400"></i><span class="hidden sm:inline">Word Light</span>';
+        ? '<i class="fa-solid fa-moon text-amber-500"></i><span class="hidden sm:inline">Night Mode</span>'
+        : '<i class="fa-solid fa-sun text-blue-400"></i><span class="hidden sm:inline">Day Mode</span>';
     }
     const wordDoc = s.layoutStyle === 'word';
     if (canvas && !wordDoc) {
@@ -5053,6 +7643,7 @@ const WRITESPACE = {
     if (aside) {
       aside.style.color = '#fde68a';
     }
+    this.syncFormats();
   },
 
   sizePx(size) {
@@ -5219,12 +7810,15 @@ const WRITESPACE = {
 
   syncFormats() {
     const s = this.state();
+    const day = s.themeMode === 'light';
     ['bold', 'italic', 'underline'].forEach((key) => {
       const btn = document.getElementById(`ws-${key}`);
       if (!btn) return;
       btn.className = s[key]
-        ? 'p-1.5 rounded border bg-amber-500/20 border-amber-500 text-amber-500'
-        : 'p-1.5 rounded border border-transparent';
+        ? 'p-1.5 rounded border bg-amber-500/20 border-brand-gold text-brand-gold'
+        : day
+          ? 'p-1.5 rounded border border-transparent text-brand-gold'
+          : 'p-1.5 rounded border border-transparent text-amber-200';
     });
   },
 
@@ -5351,7 +7945,7 @@ const WRITESPACE = {
       let text = '';
       if (type === 'grammar') text = 'Grammar pass complete. Review subject-verb agreement in paragraph 2 and keep the three principles as a numbered list.';
       else if (type === 'improve') text = 'Tighten the opening by leading with a concrete scene of interruption, then land the synthesis line. Vary sentence length in paragraph 3.';
-      else if (type === 'tone') text = `Tone shifted toward ${s.selectedTone}: keep the solitude argument, but make the call-to-action more ${s.selectedTone.toLowerCase()}.`;
+      else if (type === 'tone') text = `Tone shifted toward ${this.toneLabel()}: ${this.toneGuide()}. Keep the core argument; rewrite the call-to-action in that voice.`;
       else if (type === 'summarize') text = '• Deep focus is scarce and valuable for essayists.\n• Fragmented attention blocks synthesis.\n• Separate drafting, editing, and publishing; use tools without losing voice.';
       else text = custom ? `Instruction: ${custom}\n\nRewrite the hook to earn the next sentence, then keep the three principles intact.` : '';
       s.lastAi = text;
@@ -5626,6 +8220,28 @@ const PIPELINE = {
 
   persist(brands) {
     localStorage.setItem(this.storageKey, JSON.stringify(brands));
+  },
+
+  renderStudio() {
+    const root = document.getElementById('cs-pipeline-list');
+    if (!root) return;
+    const rows = this.load().filter((row) => this.openStatuses.includes(row.status)).slice(0, 5);
+    if (!rows.length) {
+      root.innerHTML = '<p class="text-slate-500 px-1 py-2">No open pipeline deals.</p>';
+      return;
+    }
+    root.innerHTML = rows.map((row) => `
+      <button type="button" onclick="switchTab('creator-pipeline')" class="w-full flex items-center justify-between gap-2 bg-brand-black/50 border border-brand-border rounded px-2 py-1.5 text-left hover:border-brand-gold/40 transition">
+        <span class="min-w-0">
+          <span class="block text-[11px] font-semibold text-slate-100 truncate">${this.escape(row.name)}</span>
+          <span class="block text-[9px] text-slate-500 truncate">${this.escape(row.sector || row.contact || '')}</span>
+        </span>
+        <span class="text-right shrink-0">
+          <span class="block text-[9px] font-bold text-brand-mint">${this.escape(row.status)}</span>
+          <span class="block text-[9px] text-brand-gold">${this.escape(row.profit || '')}</span>
+        </span>
+      </button>
+    `).join('');
   },
 
   pipelineValue(brands) {
@@ -6360,6 +8976,25 @@ const SCHEDULER = {
       : 'bg-amber-950/60 text-amber-300 border border-amber-900/40';
   },
 
+  renderStudio() {
+    const root = document.getElementById('cs-scheduler-list');
+    if (!root) return;
+    const items = this.load().slice().sort((a, b) => String(a.date || '').localeCompare(String(b.date || ''))).slice(0, 5);
+    if (!items.length) {
+      root.innerHTML = '<p class="text-slate-500 px-1 py-2">No scheduled posts yet.</p>';
+      return;
+    }
+    root.innerHTML = items.map((item) => `
+      <button type="button" onclick="switchTab('creator-scheduler')" class="w-full flex items-center justify-between gap-2 bg-brand-black/50 border border-brand-border rounded px-2 py-1.5 text-left hover:border-brand-gold/40 transition">
+        <span class="min-w-0">
+          <span class="block text-[11px] font-semibold text-slate-100 truncate">${this.escape(item.title)}</span>
+          <span class="block text-[9px] text-slate-500 truncate">${this.escape(item.platform || '')} · ${this.escape(item.date || '')}</span>
+        </span>
+        <span class="text-[8px] font-bold px-1.5 py-0.5 rounded ${this.statusClass(item.status)}">${this.escape(item.status)}</span>
+      </button>
+    `).join('');
+  },
+
   render() {
     const chips = document.getElementById('sch-platforms');
     const body = document.getElementById('sch-body');
@@ -6591,6 +9226,15 @@ const SCHEDULER = {
       </button>`;
     }).join('');
     return `<div class="grid grid-cols-7 gap-1">${weekday}${cells}</div>`;
+  },
+
+  openFromStudio() {
+    const date = (typeof CALENDAR_NAV !== 'undefined')
+      ? CALENDAR_NAV.dateKey(CALENDAR_NAV.anchorDate())
+      : this.dateKey(new Date());
+    this.viewMode = 'calendar';
+    if (typeof switchTab === 'function') switchTab('creator-scheduler');
+    window.setTimeout(() => this.openModal({ date }), 0);
   },
 
   openModal(prefill) {
@@ -8649,7 +11293,7 @@ const TRAVEL_GUIDES = {
               <i class="fa-solid fa-compass"></i>
             </div>
             <div>
-              <h1 class="font-extrabold text-base tracking-tight text-white leading-none">Wander by Dimad</h1>
+              <h1 class="font-extrabold text-base tracking-tight text-white leading-none">Autonomous by Dimad</h1>
               <p class="text-[10px] text-slate-400 font-medium">Travel &amp; Destination Guides for the Curious Traveler.</p>
             </div>
           </div>
@@ -8709,7 +11353,7 @@ const TRAVEL_GUIDES = {
           <div>${grid}</div>
         </main>
         <footer class="border-t border-brand-border bg-brand-black py-8 px-4 md:px-8 mt-4 text-center text-xs text-slate-500">
-          <p>© 2026 Dimad OS - Wander by Dimad</p>
+          <p>© 2026 Dimad OS - Autonomous by Dimad</p>
         </footer>
         ${modal}
         ${toast}
@@ -9614,8 +12258,10 @@ const DIMAD_CAL = {
 
   setShowContent(on) {
     localStorage.setItem(this.contentFilterKey, on ? '1' : '0');
-    const box = document.getElementById('cal-show-content');
-    if (box) box.checked = !!on;
+    ['cal-show-content', 'cs-cal-show-content'].forEach((id) => {
+      const box = document.getElementById(id);
+      if (box) box.checked = !!on;
+    });
     this.renderFull();
     if (typeof CALENDAR_NAV !== 'undefined') CALENDAR_NAV.render();
   },
@@ -10636,6 +13282,31 @@ const CALENDAR_NAV = {
   extraEvents: {},
   condensed: false,
 
+  surfaces() {
+    return [
+      {
+        main: 'hourly-slots-container',
+        side: 'cal-companion-container',
+        dual: 'cal-dual',
+        title: 'cal-view-title',
+        hint: 'cal-view-hint',
+        tz: 'calendar-timezone-label',
+        mode: 'cal-mode-select',
+        content: 'cal-show-content'
+      },
+      {
+        main: 'cs-hourly-slots-container',
+        side: 'cs-cal-companion-container',
+        dual: 'cs-cal-dual',
+        title: 'cs-cal-view-title',
+        hint: 'cs-cal-view-hint',
+        tz: 'cs-calendar-timezone-label',
+        mode: 'cs-cal-mode-select',
+        content: 'cs-cal-show-content'
+      }
+    ];
+  },
+
   tzName() {
     try { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; }
     catch (err) { return 'UTC'; }
@@ -10809,10 +13480,12 @@ const CALENDAR_NAV = {
     document.querySelectorAll('[data-cal-layout]').forEach((el) => {
       el.value = this.condensed ? 'multi' : 'full';
     });
-    const wrap = document.getElementById('cal-dual');
-    const side = document.getElementById('cal-companion-container');
-    if (wrap) wrap.classList.toggle('cal-dual-condensed', this.condensed);
-    if (side) side.classList.toggle('hidden', !this.condensed);
+    this.surfaces().forEach((surface) => {
+      const wrap = document.getElementById(surface.dual);
+      const side = document.getElementById(surface.side);
+      if (wrap) wrap.classList.toggle('cal-dual-condensed', this.condensed);
+      if (side) side.classList.toggle('hidden', !this.condensed);
+    });
   },
 
   syncNavLabel() {
@@ -10828,17 +13501,27 @@ const CALENDAR_NAV = {
   },
 
   updateChrome(title, hint) {
-    const titleEl = document.getElementById('cal-view-title');
-    const hintEl = document.getElementById('cal-view-hint');
-    const tzEl = document.getElementById('calendar-timezone-label');
-    const selectEl = document.getElementById('cal-mode-select');
-    if (titleEl) titleEl.innerText = title;
-    if (hintEl) hintEl.innerText = hint;
-    if (tzEl) tzEl.textContent = `Timezone: ${this.tzName()} (Auto-detected)`;
-    if (selectEl && selectEl.value !== this.mode) selectEl.value = this.mode;
-    const contentBox = document.getElementById('cal-show-content');
-    if (contentBox && typeof DIMAD_CAL !== 'undefined') contentBox.checked = DIMAD_CAL.showContentSchedule();
+    this.surfaces().forEach((surface) => {
+      const titleEl = document.getElementById(surface.title);
+      const hintEl = document.getElementById(surface.hint);
+      const tzEl = document.getElementById(surface.tz);
+      const selectEl = document.getElementById(surface.mode);
+      if (titleEl) titleEl.innerText = title;
+      if (hintEl) hintEl.innerText = hint;
+      if (tzEl) tzEl.textContent = `Timezone: ${this.tzName()} (Auto-detected)`;
+      if (selectEl && selectEl.value !== this.mode) selectEl.value = this.mode;
+      const contentBox = document.getElementById(surface.content);
+      if (contentBox && typeof DIMAD_CAL !== 'undefined') contentBox.checked = DIMAD_CAL.showContentSchedule();
+    });
     this.syncNavLabel();
+  },
+
+  paintSurface(surface, html, companionHtml) {
+    const main = document.getElementById(surface.main);
+    const side = document.getElementById(surface.side);
+    if (!main) return;
+    main.innerHTML = html;
+    if (side) side.innerHTML = companionHtml == null ? '' : companionHtml;
   },
 
   render() {
@@ -10846,33 +13529,29 @@ const CALENDAR_NAV = {
       if (localStorage.getItem('dimad_cal_condensed') === '1') this.condensed = true;
       if (localStorage.getItem('dimad_cal_condensed') === '0') this.condensed = false;
     } catch (err) { /* keep in-memory */ }
-    const main = document.getElementById('hourly-slots-container');
-    const side = document.getElementById('cal-companion-container');
-    if (!main) return;
+    const surfaces = this.surfaces().filter((surface) => document.getElementById(surface.main));
+    if (!surfaces.length) return;
     this.syncCondenseBtn();
+    let html;
+    let companionHtml = '';
     if (this.condensed) {
       const dayTitle = this.anchorDate().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
-      main.innerHTML = `<div class="text-[11px] font-semibold text-white mb-1.5">${this.escape(dayTitle)}</div>
+      html = `<div class="text-[11px] font-semibold text-white mb-1.5">${this.escape(dayTitle)}</div>
         <div class="text-[10px] font-mono text-slate-500 mb-2">24-hour overview — click an event to view or edit; click an open hour to add.</div>
         ${this.dayHtml()}`;
-      if (side) {
-        const companion = this.companionMode();
-        side.innerHTML = companion === 'weekly'
-          ? this.weeksStackHtml()
-          : `<div class="text-[9px] font-mono text-slate-400 mb-1.5">${this.anchorDate().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</div>${this.monthHtml({ companion: true })}`;
-      }
-      this.updateChromeForMode();
-      return;
-    }
-    if (side) side.innerHTML = '';
-    if (this.mode === 'weekly') {
-      main.innerHTML = this.weekGridHtml();
+      const companion = this.companionMode();
+      companionHtml = companion === 'weekly'
+        ? this.weeksStackHtml()
+        : `<div class="text-[9px] font-mono text-slate-400 mb-1.5">${this.anchorDate().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</div>${this.monthHtml({ companion: true })}`;
+    } else if (this.mode === 'weekly') {
+      html = this.weekGridHtml();
     } else if (this.mode === 'monthly') {
-      main.innerHTML = this.monthHtml();
+      html = this.monthHtml();
     } else {
-      main.innerHTML = this.dayHtml();
+      html = this.dayHtml();
     }
-    this.updateChromeForMode(false);
+    surfaces.forEach((surface) => this.paintSurface(surface, html, this.condensed ? companionHtml : ''));
+    this.updateChromeForMode();
   },
 
   updateChromeForMode() {
@@ -11379,29 +14058,4269 @@ const FINNHUB_MARKETS = {
   }
 };
 
+const TASK_MANAGER = {
+  storageKey: 'dimad_task_manager',
+  maxToday: 20,
+  bound: false,
+  state: null,
+  view: 'today',
+  dragId: '',
+  dragFrom: '',
+
+  todayKey() {
+    return typeof FOCUS_TIMER !== 'undefined' ? FOCUS_TIMER.dayKey() : new Date().toISOString().slice(0, 10);
+  },
+
+  shiftKey(days) {
+    const key = this.todayKey();
+    const d = typeof FOCUS_TIMER !== 'undefined'
+      ? FOCUS_TIMER.parseDayKey(key)
+      : new Date(`${key}T00:00:00`);
+    d.setDate(d.getDate() + days);
+    return typeof FOCUS_TIMER !== 'undefined' ? FOCUS_TIMER.dayKey(d) : d.toISOString().slice(0, 10);
+  },
+
+  fmtDate(key) {
+    if (typeof FOCUS_LOG !== 'undefined' && FOCUS_LOG.fmtDate) return FOCUS_LOG.fmtDate(key);
+    return key;
+  },
+
+  normalizeTask(task, fallbackDate) {
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(task.date) ? task.date : fallbackDate;
+    return {
+      id: String(task.id || `t-${Date.now()}`),
+      title: String(task.title || '').trim() || 'Untitled task',
+      completed: !!task.completed,
+      date,
+      completedAt: task.completedAt || (task.completed ? date : '')
+    };
+  },
+
+  defaults() {
+    const today = this.todayKey();
+    return {
+      tasks: [
+        { id: 't1', title: 'Finalize MailerLite sign-up flow for Dimad Founders Club', completed: true, date: today, completedAt: today },
+        { id: 't2', title: 'Review soft goods technical design specs for carry system', completed: false, date: today, completedAt: '' },
+        { id: 't3', title: 'Draft chapter 4 of "Redefining Everything" book', completed: false, date: today, completedAt: '' }
+      ]
+    };
+  },
+
+  load() {
+    const today = this.todayKey();
+    try {
+      const raw = JSON.parse(localStorage.getItem(this.storageKey) || '');
+      if (raw && Array.isArray(raw.tasks)) {
+        return { tasks: raw.tasks.map((task) => this.normalizeTask(task, today)) };
+      }
+    } catch (err) { /* seed */ }
+    return this.defaults();
+  },
+
+  persist() {
+    localStorage.setItem(this.storageKey, JSON.stringify({ tasks: (this.state && this.state.tasks) || [] }));
+  },
+
+  ensure() {
+    if (!this.state) this.state = this.load();
+    return this.state;
+  },
+
+  mount() {
+    this.ensure();
+    this.bind();
+    this.render();
+  },
+
+  bind() {
+    const tabForm = document.getElementById('tm-add-form');
+    const ccForm = document.getElementById('cc-tm-add-form');
+    if (tabForm && !tabForm.dataset.tmBound) {
+      tabForm.dataset.tmBound = '1';
+      tabForm.addEventListener('submit', (event) => {
+        event.preventDefault();
+        this.addTask('tab');
+      });
+    }
+    if (ccForm && !ccForm.dataset.tmBound) {
+      ccForm.dataset.tmBound = '1';
+      ccForm.addEventListener('submit', (event) => {
+        event.preventDefault();
+        this.addTask('cc');
+      });
+    }
+    if (!this.docBound) {
+      this.docBound = true;
+      const end = (event) => this.endOutsideEdit(event);
+      window.addEventListener('pointerdown', end, true);
+      window.addEventListener('mousedown', end, true);
+      window.addEventListener('touchstart', end, true);
+      window.addEventListener('click', end, true);
+    }
+  },
+
+  todayOpen() {
+    this.ensure();
+    const today = this.todayKey();
+    return this.state.tasks.filter((task) => !task.completed && task.date <= today);
+  },
+
+  previewRows() {
+    this.ensure();
+    const today = this.todayKey();
+    const open = this.todayOpen();
+    const done = this.state.tasks.filter((task) => task.completed && (task.completedAt || task.date) === today);
+    return open.concat(done);
+  },
+
+  filtered() {
+    const today = this.todayKey();
+    if (this.view === 'history') {
+      return this.state.tasks.filter((task) => task.completed).sort((a, b) => String(b.completedAt || b.date).localeCompare(String(a.completedAt || a.date)));
+    }
+    if (this.view === 'future') {
+      return this.state.tasks.filter((task) => !task.completed && task.date > today);
+    }
+    return this.todayOpen();
+  },
+
+  setView(view) {
+    this.view = view === 'history' || view === 'future' ? view : 'today';
+    this.render();
+  },
+
+  addTask(source) {
+    this.ensure();
+    if (this.todayOpen().length >= this.maxToday) {
+      this.render();
+      return;
+    }
+    const input = document.getElementById(source === 'cc' ? 'cc-tm-new' : 'tm-new-task');
+    const title = input ? input.value.trim() : '';
+    if (!title) return;
+    this.state.tasks.push({
+      id: `t-${Date.now()}`,
+      title,
+      completed: false,
+      date: this.todayKey(),
+      completedAt: ''
+    });
+    if (input) input.value = '';
+    this.view = 'today';
+    this.persist();
+    this.render();
+  },
+
+  focusAdd(source) {
+    this.ensure();
+    this.bind();
+    const input = document.getElementById(source === 'cc' ? 'cc-tm-new' : 'tm-new-task');
+    if (input && !input.disabled) input.focus();
+  },
+
+  toggleTask(id) {
+    const task = this.state.tasks.find((item) => item.id === id);
+    if (!task) return;
+    task.completed = !task.completed;
+    task.completedAt = task.completed ? this.todayKey() : '';
+    this.persist();
+    this.render();
+  },
+
+  deleteTask(id) {
+    this.ensure();
+    const task = this.state.tasks.find((item) => item.id === id);
+    if (!task) return;
+    this.deleteId = id;
+    this.menuId = '';
+    this.render();
+    const modal = document.getElementById('tm-delete-modal');
+    const title = document.getElementById('tm-delete-title');
+    if (title) title.textContent = task.title;
+    if (modal) {
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+  },
+
+  closeDelete() {
+    const modal = document.getElementById('tm-delete-modal');
+    if (modal) {
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+    this.deleteId = '';
+  },
+
+  confirmDelete() {
+    const id = this.deleteId;
+    this.closeDelete();
+    if (!id) return;
+    this.state.tasks = this.state.tasks.filter((item) => item.id !== id);
+    this.persist();
+    this.render();
+  },
+
+  reopenTask(id) {
+    const task = this.state.tasks.find((item) => item.id === id);
+    if (!task) return;
+    if (this.todayOpen().length >= this.maxToday) {
+      this.render();
+      return;
+    }
+    task.completed = false;
+    task.completedAt = '';
+    task.date = this.todayKey();
+    this.view = 'today';
+    this.persist();
+    this.render();
+  },
+
+  moveToday(id) {
+    const task = this.state.tasks.find((item) => item.id === id);
+    if (!task || task.completed) return;
+    if (this.todayOpen().length >= this.maxToday) {
+      this.render();
+      return;
+    }
+    task.date = this.todayKey();
+    this.view = 'today';
+    this.persist();
+    this.render();
+  },
+
+  sortableTasks(from) {
+    if (from === 'history') return [];
+    if (from === 'cc') return this.todayOpen();
+    return this.filtered().filter((task) => !task.completed);
+  },
+
+  applyVisibleOrder(ids) {
+    const want = new Set(ids);
+    const queue = ids.slice();
+    const byId = {};
+    this.state.tasks.forEach((task) => { byId[task.id] = task; });
+    let i = 0;
+    this.state.tasks = this.state.tasks.map((task) => {
+      if (!want.has(task.id)) return task;
+      return byId[queue[i++]] || task;
+    });
+  },
+
+  move(id, dir, from) {
+    const vis = this.sortableTasks(from);
+    const index = vis.findIndex((item) => item.id === id);
+    const other = vis[index + dir];
+    if (!other) return;
+    const ids = vis.map((item) => item.id);
+    ids[index] = other.id;
+    ids[index + dir] = id;
+    this.applyVisibleOrder(ids);
+    this.persist();
+    this.render();
+  },
+
+  onDragStart(event, id, from) {
+    if (this.editId === id || event.target.closest('button, textarea, input, a, [data-tm-menu]')) {
+      event.preventDefault();
+      return;
+    }
+    this.dragId = id;
+    this.dragFrom = from;
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', id);
+    event.currentTarget.classList.add('tm-dragging');
+  },
+
+  onDragOver(event, id, from) {
+    if (!this.dragId || this.dragFrom !== from || this.dragId === id) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    const row = event.currentTarget;
+    const mid = row.getBoundingClientRect().top + row.offsetHeight / 2;
+    row.classList.toggle('tm-drop-before', event.clientY < mid);
+    row.classList.toggle('tm-drop-after', event.clientY >= mid);
+  },
+
+  onDragLeave(event) {
+    const row = event.currentTarget;
+    if (row.contains(event.relatedTarget)) return;
+    row.classList.remove('tm-drop-before', 'tm-drop-after');
+  },
+
+  onDrop(event, id, from) {
+    event.preventDefault();
+    const source = this.dragId || event.dataTransfer.getData('text/plain');
+    const row = event.currentTarget;
+    const after = event.clientY >= row.getBoundingClientRect().top + row.offsetHeight / 2;
+    row.classList.remove('tm-drop-before', 'tm-drop-after');
+    this.dropAt(source, id, after, from);
+  },
+
+  onDragEnd() {
+    this.dragId = '';
+    this.dragFrom = '';
+    document.querySelectorAll('[data-tm-row]').forEach((el) => {
+      el.classList.remove('tm-dragging', 'tm-drop-before', 'tm-drop-after');
+    });
+  },
+
+  dropAt(sourceId, targetId, after, from) {
+    if (!sourceId || sourceId === targetId) return;
+    const vis = this.sortableTasks(from);
+    const ids = vis.map((item) => item.id);
+    const fromIdx = ids.indexOf(sourceId);
+    if (fromIdx < 0 || ids.indexOf(targetId) < 0) return;
+    ids.splice(fromIdx, 1);
+    let toIdx = ids.indexOf(targetId);
+    ids.splice(after ? toIdx + 1 : toIdx, 0, sourceId);
+    this.applyVisibleOrder(ids);
+    this.persist();
+    this.render();
+  },
+
+  moveTomorrow(id) {
+    const task = this.state.tasks.find((item) => item.id === id);
+    if (!task || task.completed) return;
+    task.date = this.shiftKey(1);
+    this.persist();
+    this.render();
+  },
+
+  snoozeUntil(id, date) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date <= this.todayKey()) return;
+    const task = this.state.tasks.find((item) => item.id === id);
+    if (!task || task.completed) return;
+    task.date = date;
+    this.persist();
+    this.render();
+  },
+
+  openSnooze(id) {
+    this.ensure();
+    this.menuId = '';
+    const task = this.state.tasks.find((item) => item.id === id);
+    if (!task || task.completed) return;
+    this.snoozeId = id;
+    const modal = document.getElementById('tm-snooze-modal');
+    const input = document.getElementById('tm-snooze-date');
+    const title = document.getElementById('tm-snooze-title');
+    const min = this.shiftKey(1);
+    if (title) title.textContent = task.title;
+    if (input) {
+      input.min = min;
+      input.value = task.date > this.todayKey() ? task.date : min;
+    }
+    if (modal) {
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+  },
+
+  closeSnooze() {
+    const modal = document.getElementById('tm-snooze-modal');
+    if (modal) {
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+    this.snoozeId = '';
+  },
+
+  confirmSnooze() {
+    const input = document.getElementById('tm-snooze-date');
+    const date = input ? input.value : '';
+    const id = this.snoozeId;
+    this.closeSnooze();
+    this.snoozeUntil(id, date);
+  },
+
+  iconBtn(action, title, icon, extra = '') {
+    return `<button type="button" title="${title}" ${extra} class="w-6 h-6 rounded-md bg-slate-900 hover:bg-slate-800 border border-brand-border text-slate-400 hover:text-brand-gold flex items-center justify-center disabled:opacity-30"><i class="fa-solid ${icon} text-[9px]"></i></button>`;
+  },
+
+  menuItem(label, onclick, disabled) {
+    return `<button type="button" ${disabled ? 'disabled' : ''} onclick="event.preventDefault();event.stopPropagation();${onclick}" class="w-full text-left px-3 py-1.5 text-[10px] font-bold text-slate-200 hover:bg-slate-800 hover:text-brand-gold disabled:opacity-30 disabled:hover:text-slate-200">${label}</button>`;
+  },
+
+  toggleMenu(id) {
+    if (this.editId) {
+      const input = this.visibleEditInput(this.editId);
+      this.commitEdit(this.editId, input ? input.value : '');
+      return;
+    }
+    this.menuId = this.menuId === id ? '' : id;
+    this.render();
+    if (this.menuId) this.placeMenu(this.menuId);
+  },
+
+  placeMenu(id) {
+    document.querySelectorAll(`[data-tm-menu="${id}"]`).forEach((menu) => {
+      const btn = menu.parentElement && menu.parentElement.querySelector(`[data-tm-menu-btn="${id}"]`);
+      if (!btn) return;
+      const box = btn.getBoundingClientRect();
+      if (!box.width && !box.height) return;
+      menu.style.position = 'fixed';
+      menu.style.top = `${Math.min(box.bottom + 4, window.innerHeight - menu.offsetHeight - 8)}px`;
+      menu.style.right = `${Math.max(8, window.innerWidth - box.right)}px`;
+      menu.style.left = 'auto';
+    });
+  },
+
+  startEdit(id) {
+    this.menuId = id;
+    this.editId = id;
+    this.render();
+    requestAnimationFrame(() => {
+      this.placeMenu(id);
+      const input = this.visibleEditInput(id);
+      if (!input) return;
+      input.focus();
+      input.select();
+    });
+  },
+
+  cancelEdit() {
+    this.editId = '';
+    this.menuId = '';
+    this.render();
+  },
+
+  visibleEditInput(id) {
+    const nodes = [...document.querySelectorAll(`[data-tm-edit="${id}"]`)];
+    return nodes.find((el) => el.getBoundingClientRect().width > 0) || nodes[0] || null;
+  },
+
+  commitFromOverlay(id) {
+    const input = this.visibleEditInput(id);
+    this.commitEdit(id, input ? input.value : '');
+  },
+
+  endOutsideEdit(event) {
+    if (!this.editId) {
+      if (this.menuId) {
+        const node = this.eventNode(event);
+        if (node && node.closest && node.closest('[data-tm-menu], [data-tm-menu-btn]')) return;
+        this.menuId = '';
+        this.render();
+      }
+      return;
+    }
+    const node = this.eventNode(event);
+    if (node && node.closest && node.closest('[data-tm-edit], [data-tm-menu]')) return;
+    const id = this.editId;
+    const input = this.visibleEditInput(id);
+    this.commitEdit(id, input ? input.value : '');
+  },
+
+  eventNode(event) {
+    const raw = event && event.target;
+    if (!raw) return null;
+    return raw.nodeType === 1 ? raw : raw.parentElement;
+  },
+
+  commitEdit(id, value) {
+    if (this.editId !== id) return;
+    const task = this.state.tasks.find((item) => item.id === id);
+    const title = String(value || '').trim();
+    this.editId = '';
+    this.menuId = '';
+    if (task && title) task.title = title;
+    this.persist();
+    this.render();
+  },
+
+  rowMarkup(task, index, total, from) {
+    const compact = from === 'cc';
+    const history = from === 'history';
+    const future = from === 'future';
+    const editing = this.editId === task.id;
+    const open = this.menuId === task.id || editing;
+    const fromArg = from === 'cc' ? ", 'cc'" : '';
+    const items = [];
+    if (history || task.completed) {
+      items.push(this.menuItem('Re-open', `TASK_MANAGER.reopenTask('${task.id}')`));
+    } else if (future) {
+      items.push(this.menuItem('Move to today', `TASK_MANAGER.moveToday('${task.id}')`));
+      items.push(this.menuItem('Snooze until...', `TASK_MANAGER.openSnooze('${task.id}')`));
+      items.push(this.menuItem('Move up', `TASK_MANAGER.move('${task.id}', -1${fromArg})`, index === 0));
+      items.push(this.menuItem('Move down', `TASK_MANAGER.move('${task.id}', 1${fromArg})`, index === total - 1));
+    } else {
+      items.push(this.menuItem("I'll do it tomorrow", `TASK_MANAGER.moveTomorrow('${task.id}')`));
+      items.push(this.menuItem('Snooze until...', `TASK_MANAGER.openSnooze('${task.id}')`));
+      items.push(this.menuItem('Move up', `TASK_MANAGER.move('${task.id}', -1${fromArg})`, index === 0));
+      items.push(this.menuItem('Move down', `TASK_MANAGER.move('${task.id}', 1${fromArg})`, index === total - 1));
+    }
+    items.push(this.menuItem('Edit', `TASK_MANAGER.startEdit('${task.id}')`));
+    items.push(this.menuItem('Delete', `TASK_MANAGER.deleteTask('${task.id}')`));
+    const title = `<span ondblclick="event.preventDefault();event.stopPropagation();TASK_MANAGER.startEdit('${task.id}')" class="${compact ? 'text-[10px]' : 'text-[11px]'} font-medium block truncate cursor-text ${task.completed ? 'line-through text-slate-500' : 'text-slate-200'}">${this.escape(task.title)}</span>`;
+    const editPanel = `<div class="p-2 space-y-1.5">
+      <p class="text-[9px] font-mono uppercase tracking-wide text-slate-500 px-0.5">Edit task</p>
+      <textarea data-tm-edit="${task.id}" rows="4" onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault();TASK_MANAGER.commitEdit('${task.id}', this.value)} if(event.key==='Escape'){event.preventDefault();TASK_MANAGER.cancelEdit()}" class="w-full h-24 resize-none overflow-y-auto bg-brand-black border border-brand-gold rounded-md px-2 py-1.5 text-[11px] text-slate-200 font-mono leading-snug whitespace-pre-wrap break-words focus:outline-none">${this.escape(task.title)}</textarea>
+      <button type="button" onclick="event.preventDefault();event.stopPropagation();TASK_MANAGER.commitFromOverlay('${task.id}')" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[10px] py-1.5 rounded-md">Save</button>
+    </div>`;
+    const check = `<button type="button" onclick="event.preventDefault();event.stopPropagation();TASK_MANAGER.toggleTask('${task.id}')" class="w-5 h-5 rounded border flex items-center justify-center shrink-0 ${task.completed ? 'bg-brand-mint border-brand-mint text-slate-950' : 'border-slate-600 hover:border-brand-gold'}">${task.completed ? '<i class="fa-solid fa-check text-[10px]"></i>' : ''}</button>`;
+    const meta = history
+      ? `Completed ${this.fmtDate(task.completedAt || task.date)}`
+      : future
+        ? this.fmtDate(task.date)
+        : (task.date < this.todayKey() ? `From ${this.fmtDate(task.date)}` : '');
+    const canDrag = !task.completed && !history && !editing && !this.editId;
+    return `
+      <div data-tm-row="${task.id}" draggable="${canDrag ? 'true' : 'false'}" ondragstart="TASK_MANAGER.onDragStart(event, '${task.id}', '${from}')" ondragover="TASK_MANAGER.onDragOver(event, '${task.id}', '${from}')" ondragleave="TASK_MANAGER.onDragLeave(event)" ondrop="TASK_MANAGER.onDrop(event, '${task.id}', '${from}')" ondragend="TASK_MANAGER.onDragEnd()" class="flex items-start justify-between gap-2 ${compact ? 'p-2' : 'p-3'} rounded-xl bg-brand-black/70 border border-brand-border ${canDrag ? 'select-none' : ''}">
+        <div class="flex items-start gap-2 min-w-0 flex-1">
+          ${check}
+          <div class="min-w-0 flex-1">
+            ${title}
+            ${meta && !compact ? `<span class="text-[9px] font-mono text-slate-500">${meta}</span>` : ''}
+          </div>
+        </div>
+        <div class="relative shrink-0">
+          <button type="button" data-tm-menu-btn="${task.id}" title="Settings" onclick="event.preventDefault();event.stopPropagation();TASK_MANAGER.toggleMenu('${task.id}')" class="w-7 h-7 rounded-md bg-slate-900 hover:bg-slate-800 border border-brand-border text-slate-400 hover:text-brand-gold flex items-center justify-center ${open ? 'text-brand-gold border-brand-gold/40' : ''}">
+            <i class="fa-solid fa-gear text-[11px]"></i>
+          </button>
+          <div data-tm-menu="${task.id}" onclick="event.stopPropagation()" class="${open ? '' : 'hidden'} fixed z-50 ${editing ? 'w-72' : 'w-44'} rounded-lg border border-brand-border bg-slate-950 shadow-2xl ${editing ? '' : 'py-1'}">
+            ${editing ? editPanel : items.join('')}
+          </div>
+        </div>
+      </div>`;
+  },
+
+  renderPreview() {
+    this.ensure();
+    this.bind();
+    const list = document.getElementById('cc-tm-list');
+    const limitEl = document.getElementById('cc-tm-limit');
+    const input = document.getElementById('cc-tm-new');
+    const atLimit = this.todayOpen().length >= this.maxToday;
+    if (limitEl) limitEl.classList.toggle('hidden', !atLimit);
+    if (input) {
+      input.disabled = atLimit;
+      input.placeholder = atLimit ? 'Complete or Delete tasks to add more' : 'Type a task and hit Enter…';
+    }
+    if (!list) return;
+    const rows = this.previewRows();
+    const openCount = this.todayOpen().length;
+    list.innerHTML = rows.map((task, index) => this.rowMarkup(task, index, openCount, task.completed ? 'history' : 'cc')).join('') || `<p class="text-[10px] text-slate-500 px-1">No tasks for today.</p>`;
+    if (this.menuId) this.placeMenu(this.menuId);
+  },
+
+  render() {
+    this.ensure();
+    this.renderPreview();
+    const root = document.getElementById('view-ent-tasks');
+    if (!root) return;
+    const open = this.todayOpen().length;
+    const atLimit = open >= this.maxToday;
+    const pendingEl = document.getElementById('tm-pending');
+    if (pendingEl) pendingEl.textContent = `${open} / ${this.maxToday}`;
+    const limitEl = document.getElementById('tm-limit');
+    const form = document.getElementById('tm-add-form');
+    const addBtn = document.getElementById('tm-add-btn');
+    const input = document.getElementById('tm-new-task');
+    const showAdd = this.view === 'today';
+    if (form) form.classList.toggle('hidden', !showAdd);
+    if (limitEl) {
+      limitEl.classList.toggle('hidden', !(showAdd && atLimit));
+    }
+    if (input) {
+      input.disabled = atLimit;
+      input.placeholder = atLimit ? 'Complete or Delete tasks to add more' : 'Type a task and hit Enter…';
+    }
+    if (addBtn) addBtn.disabled = atLimit;
+    ['today', 'history', 'future'].forEach((view) => {
+      const btn = document.getElementById(`tm-tab-${view}`);
+      if (!btn) return;
+      const on = this.view === view;
+      btn.className = `text-[10px] font-bold px-2.5 py-1 rounded-lg border ${on ? 'border-amber-500/40 bg-amber-500/10 text-brand-gold' : 'border-brand-border bg-brand-black text-slate-400 hover:text-slate-200'}`;
+    });
+    const list = document.getElementById('tm-list');
+    if (!list) return;
+    const rows = this.filtered();
+    const empty = {
+      today: 'No tasks for today.',
+      history: 'No completed tasks yet.',
+      future: 'No future tasks. Move or snooze one to a later date.'
+    };
+    const sortable = rows.filter((task) => !task.completed).length;
+    list.innerHTML = rows.map((task, index) => this.rowMarkup(task, index, this.view === 'history' ? rows.length : sortable, this.view === 'history' ? 'history' : this.view)).join('') || `<p class="text-[11px] text-slate-500 px-1">${empty[this.view]}</p>`;
+    if (this.menuId) this.placeMenu(this.menuId);
+  },
+
+  escape(value) {
+    return String(value || '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+  }
+};
+
+const DIMAD_SHEET = {
+  storageKey: 'dimad_excel_data',
+  columns: ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z'],
+  rowCount: 50,
+  sheets: {},
+  sheetList: ['Sales', 'Revenue'],
+  activeSheet: 'Sales',
+  selected: 'A1',
+  editing: null,
+  ribbon: 'home',
+  bound: false,
+  built: false,
+  driveFileId: null,
+  workbookName: 'Sales_Revenue_Workbook.xlsx',
+  savedAt: null,
+  dirty: false,
+  pendingOpenId: null,
+  zoom: 100,
+  zoomKey: 'dimad_sheet_zoom',
+
+  emptyCell() {
+    return { raw: '', style: {} };
+  },
+
+  snapshot() {
+    return {
+      kind: 'dimad-sheet',
+      version: 1,
+      name: this.workbookName,
+      sheets: this.sheets,
+      sheetList: this.sheetList,
+      activeSheet: this.activeSheet
+    };
+  },
+
+  applyBook(book, meta) {
+    if (!book || !book.sheets) return;
+    this.sheets = book.sheets;
+    this.sheetList = book.sheetList && book.sheetList.length ? book.sheetList : Object.keys(book.sheets);
+    this.activeSheet = this.sheetList.includes(book.activeSheet) ? book.activeSheet : this.sheetList[0];
+    if (meta) {
+      if (meta.id) this.driveFileId = meta.id;
+      if (meta.name) this.workbookName = meta.name;
+      if (meta.updatedAt) this.savedAt = meta.updatedAt;
+    }
+    if (book.name && !meta) this.workbookName = book.name;
+    this.dirty = false;
+  },
+
+  load() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(this.storageKey) || 'null');
+      if (parsed && parsed.sheets) {
+        this.applyBook(parsed, { id: parsed.driveFileId, name: parsed.workbookName, updatedAt: parsed.savedAt });
+        return;
+      }
+    } catch (err) {}
+    this.sheetList = ['Sales', 'Revenue'];
+    this.activeSheet = 'Sales';
+    this.sheets = { Sales: {}, Revenue: {} };
+    this.workbookName = 'Sales_Revenue_Workbook.xlsx';
+    this.driveFileId = null;
+    this.seedSales();
+  },
+
+  save(keepClean) {
+    if (!keepClean) this.dirty = true;
+    localStorage.setItem(this.storageKey, JSON.stringify({
+      ...this.snapshot(),
+      driveFileId: this.driveFileId,
+      workbookName: this.workbookName,
+      savedAt: this.savedAt
+    }));
+    this.syncChrome();
+  },
+
+  syncChrome() {
+    const name = document.getElementById('sheet-book-name');
+    const status = document.getElementById('sheet-save-status');
+    if (name) name.textContent = this.workbookName || 'Untitled.xlsx';
+    if (!status) return;
+    if (this.driveFileId && !this.dirty) {
+      status.textContent = 'Saved to dimDrive';
+      status.className = 'text-[9px] font-mono text-brand-mint bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded shrink-0';
+    } else if (this.driveFileId && this.dirty) {
+      status.textContent = 'Unsaved changes';
+      status.className = 'text-[9px] font-mono text-brand-gold bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded shrink-0';
+    } else {
+      status.textContent = 'Not in dimDrive';
+      status.className = 'text-[9px] font-mono text-slate-400 bg-slate-900 border border-brand-border px-1.5 py-0.5 rounded shrink-0';
+    }
+  },
+
+  markDirty() {
+    this.dirty = true;
+    this.syncChrome();
+  },
+
+  loadZoom() {
+    const stored = parseInt(localStorage.getItem(this.zoomKey), 10);
+    this.setZoom(Number.isFinite(stored) ? stored : 100, true);
+  },
+
+  zoomBy(delta) {
+    this.setZoom(this.zoom + delta);
+  },
+
+  setZoom(value, skipStore) {
+    const zoom = Math.max(25, Math.min(200, Math.round(Number(value) / 5) * 5));
+    this.zoom = zoom;
+    const table = document.getElementById('sheet-table');
+    if (table) table.style.zoom = String(zoom / 100);
+    const slider = document.getElementById('sheet-zoom-slider');
+    const label = document.getElementById('sheet-zoom-label');
+    if (slider) slider.value = String(zoom);
+    if (label) label.textContent = zoom + '%';
+    document.querySelectorAll('#sheet-zoom-menu button').forEach((btn) => {
+      const on = parseInt(btn.textContent, 10) === zoom;
+      btn.classList.toggle('text-brand-gold', on);
+      btn.classList.toggle('font-bold', on);
+      btn.classList.toggle('bg-amber-500/10', on);
+    });
+    if (!skipStore) localStorage.setItem(this.zoomKey, String(zoom));
+  },
+
+  toggleZoomMenu(force) {
+    const menu = document.getElementById('sheet-zoom-menu');
+    if (!menu) return;
+    if (force === false) menu.classList.add('hidden');
+    else if (force === true) menu.classList.remove('hidden');
+    else menu.classList.toggle('hidden');
+  },
+
+  pickZoom(value) {
+    this.setZoom(value);
+    this.toggleZoomMenu(false);
+  },
+
+  saveToDrive() {
+    this.commitEdit();
+    if (typeof DIMDRIVE === 'undefined') return;
+    const file = DIMDRIVE.upsertSheet({
+      id: this.driveFileId,
+      name: this.workbookName || 'Sales_Revenue_Workbook.xlsx',
+      payload: { workbook: this.snapshot() }
+    });
+    this.driveFileId = file.id;
+    this.workbookName = file.name;
+    this.savedAt = file.updatedAt;
+    this.dirty = false;
+    this.save(true);
+    if (DIMDRIVE.render) DIMDRIVE.render();
+  },
+
+  openPicker() {
+    this.toggleExportMenu(false);
+    const modal = document.getElementById('sheet-open-modal');
+    const list = document.getElementById('sheet-open-list');
+    if (!modal || !list) return;
+    const files = typeof DIMDRIVE !== 'undefined' ? DIMDRIVE.listSheets() : [];
+    list.innerHTML = files.length
+      ? files.map((file) => `<button type="button" onclick="DIMAD_SHEET.openDriveFile('${file.id}')" class="w-full text-left px-3 py-2 rounded-lg border border-brand-border hover:border-brand-gold bg-brand-black">
+          <div class="text-[11px] font-bold text-slate-100 truncate">${this.escape(file.name)}</div>
+          <div class="text-[9px] font-mono text-slate-500">${this.escape(DIMDRIVE.formatStamp(file.updatedAt))}</div>
+        </button>`).join('')
+      : '<p class="text-[11px] text-slate-500 px-1">No workbooks in dimDrive yet. Save this sheet, or upload a file from another computer.</p>';
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  },
+
+  closePicker() {
+    const modal = document.getElementById('sheet-open-modal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  },
+
+  openDriveFile(id) {
+    if (typeof DIMDRIVE === 'undefined') return;
+    const file = DIMDRIVE.get(id);
+    if (!file || file.type !== 'sheet') return;
+    const book = file.payload && file.payload.workbook ? file.payload.workbook : file.payload;
+    this.applyBook(book, file);
+    this.dirty = false;
+    this.save(true);
+    this.paintAll();
+    this.renderTabs();
+    this.selectCell('A1');
+    this.closePicker();
+    this.syncChrome();
+  },
+
+  toggleExportMenu(force) {
+    const menu = document.getElementById('sheet-export-menu');
+    if (!menu) return;
+    if (force === false) menu.classList.add('hidden');
+    else menu.classList.toggle('hidden');
+  },
+
+  exportWorkbook() {
+    this.toggleExportMenu(false);
+    const blob = new Blob([JSON.stringify(this.snapshot(), null, 2)], { type: 'application/json' });
+    const link = document.createElement('a');
+    const name = String(this.workbookName || 'workbook').replace(/\.xlsx$/i, '') + '.dimsheet.json';
+    link.href = URL.createObjectURL(blob);
+    link.download = name;
+    link.click();
+  },
+
+  importPortable(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = String(e.target.result || '');
+      try {
+        const parsed = JSON.parse(text);
+        if (parsed && parsed.sheets) {
+          if (typeof DIMDRIVE !== 'undefined') {
+            const saved = DIMDRIVE.upsertSheet({ name: parsed.name || file.name, payload: { workbook: parsed } });
+            this.openDriveFile(saved.id);
+          } else {
+            this.applyBook(parsed);
+            this.save();
+            this.paintAll();
+            this.renderTabs();
+            this.selectCell('A1');
+          }
+          this.closePicker();
+          event.target.value = '';
+          return;
+        }
+      } catch (err) { /* csv fallback */ }
+      this.importCsv({ target: { files: [file], value: '' } });
+      this.closePicker();
+      event.target.value = '';
+    };
+    reader.readAsText(file);
+  },
+
+  seedSales() {
+    this.sheets.Sales = {
+      A1: { raw: 'DIMAD — Sales & Revenue Runway', style: { bold: true, color: '#F59E0B' } },
+      A3: { raw: 'Revenue Stream', style: { bold: true, bgColor: '#1E293B' } },
+      B3: { raw: 'Monthly Amount ($)', style: { bold: true, bgColor: '#1E293B', align: 'right' } },
+      A4: { raw: 'Stripe SaaS Subscriptions', style: {} },
+      B4: { raw: '5420', style: { align: 'right' } },
+      A5: { raw: 'Gumroad Digital Asset Sales', style: {} },
+      B5: { raw: '1250', style: { align: 'right' } },
+      A6: { raw: 'Client Advisory Retainers', style: {} },
+      B6: { raw: '3500', style: { align: 'right' } },
+      A7: { raw: 'Total Gross Revenue', style: { bold: true } },
+      B7: { raw: '=SUM(B4:B6)', style: { bold: true, color: '#10B981', align: 'right' } },
+      A9: { raw: 'Monthly Operating Expenses', style: { bold: true, bgColor: '#1E293B' } },
+      B9: { raw: 'Cost ($)', style: { bold: true, bgColor: '#1E293B', align: 'right' } },
+      A10: { raw: 'Nomad Housing & Co-working', style: {} },
+      B10: { raw: '2200', style: { align: 'right' } },
+      A11: { raw: 'Software & Cloud Infrastructure', style: {} },
+      B11: { raw: '450', style: { align: 'right' } },
+      A12: { raw: 'Total Monthly Burn', style: { bold: true } },
+      B12: { raw: '=SUM(B10:B11)', style: { bold: true, color: '#EF4444', align: 'right' } },
+      A14: { raw: 'Net Monthly Cashflow', style: { bold: true, bgColor: '#12261c' } },
+      B14: { raw: '=B7-B12', style: { bold: true, color: '#10B981', align: 'right', bgColor: '#12261c' } }
+    };
+    this.sheets.Revenue = this.sheets.Revenue || {};
+  },
+
+  mount() {
+    this.load();
+    this.buildGrid();
+    this.bind();
+    this.setRibbon(this.ribbon);
+    if (this.pendingOpenId) {
+      this.openDriveFile(this.pendingOpenId);
+      this.pendingOpenId = null;
+    }
+    this.paintAll();
+    this.selectCell(this.selected || 'A1');
+    this.renderTabs();
+    this.syncChrome();
+    this.loadZoom();
+  },
+
+  buildGrid() {
+    const table = document.getElementById('sheet-table');
+    if (!table) return;
+    if (table.querySelector('.sheet-cell') && this.built) return;
+    let head = '<thead><tr><th class="sticky top-0 left-0 z-30 w-10 h-6 bg-[#0B0F17] border border-[#1E293B] text-[9px] text-slate-500"></th>';
+    this.columns.forEach((col, idx) => {
+      head += `<th data-col="${idx}" class="sheet-col sticky top-0 z-20 bg-[#0B0F17] border border-[#1E293B] text-center text-[10px] font-normal text-slate-400">${col}</th>`;
+    });
+    head += '</tr></thead><tbody>';
+    let body = '';
+    for (let r = 1; r <= this.rowCount; r++) {
+      body += `<tr><td data-row="${r}" class="sheet-row sticky left-0 z-10 w-10 h-6 bg-[#0B0F17] border border-[#1E293B] text-center text-[10px] text-slate-500">${r}</td>`;
+      this.columns.forEach((col) => {
+        const ref = col + r;
+        body += `<td data-ref="${ref}" class="sheet-cell border border-[#1E293B] bg-[#070A0F] text-slate-200 relative p-0 overflow-hidden"></td>`;
+      });
+      body += '</tr>';
+    }
+    table.innerHTML = head + body + '</tbody>';
+    this.built = true;
+  },
+
+  bind() {
+    const wrap = document.getElementById('sheet-grid-wrap');
+    if (wrap && wrap.dataset.zoomBound !== '1') {
+      wrap.dataset.zoomBound = '1';
+      wrap.addEventListener('wheel', (e) => {
+        if (!e.ctrlKey && !e.metaKey) return;
+        e.preventDefault();
+        this.zoomBy(e.deltaY < 0 ? 10 : -10);
+      }, { passive: false });
+    }
+    const table = document.getElementById('sheet-table');
+    if (!table || table.dataset.sheetBound === '1') return;
+    table.dataset.sheetBound = '1';
+    table.addEventListener('mousedown', (e) => {
+      if (e.target.closest('input')) return;
+      const cell = e.target.closest('.sheet-cell');
+      if (cell) this.editCell(cell.dataset.ref);
+    });
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('#sheet-export-menu') && !String(e.target.closest('button') && e.target.closest('button').getAttribute('onclick') || '').includes('toggleExportMenu')) {
+        this.toggleExportMenu(false);
+      }
+      if (!e.target.closest('#sheet-zoom-menu') && !e.target.closest('#sheet-zoom-label')) {
+        this.toggleZoomMenu(false);
+      }
+    });
+    this.bound = true;
+  },
+
+  setRibbon(name) {
+    this.ribbon = name;
+    ['home', 'insert', 'formulas'].forEach((tab) => {
+      const panel = document.getElementById(`sheet-ribbon-${tab}`);
+      if (panel) panel.style.display = tab === name ? 'flex' : 'none';
+      const btn = document.querySelector(`[data-sheet-ribbon="${tab}"]`);
+      if (btn) btn.className = tab === name
+        ? 'px-3 py-1 rounded-t bg-brand-panel text-brand-gold font-bold'
+        : 'px-3 py-1 rounded-t text-slate-400 hover:text-slate-200';
+    });
+  },
+
+  ensure(ref) {
+    if (!this.sheets[this.activeSheet]) this.sheets[this.activeSheet] = {};
+    if (!this.sheets[this.activeSheet][ref]) this.sheets[this.activeSheet][ref] = this.emptyCell();
+    return this.sheets[this.activeSheet][ref];
+  },
+
+  get(ref) {
+    return (this.sheets[this.activeSheet] && this.sheets[this.activeSheet][ref]) || this.emptyCell();
+  },
+
+  selectCell(ref) {
+    this.commitEdit();
+    this.selected = ref;
+    const refEl = document.getElementById('sheet-ref');
+    const formula = document.getElementById('sheet-formula');
+    if (refEl) refEl.textContent = ref;
+    if (formula) formula.value = this.get(ref).raw || '';
+    document.querySelectorAll('.sheet-cell.sheet-active').forEach((el) => el.classList.remove('sheet-active'));
+    const td = document.querySelector(`.sheet-cell[data-ref="${ref}"]`);
+    if (td) td.classList.add('sheet-active');
+    const col = ref.replace(/[0-9]/g, '');
+    const row = ref.replace(/\D/g, '');
+    document.querySelectorAll('.sheet-col').forEach((el) => {
+      const on = this.columns[Number(el.dataset.col)] === col;
+      el.classList.toggle('text-brand-gold', on);
+      el.classList.toggle('bg-amber-500/10', on);
+    });
+    document.querySelectorAll('.sheet-row').forEach((el) => {
+      const on = String(el.dataset.row) === String(row);
+      el.classList.toggle('text-brand-gold', on);
+      el.classList.toggle('bg-amber-500/10', on);
+    });
+    const style = this.get(ref).style || {};
+    const boldBtn = document.getElementById('sheet-bold');
+    const italicBtn = document.getElementById('sheet-italic');
+    if (boldBtn) boldBtn.classList.toggle('bg-amber-500/20', !!style.bold);
+    if (italicBtn) italicBtn.classList.toggle('bg-amber-500/20', !!style.italic);
+    this.metrics();
+  },
+
+  editCell(ref) {
+    if (this.editing === ref) {
+      const live = document.querySelector(`.sheet-cell[data-ref="${ref}"] input`);
+      if (live) live.focus();
+      return;
+    }
+    this.selectCell(ref);
+    this.editing = ref;
+    const td = document.querySelector(`.sheet-cell[data-ref="${ref}"]`);
+    if (!td) return;
+    td.innerHTML = `<input class="w-full h-full bg-brand-panel text-slate-100 px-1.5 text-[11px] font-mono" value="${this.escapeAttr(this.get(ref).raw)}">`;
+    const input = td.querySelector('input');
+    input.focus();
+    const len = input.value.length;
+    input.setSelectionRange(len, len);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        this.commitEdit();
+      }
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        this.commitEdit();
+        const col = ref.replace(/[0-9]/g, '');
+        const row = parseInt(ref.replace(/\D/g, ''), 10);
+        const idx = this.columns.indexOf(col);
+        if (idx < this.columns.length - 1) this.editCell(this.columns[idx + 1] + row);
+      }
+    });
+    input.addEventListener('blur', () => this.commitEdit());
+  },
+
+  commitEdit() {
+    if (!this.editing) return;
+    const td = document.querySelector(`.sheet-cell[data-ref="${this.editing}"]`);
+    const input = td && td.querySelector('input');
+    if (input) this.ensure(this.editing).raw = input.value;
+    const ref = this.editing;
+    this.editing = null;
+    this.save();
+    this.paintAll();
+    this.selectCell(ref);
+  },
+
+  formulaInput(value) {
+    this.ensure(this.selected).raw = value;
+    this.save();
+    this.paintAll();
+  },
+
+  toggleStyle(prop) {
+    const cell = this.ensure(this.selected);
+    cell.style = cell.style || {};
+    cell.style[prop] = !cell.style[prop];
+    this.save();
+    this.paintCell(this.selected);
+    this.selectCell(this.selected);
+  },
+
+  setAlign(align) {
+    this.ensure(this.selected).style.align = align;
+    this.save();
+    this.paintCell(this.selected);
+  },
+
+  applyColor(prop, value) {
+    this.ensure(this.selected).style[prop] = value;
+    this.save();
+    this.paintCell(this.selected);
+  },
+
+  formatMoney() {
+    const val = parseFloat(this.display(this.selected));
+    if (isNaN(val)) return;
+    this.ensure(this.selected).raw = '$' + val.toLocaleString('en-US', { minimumFractionDigits: 2 });
+    this.save();
+    this.paintAll();
+    this.selectCell(this.selected);
+  },
+
+  formatPercent() {
+    const val = parseFloat(this.display(this.selected));
+    if (isNaN(val)) return;
+    this.ensure(this.selected).raw = (val * 100).toFixed(1) + '%';
+    this.save();
+    this.paintAll();
+    this.selectCell(this.selected);
+  },
+
+  copyCell() {
+    const raw = this.get(this.selected).raw || '';
+    if (navigator.clipboard) navigator.clipboard.writeText(raw);
+  },
+
+  clearCell() {
+    this.ensure(this.selected).raw = '';
+    this.save();
+    this.paintAll();
+    this.selectCell(this.selected);
+  },
+
+  insertFormula(fn) {
+    const raw = `=${fn}(B4:B6)`;
+    this.ensure(this.selected).raw = raw;
+    this.save();
+    this.paintAll();
+    this.selectCell(this.selected);
+  },
+
+  insertSample() {
+    this.seedSales();
+    this.save();
+    this.paintAll();
+    this.selectCell('A1');
+  },
+
+  clearSheet() {
+    if (!confirm('Clear the entire current sheet?')) return;
+    this.sheets[this.activeSheet] = {};
+    this.save();
+    this.paintAll();
+    this.selectCell('A1');
+  },
+
+  addSheet() {
+    let n = this.sheetList.length + 1;
+    let name = 'Sheet' + n;
+    while (this.sheetList.includes(name)) {
+      n += 1;
+      name = 'Sheet' + n;
+    }
+    this.sheetList.push(name);
+    this.sheets[name] = {};
+    this.activeSheet = name;
+    this.save();
+    this.paintAll();
+    this.renderTabs();
+    this.selectCell('A1');
+  },
+
+  switchSheet(name) {
+    this.commitEdit();
+    this.activeSheet = name;
+    this.save();
+    this.paintAll();
+    this.renderTabs();
+    this.selectCell('A1');
+  },
+
+  deleteSheet(name) {
+    if (this.sheetList.length <= 1) return;
+    this.sheetList = this.sheetList.filter((s) => s !== name);
+    delete this.sheets[name];
+    this.activeSheet = this.sheetList[0];
+    this.save();
+    this.paintAll();
+    this.renderTabs();
+    this.selectCell('A1');
+  },
+
+  renderTabs() {
+    const wrap = document.getElementById('sheet-tabs');
+    if (!wrap) return;
+    wrap.innerHTML = this.sheetList.map((name) => {
+      const on = name === this.activeSheet;
+      const close = this.sheetList.length > 1 && on
+        ? `<button type="button" onclick="event.stopPropagation(); DIMAD_SHEET.deleteSheet('${name}')" class="ml-1 text-slate-500 hover:text-red-400"><i class="fa-solid fa-xmark text-[9px]"></i></button>`
+        : '';
+      return `<button type="button" onclick="DIMAD_SHEET.switchSheet('${name}')" class="px-3 py-1 text-[10px] ${on ? 'bg-brand-panel text-brand-gold font-bold border-t-2 border-brand-gold' : 'text-slate-400 hover:text-slate-200'}">${this.escape(name)}${close}</button>`;
+    }).join('');
+  },
+
+  paintAll() {
+    this.columns.forEach((col) => {
+      for (let r = 1; r <= this.rowCount; r++) this.paintCell(col + r);
+    });
+    this.metrics();
+  },
+
+  paintCell(ref) {
+    if (this.editing === ref) return;
+    const td = document.querySelector(`.sheet-cell[data-ref="${ref}"]`);
+    if (!td) return;
+    const cell = this.get(ref);
+    const style = cell.style || {};
+    const align = style.align === 'center' ? 'justify-center text-center' : style.align === 'right' ? 'justify-end text-right' : 'justify-start text-left';
+    const weight = style.bold ? 'font-bold' : '';
+    const italic = style.italic ? 'italic' : '';
+    const color = style.color || '#e2e8f0';
+    const bg = style.bgColor || '#070A0F';
+    td.style.backgroundColor = bg;
+    td.innerHTML = `<div class="w-full h-full px-1.5 flex items-center truncate ${align} ${weight} ${italic}" style="color:${color}">${this.escape(this.display(ref))}</div>`;
+  },
+
+  display(ref, stack) {
+    const raw = this.get(ref).raw;
+    if (!raw) return '';
+    if (!String(raw).startsWith('=')) return raw;
+    return this.evalFormula(raw, stack || new Set());
+  },
+
+  evalFormula(formula, stack) {
+    try {
+      let expr = formula.substring(1).toUpperCase().trim();
+      const range = expr.match(/^(SUM|AVERAGE|MIN|MAX|COUNT)\(([A-Z]+[0-9]+):([A-Z]+[0-9]+)\)$/);
+      if (range) {
+        const values = this.rangeValues(range[2], range[3], stack);
+        if (range[1] === 'SUM') return values.reduce((a, b) => a + b, 0);
+        if (range[1] === 'AVERAGE') return values.length ? Number((values.reduce((a, b) => a + b, 0) / values.length).toFixed(2)) : 0;
+        if (range[1] === 'MIN') return values.length ? Math.min(...values) : 0;
+        if (range[1] === 'MAX') return values.length ? Math.max(...values) : 0;
+        if (range[1] === 'COUNT') return values.length;
+      }
+      const replaced = expr.replace(/[A-Z]+[0-9]+/g, (match) => {
+        if (stack.has(match)) return '0';
+        const next = new Set(stack);
+        next.add(match);
+        const val = parseFloat(this.display(match, next));
+        return isNaN(val) ? '0' : String(val);
+      });
+      if (!/^[\d+\-*/().\s]+$/.test(replaced)) return '#VALUE!';
+      const result = Function('"use strict"; return (' + replaced + ')')();
+      return Number.isFinite(result) ? result : '#VALUE!';
+    } catch (err) {
+      return '#ERROR!';
+    }
+  },
+
+  rangeValues(startRef, endRef, stack) {
+    const startCol = startRef.replace(/[0-9]/g, '');
+    const startRow = parseInt(startRef.replace(/\D/g, ''), 10);
+    const endCol = endRef.replace(/[0-9]/g, '');
+    const endRow = parseInt(endRef.replace(/\D/g, ''), 10);
+    const minC = Math.min(this.columns.indexOf(startCol), this.columns.indexOf(endCol));
+    const maxC = Math.max(this.columns.indexOf(startCol), this.columns.indexOf(endCol));
+    const minR = Math.min(startRow, endRow);
+    const maxR = Math.max(startRow, endRow);
+    const values = [];
+    for (let c = minC; c <= maxC; c++) {
+      for (let r = minR; r <= maxR; r++) {
+        const ref = this.columns[c] + r;
+        if (stack && stack.has(ref)) continue;
+        const next = new Set(stack || []);
+        next.add(ref);
+        const val = parseFloat(this.display(ref, next));
+        if (!isNaN(val)) values.push(val);
+      }
+    }
+    return values;
+  },
+
+  metrics() {
+    let sum = 0;
+    let count = 0;
+    for (let r = 1; r <= this.rowCount; r++) {
+      const val = parseFloat(this.display('B' + r));
+      if (!isNaN(val)) {
+        sum += val;
+        count += 1;
+      }
+    }
+    const avg = document.getElementById('sheet-avg');
+    const countEl = document.getElementById('sheet-count');
+    const sumEl = document.getElementById('sheet-sum');
+    if (avg) avg.textContent = count ? (sum / count).toFixed(2) : '0';
+    if (countEl) countEl.textContent = String(count);
+    if (sumEl) sumEl.textContent = sum.toLocaleString();
+  },
+
+  exportCsv() {
+    this.toggleExportMenu(false);
+    let csv = '';
+    for (let r = 1; r <= 30; r++) {
+      const row = [];
+      for (let c = 0; c < 10; c++) {
+        const val = String(this.display(this.columns[c] + r)).replace(/"/g, '""');
+        row.push(`"${val}"`);
+      }
+      csv += row.join(',') + '\r\n';
+    }
+    const link = document.createElement('a');
+    link.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+    link.download = `${this.activeSheet}_export.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  },
+
+  importCsv(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      String(e.target.result).split(/\r?\n/).forEach((line, rIdx) => {
+        if (rIdx >= this.rowCount) return;
+        line.split(',').forEach((cellVal, cIdx) => {
+          if (cIdx >= this.columns.length) return;
+          const clean = cellVal.replace(/^"|"$/g, '').trim();
+          if (!clean) return;
+          this.ensure(this.columns[cIdx] + (rIdx + 1)).raw = clean;
+        });
+      });
+      this.save();
+      this.paintAll();
+      this.selectCell('A1');
+      event.target.value = '';
+    };
+    reader.readAsText(file);
+  },
+
+  escape(value) {
+    return String(value == null ? '' : value).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+  },
+
+  escapeAttr(value) {
+    return this.escape(value).replace(/\n/g, ' ');
+  }
+};
+
+const INVOICES = {
+  storageKey: 'dimad_invoices_data',
+  tab: 'invoices',
+  filter: 'All',
+  search: '',
+  draftLines: [{ description: 'Consulting Advisory Block', qty: 1, rate: 2500 }],
+  toastTimer: null,
+  invoices: [],
+  proposals: [],
+  clients: [],
+  editingInvoiceId: null,
+  editingClientId: null,
+
+  seed() {
+    return {
+      clients: [
+        { id: 'c1', name: 'Apex Media Group', company: 'Apex Inc', email: 'billing@apexmedia.com', currency: 'USD', location: 'New York, USA', timezone: 'America/New_York', defaultTerms: 'Net 15' },
+        { id: 'c2', name: 'Klaus & Partners', company: 'Klaus GmbH', email: 'accounts@klaus.de', currency: 'EUR', location: 'Berlin, Germany', timezone: 'Europe/Berlin', defaultTerms: 'Net 30' },
+        { id: 'c3', name: 'Solaris Digital', company: 'Solaris LTD', email: 'hello@solaris.co.uk', currency: 'GBP', location: 'London, UK', timezone: 'Europe/London', defaultTerms: 'Due on Receipt' }
+      ],
+      invoices: [
+        { id: 'inv-1', number: 'DIM-2026-001', clientId: 'c1', clientName: 'Apex Media Group', title: 'Q1 Growth & System Architecture', issueDate: '2026-03-01', dueDate: '2026-03-16', total: 6500, currency: 'USD', status: 'Sent', stripeLink: 'https://buy.stripe.com/test_1', items: [{ description: 'Strategy & Execution Sprint', qty: 1, rate: 6500 }] },
+        { id: 'inv-2', number: 'DIM-2026-002', clientId: 'c2', clientName: 'Klaus & Partners', title: 'Asynchronous Workflow Design', issueDate: '2026-02-10', dueDate: '2026-02-25', total: 1200, currency: 'EUR', status: 'Overdue', stripeLink: '', items: [{ description: 'Workflow Optimization', qty: 12, rate: 100 }] },
+        { id: 'inv-3', number: 'DIM-2026-003', clientId: 'c3', clientName: 'Solaris Digital', title: 'Monthly Executive Retainer', issueDate: '2026-03-05', dueDate: '2026-03-05', total: 4500, currency: 'GBP', status: 'Paid', stripeLink: 'https://buy.stripe.com/test_3', items: [{ description: 'Advisory Retainer', qty: 1, rate: 4500 }] }
+      ],
+      proposals: [
+        { id: 'prop-1', number: 'PROP-2026-101', clientId: 'c1', clientName: 'Apex Media Group', title: 'Full Stack Brand Re-positioning', total: 12000, currency: 'USD', validUntil: '2026-04-01', stage: 'Draft', items: [{ description: 'Scope Phase 1', qty: 1, rate: 12000 }] },
+        { id: 'prop-2', number: 'PROP-2026-102', clientId: 'c2', clientName: 'Klaus & Partners', title: 'Custom Operational Dashboard', total: 8500, currency: 'EUR', validUntil: '2026-03-28', stage: 'Sent', items: [{ description: 'Dashboard Engineering', qty: 1, rate: 8500 }] },
+        { id: 'prop-3', number: 'PROP-2026-103', clientId: 'c3', clientName: 'Solaris Digital', title: 'Growth Engine Retainer', total: 6500, currency: 'GBP', validUntil: '2026-03-20', stage: 'Accepted', items: [{ description: 'Growth Advisory', qty: 1, rate: 6500 }] }
+      ]
+    };
+  },
+
+  load() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(this.storageKey) || 'null');
+      if (parsed && Array.isArray(parsed.invoices)) {
+        this.invoices = parsed.invoices;
+        this.proposals = parsed.proposals || [];
+        this.clients = parsed.clients || [];
+        return;
+      }
+    } catch (err) {}
+    const seed = this.seed();
+    this.invoices = seed.invoices;
+    this.proposals = seed.proposals;
+    this.clients = seed.clients;
+  },
+
+  persist() {
+    localStorage.setItem(this.storageKey, JSON.stringify({
+      invoices: this.invoices,
+      proposals: this.proposals,
+      clients: this.clients
+    }));
+  },
+
+  mount() {
+    this.load();
+    this.render();
+  },
+
+  setTab(tab) {
+    this.tab = tab;
+    this.render();
+  },
+
+  setSearch(value) {
+    this.search = value || '';
+    this.render();
+  },
+
+  setFilter(status) {
+    this.filter = status;
+    this.render();
+  },
+
+  money(amount, currency) {
+    const symbols = { USD: '$', EUR: '€', GBP: '£', CAD: '$', AUD: '$' };
+    return (symbols[currency] || '$') + Number(amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2 });
+  },
+
+  clientTime(tz) {
+    try {
+      return new Date().toLocaleTimeString('en-US', { timeZone: tz, hour: '2-digit', minute: '2-digit' });
+    } catch (err) {
+      return '—';
+    }
+  },
+
+  toast(message) {
+    const el = document.getElementById('inv-toast');
+    if (!el) return;
+    el.textContent = message;
+    el.classList.remove('hidden');
+    clearTimeout(this.toastTimer);
+    this.toastTimer = setTimeout(() => el.classList.add('hidden'), 2400);
+  },
+
+  metrics() {
+    let outstanding = 0;
+    let overdue = 0;
+    let collected = 0;
+    let unpaid = 0;
+    let overdueN = 0;
+    this.invoices.forEach((inv) => {
+      if (inv.status === 'Sent') {
+        outstanding += inv.total;
+        unpaid += 1;
+      } else if (inv.status === 'Overdue') {
+        outstanding += inv.total;
+        overdue += inv.total;
+        unpaid += 1;
+        overdueN += 1;
+      } else if (inv.status === 'Paid') collected += inv.total;
+    });
+    const openProps = this.proposals.filter((p) => p.stage !== 'Closed');
+    const pipeline = openProps.reduce((sum, p) => sum + Number(p.total || 0), 0);
+    const set = (id, text) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = text;
+    };
+    set('inv-m-outstanding', this.money(outstanding));
+    set('inv-m-unpaid', unpaid + ' pending');
+    set('inv-m-collected', this.money(collected));
+    set('inv-m-overdue', this.money(overdue));
+    set('inv-m-overdue-n', overdueN + ' need attention');
+    set('inv-m-pipeline', this.money(pipeline));
+    set('inv-m-props', openProps.length + ' active proposals');
+  },
+
+  filteredInvoices() {
+    const q = this.search.toLowerCase();
+    return this.invoices.filter((inv) => {
+      const okStatus = this.filter === 'All' || inv.status === this.filter;
+      const okSearch = !q || String(inv.clientName).toLowerCase().includes(q) || String(inv.number).toLowerCase().includes(q) || String(inv.title).toLowerCase().includes(q);
+      return okStatus && okSearch;
+    });
+  },
+
+  statusBadge(status) {
+    const map = {
+      Paid: 'bg-emerald-500/10 text-brand-mint border-emerald-500/30',
+      Sent: 'bg-sky-500/10 text-brand-accent border-sky-500/30',
+      Overdue: 'bg-red-500/10 text-brand-alert border-red-500/30',
+      Draft: 'bg-slate-800 text-slate-300 border-slate-700'
+    };
+    return map[status] || map.Draft;
+  },
+
+  tabClass(id) {
+    const on = this.tab === id;
+    return `px-3 py-1.5 rounded-lg text-[10px] font-bold border ${on ? 'border-amber-500/40 bg-amber-500/10 text-brand-gold' : 'border-brand-border bg-brand-black text-slate-400 hover:text-slate-200'}`;
+  },
+
+  render() {
+    if (!document.getElementById('view-ent-invoices')) return;
+    this.metrics();
+    ['invoices', 'proposals', 'clients'].forEach((tab) => {
+      const btn = document.querySelector(`[data-inv-tab="${tab}"]`);
+      if (btn) btn.className = this.tabClass(tab);
+      const panel = document.getElementById(`inv-panel-${tab}`);
+      if (panel) panel.classList.toggle('hidden', this.tab !== tab);
+    });
+    const counts = {
+      invoices: this.invoices.length,
+      proposals: this.proposals.length,
+      clients: this.clients.length
+    };
+    ['invoices', 'proposals', 'clients'].forEach((tab) => {
+      const btn = document.querySelector(`[data-inv-tab="${tab}"]`);
+      if (!btn) return;
+      const labels = { invoices: 'Invoices', proposals: 'Proposals', clients: 'Clients' };
+      btn.textContent = `${labels[tab]} (${counts[tab]})`;
+    });
+    if (this.tab === 'invoices') this.renderInvoices();
+    if (this.tab === 'proposals') this.renderProposals();
+    if (this.tab === 'clients') this.renderClients();
+  },
+
+  renderInvoices() {
+    const root = document.getElementById('inv-panel-invoices');
+    if (!root) return;
+    const rows = this.filteredInvoices();
+    const filters = ['All', 'Paid', 'Sent', 'Draft', 'Overdue'];
+    root.innerHTML = `
+      <div class="flex flex-wrap items-center justify-between gap-2 bg-brand-panel border border-brand-border rounded-xl p-2.5">
+        <div class="flex items-center gap-1 flex-wrap">
+          <span class="text-[10px] text-slate-500 mr-1">Status</span>
+          ${filters.map((status) => `<button type="button" onclick="INVOICES.setFilter('${status}')" class="px-2 py-1 text-[10px] rounded-md border ${this.filter === status ? 'border-amber-500/40 bg-amber-500/10 text-brand-gold font-bold' : 'border-transparent text-slate-400 hover:text-white'}">${status}</button>`).join('')}
+        </div>
+        <div class="text-[10px] text-slate-500">${rows.length} invoices</div>
+      </div>
+      <div class="bg-brand-panel border border-brand-border rounded-xl overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-[11px] text-slate-300">
+            <thead class="bg-brand-black text-slate-400 text-[9px] uppercase tracking-wider border-b border-brand-border">
+              <tr>
+                <th class="py-2.5 px-3">ID</th>
+                <th class="py-2.5 px-3">Client</th>
+                <th class="py-2.5 px-3">Dates</th>
+                <th class="py-2.5 px-3 text-right">Amount</th>
+                <th class="py-2.5 px-3 text-center">Status</th>
+                <th class="py-2.5 px-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-brand-border">
+              ${rows.map((inv) => `<tr class="hover:bg-slate-900/50">
+                <td class="py-2.5 px-3"><button type="button" onclick="INVOICES.openInvoiceModal('${inv.id}')" class="font-mono text-brand-gold font-bold hover:underline">${this.escape(inv.number)}</button></td>
+                <td class="py-2.5 px-3"><button type="button" onclick="INVOICES.openClientModal('${inv.clientId}')" class="text-left"><div class="text-white font-bold hover:text-brand-gold hover:underline">${this.escape(inv.clientName)}</div><div class="text-[10px] text-slate-500">${this.escape(inv.title)}</div></button></td>
+                <td class="py-2.5 px-3 font-mono text-[10px] text-slate-400">Issued ${this.escape(inv.issueDate)}<div class="${inv.status === 'Overdue' ? 'text-brand-alert font-bold' : ''}">Due ${this.escape(inv.dueDate)}</div></td>
+                <td class="py-2.5 px-3 text-right font-mono text-white font-bold">${this.money(inv.total, inv.currency)}</td>
+                <td class="py-2.5 px-3 text-center">
+                  <select onchange="INVOICES.setStatus('${inv.id}', this.value)" class="bg-brand-black border rounded-full px-2 py-0.5 text-[9px] font-bold cursor-pointer ${this.statusBadge(inv.status)}">
+                    ${['Draft', 'Sent', 'Paid', 'Overdue'].map((status) => `<option ${inv.status === status ? 'selected' : ''}>${status}</option>`).join('')}
+                  </select>
+                </td>
+                <td class="py-2.5 px-3 text-right whitespace-nowrap">
+                  <button type="button" onclick="INVOICES.copyLink('${inv.id}')" class="p-1.5 rounded border border-brand-border text-brand-mint" title="Copy Stripe link"><i class="fa-solid fa-link text-[10px]"></i></button>
+                  <button type="button" onclick="INVOICES.nudge('${inv.id}')" class="p-1.5 rounded border border-brand-border text-brand-gold" title="Nudge"><i class="fa-solid fa-paper-plane text-[10px]"></i></button>
+                  <button type="button" onclick="INVOICES.toggleStatus('${inv.id}')" class="p-1.5 rounded border border-brand-border text-brand-accent" title="Toggle paid"><i class="fa-solid fa-rotate text-[10px]"></i></button>
+                  <button type="button" onclick="INVOICES.preview('invoice','${inv.id}')" class="p-1.5 rounded bg-amber-500 text-slate-950" title="Preview"><i class="fa-solid fa-eye text-[10px]"></i></button>
+                </td>
+              </tr>`).join('') || `<tr><td colspan="6" class="py-8 text-center text-slate-500 text-[11px]">No invoices match the current filters.</td></tr>`}
+            </tbody>
+          </table>
+        </div>
+      </div>`;
+  },
+
+  renderProposals() {
+    const root = document.getElementById('inv-panel-proposals');
+    if (!root) return;
+    const stages = [
+      { id: 'Draft', label: '1. Drafts', next: 'Sent', nextLabel: 'Send →' },
+      { id: 'Sent', label: '2. Sent / Viewed', next: 'Accepted', nextLabel: 'Accept' },
+      { id: 'Accepted', label: '3. Accepted', next: 'invoice', nextLabel: 'Invoice →' },
+      { id: 'Closed', label: '4. Closed', next: null, nextLabel: '' }
+    ];
+    root.innerHTML = `<div class="grid grid-cols-1 md:grid-cols-4 gap-3">${stages.map((stage) => {
+      const cards = this.proposals.filter((p) => p.stage === stage.id);
+      return `<div class="bg-brand-panel border border-brand-border rounded-xl p-3 space-y-2">
+        <div class="flex items-center justify-between border-b border-brand-border pb-2">
+          <span class="text-[10px] font-bold uppercase tracking-wider ${stage.id === 'Accepted' ? 'text-brand-gold' : 'text-slate-300'}">${stage.label}</span>
+          <span class="text-[9px] font-mono text-slate-400 bg-brand-black px-1.5 py-0.5 rounded">${cards.length}</span>
+        </div>
+        ${cards.map((prop) => `<div class="bg-brand-black border ${stage.id === 'Accepted' ? 'border-amber-500/30' : 'border-brand-border'} rounded-lg p-2.5">
+          <div class="flex justify-between text-[9px] font-mono text-slate-500"><span>${this.escape(prop.number)}</span><span>${this.escape(prop.validUntil || '')}</span></div>
+          <div class="text-[11px] font-bold text-white mt-1">${this.escape(prop.clientName)}</div>
+          <div class="text-[10px] text-slate-400 truncate">${this.escape(prop.title)}</div>
+          <div class="mt-2 flex items-center justify-between">
+            <span class="text-[11px] font-mono font-bold text-brand-gold">${this.money(prop.total, prop.currency)}</span>
+            ${stage.next === 'invoice' ? `<button type="button" onclick="INVOICES.convert('${prop.id}')" class="text-[9px] font-bold bg-amber-500 text-slate-950 px-2 py-1 rounded">Invoice →</button>` : ''}
+            ${stage.next && stage.next !== 'invoice' ? `<button type="button" onclick="INVOICES.moveProposal('${prop.id}','${stage.next}')" class="text-[9px] font-bold border border-brand-border text-slate-200 px-2 py-1 rounded hover:text-brand-gold">${stage.nextLabel}</button>` : ''}
+          </div>
+        </div>`).join('') || '<p class="text-[10px] text-slate-600 px-1">Empty</p>'}
+      </div>`;
+    }).join('')}</div>`;
+  },
+
+  renderClients() {
+    const root = document.getElementById('inv-panel-clients');
+    if (!root) return;
+    const q = this.search.toLowerCase();
+    const list = this.clients.filter((c) => !q || c.name.toLowerCase().includes(q) || String(c.company).toLowerCase().includes(q));
+    root.innerHTML = `<div class="grid grid-cols-1 md:grid-cols-3 gap-3">${list.map((client) => `<button type="button" onclick="INVOICES.openClientModal('${client.id}')" class="bg-brand-panel border border-brand-border rounded-xl p-4 space-y-3 text-left hover:border-brand-gold/50">
+      <div class="flex items-start justify-between">
+        <div class="w-9 h-9 rounded-lg bg-brand-black border border-brand-border flex items-center justify-center font-bold text-brand-gold text-[11px]">${this.escape(client.name.slice(0, 2).toUpperCase())}</div>
+        <span class="text-[9px] font-mono text-brand-gold border border-amber-500/30 px-1.5 py-0.5 rounded">${this.escape(client.currency)}</span>
+      </div>
+      <div>
+        <h3 class="text-[13px] font-black text-white hover:text-brand-gold">${this.escape(client.name)}</h3>
+        <p class="text-[11px] text-slate-400">${this.escape(client.company)}</p>
+        <p class="text-[10px] font-mono text-slate-500">${this.escape(client.email)}</p>
+      </div>
+      <div class="pt-2 border-t border-brand-border space-y-1 text-[10px] text-slate-400">
+        <div class="flex justify-between"><span>Location</span><span class="text-slate-200">${this.escape(client.location)}</span></div>
+        <div class="flex justify-between"><span>Local time</span><span class="text-brand-gold font-mono">${this.escape(this.clientTime(client.timezone))}</span></div>
+        <div class="flex justify-between"><span>Terms</span><span class="text-slate-200">${this.escape(client.defaultTerms)}</span></div>
+      </div>
+    </button>`).join('')}</div>`;
+  },
+
+  showModal(id) {
+    this.closeModals();
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.remove('hidden');
+    el.classList.add('flex');
+  },
+
+  closeModals() {
+    ['inv-invoice-modal', 'inv-proposal-modal', 'inv-client-modal', 'inv-preview-modal'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.classList.add('hidden');
+      el.classList.remove('flex');
+    });
+  },
+
+  fillClientSelect(id) {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    sel.innerHTML = this.clients.map((c) => `<option value="${this.escape(c.id)}">${this.escape(c.name)}</option>`).join('');
+  },
+
+  openInvoiceModal(id) {
+    this.editingInvoiceId = id || null;
+    this.fillClientSelect('inv-new-client');
+    const inv = id ? this.invoices.find((i) => i.id === id) : null;
+    const title = document.getElementById('inv-modal-title');
+    const saveBtn = document.getElementById('inv-modal-save');
+    const set = (elId, value) => {
+      const el = document.getElementById(elId);
+      if (el) el.value = value;
+    };
+    if (title) title.textContent = inv ? 'Edit invoice' : 'Create invoice';
+    if (saveBtn) saveBtn.textContent = inv ? 'Save changes' : 'Generate';
+    if (inv) {
+      set('inv-new-client', inv.clientId);
+      set('inv-new-number', inv.number);
+      set('inv-new-currency', inv.currency || 'USD');
+      set('inv-new-terms', inv.terms || 'Net 15');
+      set('inv-new-date', inv.issueDate || '');
+      set('inv-new-due', inv.dueDate || '');
+      set('inv-new-status', inv.status || 'Sent');
+      set('inv-new-stripe', inv.stripeLink || '');
+      this.draftLines = (inv.items && inv.items.length) ? inv.items.map((item) => ({ ...item })) : [{ description: inv.title || '', qty: 1, rate: inv.total || 0 }];
+    } else {
+      set('inv-new-number', 'DIM-2026-00' + (this.invoices.length + 1));
+      set('inv-new-date', new Date().toISOString().slice(0, 10));
+      set('inv-new-due', new Date().toISOString().slice(0, 10));
+      set('inv-new-status', 'Sent');
+      set('inv-new-stripe', '');
+      this.draftLines = [{ description: 'Consulting Advisory Block', qty: 1, rate: 2500 }];
+    }
+    this.renderLines();
+    this.showModal('inv-invoice-modal');
+  },
+
+  renderLines() {
+    const wrap = document.getElementById('inv-new-lines');
+    if (!wrap) return;
+    wrap.innerHTML = this.draftLines.map((item, index) => `<div class="grid grid-cols-12 gap-2 items-center bg-brand-black border border-brand-border rounded-lg p-2">
+      <input value="${this.escape(item.description)}" oninput="INVOICES.draftLines[${index}].description=this.value" class="col-span-6 bg-transparent text-[11px] text-slate-200 outline-none" placeholder="Description">
+      <input type="number" value="${item.qty}" oninput="INVOICES.draftLines[${index}].qty=Number(this.value); INVOICES.updateDraftTotal()" class="col-span-2 bg-brand-panel border border-brand-border rounded px-2 py-1 text-right text-[11px] text-white">
+      <input type="number" value="${item.rate}" oninput="INVOICES.draftLines[${index}].rate=Number(this.value); INVOICES.updateDraftTotal()" class="col-span-3 bg-brand-panel border border-brand-border rounded px-2 py-1 text-right text-[11px] text-white">
+      <button type="button" onclick="INVOICES.removeLine(${index})" class="col-span-1 text-slate-500 hover:text-brand-alert"><i class="fa-solid fa-trash text-[10px]"></i></button>
+    </div>`).join('');
+    this.updateDraftTotal();
+  },
+
+  addLine() {
+    this.draftLines.push({ description: '', qty: 1, rate: 0 });
+    this.renderLines();
+  },
+
+  removeLine(index) {
+    if (this.draftLines.length <= 1) return;
+    this.draftLines.splice(index, 1);
+    this.renderLines();
+  },
+
+  updateDraftTotal() {
+    const total = this.draftLines.reduce((sum, item) => sum + Number(item.qty || 0) * Number(item.rate || 0), 0);
+    const el = document.getElementById('inv-new-total');
+    const cur = document.getElementById('inv-new-currency');
+    if (el) el.textContent = this.money(total, cur ? cur.value : 'USD');
+  },
+
+  saveInvoice() {
+    const client = this.clients.find((c) => c.id === document.getElementById('inv-new-client').value);
+    const issue = document.getElementById('inv-new-date').value;
+    const due = document.getElementById('inv-new-due').value || issue;
+    const total = this.draftLines.reduce((sum, item) => sum + Number(item.qty || 0) * Number(item.rate || 0), 0);
+    const payload = {
+      number: document.getElementById('inv-new-number').value,
+      clientId: client ? client.id : '',
+      clientName: client ? client.name : 'Client',
+      title: this.draftLines[0] && this.draftLines[0].description ? this.draftLines[0].description : 'Services',
+      issueDate: issue,
+      dueDate: due,
+      total,
+      currency: document.getElementById('inv-new-currency').value,
+      status: document.getElementById('inv-new-status').value || 'Sent',
+      stripeLink: document.getElementById('inv-new-stripe').value,
+      terms: document.getElementById('inv-new-terms').value,
+      items: this.draftLines.map((item) => ({ ...item }))
+    };
+    if (this.editingInvoiceId) {
+      const idx = this.invoices.findIndex((i) => i.id === this.editingInvoiceId);
+      if (idx >= 0) this.invoices[idx] = { ...this.invoices[idx], ...payload };
+      this.toast('Invoice updated');
+    } else {
+      this.invoices.unshift({ id: 'inv-' + Date.now(), ...payload });
+      this.toast('Invoice generated');
+    }
+    this.editingInvoiceId = null;
+    this.persist();
+    this.closeModals();
+    this.setTab('invoices');
+  },
+
+  openProposalModal() {
+    this.fillClientSelect('prop-new-client');
+    const title = document.getElementById('prop-new-title');
+    const total = document.getElementById('prop-new-total');
+    if (title) title.value = '';
+    if (total) total.value = '';
+    this.showModal('inv-proposal-modal');
+  },
+
+  saveProposal() {
+    const client = this.clients.find((c) => c.id === document.getElementById('prop-new-client').value);
+    const total = Number(document.getElementById('prop-new-total').value || 0);
+    const title = document.getElementById('prop-new-title').value || 'Proposal';
+    const currency = document.getElementById('prop-new-currency').value;
+    this.proposals.unshift({
+      id: 'prop-' + Date.now(),
+      number: 'PROP-2026-' + (100 + this.proposals.length + 1),
+      clientId: client ? client.id : '',
+      clientName: client ? client.name : 'Client',
+      title,
+      total,
+      currency,
+      validUntil: new Date(Date.now() + 21 * 86400000).toISOString().slice(0, 10),
+      stage: 'Draft',
+      items: [{ description: title, qty: 1, rate: total }]
+    });
+    this.persist();
+    this.closeModals();
+    this.setTab('proposals');
+    this.toast('Proposal saved as draft');
+  },
+
+  openClientModal(id) {
+    this.editingClientId = id || null;
+    const client = id ? this.clients.find((c) => c.id === id) : null;
+    const title = document.getElementById('cli-modal-title');
+    const saveBtn = document.getElementById('cli-modal-save');
+    if (title) title.textContent = client ? 'Edit client' : 'New client';
+    if (saveBtn) saveBtn.textContent = client ? 'Save changes' : 'Add client';
+    const set = (elId, value) => {
+      const el = document.getElementById(elId);
+      if (el) el.value = value || '';
+    };
+    set('cli-name', client ? client.name : '');
+    set('cli-company', client ? client.company : '');
+    set('cli-email', client ? client.email : '');
+    set('cli-location', client ? client.location : '');
+    set('cli-tz', client ? client.timezone : '');
+    set('cli-currency', client ? client.currency : 'USD');
+    set('cli-terms', client ? client.defaultTerms : 'Net 15');
+    this.showModal('inv-client-modal');
+  },
+
+  saveClient() {
+    const name = document.getElementById('cli-name').value.trim();
+    if (!name) return this.toast('Add a client name');
+    const payload = {
+      name,
+      company: document.getElementById('cli-company').value.trim(),
+      email: document.getElementById('cli-email').value.trim(),
+      location: document.getElementById('cli-location').value.trim() || 'Remote',
+      timezone: document.getElementById('cli-tz').value.trim() || 'UTC',
+      currency: document.getElementById('cli-currency').value,
+      defaultTerms: document.getElementById('cli-terms').value
+    };
+    if (this.editingClientId) {
+      const idx = this.clients.findIndex((c) => c.id === this.editingClientId);
+      if (idx >= 0) this.clients[idx] = { ...this.clients[idx], ...payload };
+      this.invoices.forEach((inv) => {
+        if (inv.clientId === this.editingClientId) inv.clientName = name;
+      });
+      this.proposals.forEach((prop) => {
+        if (prop.clientId === this.editingClientId) prop.clientName = name;
+      });
+      this.toast('Client updated');
+    } else {
+      this.clients.unshift({ id: 'c' + Date.now(), ...payload });
+      this.toast('Client added');
+    }
+    this.editingClientId = null;
+    this.persist();
+    this.closeModals();
+    this.render();
+  },
+
+  setStatus(id, status) {
+    const inv = this.invoices.find((i) => i.id === id);
+    if (!inv) return;
+    inv.status = status;
+    this.persist();
+    this.render();
+    this.toast(inv.number + ' → ' + status);
+  },
+
+  copyLink(id) {
+    const inv = this.invoices.find((i) => i.id === id);
+    if (!inv || !inv.stripeLink) return this.toast('No Stripe link on this invoice');
+    if (navigator.clipboard) navigator.clipboard.writeText(inv.stripeLink);
+    this.toast('Stripe link copied');
+  },
+
+  nudge(id) {
+    const inv = this.invoices.find((i) => i.id === id);
+    if (!inv) return;
+    this.toast('Nudge drafted for ' + inv.clientName + ' · ' + inv.number);
+  },
+
+  toggleStatus(id) {
+    const inv = this.invoices.find((i) => i.id === id);
+    if (!inv) return;
+    if (inv.status === 'Paid') inv.status = 'Sent';
+    else inv.status = 'Paid';
+    this.persist();
+    this.render();
+  },
+
+  moveProposal(id, stage) {
+    const prop = this.proposals.find((p) => p.id === id);
+    if (!prop) return;
+    prop.stage = stage;
+    this.persist();
+    this.render();
+  },
+
+  convert(id) {
+    const prop = this.proposals.find((p) => p.id === id);
+    if (!prop) return;
+    this.invoices.unshift({
+      id: 'inv-' + Date.now(),
+      number: 'DIM-2026-00' + (this.invoices.length + 1),
+      clientId: prop.clientId,
+      clientName: prop.clientName,
+      title: prop.title,
+      issueDate: new Date().toISOString().slice(0, 10),
+      dueDate: new Date().toISOString().slice(0, 10),
+      total: prop.total,
+      currency: prop.currency,
+      status: 'Sent',
+      stripeLink: '',
+      items: (prop.items || []).map((item) => ({ ...item }))
+    });
+    prop.stage = 'Closed';
+    this.persist();
+    this.setTab('invoices');
+    this.toast('Proposal converted to invoice');
+  },
+
+  preview(kind, id) {
+    const doc = kind === 'invoice' ? this.invoices.find((i) => i.id === id) : this.proposals.find((p) => p.id === id);
+    if (!doc) return;
+    const client = this.clients.find((c) => c.id === doc.clientId) || {};
+    const paper = document.getElementById('inv-preview-paper');
+    if (!paper) return;
+    paper.innerHTML = `
+      <div class="flex items-start justify-between border-b border-slate-200 pb-5">
+        <div>
+          <div class="text-xl font-black tracking-wide">DIMAD STUDIO</div>
+          <div class="text-[11px] text-slate-500 mt-1">Autonomous consulting · Remote</div>
+        </div>
+        <div class="text-right">
+          <div class="text-xl font-black text-amber-600 uppercase">${this.escape(kind)}</div>
+          <div class="text-[11px] font-mono text-slate-500">${this.escape(doc.number)}</div>
+          <div class="text-[11px] font-mono text-slate-500">${this.escape(doc.issueDate || '')}</div>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-6 text-[12px]">
+        <div>
+          <div class="text-[10px] font-bold text-slate-400 uppercase mb-1">Billed to</div>
+          <div class="font-bold">${this.escape(doc.clientName)}</div>
+          <div class="text-slate-600">${this.escape(client.company || '')}</div>
+          <div class="font-mono text-slate-500">${this.escape(client.email || '')}</div>
+        </div>
+        <div class="text-right">
+          <div class="text-[10px] font-bold text-slate-400 uppercase mb-1">Payment</div>
+          <div>Due ${this.escape(doc.dueDate || 'Upon receipt')}</div>
+        </div>
+      </div>
+      <table class="w-full text-left text-[12px]">
+        <thead><tr class="border-b bg-slate-50 text-[10px] uppercase text-slate-500"><th class="py-2 px-2">Description</th><th class="py-2 px-2 text-center">Qty</th><th class="py-2 px-2 text-right">Rate</th><th class="py-2 px-2 text-right">Amount</th></tr></thead>
+        <tbody>${(doc.items || []).map((item) => `<tr class="border-b border-slate-100">
+          <td class="py-2 px-2">${this.escape(item.description)}</td>
+          <td class="py-2 px-2 text-center font-mono">${item.qty}</td>
+          <td class="py-2 px-2 text-right font-mono">${this.money(item.rate, doc.currency)}</td>
+          <td class="py-2 px-2 text-right font-mono font-bold">${this.money(item.qty * item.rate, doc.currency)}</td>
+        </tr>`).join('')}</tbody>
+      </table>
+      <div class="flex items-end justify-between">
+        <div class="text-[11px] text-slate-500">${doc.stripeLink ? `<span class="font-mono">${this.escape(doc.stripeLink)}</span>` : ''}</div>
+        <div class="text-right"><div class="text-[11px] text-slate-500">Total due</div><div class="text-2xl font-black font-mono text-amber-700">${this.money(doc.total, doc.currency)}</div></div>
+      </div>
+      <div class="flex justify-end gap-2 pt-3 border-t border-slate-200 inv-no-print">
+        <button type="button" onclick="INVOICES.closeModals()" class="px-3 py-1.5 rounded-lg bg-slate-200 text-slate-800 text-[11px] font-bold">Close</button>
+        <button type="button" onclick="window.print()" class="px-4 py-1.5 rounded-lg bg-amber-500 text-slate-950 text-[11px] font-bold">Print / PDF</button>
+      </div>`;
+    this.showModal('inv-preview-modal');
+  },
+
+  escape(value) {
+    return String(value == null ? '' : value).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+  }
+};
+
+const BUSINESS_AI = {
+  storageKey: 'dimad_business_ai',
+  generating: false,
+  mounted: false,
+  ctxId: null,
+  renamingId: null,
+  bound: false,
+  railView: 'chats',
+  starters: [
+    { label: 'Unit economics', prompt: 'Map unit economics for a $59/mo Premium SaaS: CAC, LTV, payback, and the one lever that moves profit first.' },
+    { label: 'Pricing model', prompt: 'Design a Free / Explore $9 / Premium $59 / VIP $199 ladder with positioning and upgrade triggers.' },
+    { label: 'Offer stack', prompt: 'Write a high-ticket offer stack for operators who want an execution OS, including guarantee and objection handling.' },
+    { label: 'Sales script', prompt: 'Draft a 7-message outbound sequence for boutique agency owners who still invoice by hand.' },
+    { label: 'Hiring brief', prompt: 'Write a hiring scorecard for a part-time operator who owns inbox, invoices, and weekly reporting.' }
+  ],
+
+  defaults() {
+    return {
+      usage: 42,
+      model: 'flash',
+      activeThreadId: 'thread-welcome',
+      messages: [
+        {
+          id: 'welcome-1',
+          sender: 'ai',
+          timestamp: '10:42 AM',
+          type: 'welcome',
+          threadId: 'thread-welcome',
+          text: "I'm Business AI — strategy copilot for pricing, unit economics, offers, sales, and ops. Tell me the constraint and I'll return a plan you can execute this week."
+        }
+      ],
+      activeChatId: 'b1',
+      chats: [
+        {
+          id: 'b1',
+          title: 'Premium ladder',
+          tag: 'Pricing',
+          threadId: 'thread-price',
+          pinned: true,
+          archived: false,
+          thread: [
+            { id: 'bp-u1', sender: 'user', timestamp: '9:18 AM', text: 'Design a Free / Explore $9 / Premium $59 / VIP $199 ladder.', threadId: 'thread-price' },
+            { id: 'bp-a1', sender: 'ai', timestamp: '9:18 AM', type: 'plan', threadId: 'thread-price', text: 'Anchor Premium at $59 as the working operator default. Free proves the OS. Explore ($9) is the on-ramp. VIP ($199) is concierge + yield. Upgrade trigger: they hit a constraint Free cannot clear (invoices, vault, concierge).' }
+          ]
+        },
+        {
+          id: 'b2',
+          title: 'Outbound sequence',
+          tag: 'Sales',
+          threadId: 'thread-sales',
+          pinned: false,
+          archived: false,
+          thread: [
+            { id: 'bs-u1', sender: 'user', timestamp: '11:04 AM', text: 'Draft a 7-message outbound sequence for boutique agency owners.', threadId: 'thread-sales' },
+            { id: 'bs-a1', sender: 'ai', timestamp: '11:04 AM', type: 'hooks', threadId: 'thread-sales', text: 'Seven-touch sequence, one ask per message.', hooks: [{ tag: '1 · Pattern interrupt', text: 'Still building invoices in three tabs at 11pm?' }, { tag: '2 · Proof', text: 'Operators on Premium close the books from one Command Center.' }] }
+          ]
+        },
+        {
+          id: 'b3',
+          title: 'Operator scorecard',
+          tag: 'Hiring',
+          threadId: 'thread-hire',
+          pinned: false,
+          archived: false,
+          thread: [
+            { id: 'bh-u1', sender: 'user', timestamp: '2:41 PM', text: 'Write a hiring scorecard for a part-time operator.', threadId: 'thread-hire' },
+            { id: 'bh-a1', sender: 'ai', timestamp: '2:41 PM', type: 'plan', threadId: 'thread-hire', text: 'Hiring scorecard for a 10hr/week operator: owns inbox SLA, invoice send/follow-up, and a Monday metrics dump. Hire at 12+ on reliability, writing, and tools.' }
+          ]
+        }
+      ]
+    };
+  },
+
+  load() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(this.storageKey) || 'null');
+      if (raw && Array.isArray(raw.messages)) {
+        const next = { ...this.defaults(), ...raw };
+        if (!Array.isArray(next.chats) || !next.chats.length) next.chats = raw.briefs || this.defaults().chats;
+        next.chats = (next.chats || []).map((c) => ({ pinned: false, archived: false, ...c }));
+        return next;
+      }
+    } catch (err) { /* defaults */ }
+    return this.defaults();
+  },
+
+  persist(state) {
+    localStorage.setItem(this.storageKey, JSON.stringify(state));
+  },
+
+  state() {
+    if (!this._state) this._state = this.load();
+    return this._state;
+  },
+
+  escape(value) {
+    return String(value == null ? '' : value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  },
+
+  mount() {
+    const view = document.getElementById('view-ent-ai-business');
+    if (!view) return;
+    ['bai-usage-modal', 'bai-summary-modal', 'bai-ctx', 'bai-rail'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el && el.parentElement !== document.body) document.body.appendChild(el);
+    });
+    this.bindUi();
+    this.mounted = true;
+    this.placeRail();
+    this.render();
+    const feed = document.getElementById('bai-feed');
+    if (feed) feed.scrollTop = feed.scrollHeight;
+  },
+
+  unmount() {
+    this.closeCtx();
+    const rail = document.getElementById('bai-rail');
+    if (rail) {
+      rail.classList.add('hidden');
+      rail.classList.remove('flex');
+    }
+    this.mounted = false;
+  },
+
+  backToDashboard() {
+    this.closeCtx();
+    this.closeSummary();
+    if (typeof switchTab === 'function') switchTab('ent-dashboard');
+  },
+
+  bindUi() {
+    if (this.bound) return;
+    this.bound = true;
+    document.addEventListener('click', (e) => {
+      if (e.button !== 0) return;
+      if (e.target && e.target.closest && e.target.closest('#bai-ctx')) return;
+      this.closeCtx();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        this.closeCtx();
+        this.closeSummary();
+      }
+    });
+    window.addEventListener('resize', () => {
+      if (this.mounted) this.placeRail();
+    });
+  },
+
+  placeRail() {
+    const rail = document.getElementById('bai-rail');
+    const nav = document.getElementById('main-sidebar');
+    if (!rail || !nav) return;
+    const box = nav.getBoundingClientRect();
+    rail.style.position = 'fixed';
+    rail.style.top = `${box.top}px`;
+    rail.style.left = `${box.left}px`;
+    rail.style.width = `${Math.max(box.width, 180)}px`;
+    rail.style.height = `${box.height}px`;
+    rail.style.zIndex = '355';
+    rail.classList.remove('hidden');
+    rail.classList.add('flex');
+  },
+
+  openUsageInfo() {
+    const modal = document.getElementById('bai-usage-modal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  },
+
+  closeUsageInfo() {
+    const modal = document.getElementById('bai-usage-modal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  },
+
+  setModel(model) {
+    this.state().model = model;
+    this.persist(this.state());
+    this.renderChrome();
+  },
+
+  chip(prompt) {
+    const input = document.getElementById('bai-input');
+    if (input) input.value = prompt;
+    this.send();
+  },
+
+  inputKey(event) {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      this.send(event);
+    }
+  },
+
+  send(event) {
+    if (event) event.preventDefault();
+    const input = document.getElementById('bai-input');
+    const prompt = ((input && input.value) || '').trim();
+    if (!prompt || this.generating) return;
+    const s = this.state();
+    let chat = this.activeChat();
+    if (!chat || chat.id === 'welcome') chat = this.ensureLiveChat();
+    const threadId = chat.threadId;
+    s.activeThreadId = threadId;
+    s.activeChatId = chat.id;
+    const stamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const userMsg = { id: 'msg-' + Date.now(), sender: 'user', text: prompt, timestamp: stamp, threadId };
+    s.messages.push(userMsg);
+    chat.thread = chat.thread || [];
+    chat.thread.push(userMsg);
+    s.usage = Math.min(100, (s.usage || 0) + 2);
+    if (input) input.value = '';
+    this.generating = true;
+    this.persist(s);
+    this.render();
+    window.setTimeout(() => this.respond(prompt, threadId), 900);
+  },
+
+  respond(prompt, threadId) {
+    const s = this.state();
+    const stamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const lower = prompt.toLowerCase();
+    const engine = s.model === 'pro' ? 'Deep Reasoning' : 'Gemini Flash';
+    let msg;
+    if (/price|pricing|tier|ladder|unit|econ|ltv|cac/.test(lower)) {
+      msg = {
+        id: 'res-' + Date.now(), sender: 'ai', timestamp: stamp, threadId, type: 'metrics',
+        text: `Pricing brief via ${engine}. Keep four rungs. Make Premium the default working seat.`,
+        metrics: [
+          { label: 'Free', value: '$0', note: 'Proof of OS' },
+          { label: 'Explore', value: '$9', note: 'On-ramp' },
+          { label: 'Premium', value: '$59', note: 'Operator default' },
+          { label: 'VIP', value: '$199', note: 'Concierge + yield' }
+        ]
+      };
+    } else if (/offer|stack|position|guarantee/.test(lower)) {
+      msg = {
+        id: 'res-' + Date.now(), sender: 'ai', timestamp: stamp, threadId, type: 'plan',
+        text: `Offer stack: one promise, three proof points, one guarantee. Promise: an execution OS that turns focus hours into $DIM and shipped work. Proof: Command Center, invoices, Creator AI. Guarantee: 14-day operator trial on Explore before Premium.`
+      };
+    } else if (/sales|outreach|script|sequence|inbound/.test(lower)) {
+      msg = {
+        id: 'res-' + Date.now(), sender: 'ai', timestamp: stamp, threadId, type: 'hooks',
+        text: 'Seven-touch sequence, one ask per message.',
+        hooks: [
+          { tag: '1 · Pattern interrupt', text: 'Still building invoices in three tabs at 11pm?' },
+          { tag: '2 · Proof', text: 'Operators on Premium close the books from one Command Center.' },
+          { tag: '5 · Soft ask', text: 'Want a 12-minute walkthrough of the $59 seat this week?' }
+        ]
+      };
+    } else if (/hire|hiring|scorecard|role|ops/.test(lower)) {
+      msg = {
+        id: 'res-' + Date.now(), sender: 'ai', timestamp: stamp, threadId, type: 'plan',
+        text: 'Hiring scorecard for a 10hr/week operator: owns inbox SLA, invoice send/follow-up, and a Monday metrics dump. Must-haves: written English, Stripe hygiene, calm under timezone drift. Score 1–5 on reliability, writing, tools. Hire at 12+.'
+      };
+    } else {
+      msg = {
+        id: 'res-' + Date.now(), sender: 'ai', timestamp: stamp, threadId, type: 'plan',
+        text: `High-agency loop via ${engine}: pick one ICP, one offer, one channel. This week: 10 outbound, 2 demos, 1 shipped asset. Kill anything that does not feed that loop.`
+      };
+    }
+    s.messages.push(msg);
+    const chat = (s.chats || []).find((c) => c.threadId === threadId);
+    if (chat) {
+      chat.thread = chat.thread || [];
+      chat.thread.push(msg);
+      if (!chat.customTitle) chat.title = String(prompt || chat.title).replace(/\s+/g, ' ').trim().split(' ').slice(0, 6).join(' ') || chat.title;
+      chat.tag = s.model === 'pro' ? 'Deep' : 'Flash';
+      chat.updatedAt = Date.now();
+    }
+    this.generating = false;
+    this.persist(s);
+    this.render();
+  },
+
+  chats() {
+    return this.state().chats || [];
+  },
+
+  activeChat() {
+    const s = this.state();
+    return this.chats().find((c) => c.id === s.activeChatId) || this.chats().find((c) => c.threadId === s.activeThreadId) || null;
+  },
+
+  ensureLiveChat() {
+    const s = this.state();
+    const threadId = 'thread-' + Date.now();
+    const chat = {
+      id: 'chat-' + Date.now(),
+      title: 'New chat',
+      tag: 'Live',
+      threadId,
+      pinned: false,
+      archived: false,
+      customTitle: false,
+      thread: [],
+      updatedAt: Date.now()
+    };
+    s.chats = s.chats || [];
+    s.chats.unshift(chat);
+    s.activeChatId = chat.id;
+    s.activeThreadId = threadId;
+    return chat;
+  },
+
+  newChat() {
+    const s = this.state();
+    s.messages = this.defaults().messages.map((m) => ({ ...m }));
+    this.ensureLiveChat();
+    this.persist(s);
+    this.render();
+    const input = document.getElementById('bai-input');
+    if (input) input.focus();
+  },
+
+  openChat(id) {
+    const chat = this.chats().find((c) => String(c.id) === String(id));
+    if (!chat) return;
+    const s = this.state();
+    s.activeChatId = chat.id;
+    s.activeThreadId = chat.threadId;
+    this.closeCtx();
+    this.renamingId = null;
+    this.persist(s);
+    this.render();
+    const feed = document.getElementById('bai-feed');
+    if (feed) feed.scrollTop = feed.scrollHeight;
+  },
+
+  toggleArchivedView() {
+    this.railView = this.railView === 'archived' ? 'chats' : 'archived';
+    this.closeCtx();
+    this.renderRail();
+  },
+
+  openCtx(event, id) {
+    event.preventDefault();
+    event.stopPropagation();
+    this.ctxId = id;
+    const chat = this.chats().find((c) => String(c.id) === String(id));
+    const archived = !!(chat && chat.archived);
+    const pin = document.getElementById('bai-ctx-pin');
+    const arch = document.getElementById('bai-ctx-archive');
+    if (pin) {
+      pin.classList.toggle('hidden', archived);
+      pin.textContent = chat && chat.pinned ? 'Unpin' : 'Pin';
+    }
+    if (arch) arch.textContent = archived ? 'Unarchive' : 'Archive';
+    const ctx = document.getElementById('bai-ctx');
+    if (!ctx) return;
+    ctx.classList.remove('hidden');
+    ctx.style.left = `${Math.min(event.clientX, window.innerWidth - 180)}px`;
+    ctx.style.top = `${Math.min(event.clientY, window.innerHeight - 180)}px`;
+  },
+
+  closeCtx() {
+    const ctx = document.getElementById('bai-ctx');
+    if (ctx) ctx.classList.add('hidden');
+  },
+
+  ctxAction(action) {
+    const id = this.ctxId;
+    this.closeCtx();
+    if (!id) return;
+    if (action === 'pin') this.togglePin(id);
+    if (action === 'rename') {
+      this.renamingId = id;
+      this.renderRail();
+      const input = document.getElementById('bai-rename-input');
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    }
+    if (action === 'archive') this.toggleArchive(id);
+    if (action === 'summary') this.openSummary(id);
+    if (action === 'delete') this.deleteChat(id);
+  },
+
+  togglePin(id) {
+    const s = this.state();
+    s.chats = this.chats().map((c) => String(c.id) === String(id) ? { ...c, pinned: !c.pinned } : c);
+    this.persist(s);
+    this.renderRail();
+  },
+
+  toggleArchive(id) {
+    const s = this.state();
+    s.chats = this.chats().map((c) => String(c.id) === String(id) ? { ...c, archived: !c.archived, pinned: c.archived ? c.pinned : false } : c);
+    this.persist(s);
+    this.renderRail();
+  },
+
+  deleteChat(id) {
+    const s = this.state();
+    s.chats = this.chats().filter((c) => String(c.id) !== String(id));
+    if (s.activeChatId === id) this.newChat();
+    else {
+      this.persist(s);
+      this.renderRail();
+    }
+  },
+
+  commitRename() {
+    const id = this.renamingId;
+    const input = document.getElementById('bai-rename-input');
+    this.renamingId = null;
+    if (!id || !input) {
+      this.renderRail();
+      return;
+    }
+    const name = input.value.trim();
+    const s = this.state();
+    s.chats = this.chats().map((c) => {
+      if (String(c.id) !== String(id)) return c;
+      if (!name) return { ...c, customTitle: false };
+      return { ...c, title: name, customTitle: true };
+    });
+    this.persist(s);
+    this.render();
+  },
+
+  renameKey(event) {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      this.commitRename();
+    }
+    if (event.key === 'Escape') {
+      this.renamingId = null;
+      this.renderRail();
+    }
+  },
+
+  buildSummary(chat) {
+    const thread = chat.thread || [];
+    const asks = thread.filter((m) => m.sender === 'user').map((m) => m.text).filter(Boolean);
+    const answers = thread.filter((m) => m.sender === 'ai').map((m) => m.text).filter(Boolean);
+    const recs = answers.join(' ').split(/(?<=\.)\s+/).filter(Boolean).slice(0, 5);
+    return [
+      `Executive Summary — ${chat.title || 'Business AI thread'}`,
+      '',
+      'Objective',
+      asks[0] || 'No prompt captured.',
+      '',
+      'Thread asks',
+      ...(asks.length ? asks.map((t, i) => `${i + 1}. ${t}`) : ['—']),
+      '',
+      'Recommendations',
+      ...(recs.length ? recs.map((t) => `• ${t}`) : ['• Continue the brief in Business AI.']),
+      '',
+      'Next actions',
+      '• Convert the top recommendation into a dated task.',
+      '• Assign an owner and a 7-day checkpoint.',
+      '',
+      `Generated ${new Date().toLocaleString()} · Business AI`
+    ].join('\n');
+  },
+
+  openSummary(id) {
+    const chat = this.chats().find((c) => String(c.id) === String(id));
+    if (!chat) return;
+    this.summaryChatId = id;
+    const title = document.getElementById('bai-summary-title');
+    const body = document.getElementById('bai-summary-body');
+    const status = document.getElementById('bai-summary-status');
+    if (title) title.textContent = chat.title || 'Untitled chat';
+    if (body) body.value = this.buildSummary(chat);
+    if (status) status.classList.add('hidden');
+    const modal = document.getElementById('bai-summary-modal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  },
+
+  closeSummary() {
+    const modal = document.getElementById('bai-summary-modal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  },
+
+  saveSummaryNote() {
+    const body = document.getElementById('bai-summary-body');
+    const text = (body && body.value) || '';
+    const chat = this.chats().find((c) => String(c.id) === String(this.summaryChatId));
+    const title = `Summary — ${chat ? chat.title : 'Business AI'}`;
+    const now = Date.now();
+    if (typeof DIMAD_NOTEPAD !== 'undefined') {
+      const notes = DIMAD_NOTEPAD.load();
+      notes.unshift({
+        id: `note-sum-${now}`,
+        title,
+        body: text,
+        createdAt: now,
+        updatedAt: now,
+        customTitle: true
+      });
+      DIMAD_NOTEPAD.persist(notes);
+    }
+    const status = document.getElementById('bai-summary-status');
+    if (status) status.classList.remove('hidden');
+  },
+
+  render() {
+    this.placeRail();
+    this.renderChrome();
+    this.renderFeed();
+    this.renderStarters();
+    this.renderRail();
+  },
+
+  renderChrome() {
+    const s = this.state();
+    const pct = Math.max(0, Math.min(100, Number(s.usage) || 0));
+    const bar = document.getElementById('bai-usage-bar');
+    const label = document.getElementById('bai-usage-pct');
+    const tip = document.getElementById('bai-usage-tip-pct');
+    if (bar) {
+      bar.style.width = pct + '%';
+      bar.className = `h-full rounded-full ${pct > 80 ? 'bg-brand-gold' : 'bg-brand-mint'}`;
+    }
+    if (label) label.textContent = pct + '%';
+    if (tip) tip.textContent = pct + '% Used';
+    const flash = document.getElementById('bai-model-flash');
+    const pro = document.getElementById('bai-model-pro');
+    if (flash) flash.className = `px-2.5 py-1.5 rounded text-[10px] font-semibold ${s.model === 'flash' ? 'bg-brand-mint text-slate-950' : 'bg-brand-black text-slate-400 hover:text-white'}`;
+    if (pro) pro.className = `px-2.5 py-1.5 rounded text-[10px] font-semibold ${s.model === 'pro' ? 'bg-brand-gold text-slate-950' : 'bg-brand-black text-slate-400 hover:text-white'}`;
+    const send = document.getElementById('bai-send');
+    if (send) send.disabled = this.generating;
+    const heading = document.getElementById('bai-active-title');
+    const chat = this.activeChat();
+    if (heading) heading.textContent = chat && chat.title && chat.title !== 'New chat' ? chat.title : 'Chat for strategy, pricing, offers, sales, and ops.';
+  },
+
+  renderStarters() {
+    const root = document.getElementById('bai-starters');
+    if (!root) return;
+    root.innerHTML = this.starters.map((chip) => `<button type="button" onclick='BUSINESS_AI.chip(${JSON.stringify(chip.prompt)})' class="text-[10px] px-2.5 py-1 rounded border border-brand-border bg-brand-black text-slate-300 hover:border-brand-gold/50 hover:text-white transition">${this.escape(chip.label)}</button>`).join('');
+  },
+
+  renderFeed() {
+    const feed = document.getElementById('bai-feed');
+    if (!feed) return;
+    const s = this.state();
+    const chat = this.activeChat();
+    const log = chat && chat.thread && chat.thread.length
+      ? chat.thread
+      : (s.messages || []);
+    const rows = log.map((msg) => {
+      const you = msg.sender === 'user';
+      let extra = '';
+      if (msg.metrics) {
+        extra = `<div class="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full">${msg.metrics.map((m) => `<div class="bg-brand-black border border-brand-border rounded p-2.5">
+          <div class="text-[9px] text-slate-500 uppercase">${this.escape(m.label)}</div>
+          <div class="text-[13px] font-bold text-brand-gold font-mono">${this.escape(m.value)}</div>
+          <div class="text-[10px] text-slate-400">${this.escape(m.note)}</div>
+        </div>`).join('')}</div>`;
+      }
+      if (msg.hooks) {
+        extra += `<div class="space-y-1.5 w-full">${msg.hooks.map((h) => `<div class="bg-brand-black border border-brand-border rounded p-2.5">
+          <span class="text-[9px] font-mono uppercase text-brand-mint">${this.escape(h.tag)}</span>
+          <p class="text-[12px] text-slate-200 mt-1">${this.escape(h.text)}</p>
+        </div>`).join('')}</div>`;
+      }
+      const avatar = you
+        ? '<div class="w-7 h-7 rounded bg-brand-gold text-slate-950 text-[9px] font-bold flex items-center justify-center shrink-0">YOU</div>'
+        : '<div class="w-7 h-7 rounded bg-brand-gold/15 border border-brand-gold/40 text-brand-gold flex items-center justify-center shrink-0"><i class="fa-solid fa-briefcase text-[10px]"></i></div>';
+      return `<div class="flex gap-2.5 ${you ? 'flex-row-reverse' : ''} max-w-3xl ${you ? 'ml-auto' : 'mr-auto'} w-full">
+        ${avatar}
+        <div class="min-w-0 flex-1 space-y-1.5 ${you ? 'flex flex-col items-end' : ''}">
+          <div class="text-[9px] text-slate-500 font-mono">${you ? 'You' : 'Business AI'} · ${this.escape(msg.timestamp || '')}</div>
+          ${msg.text ? `<div class="p-3 rounded-2xl text-[13px] leading-relaxed ${you ? 'bg-brand-gold text-slate-950 rounded-tr-md' : 'bg-brand-black border border-brand-border text-slate-200 rounded-tl-md'}">${this.escape(msg.text)}</div>` : ''}
+          ${extra}
+        </div>
+      </div>`;
+    }).join('');
+    const pending = this.generating
+      ? `<div class="flex gap-2.5 max-w-3xl mr-auto"><div class="w-7 h-7 rounded bg-brand-gold/15 border border-brand-gold/40 text-brand-gold flex items-center justify-center shrink-0"><i class="fa-solid fa-briefcase text-[10px]"></i></div><div class="flex items-center gap-2 text-[12px] text-brand-gold bg-brand-black border border-brand-border p-2.5 rounded-2xl"><i class="fa-solid fa-spinner fa-spin"></i> Drafting the brief...</div></div>`
+      : '';
+    feed.innerHTML = `<div class="max-w-3xl mx-auto w-full space-y-5">${rows}${pending}</div>`;
+    feed.scrollTop = feed.scrollHeight;
+  },
+
+  renderRail() {
+    const root = document.getElementById('bai-chat-list');
+    if (!root) return;
+    const s = this.state();
+    const activeId = s.activeChatId;
+    const all = this.chats();
+    const archivedView = this.railView === 'archived';
+    const pinned = all.filter((c) => c.pinned && !c.archived);
+    const live = all.filter((c) => !c.pinned && !c.archived);
+    const archived = all.filter((c) => c.archived);
+    const heading = document.getElementById('bai-rail-heading');
+    const newBtn = document.getElementById('bai-rail-new');
+    const switchLabel = document.getElementById('bai-rail-switch-label');
+    if (heading) heading.textContent = archivedView ? 'ARCHIVED' : 'SAVED CHATS';
+    if (newBtn) newBtn.classList.toggle('hidden', archivedView);
+    if (switchLabel) switchLabel.textContent = archivedView ? 'Saved chats' : `Archived${archived.length ? ' · ' + archived.length : ''}`;
+    const row = (chat) => {
+      if (this.renamingId === chat.id) {
+        return `<div class="px-1 py-1"><input id="bai-rename-input" type="text" value="${this.escape(chat.title || '')}" onkeydown="BUSINESS_AI.renameKey(event)" onblur="BUSINESS_AI.commitRename()" class="w-full bg-slate-900 border border-brand-gold/40 rounded px-2 py-1 text-[11px] text-slate-100 outline-none"></div>`;
+      }
+      const on = String(chat.id) === String(activeId);
+      return `<button type="button" onclick="BUSINESS_AI.openChat('${chat.id}')" oncontextmenu="BUSINESS_AI.openCtx(event, '${chat.id}')" class="w-full text-left px-2 py-1.5 rounded border ${on ? 'bg-brand-gold/10 border-brand-gold/40 text-slate-100' : 'border-transparent text-slate-400 hover:bg-slate-900 hover:text-slate-200'}">
+        <div class="flex items-center gap-1.5 min-w-0">
+          ${chat.pinned ? '<i class="fa-solid fa-thumbtack text-brand-gold text-[8px] shrink-0"></i>' : ''}
+          <span class="truncate text-[11px] font-semibold">${this.escape(chat.title || 'Untitled')}</span>
+        </div>
+        <div class="text-[9px] text-slate-500 mt-0.5">${this.escape(chat.tag || 'Chat')}</div>
+      </button>`;
+    };
+    const block = (label, items) => items.length ? `<div class="space-y-0.5"><div class="px-1 text-[8px] font-bold uppercase tracking-wider text-slate-500">${label}</div>${items.map(row).join('')}</div>` : '';
+    if (archivedView) {
+      root.innerHTML = archived.length ? archived.map(row).join('') : '<p class="px-2 text-[10px] text-slate-500">No archived chats.</p>';
+      return;
+    }
+    root.innerHTML = `${block('Pinned', pinned)}${block('Chats', live)}` || '<p class="px-2 text-[10px] text-slate-500">No saved chats yet.</p>';
+  }
+};
+window.BUSINESS_AI = BUSINESS_AI;
+
+const NOMAD_AI = {
+  storageKey: 'dimad_nomad_ai',
+  generating: false,
+  mounted: false,
+  ctxId: null,
+  renamingId: null,
+  bound: false,
+  railView: 'chats',
+  starters: [
+    { label: 'Unit economics', prompt: 'Map unit economics for a $59/mo Premium SaaS: CAC, LTV, payback, and the one lever that moves profit first.' },
+    { label: 'Pricing model', prompt: 'Design a Free / Explore $9 / Premium $59 / VIP $199 ladder with positioning and upgrade triggers.' },
+    { label: 'Offer stack', prompt: 'Write a high-ticket offer stack for operators who want an execution OS, including guarantee and objection handling.' },
+    { label: 'Sales script', prompt: 'Draft a 7-message outbound sequence for boutique agency owners who still invoice by hand.' },
+    { label: 'Hiring brief', prompt: 'Write a hiring scorecard for a part-time operator who owns inbox, invoices, and weekly reporting.' }
+  ],
+
+  defaults() {
+    return {
+      usage: 42,
+      model: 'flash',
+      activeThreadId: 'thread-welcome',
+      messages: [
+        {
+          id: 'welcome-1',
+          sender: 'ai',
+          timestamp: '10:42 AM',
+          type: 'welcome',
+          threadId: 'thread-welcome',
+          text: "I'm Nomad AI — strategy copilot for pricing, unit economics, offers, sales, and ops. Tell me the constraint and I'll return a plan you can execute this week."
+        }
+      ],
+      activeChatId: 'b1',
+      chats: [
+        {
+          id: 'b1',
+          title: 'Premium ladder',
+          tag: 'Pricing',
+          threadId: 'thread-price',
+          pinned: true,
+          archived: false,
+          thread: [
+            { id: 'bp-u1', sender: 'user', timestamp: '9:18 AM', text: 'Design a Free / Explore $9 / Premium $59 / VIP $199 ladder.', threadId: 'thread-price' },
+            { id: 'bp-a1', sender: 'ai', timestamp: '9:18 AM', type: 'plan', threadId: 'thread-price', text: 'Anchor Premium at $59 as the working operator default. Free proves the OS. Explore ($9) is the on-ramp. VIP ($199) is concierge + yield. Upgrade trigger: they hit a constraint Free cannot clear (invoices, vault, concierge).' }
+          ]
+        },
+        {
+          id: 'b2',
+          title: 'Outbound sequence',
+          tag: 'Sales',
+          threadId: 'thread-sales',
+          pinned: false,
+          archived: false,
+          thread: [
+            { id: 'bs-u1', sender: 'user', timestamp: '11:04 AM', text: 'Draft a 7-message outbound sequence for boutique agency owners.', threadId: 'thread-sales' },
+            { id: 'bs-a1', sender: 'ai', timestamp: '11:04 AM', type: 'hooks', threadId: 'thread-sales', text: 'Seven-touch sequence, one ask per message.', hooks: [{ tag: '1 · Pattern interrupt', text: 'Still building invoices in three tabs at 11pm?' }, { tag: '2 · Proof', text: 'Operators on Premium close the books from one Command Center.' }] }
+          ]
+        },
+        {
+          id: 'b3',
+          title: 'Operator scorecard',
+          tag: 'Hiring',
+          threadId: 'thread-hire',
+          pinned: false,
+          archived: false,
+          thread: [
+            { id: 'bh-u1', sender: 'user', timestamp: '2:41 PM', text: 'Write a hiring scorecard for a part-time operator.', threadId: 'thread-hire' },
+            { id: 'bh-a1', sender: 'ai', timestamp: '2:41 PM', type: 'plan', threadId: 'thread-hire', text: 'Hiring scorecard for a 10hr/week operator: owns inbox SLA, invoice send/follow-up, and a Monday metrics dump. Hire at 12+ on reliability, writing, and tools.' }
+          ]
+        }
+      ]
+    };
+  },
+
+  load() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(this.storageKey) || 'null');
+      if (raw && Array.isArray(raw.messages)) {
+        const next = { ...this.defaults(), ...raw };
+        if (!Array.isArray(next.chats) || !next.chats.length) next.chats = raw.briefs || this.defaults().chats;
+        next.chats = (next.chats || []).map((c) => ({ pinned: false, archived: false, ...c }));
+        return next;
+      }
+    } catch (err) { /* defaults */ }
+    return this.defaults();
+  },
+
+  persist(state) {
+    localStorage.setItem(this.storageKey, JSON.stringify(state));
+  },
+
+  state() {
+    if (!this._state) this._state = this.load();
+    return this._state;
+  },
+
+  escape(value) {
+    return String(value == null ? '' : value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  },
+
+  mount() {
+    const view = document.getElementById('view-nomad-ai');
+    if (!view) return;
+    ['nai-usage-modal', 'nai-summary-modal', 'nai-ctx', 'nai-rail'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el && el.parentElement !== document.body) document.body.appendChild(el);
+    });
+    this.bindUi();
+    this.mounted = true;
+    this.placeRail();
+    this.render();
+    const feed = document.getElementById('nai-feed');
+    if (feed) feed.scrollTop = feed.scrollHeight;
+  },
+
+  unmount() {
+    this.closeCtx();
+    const rail = document.getElementById('nai-rail');
+    if (rail) {
+      rail.classList.add('hidden');
+      rail.classList.remove('flex');
+    }
+    this.mounted = false;
+  },
+
+  backToDashboard() {
+    this.closeCtx();
+    this.closeSummary();
+    if (typeof switchTab === 'function') switchTab('nomad-city');
+  },
+
+  bindUi() {
+    if (this.bound) return;
+    this.bound = true;
+    document.addEventListener('click', (e) => {
+      if (e.button !== 0) return;
+      if (e.target && e.target.closest && e.target.closest('#nai-ctx')) return;
+      this.closeCtx();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        this.closeCtx();
+        this.closeSummary();
+      }
+    });
+    window.addEventListener('resize', () => {
+      if (this.mounted) this.placeRail();
+    });
+  },
+
+  placeRail() {
+    const rail = document.getElementById('nai-rail');
+    const nav = document.getElementById('main-sidebar');
+    if (!rail || !nav) return;
+    const box = nav.getBoundingClientRect();
+    rail.style.position = 'fixed';
+    rail.style.top = `${box.top}px`;
+    rail.style.left = `${box.left}px`;
+    rail.style.width = `${Math.max(box.width, 180)}px`;
+    rail.style.height = `${box.height}px`;
+    rail.style.zIndex = '355';
+    rail.classList.remove('hidden');
+    rail.classList.add('flex');
+  },
+
+  openUsageInfo() {
+    const modal = document.getElementById('nai-usage-modal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  },
+
+  closeUsageInfo() {
+    const modal = document.getElementById('nai-usage-modal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  },
+
+  setModel(model) {
+    this.state().model = model;
+    this.persist(this.state());
+    this.renderChrome();
+  },
+
+  chip(prompt) {
+    const input = document.getElementById('nai-input');
+    if (input) input.value = prompt;
+    this.send();
+  },
+
+  inputKey(event) {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      this.send(event);
+    }
+  },
+
+  send(event) {
+    if (event) event.preventDefault();
+    const input = document.getElementById('nai-input');
+    const prompt = ((input && input.value) || '').trim();
+    if (!prompt || this.generating) return;
+    const s = this.state();
+    let chat = this.activeChat();
+    if (!chat || chat.id === 'welcome') chat = this.ensureLiveChat();
+    const threadId = chat.threadId;
+    s.activeThreadId = threadId;
+    s.activeChatId = chat.id;
+    const stamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const userMsg = { id: 'msg-' + Date.now(), sender: 'user', text: prompt, timestamp: stamp, threadId };
+    s.messages.push(userMsg);
+    chat.thread = chat.thread || [];
+    chat.thread.push(userMsg);
+    s.usage = Math.min(100, (s.usage || 0) + 2);
+    if (input) input.value = '';
+    this.generating = true;
+    this.persist(s);
+    this.render();
+    window.setTimeout(() => this.respond(prompt, threadId), 900);
+  },
+
+  respond(prompt, threadId) {
+    const s = this.state();
+    const stamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const lower = prompt.toLowerCase();
+    const engine = s.model === 'pro' ? 'Deep Reasoning' : 'Gemini Flash';
+    let msg;
+    if (/price|pricing|tier|ladder|unit|econ|ltv|cac/.test(lower)) {
+      msg = {
+        id: 'res-' + Date.now(), sender: 'ai', timestamp: stamp, threadId, type: 'metrics',
+        text: `Pricing brief via ${engine}. Keep four rungs. Make Premium the default working seat.`,
+        metrics: [
+          { label: 'Free', value: '$0', note: 'Proof of OS' },
+          { label: 'Explore', value: '$9', note: 'On-ramp' },
+          { label: 'Premium', value: '$59', note: 'Operator default' },
+          { label: 'VIP', value: '$199', note: 'Concierge + yield' }
+        ]
+      };
+    } else if (/offer|stack|position|guarantee/.test(lower)) {
+      msg = {
+        id: 'res-' + Date.now(), sender: 'ai', timestamp: stamp, threadId, type: 'plan',
+        text: `Offer stack: one promise, three proof points, one guarantee. Promise: an execution OS that turns focus hours into $DIM and shipped work. Proof: Command Center, invoices, Creator AI. Guarantee: 14-day operator trial on Explore before Premium.`
+      };
+    } else if (/sales|outreach|script|sequence|inbound/.test(lower)) {
+      msg = {
+        id: 'res-' + Date.now(), sender: 'ai', timestamp: stamp, threadId, type: 'hooks',
+        text: 'Seven-touch sequence, one ask per message.',
+        hooks: [
+          { tag: '1 · Pattern interrupt', text: 'Still building invoices in three tabs at 11pm?' },
+          { tag: '2 · Proof', text: 'Operators on Premium close the books from one Command Center.' },
+          { tag: '5 · Soft ask', text: 'Want a 12-minute walkthrough of the $59 seat this week?' }
+        ]
+      };
+    } else if (/hire|hiring|scorecard|role|ops/.test(lower)) {
+      msg = {
+        id: 'res-' + Date.now(), sender: 'ai', timestamp: stamp, threadId, type: 'plan',
+        text: 'Hiring scorecard for a 10hr/week operator: owns inbox SLA, invoice send/follow-up, and a Monday metrics dump. Must-haves: written English, Stripe hygiene, calm under timezone drift. Score 1–5 on reliability, writing, tools. Hire at 12+.'
+      };
+    } else {
+      msg = {
+        id: 'res-' + Date.now(), sender: 'ai', timestamp: stamp, threadId, type: 'plan',
+        text: `High-agency loop via ${engine}: pick one ICP, one offer, one channel. This week: 10 outbound, 2 demos, 1 shipped asset. Kill anything that does not feed that loop.`
+      };
+    }
+    s.messages.push(msg);
+    const chat = (s.chats || []).find((c) => c.threadId === threadId);
+    if (chat) {
+      chat.thread = chat.thread || [];
+      chat.thread.push(msg);
+      if (!chat.customTitle) chat.title = String(prompt || chat.title).replace(/\s+/g, ' ').trim().split(' ').slice(0, 6).join(' ') || chat.title;
+      chat.tag = s.model === 'pro' ? 'Deep' : 'Flash';
+      chat.updatedAt = Date.now();
+    }
+    this.generating = false;
+    this.persist(s);
+    this.render();
+  },
+
+  chats() {
+    return this.state().chats || [];
+  },
+
+  activeChat() {
+    const s = this.state();
+    return this.chats().find((c) => c.id === s.activeChatId) || this.chats().find((c) => c.threadId === s.activeThreadId) || null;
+  },
+
+  ensureLiveChat() {
+    const s = this.state();
+    const threadId = 'thread-' + Date.now();
+    const chat = {
+      id: 'chat-' + Date.now(),
+      title: 'New chat',
+      tag: 'Live',
+      threadId,
+      pinned: false,
+      archived: false,
+      customTitle: false,
+      thread: [],
+      updatedAt: Date.now()
+    };
+    s.chats = s.chats || [];
+    s.chats.unshift(chat);
+    s.activeChatId = chat.id;
+    s.activeThreadId = threadId;
+    return chat;
+  },
+
+  newChat() {
+    const s = this.state();
+    s.messages = this.defaults().messages.map((m) => ({ ...m }));
+    this.ensureLiveChat();
+    this.persist(s);
+    this.render();
+    const input = document.getElementById('nai-input');
+    if (input) input.focus();
+  },
+
+  openChat(id) {
+    const chat = this.chats().find((c) => String(c.id) === String(id));
+    if (!chat) return;
+    const s = this.state();
+    s.activeChatId = chat.id;
+    s.activeThreadId = chat.threadId;
+    this.closeCtx();
+    this.renamingId = null;
+    this.persist(s);
+    this.render();
+    const feed = document.getElementById('nai-feed');
+    if (feed) feed.scrollTop = feed.scrollHeight;
+  },
+
+  toggleArchivedView() {
+    this.railView = this.railView === 'archived' ? 'chats' : 'archived';
+    this.closeCtx();
+    this.renderRail();
+  },
+
+  openCtx(event, id) {
+    event.preventDefault();
+    event.stopPropagation();
+    this.ctxId = id;
+    const chat = this.chats().find((c) => String(c.id) === String(id));
+    const archived = !!(chat && chat.archived);
+    const pin = document.getElementById('nai-ctx-pin');
+    const arch = document.getElementById('nai-ctx-archive');
+    if (pin) {
+      pin.classList.toggle('hidden', archived);
+      pin.textContent = chat && chat.pinned ? 'Unpin' : 'Pin';
+    }
+    if (arch) arch.textContent = archived ? 'Unarchive' : 'Archive';
+    const ctx = document.getElementById('nai-ctx');
+    if (!ctx) return;
+    ctx.classList.remove('hidden');
+    ctx.style.left = `${Math.min(event.clientX, window.innerWidth - 180)}px`;
+    ctx.style.top = `${Math.min(event.clientY, window.innerHeight - 180)}px`;
+  },
+
+  closeCtx() {
+    const ctx = document.getElementById('nai-ctx');
+    if (ctx) ctx.classList.add('hidden');
+  },
+
+  ctxAction(action) {
+    const id = this.ctxId;
+    this.closeCtx();
+    if (!id) return;
+    if (action === 'pin') this.togglePin(id);
+    if (action === 'rename') {
+      this.renamingId = id;
+      this.renderRail();
+      const input = document.getElementById('nai-rename-input');
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    }
+    if (action === 'archive') this.toggleArchive(id);
+    if (action === 'summary') this.openSummary(id);
+    if (action === 'delete') this.deleteChat(id);
+  },
+
+  togglePin(id) {
+    const s = this.state();
+    s.chats = this.chats().map((c) => String(c.id) === String(id) ? { ...c, pinned: !c.pinned } : c);
+    this.persist(s);
+    this.renderRail();
+  },
+
+  toggleArchive(id) {
+    const s = this.state();
+    s.chats = this.chats().map((c) => String(c.id) === String(id) ? { ...c, archived: !c.archived, pinned: c.archived ? c.pinned : false } : c);
+    this.persist(s);
+    this.renderRail();
+  },
+
+  deleteChat(id) {
+    const s = this.state();
+    s.chats = this.chats().filter((c) => String(c.id) !== String(id));
+    if (s.activeChatId === id) this.newChat();
+    else {
+      this.persist(s);
+      this.renderRail();
+    }
+  },
+
+  commitRename() {
+    const id = this.renamingId;
+    const input = document.getElementById('nai-rename-input');
+    this.renamingId = null;
+    if (!id || !input) {
+      this.renderRail();
+      return;
+    }
+    const name = input.value.trim();
+    const s = this.state();
+    s.chats = this.chats().map((c) => {
+      if (String(c.id) !== String(id)) return c;
+      if (!name) return { ...c, customTitle: false };
+      return { ...c, title: name, customTitle: true };
+    });
+    this.persist(s);
+    this.render();
+  },
+
+  renameKey(event) {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      this.commitRename();
+    }
+    if (event.key === 'Escape') {
+      this.renamingId = null;
+      this.renderRail();
+    }
+  },
+
+  buildSummary(chat) {
+    const thread = chat.thread || [];
+    const asks = thread.filter((m) => m.sender === 'user').map((m) => m.text).filter(Boolean);
+    const answers = thread.filter((m) => m.sender === 'ai').map((m) => m.text).filter(Boolean);
+    const recs = answers.join(' ').split(/(?<=\.)\s+/).filter(Boolean).slice(0, 5);
+    return [
+      `Executive Summary — ${chat.title || 'Nomad AI thread'}`,
+      '',
+      'Objective',
+      asks[0] || 'No prompt captured.',
+      '',
+      'Thread asks',
+      ...(asks.length ? asks.map((t, i) => `${i + 1}. ${t}`) : ['—']),
+      '',
+      'Recommendations',
+      ...(recs.length ? recs.map((t) => `• ${t}`) : ['• Continue the brief in Nomad AI.']),
+      '',
+      'Next actions',
+      '• Convert the top recommendation into a dated task.',
+      '• Assign an owner and a 7-day checkpoint.',
+      '',
+      `Generated ${new Date().toLocaleString()} · Nomad AI`
+    ].join('\n');
+  },
+
+  openSummary(id) {
+    const chat = this.chats().find((c) => String(c.id) === String(id));
+    if (!chat) return;
+    this.summaryChatId = id;
+    const title = document.getElementById('nai-summary-title');
+    const body = document.getElementById('nai-summary-body');
+    const status = document.getElementById('nai-summary-status');
+    if (title) title.textContent = chat.title || 'Untitled chat';
+    if (body) body.value = this.buildSummary(chat);
+    if (status) status.classList.add('hidden');
+    const modal = document.getElementById('nai-summary-modal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  },
+
+  closeSummary() {
+    const modal = document.getElementById('nai-summary-modal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  },
+
+  saveSummaryNote() {
+    const body = document.getElementById('nai-summary-body');
+    const text = (body && body.value) || '';
+    const chat = this.chats().find((c) => String(c.id) === String(this.summaryChatId));
+    const title = `Summary — ${chat ? chat.title : 'Nomad AI'}`;
+    const now = Date.now();
+    if (typeof DIMAD_NOTEPAD !== 'undefined') {
+      const notes = DIMAD_NOTEPAD.load();
+      notes.unshift({
+        id: `note-sum-${now}`,
+        title,
+        body: text,
+        createdAt: now,
+        updatedAt: now,
+        customTitle: true
+      });
+      DIMAD_NOTEPAD.persist(notes);
+    }
+    const status = document.getElementById('nai-summary-status');
+    if (status) status.classList.remove('hidden');
+  },
+
+  render() {
+    this.placeRail();
+    this.renderChrome();
+    this.renderFeed();
+    this.renderStarters();
+    this.renderRail();
+  },
+
+  renderChrome() {
+    const s = this.state();
+    const pct = Math.max(0, Math.min(100, Number(s.usage) || 0));
+    const bar = document.getElementById('nai-usage-bar');
+    const label = document.getElementById('nai-usage-pct');
+    const tip = document.getElementById('nai-usage-tip-pct');
+    if (bar) {
+      bar.style.width = pct + '%';
+      bar.className = `h-full rounded-full ${pct > 80 ? 'bg-brand-gold' : 'bg-brand-mint'}`;
+    }
+    if (label) label.textContent = pct + '%';
+    if (tip) tip.textContent = pct + '% Used';
+    const flash = document.getElementById('nai-model-flash');
+    const pro = document.getElementById('nai-model-pro');
+    if (flash) flash.className = `px-2.5 py-1.5 rounded text-[10px] font-semibold ${s.model === 'flash' ? 'bg-brand-mint text-slate-950' : 'bg-brand-black text-slate-400 hover:text-white'}`;
+    if (pro) pro.className = `px-2.5 py-1.5 rounded text-[10px] font-semibold ${s.model === 'pro' ? 'bg-brand-gold text-slate-950' : 'bg-brand-black text-slate-400 hover:text-white'}`;
+    const send = document.getElementById('nai-send');
+    if (send) send.disabled = this.generating;
+    const heading = document.getElementById('nai-active-title');
+    const chat = this.activeChat();
+    if (heading) heading.textContent = chat && chat.title && chat.title !== 'New chat' ? chat.title : 'Chat for strategy, pricing, offers, sales, and ops.';
+  },
+
+  renderStarters() {
+    const root = document.getElementById('nai-starters');
+    if (!root) return;
+    root.innerHTML = this.starters.map((chip) => `<button type="button" onclick='NOMAD_AI.chip(${JSON.stringify(chip.prompt)})' class="text-[10px] px-2.5 py-1 rounded border border-brand-border bg-brand-black text-slate-300 hover:border-brand-gold/50 hover:text-white transition">${this.escape(chip.label)}</button>`).join('');
+  },
+
+  renderFeed() {
+    const feed = document.getElementById('nai-feed');
+    if (!feed) return;
+    const s = this.state();
+    const chat = this.activeChat();
+    const log = chat && chat.thread && chat.thread.length
+      ? chat.thread
+      : (s.messages || []);
+    const rows = log.map((msg) => {
+      const you = msg.sender === 'user';
+      let extra = '';
+      if (msg.metrics) {
+        extra = `<div class="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full">${msg.metrics.map((m) => `<div class="bg-brand-black border border-brand-border rounded p-2.5">
+          <div class="text-[9px] text-slate-500 uppercase">${this.escape(m.label)}</div>
+          <div class="text-[13px] font-bold text-brand-gold font-mono">${this.escape(m.value)}</div>
+          <div class="text-[10px] text-slate-400">${this.escape(m.note)}</div>
+        </div>`).join('')}</div>`;
+      }
+      if (msg.hooks) {
+        extra += `<div class="space-y-1.5 w-full">${msg.hooks.map((h) => `<div class="bg-brand-black border border-brand-border rounded p-2.5">
+          <span class="text-[9px] font-mono uppercase text-brand-mint">${this.escape(h.tag)}</span>
+          <p class="text-[12px] text-slate-200 mt-1">${this.escape(h.text)}</p>
+        </div>`).join('')}</div>`;
+      }
+      const avatar = you
+        ? '<div class="w-7 h-7 rounded bg-brand-gold text-slate-950 text-[9px] font-bold flex items-center justify-center shrink-0">YOU</div>'
+        : '<div class="w-7 h-7 rounded bg-brand-gold/15 border border-brand-gold/40 text-brand-gold flex items-center justify-center shrink-0"><i class="fa-solid fa-plane text-[10px]"></i></div>';
+      return `<div class="flex gap-2.5 ${you ? 'flex-row-reverse' : ''} max-w-3xl ${you ? 'ml-auto' : 'mr-auto'} w-full">
+        ${avatar}
+        <div class="min-w-0 flex-1 space-y-1.5 ${you ? 'flex flex-col items-end' : ''}">
+          <div class="text-[9px] text-slate-500 font-mono">${you ? 'You' : 'Nomad AI'} · ${this.escape(msg.timestamp || '')}</div>
+          ${msg.text ? `<div class="p-3 rounded-2xl text-[13px] leading-relaxed ${you ? 'bg-brand-gold text-slate-950 rounded-tr-md' : 'bg-brand-black border border-brand-border text-slate-200 rounded-tl-md'}">${this.escape(msg.text)}</div>` : ''}
+          ${extra}
+        </div>
+      </div>`;
+    }).join('');
+    const pending = this.generating
+      ? `<div class="flex gap-2.5 max-w-3xl mr-auto"><div class="w-7 h-7 rounded bg-brand-gold/15 border border-brand-gold/40 text-brand-gold flex items-center justify-center shrink-0"><i class="fa-solid fa-plane text-[10px]"></i></div><div class="flex items-center gap-2 text-[12px] text-brand-gold bg-brand-black border border-brand-border p-2.5 rounded-2xl"><i class="fa-solid fa-spinner fa-spin"></i> Drafting the brief...</div></div>`
+      : '';
+    feed.innerHTML = `<div class="max-w-3xl mx-auto w-full space-y-5">${rows}${pending}</div>`;
+    feed.scrollTop = feed.scrollHeight;
+  },
+
+  renderRail() {
+    const root = document.getElementById('nai-chat-list');
+    if (!root) return;
+    const s = this.state();
+    const activeId = s.activeChatId;
+    const all = this.chats();
+    const archivedView = this.railView === 'archived';
+    const pinned = all.filter((c) => c.pinned && !c.archived);
+    const live = all.filter((c) => !c.pinned && !c.archived);
+    const archived = all.filter((c) => c.archived);
+    const heading = document.getElementById('nai-rail-heading');
+    const newBtn = document.getElementById('nai-rail-new');
+    const switchLabel = document.getElementById('nai-rail-switch-label');
+    if (heading) heading.textContent = archivedView ? 'ARCHIVED' : 'SAVED CHATS';
+    if (newBtn) newBtn.classList.toggle('hidden', archivedView);
+    if (switchLabel) switchLabel.textContent = archivedView ? 'Saved chats' : `Archived${archived.length ? ' · ' + archived.length : ''}`;
+    const row = (chat) => {
+      if (this.renamingId === chat.id) {
+        return `<div class="px-1 py-1"><input id="nai-rename-input" type="text" value="${this.escape(chat.title || '')}" onkeydown="NOMAD_AI.renameKey(event)" onblur="NOMAD_AI.commitRename()" class="w-full bg-slate-900 border border-brand-gold/40 rounded px-2 py-1 text-[11px] text-slate-100 outline-none"></div>`;
+      }
+      const on = String(chat.id) === String(activeId);
+      return `<button type="button" onclick="NOMAD_AI.openChat('${chat.id}')" oncontextmenu="NOMAD_AI.openCtx(event, '${chat.id}')" class="w-full text-left px-2 py-1.5 rounded border ${on ? 'bg-brand-gold/10 border-brand-gold/40 text-slate-100' : 'border-transparent text-slate-400 hover:bg-slate-900 hover:text-slate-200'}">
+        <div class="flex items-center gap-1.5 min-w-0">
+          ${chat.pinned ? '<i class="fa-solid fa-thumbtack text-brand-gold text-[8px] shrink-0"></i>' : ''}
+          <span class="truncate text-[11px] font-semibold">${this.escape(chat.title || 'Untitled')}</span>
+        </div>
+        <div class="text-[9px] text-slate-500 mt-0.5">${this.escape(chat.tag || 'Chat')}</div>
+      </button>`;
+    };
+    const block = (label, items) => items.length ? `<div class="space-y-0.5"><div class="px-1 text-[8px] font-bold uppercase tracking-wider text-slate-500">${label}</div>${items.map(row).join('')}</div>` : '';
+    if (archivedView) {
+      root.innerHTML = archived.length ? archived.map(row).join('') : '<p class="px-2 text-[10px] text-slate-500">No archived chats.</p>';
+      return;
+    }
+    root.innerHTML = `${block('Pinned', pinned)}${block('Chats', live)}` || '<p class="px-2 text-[10px] text-slate-500">No saved chats yet.</p>';
+  }
+};
+window.NOMAD_AI = NOMAD_AI;
+
+
+const CREATOR_AI = {
+  storageKey: 'dimad_creator_ai_v2',
+  passKey: 'dimad_creator_studio_pass',
+  copiedId: null,
+  generating: false,
+  mounted: false,
+  viewingAssetId: null,
+  ctxId: null,
+  renamingId: null,
+  bound: false,
+  railView: 'chats',
+  starters: [
+    { label: 'Product shot', prompt: 'Generate a sleek, minimalist studio product photoshoot for an obsidian digital nomad tumbler on volcanic sand.' },
+    { label: 'TikTok hooks', prompt: 'Write 3 viral TikTok hook options for a SaaS product that automates client invoices.' },
+    { label: 'Brand kit', prompt: 'Generate a high-contrast futuristic brand identity palette with hex codes and typography hierarchy.' },
+    { label: 'IG carousel', prompt: 'Outline a 6-slide Instagram carousel teaching solopreneurs how to price retainers, with slide copy and visual direction.' },
+    { label: 'Campaign pack', prompt: 'Draft a full product launch campaign pack: hero render, social story background, and ad headline.' }
+  ],
+
+  defaults() {
+    return {
+      usage: 42,
+      model: 'flash',
+      ratio: '1:1',
+      vaultFilter: 'recent',
+      activeThreadId: 'thread-welcome',
+      input: '',
+      messages: [
+        {
+          id: 'welcome-1',
+          sender: 'ai',
+          timestamp: '10:42 AM',
+          text: "I'm Creator AI — a chat partner for social posts, product shots, brand kits, hooks, and campaign assets. Tell me what you're shipping and I'll draft copy, visuals, or a full pack.",
+          type: 'welcome',
+          threadId: 'thread-welcome'
+        }
+      ],
+      vault: []
+    };
+  },
+
+  sampleVault() {
+    return [
+      {
+        id: 'v1',
+        title: 'Obsidian Vessel 4K',
+        type: 'image',
+        url: 'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=600&q=80',
+        ptsSpent: 1000,
+        date: 'Today',
+        threadId: 'thread-vessel',
+        thread: [
+          { id: 'tv-u1', sender: 'user', timestamp: '10:41 AM', text: 'Product shot of an obsidian travel tumbler on volcanic sand, rim light, 8k.', threadId: 'thread-vessel' },
+          { id: 'tv-d1', sender: 'ai', timestamp: '10:41 AM', text: 'Draft #01 — wider sand field, still too busy behind the bottle.', type: 'image_draft', threadId: 'thread-vessel', draftData: { title: 'Obsidian Vessel — Draft #01', prompt: 'Wide volcanic beach, tumbler small in frame', previewUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1000&q=80', exportCost: 1000, isExported: false } },
+          { id: 'tv-u2', sender: 'user', timestamp: '10:42 AM', text: 'Tighter crop. More rim light. Lose the extra props.', threadId: 'thread-vessel' },
+          { id: 'tv-d2', sender: 'ai', timestamp: '10:43 AM', text: 'Draft #04 locked the hero angle. Export when you want 4K.', type: 'image_draft', threadId: 'thread-vessel', draftData: { title: 'Obsidian Travel Vessel — Draft #04', prompt: 'Minimalist black stainless steel water bottle on dark volcanic sand, dramatic rim lighting', previewUrl: 'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=1000&q=80', exportCost: 1000, isExported: true } }
+        ]
+      },
+      {
+        id: 'v2',
+        title: 'Lisbon Sunset B-Roll',
+        type: 'video',
+        url: 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&w=600&q=80',
+        duration: '5.0s',
+        ptsSpent: 4000,
+        date: 'Yesterday',
+        threadId: 'thread-lisbon',
+        thread: [
+          { id: 'tl-u1', sender: 'user', timestamp: '4:12 PM', text: '5s motion teaser of a Lisbon sunset rooftop, 60fps, vertical story crop.', threadId: 'thread-lisbon' },
+          { id: 'tl-d1', sender: 'ai', timestamp: '4:12 PM', text: 'Keyframe draft — too much sky, not enough city texture.', type: 'video_draft', threadId: 'thread-lisbon', videoData: { title: 'Lisbon Loop — Draft #01', fps: '60 FPS', previewUrl: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1000&q=80', exportCost: 4000, isExported: false } },
+          { id: 'tl-u2', sender: 'user', timestamp: '4:14 PM', text: 'Push into the terrace and keep the 5s loop seamless.', threadId: 'thread-lisbon' },
+          { id: 'tl-d2', sender: 'ai', timestamp: '4:15 PM', text: 'HD keyframe locked for the sunset B-roll loop.', type: 'video_draft', threadId: 'thread-lisbon', videoData: { title: 'Lisbon Sunset B-Roll', fps: '60 FPS', previewUrl: 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&w=1000&q=80', exportCost: 4000, isExported: true } }
+        ]
+      },
+      {
+        id: 'v3',
+        title: 'Cyber Nomad Palette',
+        type: 'image',
+        url: '',
+        colors: ['#070A0F', '#38BDF8', '#10B981', '#F59E0B', '#EF4444'],
+        date: '3 days ago',
+        threadId: 'thread-palette',
+        thread: [
+          { id: 'tp-u1', sender: 'user', timestamp: '1:04 PM', text: 'Brand kit: high-contrast nomad OS palette with gold, mint, and sky.', threadId: 'thread-palette' },
+          { id: 'tp-d1', sender: 'ai', timestamp: '1:04 PM', text: 'Draft kit with canvas, accent, action, and gold roles.', type: 'brand_kit', threadId: 'thread-palette', brandData: { title: 'Cyber-Nomad Palette & Identity', colors: [{ name: 'Deep Slate', hex: '#070A0F' }, { name: 'Sky Signal', hex: '#38BDF8' }, { name: 'Mint Yield', hex: '#10B981' }, { name: 'Amber Gold', hex: '#F59E0B' }] } }
+        ]
+      }
+    ];
+  },
+
+  load() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(this.storageKey) || 'null');
+      if (raw && Array.isArray(raw.messages)) {
+        const next = { ...this.defaults(), ...raw };
+        if (next.vaultFilter === 'all') next.vaultFilter = 'recent';
+        if (!Array.isArray(next.vault) || !next.vault.length) next.vault = this.sampleVault();
+        next.vault = next.vault.map((item) => this.hydrateVaultItem(item));
+        return this.hydrateChats(next);
+      }
+    } catch (err) { /* defaults */ }
+    const fresh = this.defaults();
+    fresh.vault = this.sampleVault();
+    return this.hydrateChats(fresh);
+  },
+
+  hydrateChats(state) {
+    if (Array.isArray(state.chats) && state.chats.length) {
+      state.chats = state.chats.map((c) => ({ pinned: false, archived: false, customTitle: !!c.customTitle, ...c }));
+      if (!state.activeChatId) state.activeChatId = state.chats[0].id;
+      if (!state.activeThreadId) state.activeThreadId = state.chats[0].threadId;
+      return state;
+    }
+    const chats = [];
+    (state.vault || []).forEach((item, i) => {
+      if (!item.thread || !item.thread.length) return;
+      chats.push({
+        id: 'c-vault-' + item.id,
+        title: item.title || 'Asset thread',
+        tag: item.type === 'video' ? 'Video' : item.type === 'image' ? 'Image' : 'Brand',
+        threadId: item.threadId || ('thread-vault-' + item.id),
+        pinned: i === 0,
+        archived: false,
+        customTitle: true,
+        vaultId: item.id,
+        thread: item.thread,
+        updatedAt: Date.now() - i * 1000
+      });
+    });
+    const taken = new Set(chats.map((c) => c.threadId));
+    const extra = {};
+    (state.messages || []).forEach((m) => {
+      const tid = m.threadId || 'thread-welcome';
+      if (taken.has(tid) || tid === 'thread-welcome') return;
+      extra[tid] = extra[tid] || [];
+      extra[tid].push(m);
+    });
+    Object.keys(extra).forEach((tid) => {
+      const thread = extra[tid];
+      const first = thread.find((m) => m.sender === 'user');
+      chats.unshift({
+        id: 'c-' + tid,
+        title: String((first && first.text) || 'Chat').replace(/\s+/g, ' ').trim().split(' ').slice(0, 6).join(' '),
+        tag: 'Chat',
+        threadId: tid,
+        pinned: false,
+        archived: false,
+        thread,
+        updatedAt: Date.now()
+      });
+    });
+    if (!chats.length) {
+      chats.push({
+        id: 'c-welcome',
+        title: 'Welcome',
+        tag: 'Chat',
+        threadId: 'thread-welcome',
+        pinned: false,
+        archived: false,
+        thread: state.messages || [],
+        updatedAt: Date.now()
+      });
+    }
+    state.chats = chats;
+    state.activeChatId = chats[0].id;
+    state.activeThreadId = chats[0].threadId;
+    return state;
+  },
+
+  hydrateVaultItem(item) {
+    if (item.thread && item.thread.length) return item;
+    const samples = this.sampleVault();
+    const match = samples.find((row) => row.id === item.id || row.title === item.title);
+    if (match) return { ...item, threadId: match.threadId, thread: match.thread, type: item.type || match.type };
+    return { ...item, thread: item.thread || [] };
+  },
+
+  persist(state) {
+    localStorage.setItem(this.storageKey, JSON.stringify(state));
+  },
+
+  state() {
+    if (!this._state) this._state = this.load();
+    return this._state;
+  },
+
+  passActive() {
+    return localStorage.getItem(this.passKey) === '1';
+  },
+
+  dim() {
+    return (typeof DIM_ENGINE !== 'undefined' && DIM_ENGINE.user) ? DIM_ENGINE.user.totalDimBalance : 0;
+  },
+
+  spendDim(amount) {
+    if (typeof DIM_ENGINE === 'undefined') return false;
+    if (DIM_ENGINE.user.totalDimBalance < amount) return false;
+    DIM_ENGINE.user.totalDimBalance -= amount;
+    if (DIM_ENGINE.updateUI) DIM_ENGINE.updateUI();
+    return true;
+  },
+
+  grantDim(amount) {
+    if (typeof DIM_ENGINE === 'undefined') return;
+    DIM_ENGINE.user.totalDimBalance += amount;
+    if (DIM_ENGINE.updateUI) DIM_ENGINE.updateUI();
+  },
+
+  escape(value) {
+    return String(value == null ? '' : value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  },
+
+  mount() {
+    const view = document.getElementById('view-creator-ai');
+    if (!view) return;
+    ['cai-upgrade-modal', 'cai-usage-modal', 'cai-pass-info-modal', 'cai-summary-modal', 'cai-ctx', 'cai-rail'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el && el.parentElement !== document.body) document.body.appendChild(el);
+    });
+    this.bindUi();
+    this.mounted = true;
+    this.placeRail();
+    this.render();
+    const feed = document.getElementById('cai-feed');
+    if (feed) feed.scrollTop = feed.scrollHeight;
+  },
+
+  unmount() {
+    this.closeCtx();
+    const rail = document.getElementById('cai-rail');
+    if (rail) {
+      rail.classList.add('hidden');
+      rail.classList.remove('flex');
+    }
+    this.mounted = false;
+  },
+
+  backToDashboard() {
+    this.closeCtx();
+    this.closeSummary();
+    if (typeof switchTab === 'function') switchTab('creator-studio');
+  },
+
+  bindUi() {
+    if (this.bound) return;
+    this.bound = true;
+    document.addEventListener('click', (e) => {
+      if (e.button !== 0) return;
+      if (e.target && e.target.closest && e.target.closest('#cai-ctx')) return;
+      this.closeCtx();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        this.closeCtx();
+        this.closeSummary();
+      }
+    });
+    window.addEventListener('resize', () => {
+      if (this.mounted) this.placeRail();
+    });
+  },
+
+  placeRail() {
+    const rail = document.getElementById('cai-rail');
+    const nav = document.getElementById('main-sidebar');
+    if (!rail || !nav) return;
+    const box = nav.getBoundingClientRect();
+    rail.style.position = 'fixed';
+    rail.style.top = `${box.top}px`;
+    rail.style.left = `${box.left}px`;
+    rail.style.width = `${Math.max(box.width, 180)}px`;
+    rail.style.height = `${box.height}px`;
+    rail.style.zIndex = '355';
+    rail.classList.remove('hidden');
+    rail.classList.add('flex');
+  },
+
+  chats() {
+    return this.state().chats || [];
+  },
+
+  activeChat() {
+    const s = this.state();
+    return this.chats().find((c) => c.id === s.activeChatId) || this.chats().find((c) => c.threadId === s.activeThreadId) || null;
+  },
+
+  ensureLiveChat() {
+    const s = this.state();
+    const threadId = 'thread-' + Date.now();
+    const chat = {
+      id: 'chat-' + Date.now(),
+      title: 'New chat',
+      tag: 'Live',
+      threadId,
+      pinned: false,
+      archived: false,
+      customTitle: false,
+      thread: [],
+      updatedAt: Date.now()
+    };
+    s.chats = s.chats || [];
+    s.chats.unshift(chat);
+    s.activeChatId = chat.id;
+    s.activeThreadId = threadId;
+    return chat;
+  },
+
+  newChat() {
+    const s = this.state();
+    this.viewingAssetId = null;
+    s.messages = this.defaults().messages.map((m) => ({ ...m }));
+    this.ensureLiveChat();
+    this.persist(s);
+    this.render();
+    const input = document.getElementById('cai-input');
+    if (input) input.focus();
+  },
+
+  loadDailyInspo(seed) {
+    if (!seed) return;
+    const s = this.state();
+    const stamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    this.viewingAssetId = null;
+    const chat = this.ensureLiveChat();
+    chat.title = seed.title;
+    chat.customTitle = true;
+    chat.tag = 'Inspo';
+    const threadId = chat.threadId;
+    s.activeChatId = chat.id;
+    s.activeThreadId = threadId;
+    s.input = seed.title;
+    const msg = {
+      id: 'inspo-' + Date.now(),
+      sender: 'ai',
+      timestamp: stamp,
+      text: `Loaded Daily Inspiration: ${seed.title}\n\n"${seed.promptText}"`,
+      type: 'image_draft',
+      threadId,
+      isPreRenderedSample: true,
+      draftData: {
+        title: seed.title,
+        prompt: seed.promptText,
+        previewUrl: seed.imageUrl,
+        exportCost: 1000,
+        isExported: false
+      }
+    };
+    s.messages = [msg];
+    chat.thread = [msg];
+    chat.updatedAt = Date.now();
+    this.persist(s);
+    if (typeof switchTab === 'function') switchTab('creator-ai');
+    const input = document.getElementById('cai-input');
+    if (input) input.value = seed.title;
+  },
+
+  openChat(id) {
+    const chat = this.chats().find((c) => String(c.id) === String(id));
+    if (!chat) return;
+    const s = this.state();
+    s.activeChatId = chat.id;
+    s.activeThreadId = chat.threadId;
+    this.viewingAssetId = chat.vaultId || null;
+    this.closeCtx();
+    this.renamingId = null;
+    this.persist(s);
+    this.render();
+    const feed = document.getElementById('cai-feed');
+    if (feed) feed.scrollTop = feed.scrollHeight;
+  },
+
+  toggleArchivedView() {
+    this.railView = this.railView === 'archived' ? 'chats' : 'archived';
+    this.closeCtx();
+    this.renderRail();
+  },
+
+  openCtx(event, id) {
+    event.preventDefault();
+    event.stopPropagation();
+    this.ctxId = id;
+    const chat = this.chats().find((c) => String(c.id) === String(id));
+    const archived = !!(chat && chat.archived);
+    const pin = document.getElementById('cai-ctx-pin');
+    const arch = document.getElementById('cai-ctx-archive');
+    if (pin) {
+      pin.classList.toggle('hidden', archived);
+      pin.textContent = chat && chat.pinned ? 'Unpin' : 'Pin';
+    }
+    if (arch) arch.textContent = archived ? 'Unarchive' : 'Archive';
+    const ctx = document.getElementById('cai-ctx');
+    if (!ctx) return;
+    ctx.classList.remove('hidden');
+    ctx.style.left = `${Math.min(event.clientX, window.innerWidth - 180)}px`;
+    ctx.style.top = `${Math.min(event.clientY, window.innerHeight - 180)}px`;
+  },
+
+  closeCtx() {
+    const ctx = document.getElementById('cai-ctx');
+    if (ctx) ctx.classList.add('hidden');
+  },
+
+  ctxAction(action) {
+    const id = this.ctxId;
+    this.closeCtx();
+    if (!id) return;
+    if (action === 'pin') this.togglePin(id);
+    if (action === 'rename') {
+      this.renamingId = id;
+      this.renderRail();
+      const input = document.getElementById('cai-rename-input');
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    }
+    if (action === 'archive') this.toggleArchive(id);
+    if (action === 'summary') this.openSummary(id);
+    if (action === 'delete') this.deleteChat(id);
+  },
+
+  togglePin(id) {
+    const s = this.state();
+    s.chats = this.chats().map((c) => String(c.id) === String(id) ? { ...c, pinned: !c.pinned } : c);
+    this.persist(s);
+    this.renderRail();
+  },
+
+  toggleArchive(id) {
+    const s = this.state();
+    s.chats = this.chats().map((c) => String(c.id) === String(id) ? { ...c, archived: !c.archived, pinned: c.archived ? c.pinned : false } : c);
+    this.persist(s);
+    this.renderRail();
+  },
+
+  deleteChat(id) {
+    const s = this.state();
+    s.chats = this.chats().filter((c) => String(c.id) !== String(id));
+    if (s.activeChatId === id) this.newChat();
+    else {
+      this.persist(s);
+      this.renderRail();
+    }
+  },
+
+  commitRename() {
+    const id = this.renamingId;
+    const input = document.getElementById('cai-rename-input');
+    this.renamingId = null;
+    if (!id || !input) {
+      this.renderRail();
+      return;
+    }
+    const name = input.value.trim();
+    const s = this.state();
+    s.chats = this.chats().map((c) => {
+      if (String(c.id) !== String(id)) return c;
+      if (!name) return { ...c, customTitle: false };
+      return { ...c, title: name, customTitle: true };
+    });
+    this.persist(s);
+    this.render();
+  },
+
+  renameKey(event) {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      this.commitRename();
+    }
+    if (event.key === 'Escape') {
+      this.renamingId = null;
+      this.renderRail();
+    }
+  },
+
+  buildSummary(chat) {
+    const thread = chat.thread || [];
+    const asks = thread.filter((m) => m.sender === 'user').map((m) => m.text).filter(Boolean);
+    const answers = thread.filter((m) => m.sender === 'ai').map((m) => m.text).filter(Boolean);
+    const recs = answers.join(' ').split(/(?<=\.)\s+/).filter(Boolean).slice(0, 5);
+    return [
+      `Executive Summary — ${chat.title || 'Creator AI thread'}`,
+      '',
+      'Objective',
+      asks[0] || 'No prompt captured.',
+      '',
+      'Thread asks',
+      ...(asks.length ? asks.map((t, i) => `${i + 1}. ${t}`) : ['—']),
+      '',
+      'Recommendations',
+      ...(recs.length ? recs.map((t) => `• ${t}`) : ['• Continue the brief in Creator AI.']),
+      '',
+      'Next actions',
+      '• Export or lock the strongest draft.',
+      '• Move approved copy into WriteSpace or the vault.',
+      '',
+      `Generated ${new Date().toLocaleString()} · Creator AI`
+    ].join('\n');
+  },
+
+  openSummary(id) {
+    const chat = this.chats().find((c) => String(c.id) === String(id));
+    if (!chat) return;
+    this.summaryChatId = id;
+    const title = document.getElementById('cai-summary-title');
+    const body = document.getElementById('cai-summary-body');
+    const status = document.getElementById('cai-summary-status');
+    if (title) title.textContent = chat.title || 'Untitled chat';
+    if (body) body.value = this.buildSummary(chat);
+    if (status) status.classList.add('hidden');
+    const modal = document.getElementById('cai-summary-modal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  },
+
+  closeSummary() {
+    const modal = document.getElementById('cai-summary-modal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  },
+
+  saveSummaryNote() {
+    const body = document.getElementById('cai-summary-body');
+    const text = (body && body.value) || '';
+    const chat = this.chats().find((c) => String(c.id) === String(this.summaryChatId));
+    const title = `Summary — ${chat ? chat.title : 'Creator AI'}`;
+    const now = Date.now();
+    if (typeof DIMAD_NOTEPAD !== 'undefined') {
+      const notes = DIMAD_NOTEPAD.load();
+      notes.unshift({
+        id: `note-sum-cai-${now}`,
+        title,
+        body: text,
+        createdAt: now,
+        updatedAt: now,
+        customTitle: true
+      });
+      DIMAD_NOTEPAD.persist(notes);
+    }
+    const status = document.getElementById('cai-summary-status');
+    if (status) status.classList.remove('hidden');
+  },
+
+  renderRail() {
+    const root = document.getElementById('cai-chat-list');
+    if (!root) return;
+    const s = this.state();
+    const activeId = s.activeChatId;
+    const all = this.chats();
+    const archivedView = this.railView === 'archived';
+    const pinned = all.filter((c) => c.pinned && !c.archived);
+    const live = all.filter((c) => !c.pinned && !c.archived);
+    const archived = all.filter((c) => c.archived);
+    const heading = document.getElementById('cai-rail-heading');
+    const newBtn = document.getElementById('cai-rail-new');
+    const switchLabel = document.getElementById('cai-rail-switch-label');
+    if (heading) heading.textContent = archivedView ? 'ARCHIVED' : 'SAVED CHATS';
+    if (newBtn) newBtn.classList.toggle('hidden', archivedView);
+    if (switchLabel) switchLabel.textContent = archivedView ? 'Saved chats' : `Archived${archived.length ? ' · ' + archived.length : ''}`;
+    const row = (chat) => {
+      if (this.renamingId === chat.id) {
+        return `<div class="px-1 py-1"><input id="cai-rename-input" type="text" value="${this.escape(chat.title || '')}" onkeydown="CREATOR_AI.renameKey(event)" onblur="CREATOR_AI.commitRename()" class="w-full bg-slate-900 border border-brand-gold/40 rounded px-2 py-1 text-[11px] text-slate-100 outline-none"></div>`;
+      }
+      const on = String(chat.id) === String(activeId);
+      return `<button type="button" onclick="CREATOR_AI.openChat('${chat.id}')" oncontextmenu="CREATOR_AI.openCtx(event, '${chat.id}')" class="w-full text-left px-2 py-1.5 rounded border ${on ? 'bg-brand-gold/10 border-brand-gold/40 text-slate-100' : 'border-transparent text-slate-400 hover:bg-slate-900 hover:text-slate-200'}">
+        <div class="flex items-center gap-1.5 min-w-0">
+          ${chat.pinned ? '<i class="fa-solid fa-thumbtack text-brand-gold text-[8px] shrink-0"></i>' : ''}
+          <span class="truncate text-[11px] font-semibold">${this.escape(chat.title || 'Untitled')}</span>
+        </div>
+        <div class="text-[9px] text-slate-500 mt-0.5">${this.escape(chat.tag || 'Chat')}</div>
+      </button>`;
+    };
+    const block = (label, items) => items.length ? `<div class="space-y-0.5"><div class="px-1 text-[8px] font-bold uppercase tracking-wider text-slate-500">${label}</div>${items.map(row).join('')}</div>` : '';
+    if (archivedView) {
+      root.innerHTML = archived.length ? archived.map(row).join('') : '<p class="px-2 text-[10px] text-slate-500">No archived chats.</p>';
+      return;
+    }
+    root.innerHTML = `${block('Pinned', pinned)}${block('Chats', live)}` || '<p class="px-2 text-[10px] text-slate-500">No saved chats yet.</p>';
+  },
+
+  openModal(id) {
+    const modal = document.getElementById(id);
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  },
+
+  closeModal(id) {
+    const modal = document.getElementById(id);
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  },
+
+  openUsageInfo() { this.openModal('cai-usage-modal'); },
+  closeUsageInfo() { this.closeModal('cai-usage-modal'); },
+  openPassInfo() { this.openModal('cai-pass-info-modal'); },
+  closePassInfo() { this.closeModal('cai-pass-info-modal'); },
+
+  setModel(model) {
+    this.state().model = model;
+    this.persist(this.state());
+    this.renderChrome();
+  },
+
+  setRatio(ratio) {
+    this.state().ratio = ratio;
+    this.persist(this.state());
+    this.renderChrome();
+  },
+
+  setVaultFilter(filter) {
+    this.state().vaultFilter = filter;
+    this.persist(this.state());
+    this.renderVault();
+  },
+
+  chip(prompt) {
+    const input = document.getElementById('cai-input');
+    if (input) input.value = prompt;
+    this.state().input = prompt;
+    this.send();
+  },
+
+  inputKey(event) {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      this.send(event);
+    }
+  },
+
+  sendStudio(event) {
+    if (event) event.preventDefault();
+    const studio = document.getElementById('cs-cai-input');
+    const input = document.getElementById('cai-input');
+    if (studio && input) input.value = studio.value;
+    this.send(event);
+    if (studio) studio.value = '';
+  },
+
+  renderStudio() {
+    const feed = document.getElementById('cs-cai-feed');
+    if (!feed) return;
+    const s = this.state();
+    const msgs = (s.messages || []).filter((m) => m.type !== 'welcome').slice(-4);
+    if (!msgs.length) {
+      feed.innerHTML = '<p class="text-brand-gold"><strong>CREATOR AI:</strong> Ready to brainstorm essay concepts or video hooks.</p>';
+      return;
+    }
+    feed.innerHTML = msgs.map((m) => {
+      const who = m.sender === 'user' ? 'YOU' : 'CREATOR AI';
+      const cls = m.sender === 'user' ? 'text-slate-300' : 'text-brand-gold';
+      return `<p class="${cls}"><strong>${who}:</strong> ${this.escape(m.text || '')}</p>`;
+    }).join('');
+    feed.scrollTop = feed.scrollHeight;
+  },
+
+  send(event) {
+    if (event) event.preventDefault();
+    const studioView = document.getElementById('view-creator-studio');
+    const studioOpen = studioView && !studioView.classList.contains('hidden');
+    const studioInput = document.getElementById('cs-cai-input');
+    const fullInput = document.getElementById('cai-input');
+    const input = (studioOpen && studioInput) || fullInput || studioInput;
+    const prompt = ((input && input.value) || '').trim();
+    if (!prompt || this.generating) return;
+    const s = this.state();
+    const stamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    this.viewingAssetId = null;
+    let chat = this.activeChat();
+    if (!chat || chat.id === 'c-welcome') chat = this.ensureLiveChat();
+    const threadId = chat.threadId;
+    s.activeThreadId = threadId;
+    s.activeChatId = chat.id;
+    const userMsg = { id: 'msg-' + Date.now(), sender: 'user', text: prompt, timestamp: stamp, threadId };
+    s.messages.push(userMsg);
+    chat.thread = chat.thread || [];
+    chat.thread.push(userMsg);
+    s.usage = Math.min(100, (s.usage || 0) + 2);
+    s.input = '';
+    if (input) input.value = '';
+    this.generating = true;
+    this.persist(s);
+    this.render();
+    window.setTimeout(() => this.respond(prompt, threadId), 1100);
+  },
+
+  respond(prompt, threadId) {
+    const s = this.state();
+    const stamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    threadId = threadId || s.activeThreadId || 'thread-' + Date.now();
+    const lower = prompt.toLowerCase();
+    let msg;
+    if (/motion|video|teaser|🎬/.test(lower)) {
+      msg = {
+        id: 'res-' + Date.now(), sender: 'ai', timestamp: stamp,
+        text: "I've synthesized your 5-second motion teaser storyboard and draft video keyframe preview.",
+        type: 'video_draft',
+        threadId,
+        videoData: {
+          title: 'Tokyo Nomad Motion Loop — Draft',
+          aspectRatio: s.ratio,
+          fps: '60 FPS',
+          prompt,
+          previewUrl: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1000&q=80',
+          exportCost: 4000,
+          isExported: false
+        }
+      };
+    } else if (/palette|brand|🎨/.test(lower)) {
+      msg = {
+        id: 'res-' + Date.now(), sender: 'ai', timestamp: stamp,
+        text: 'Here is your custom brand identity kit draft with hex codes and typography hierarchy:',
+        type: 'brand_kit',
+        threadId,
+        brandData: {
+          title: 'Cyber-Nomad Palette & Identity',
+          colors: [
+            { name: 'Deep Slate', hex: '#070A0F', role: 'Primary Canvas' },
+            { name: 'Sky Signal', hex: '#38BDF8', role: 'Accent' },
+            { name: 'Mint Yield', hex: '#10B981', role: 'Action' },
+            { name: 'Amber Gold', hex: '#F59E0B', role: 'Brand Gold' }
+          ]
+        }
+      };
+    } else if (/hook|script|copy|✍️|carousel|instagram|caption|marketing/.test(lower)) {
+      msg = {
+        id: 'res-' + Date.now(), sender: 'ai', timestamp: stamp,
+        text: 'Here are 3 high-retention short-form video hooks tailored for solopreneur audiences:',
+        type: 'script_hooks',
+        threadId,
+        hooks: [
+          { tag: 'Pattern Interrupt', text: 'Stop managing 6 different subscriptions just to invoice two clients a month...' },
+          { tag: 'Curiosity Spike', text: 'Here is the exact $35 tech stack I use to automate 16 hours of daily executive work...' },
+          { tag: 'Relatable Pain', text: 'If you spend more time chasing client payments than building your business, watch this...' }
+        ]
+      };
+    } else if (/campaign|pack|📦/.test(lower)) {
+      msg = {
+        id: 'res-' + Date.now(), sender: 'ai', timestamp: stamp,
+        text: '1-Click Campaign Pack generated: hero render, social story banner, and copy kit.',
+        type: 'campaign_pack',
+        threadId,
+        packData: {
+          title: 'Q2 Solopreneur OS Launch Kit',
+          prompt,
+          previewUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1000&q=80',
+          exportCost: 1000,
+          isExported: false
+        }
+      };
+    } else {
+      msg = {
+        id: 'res-' + Date.now(), sender: 'ai', timestamp: stamp,
+        text: `I've generated a fast low-res draft preview using the ${s.model === 'pro' ? 'Studio Pro 4K' : 'Gemini Flash'} engine (${s.ratio} ratio).`,
+        type: 'image_draft',
+        threadId,
+        draftData: {
+          title: 'AI Visual Render Draft',
+          prompt,
+          previewUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1000&q=80',
+          exportCost: 1000,
+          isExported: false
+        }
+      };
+    }
+    s.messages.push(msg);
+    const chat = this.chats().find((c) => c.threadId === threadId);
+    if (chat) {
+      chat.thread = chat.thread || [];
+      chat.thread.push(msg);
+      if (!chat.customTitle) chat.title = String(prompt || chat.title).replace(/\s+/g, ' ').trim().split(' ').slice(0, 6).join(' ') || chat.title;
+      chat.tag = s.model === 'pro' ? 'Studio' : 'Flash';
+      chat.updatedAt = Date.now();
+    }
+    this.syncVaultFromMessage(msg);
+    this.generating = false;
+    this.persist(s);
+    this.render();
+  },
+
+  exportAsset(msgId, cost, title, type, url) {
+    if (!this.spendDim(cost)) {
+      this.openUpgrade();
+      return;
+    }
+    const s = this.state();
+    s.usage = Math.min(100, (s.usage || 0) + 3);
+    s.messages = s.messages.map((msg) => {
+      if (msg.id !== msgId) return msg;
+      if (msg.draftData) return { ...msg, draftData: { ...msg.draftData, isExported: true } };
+      if (msg.videoData) return { ...msg, videoData: { ...msg.videoData, isExported: true } };
+      if (msg.packData) return { ...msg, packData: { ...msg.packData, isExported: true } };
+      return msg;
+    });
+    const exported = s.messages.find((m) => m.id === msgId) || {};
+    this.syncVaultFromMessage(exported, { title, type, url, ptsSpent: cost, exported: true });
+    this.persist(s);
+    this.render();
+  },
+
+  threadMessages(threadId) {
+    const s = this.state();
+    return (s.messages || []).filter((m) => m.threadId && m.threadId === threadId && m.type !== 'welcome');
+  },
+
+  syncVaultFromMessage(msg, extra = {}) {
+    if (!msg) return;
+    if (!extra.exported && !['image_draft', 'video_draft', 'campaign_pack', 'brand_kit'].includes(msg.type)) return;
+    const s = this.state();
+    const threadId = msg.threadId || s.activeThreadId;
+    const draft = msg.draftData || msg.packData || {};
+    const video = msg.videoData || {};
+    const type = extra.type || (msg.type === 'video_draft' ? 'video' : msg.type === 'brand_kit' ? 'image' : 'image');
+    const title = extra.title || draft.title || video.title || (msg.brandData && msg.brandData.title) || 'Studio draft';
+    const url = extra.url || draft.previewUrl || video.previewUrl || '';
+    const colors = msg.brandData ? (msg.brandData.colors || []).map((c) => c.hex || c) : extra.colors;
+    const thread = this.threadMessages(threadId);
+    const row = {
+      id: extra.exported ? ('v-' + Date.now()) : (`v-${threadId}`),
+      title,
+      type,
+      url,
+      colors,
+      ptsSpent: extra.ptsSpent,
+      date: extra.exported ? 'Just now' : 'Draft',
+      threadId,
+      thread,
+      msgId: msg.id
+    };
+    const idx = s.vault.findIndex((item) => String(item.threadId) === String(threadId) && !extra.exported);
+    if (idx >= 0 && !extra.exported) s.vault[idx] = { ...s.vault[idx], ...row };
+    else s.vault.unshift(row);
+  },
+
+  openAsset(id) {
+    const item = this.state().vault.find((row) => String(row.id) === String(id));
+    if (!item) return;
+    this.viewingAssetId = id;
+    this.render();
+    const feed = document.getElementById('cai-feed');
+    if (feed) feed.scrollTop = 0;
+  },
+
+  closeAsset() {
+    this.viewingAssetId = null;
+    this.render();
+    const feed = document.getElementById('cai-feed');
+    if (feed) feed.scrollTop = feed.scrollHeight;
+  },
+
+  copyText(text, id) {
+    if (navigator.clipboard) navigator.clipboard.writeText(text);
+    this.copiedId = id;
+    this.renderFeed();
+    window.setTimeout(() => {
+      this.copiedId = null;
+      this.renderFeed();
+    }, 1600);
+  },
+
+  openUpgrade() {
+    this.closePassInfo();
+    this.openModal('cai-upgrade-modal');
+  },
+
+  closeUpgrade() {
+    this.closeModal('cai-upgrade-modal');
+  },
+
+  activatePass() {
+    if (!this.passActive()) {
+      localStorage.setItem(this.passKey, '1');
+      this.grantDim(18000);
+    }
+    this.closeUpgrade();
+    this.renderChrome();
+  },
+
+  render() {
+    this.renderStudio();
+    if (!this.mounted) return;
+    this.placeRail();
+    this.renderChrome();
+    this.renderFeed();
+    this.renderStarters();
+    this.renderVault();
+    this.renderRail();
+  },
+
+  renderStarters() {
+    const root = document.getElementById('cai-starters');
+    if (!root) return;
+    root.innerHTML = this.starters.map((chip) => `<button type="button" onclick='CREATOR_AI.chip(${JSON.stringify(chip.prompt)})' class="text-[10px] px-2.5 py-1 rounded border border-brand-border bg-brand-black text-slate-300 hover:border-brand-gold/50 hover:text-white transition">${this.escape(chip.label)}</button>`).join('');
+  },
+
+  renderChrome() {
+    const s = this.state();
+    const pct = Math.max(0, Math.min(100, Number(s.usage) || 0));
+    const bar = document.getElementById('cai-usage-bar');
+    const label = document.getElementById('cai-usage-pct');
+    const tipPct = document.getElementById('cai-usage-tip-pct');
+    if (bar) {
+      bar.style.width = pct + '%';
+      bar.className = `h-full rounded-full ${pct > 80 ? 'bg-brand-gold' : 'bg-brand-mint'}`;
+    }
+    if (label) label.textContent = pct + '%';
+    if (tipPct) tipPct.textContent = pct + '% Used';
+    const passOn = this.passActive();
+    const passCta = document.getElementById('cai-pass-cta');
+    const passBtn = document.getElementById('cai-pass-btn');
+    if (passCta) passCta.textContent = passOn ? 'Active' : 'Upgrade';
+    if (passBtn) {
+      passBtn.className = passOn
+        ? 'shrink-0 px-2.5 py-1 rounded text-[10px] font-bold bg-brand-gold/10 text-brand-gold border border-brand-gold/40'
+        : 'shrink-0 px-2.5 py-1 rounded text-[10px] font-bold bg-brand-gold hover:bg-amber-400 text-slate-950';
+    }
+    const flash = document.getElementById('cai-model-flash');
+    const pro = document.getElementById('cai-model-pro');
+    if (flash) flash.className = `px-2.5 py-1.5 rounded text-[10px] font-semibold ${s.model === 'flash' ? 'bg-brand-mint text-slate-950' : 'bg-brand-black text-slate-400 hover:text-white'}`;
+    if (pro) pro.className = `px-2.5 py-1.5 rounded text-[10px] font-semibold ${s.model === 'pro' ? 'bg-brand-gold text-slate-950' : 'bg-brand-black text-slate-400 hover:text-white'}`;
+    const ratios = document.getElementById('cai-ratios');
+    if (ratios) {
+      ratios.innerHTML = ['1:1', '16:9', '9:16'].map((ratio) => `<button type="button" onclick="CREATOR_AI.setRatio('${ratio}')" class="px-2.5 py-1 rounded text-[10px] font-mono ${s.ratio === ratio ? 'bg-brand-panel text-brand-gold font-bold border border-brand-border' : 'text-slate-400 hover:text-white'}">${ratio}</button>`).join('');
+    }
+    const send = document.getElementById('cai-send');
+    if (send) send.disabled = this.generating;
+    const heading = document.getElementById('cai-active-title');
+    const chat = this.activeChat();
+    if (heading) heading.textContent = chat && chat.title && chat.title !== 'New chat' ? chat.title : 'Chat for social, image, branding, and marketing work.';
+    const inspoActions = document.getElementById('cai-inspo-actions');
+    if (inspoActions) inspoActions.classList.toggle('hidden', !(chat && chat.tag === 'Inspo'));
+  },
+
+  renderFeed() {
+    const feed = document.getElementById('cai-feed');
+    if (!feed) return;
+    const s = this.state();
+    const viewing = this.viewingAssetId ? (s.vault || []).find((row) => String(row.id) === String(this.viewingAssetId)) : null;
+    const chat = this.activeChat();
+    const log = viewing && viewing.thread && viewing.thread.length
+      ? viewing.thread
+      : (chat && chat.thread && chat.thread.length ? chat.thread : (s.messages || []));
+    const banner = viewing ? `<div class="flex items-center justify-between gap-2 bg-brand-gold/10 border border-brand-gold/30 rounded px-3 py-2">
+      <div class="min-w-0">
+        <div class="text-[10px] font-bold text-brand-gold truncate">Render log · ${this.escape(viewing.title)}</div>
+        <div class="text-[9px] text-slate-400">Drafts and prompts that produced this asset</div>
+      </div>
+      <button type="button" onclick="CREATOR_AI.closeAsset()" class="shrink-0 text-[10px] font-bold text-slate-200 border border-brand-border bg-brand-black px-2.5 py-1 rounded hover:border-brand-gold">Back to chat</button>
+    </div>` : '';
+    const rows = log.map((msg) => {
+      const you = msg.sender === 'user';
+      let extra = '';
+      if (msg.type === 'image_draft' && msg.draftData) extra += this.draftCard(msg.id, msg.draftData, 'image');
+      if (msg.type === 'campaign_pack' && msg.packData) extra += this.draftCard(msg.id, { ...msg.packData, prompt: msg.packData.prompt || 'Campaign pack' }, 'image');
+      if (msg.type === 'video_draft' && msg.videoData) extra += this.videoCard(msg.id, msg.videoData);
+      if (msg.type === 'brand_kit' && msg.brandData) extra += this.brandCard(msg.brandData);
+      if (msg.type === 'script_hooks' && msg.hooks) extra += this.hooksCard(msg.hooks);
+      const avatar = you
+        ? '<div class="w-7 h-7 rounded bg-brand-gold text-slate-950 text-[9px] font-bold flex items-center justify-center shrink-0">YOU</div>'
+        : '<div class="w-7 h-7 rounded bg-brand-gold/15 border border-brand-gold/40 text-brand-gold flex items-center justify-center shrink-0"><i class="fa-solid fa-wand-magic-sparkles text-[10px]"></i></div>';
+      return `<div class="flex gap-2.5 ${you ? 'flex-row-reverse' : ''} max-w-3xl ${you ? 'ml-auto' : 'mr-auto'} w-full">
+        ${avatar}
+        <div class="min-w-0 flex-1 space-y-1.5 ${you ? 'flex flex-col items-end' : ''}">
+          <div class="text-[9px] text-slate-500 font-mono">${you ? 'You' : 'Creator AI'} · ${this.escape(msg.timestamp || '')}</div>
+          ${msg.text ? `<div class="p-3 rounded-2xl text-[13px] leading-relaxed ${you ? 'bg-brand-gold text-slate-950 rounded-tr-md' : 'bg-brand-black border border-brand-border text-slate-200 rounded-tl-md'}">${this.escape(msg.text)}</div>` : ''}
+          ${extra}
+        </div>
+      </div>`;
+    }).join('');
+    const pending = this.generating
+      ? `<div class="flex gap-2.5 max-w-3xl mr-auto"><div class="w-7 h-7 rounded bg-brand-gold/15 border border-brand-gold/40 text-brand-gold flex items-center justify-center shrink-0"><i class="fa-solid fa-wand-magic-sparkles text-[10px]"></i></div><div class="flex items-center gap-2 text-[12px] text-brand-gold bg-brand-black border border-brand-border p-2.5 rounded-2xl"><i class="fa-solid fa-spinner fa-spin"></i> Drafting...</div></div>`
+      : '';
+    feed.innerHTML = `<div class="max-w-3xl mx-auto w-full space-y-5">${banner}${rows}${viewing ? '' : pending}</div>`;
+    feed.scrollTop = feed.scrollHeight;
+  },
+
+  draftCard(msgId, data, type) {
+    const exported = !!data.isExported;
+    const cost = Number(data.exportCost || 1000);
+    return `<div class="bg-brand-black border border-brand-border rounded overflow-hidden max-w-lg w-full p-3 space-y-2">
+      <div class="relative rounded overflow-hidden bg-slate-950">
+        <img src="${this.escape(data.previewUrl)}" alt="" class="w-full h-56 object-cover">
+        <div class="absolute top-2 left-2 bg-slate-950/80 text-brand-gold border border-brand-gold/30 text-[9px] font-mono px-2 py-1 rounded flex items-center gap-1"><i class="fa-solid fa-eye"></i> Low-Res Free Draft (0 $DIM)</div>
+      </div>
+      <div class="flex items-center justify-between gap-2">
+        <div class="min-w-0">
+          <h4 class="text-[11px] font-bold text-white truncate">${this.escape(data.title)}</h4>
+          <p class="text-[10px] text-slate-400 truncate">${this.escape(data.prompt || '')}</p>
+        </div>
+        <button type="button" ${exported ? 'disabled' : ''} onclick="CREATOR_AI.exportAsset('${msgId}', ${cost}, ${JSON.stringify(data.title)}, '${type}', ${JSON.stringify(data.previewUrl)})" class="shrink-0 px-2.5 py-1.5 rounded text-[10px] font-bold ${exported ? 'bg-brand-mint/10 text-brand-mint border border-brand-mint/30' : 'bg-brand-mint hover:bg-emerald-400 text-slate-950'}">
+          ${exported ? 'Exported (4K)' : `Export 4K (${cost.toLocaleString()} $DIM)`}
+        </button>
+      </div>
+    </div>`;
+  },
+
+  videoCard(msgId, data) {
+    const exported = !!data.isExported;
+    const cost = Number(data.exportCost || 4000);
+    return `<div class="bg-brand-black border border-brand-border rounded overflow-hidden max-w-lg w-full p-3 space-y-2">
+      <div class="relative rounded overflow-hidden bg-slate-950">
+        <img src="${this.escape(data.previewUrl)}" alt="" class="w-full h-52 object-cover opacity-80">
+        <div class="absolute inset-0 flex items-center justify-center"><div class="w-12 h-12 rounded-full bg-brand-gold text-slate-950 flex items-center justify-center"><i class="fa-solid fa-play ml-0.5"></i></div></div>
+        <div class="absolute bottom-2 left-2 bg-slate-950/80 text-brand-gold border border-brand-gold/30 text-[9px] font-mono px-2 py-0.5 rounded">5.0s Motion Loop • ${this.escape(data.fps || '60 FPS')}</div>
+      </div>
+      <div class="flex items-center justify-between gap-2">
+        <div class="min-w-0">
+          <h4 class="text-[11px] font-bold text-white truncate">${this.escape(data.title)}</h4>
+          <p class="text-[10px] text-slate-400">HD Render Pipeline</p>
+        </div>
+        <button type="button" ${exported ? 'disabled' : ''} onclick="CREATOR_AI.exportAsset('${msgId}', ${cost}, ${JSON.stringify(data.title)}, 'video', ${JSON.stringify(data.previewUrl)})" class="shrink-0 px-2.5 py-1.5 rounded text-[10px] font-bold ${exported ? 'bg-brand-gold/10 text-brand-gold border border-brand-gold/30' : 'bg-brand-gold hover:bg-amber-400 text-slate-950'}">
+          ${exported ? 'HD Rendered' : `Render HD (${cost.toLocaleString()} $DIM)`}
+        </button>
+      </div>
+    </div>`;
+  },
+
+  brandCard(data) {
+    return `<div class="bg-brand-black border border-brand-border rounded p-3 max-w-lg w-full space-y-2">
+      <h4 class="text-[11px] font-bold text-white flex items-center justify-between"><span>${this.escape(data.title)}</span><span class="text-[9px] bg-brand-gold/10 text-brand-gold px-2 py-0.5 rounded border border-brand-gold/30">Brand Engine</span></h4>
+      <div class="grid grid-cols-4 gap-2">${(data.colors || []).map((c, i) => `<button type="button" onclick="CREATOR_AI.copyText('${c.hex}', 'hex-${i}')" class="bg-brand-panel p-2 rounded border border-brand-border text-center hover:border-brand-gold/50">
+        <div class="w-full h-8 rounded mb-1" style="background:${this.escape(c.hex)}"></div>
+        <div class="text-[10px] font-mono font-bold text-white">${this.escape(c.hex)}</div>
+        <div class="text-[9px] text-slate-400 truncate">${this.escape(c.name)}</div>
+      </button>`).join('')}</div>
+    </div>`;
+  },
+
+  hooksCard(hooks) {
+    return `<div class="bg-brand-black border border-brand-border rounded p-3 max-w-lg w-full space-y-2">${hooks.map((h, i) => `<div class="bg-brand-panel p-3 rounded border border-brand-border relative">
+      <span class="text-[9px] font-mono uppercase bg-brand-mint/10 text-brand-mint px-1.5 py-0.5 rounded border border-brand-mint/30">${this.escape(h.tag)}</span>
+      <p class="text-[11px] text-slate-200 mt-1 pr-6">${this.escape(h.text)}</p>
+      <button type="button" onclick='CREATOR_AI.copyText(${JSON.stringify(h.text)}, "hook-${i}")' class="absolute right-2 top-2 text-slate-500 hover:text-brand-gold text-[11px]">${this.copiedId === 'hook-' + i ? '<i class="fa-solid fa-check text-brand-mint"></i>' : '<i class="fa-solid fa-copy"></i>'}</button>
+    </div>`).join('')}</div>`;
+  },
+
+  renderVault() {
+    const s = this.state();
+    const count = document.getElementById('cai-vault-count');
+    const items = (s.vault || []).filter((item) => {
+      if (s.vaultFilter === 'images') return item.type === 'image';
+      if (s.vaultFilter === 'videos') return item.type === 'video';
+      return true;
+    });
+    if (count) count.textContent = String(items.length);
+    const filters = document.getElementById('cai-vault-filters');
+    if (filters) {
+      filters.innerHTML = ['recent', 'images', 'videos'].map((filter) => {
+        const label = filter === 'recent' ? 'Recent' : filter === 'images' ? 'Images' : 'Videos';
+        const on = (s.vaultFilter || 'recent') === filter;
+        return `<button type="button" onclick="CREATOR_AI.setVaultFilter('${filter}')" class="px-2.5 py-1 rounded text-[9px] font-bold uppercase tracking-wider ${on ? 'bg-brand-gold/15 text-brand-gold border border-brand-gold/40' : 'text-slate-500 hover:text-slate-200 border border-transparent'}">${label}</button>`;
+      }).join('');
+    }
+    const grid = document.getElementById('cai-vault');
+    if (!grid) return;
+    grid.innerHTML = items.map((item) => `<button type="button" onclick="CREATOR_AI.openAsset('${item.id}')" class="shrink-0 w-36 text-left bg-brand-black border ${this.viewingAssetId === item.id ? 'border-brand-gold' : 'border-brand-border hover:border-brand-gold/50'} rounded overflow-hidden p-1.5 space-y-1">
+      ${item.url ? `<img src="${this.escape(item.url)}" alt="" class="w-full h-16 object-cover rounded">` : `<div class="w-full h-16 rounded bg-brand-panel flex items-center justify-center gap-1">${(item.colors || []).slice(0, 3).map((hex) => `<div class="w-3 h-6 rounded" style="background:${this.escape(hex)}"></div>`).join('')}</div>`}
+      <div class="text-[9px] font-semibold text-white truncate">${this.escape(item.title)}</div>
+    </button>`).join('') || '<p class="text-[10px] text-slate-500">No assets in this view yet.</p>';
+  }
+};
+window.CREATOR_AI = CREATOR_AI;
+
 const COMMAND_CENTER = {
   storageKey: 'dimad_cc_modules',
+  layoutVersion: 2,
   catalog: [
-    { id: 'quote', label: 'Quote of the Day' },
-    { id: 'clocks', label: 'World Clocks' },
-    { id: 'stripe', label: 'Stripe' },
-    { id: 'store', label: 'Storefront' },
-    { id: 'gumroad', label: 'Gumroad' },
-    { id: 'patreon', label: 'Patreon' },
-    { id: 'mailerlite', label: 'MailerLite' },
-    { id: 'calendar', label: 'Calendar' },
-    { id: 'copilot', label: 'AI Business Chat' },
-    { id: 'notepad', label: 'DIMAD Notepad' },
-    { id: 'goals', label: 'Goals & Achievements' },
-    { id: 'tasks', label: 'Task Manager' }
+    { id: 'ticker', label: 'Stock Ticker', group: 'core' },
+    { id: 'quote', label: 'Quote of the Day', group: 'core' },
+    { id: 'clocks', label: 'World Clocks', group: 'core' },
+    { id: 'calendar', label: 'Calendar', group: 'core' },
+    { id: 'copilot', label: 'Business AI Chat', group: 'core' },
+    { id: 'notepad', label: 'DIMAD Notepad', group: 'core' },
+    { id: 'goals', label: 'Accountability Log', group: 'core' },
+    { id: 'tasks', label: 'Task Manager (To-Do List)', group: 'core' },
+    { id: 'stripe', label: 'Stripe', group: 'api' },
+    { id: 'store', label: 'Shopify / Lemon Squeezy', group: 'api' },
+    { id: 'gumroad', label: 'Gumroad', group: 'api' },
+    { id: 'patreon', label: 'Patreon', group: 'api' },
+    { id: 'mailerlite', label: 'MailerLite', group: 'api' }
   ],
+
+  apiIds() {
+    return this.catalog.filter((item) => item.group === 'api').map((item) => item.id);
+  },
+
+  defaultState() {
+    return { hidden: this.apiIds(), collapsed: [], layoutVersion: this.layoutVersion };
+  },
 
   state() {
     try {
       const raw = JSON.parse(localStorage.getItem(this.storageKey) || '');
-      if (raw && Array.isArray(raw.hidden) && Array.isArray(raw.collapsed)) return raw;
+      if (raw && Array.isArray(raw.hidden) && Array.isArray(raw.collapsed)) {
+        if (raw.layoutVersion === this.layoutVersion) return raw;
+        const next = {
+          hidden: Array.from(new Set(raw.hidden.concat(this.apiIds()))),
+          collapsed: raw.collapsed,
+          layoutVersion: this.layoutVersion
+        };
+        this.persist(next);
+        return next;
+      }
     } catch (err) { /* defaults */ }
-    return { hidden: [], collapsed: [] };
+    return this.defaultState();
   },
 
   persist(next) {
@@ -11412,27 +18331,17 @@ const COMMAND_CENTER = {
   lockedOpen: ['copilot', 'notepad'],
 
   apply() {
-    const { hidden, collapsed } = this.state();
+    const { hidden } = this.state();
     document.querySelectorAll('[data-cc-module]').forEach((el) => {
       const id = el.getAttribute('data-cc-module');
-      const isCollapsed = this.lockedOpen.includes(id) ? false : collapsed.includes(id);
-      el.classList.toggle('hidden', hidden.includes(id));
+      const hide = hidden.includes(id);
+      el.classList.toggle('hidden', hide);
+      if (id === 'ticker') el.style.display = hide ? 'none' : 'flex';
       const body = el.querySelector('[data-cc-body]');
-      if (body) body.classList.toggle('hidden', isCollapsed);
-      const chevron = el.querySelector(`[data-cc-chevron="${id}"]`);
+      if (body) body.classList.remove('hidden');
       if (this.railIds.includes(id)) {
-        el.classList.toggle('cc-rail-open', !isCollapsed);
-        el.classList.toggle('w-full', !isCollapsed);
-        el.classList.toggle('w-fit', isCollapsed);
-        el.classList.remove('flex-1', 'min-w-[280px]', 'flex-none');
-        if (chevron) {
-          chevron.classList.toggle('fa-chevron-left', !isCollapsed);
-          chevron.classList.toggle('fa-chevron-right', isCollapsed);
-          chevron.classList.remove('fa-chevron-down');
-        }
-      } else if (chevron) {
-        chevron.classList.toggle('fa-chevron-down', !isCollapsed);
-        chevron.classList.toggle('fa-chevron-right', isCollapsed);
+        el.classList.add('cc-rail-open', 'w-full');
+        el.classList.remove('w-fit', 'flex-1', 'min-w-[280px]', 'flex-none');
       }
     });
     const rail = document.getElementById('cc-integrations');
@@ -11441,7 +18350,11 @@ const COMMAND_CENTER = {
       rail.classList.toggle('hidden', visible === 0);
     }
     this.renderFilter();
-    if (typeof DIMAD_NOTEPAD !== 'undefined' && DIMAD_NOTEPAD.renderPreview) DIMAD_NOTEPAD.renderPreview();
+    this.renderApiFilter();
+    if (typeof DIMAD_NOTEPAD !== 'undefined' && DIMAD_NOTEPAD.renderDash) DIMAD_NOTEPAD.renderDash();
+    if (typeof DIMAD_GOALS !== 'undefined' && DIMAD_GOALS.renderDash) DIMAD_GOALS.renderDash();
+    if (typeof DIM_ENGINE !== 'undefined' && DIM_ENGINE.renderStreakTrack) DIM_ENGINE.renderStreakTrack();
+    if (typeof TASK_MANAGER !== 'undefined') TASK_MANAGER.mount();
   },
 
   toggleCollapse(id) {
@@ -11462,25 +18375,52 @@ const COMMAND_CENTER = {
     this.apply();
   },
 
-  toggleFilter() {
-    const panel = document.getElementById('cc-module-filter');
-    if (!panel) return;
-    panel.classList.toggle('hidden');
-    if (!panel.classList.contains('hidden')) this.renderFilter();
+  toggleFilter(kind) {
+    const core = document.getElementById('cc-module-filter');
+    const api = document.getElementById('cc-api-filter');
+    const openCore = kind === 'core';
+    const openApi = kind === 'api';
+    if (core) {
+      const show = openCore && core.classList.contains('hidden');
+      core.classList.toggle('hidden', !show);
+      if (show) this.renderFilter();
+    }
+    if (api) {
+      const show = openApi && api.classList.contains('hidden');
+      api.classList.toggle('hidden', !show);
+      if (show) this.renderApiFilter();
+    }
+  },
+
+  filterChecks(items, hidden) {
+    return items.map((item) => `
+      <label class="flex items-center gap-2 px-1 py-1 rounded hover:bg-slate-900 cursor-pointer">
+        <input type="checkbox" ${hidden.includes(item.id) ? '' : 'checked'} onchange="COMMAND_CENTER.toggleVisible('${item.id}', this.checked)" class="accent-amber-400">
+        <span class="text-[11px] text-slate-200">${item.label}</span>
+      </label>
+    `).join('');
   },
 
   renderFilter() {
     const panel = document.getElementById('cc-module-filter');
     if (!panel) return;
     const { hidden } = this.state();
+    const items = this.catalog.filter((item) => item.group === 'core');
     panel.innerHTML = `
       <div class="text-[9px] font-mono text-slate-500 uppercase px-1 pb-1">Show on dashboard</div>
-      ${this.catalog.map((item) => `
-        <label class="flex items-center gap-2 px-1 py-1 rounded hover:bg-slate-900 cursor-pointer">
-          <input type="checkbox" ${hidden.includes(item.id) ? '' : 'checked'} onchange="COMMAND_CENTER.toggleVisible('${item.id}', this.checked)" class="accent-amber-400">
-          <span class="text-[11px] text-slate-200">${item.label}</span>
-        </label>
-      `).join('')}
+      ${this.filterChecks(items, hidden)}
+    `;
+  },
+
+  renderApiFilter() {
+    const panel = document.getElementById('cc-api-filter');
+    if (!panel) return;
+    const { hidden } = this.state();
+    const items = this.catalog.filter((item) => item.group === 'api');
+    panel.innerHTML = `
+      <div class="text-[9px] font-mono text-slate-500 uppercase px-1 pb-1">API Widgets</div>
+      <p class="text-[9px] text-slate-500 px-1 pb-1.5">Check to add to Command Center.</p>
+      ${this.filterChecks(items, hidden)}
     `;
   },
 
@@ -11490,10 +18430,176 @@ const COMMAND_CENTER = {
   }
 };
 
+const DIMAD_STUDIO = {
+  storageKey: 'dimad_cs_modules',
+  layoutVersion: 1,
+  catalog: [
+    { id: 'inspo', label: 'Daily Inspo', group: 'core' },
+    { id: 'creator-ai', label: 'Creator AI Chat', group: 'core' },
+    { id: 'notepad', label: 'DIMAD Notepad', group: 'core' },
+    { id: 'journal', label: 'Daily Journal', group: 'core' },
+    { id: 'scheduler', label: 'Content Scheduler', group: 'core' },
+    { id: 'pipeline', label: 'Creator Pipeline', group: 'core' },
+    { id: 'youtube', label: 'YouTube', group: 'api' },
+    { id: 'substack', label: 'Substack', group: 'api' },
+    { id: 'instagram', label: 'Instagram', group: 'api' },
+    { id: 'tiktok', label: 'TikTok', group: 'api' }
+  ],
+  railIds: ['youtube', 'substack', 'instagram', 'tiktok'],
+
+  apiIds() {
+    return this.catalog.filter((item) => item.group === 'api').map((item) => item.id);
+  },
+
+  defaultState() {
+    return { hidden: this.apiIds(), collapsed: [], layoutVersion: this.layoutVersion };
+  },
+
+  state() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(this.storageKey) || '');
+      if (raw && Array.isArray(raw.hidden) && Array.isArray(raw.collapsed)) {
+        if (raw.layoutVersion === this.layoutVersion) return raw;
+        const next = {
+          hidden: Array.from(new Set(raw.hidden.concat(this.apiIds()))),
+          collapsed: raw.collapsed,
+          layoutVersion: this.layoutVersion
+        };
+        this.persist(next);
+        return next;
+      }
+    } catch (err) { /* defaults */ }
+    return this.defaultState();
+  },
+
+  persist(next) {
+    localStorage.setItem(this.storageKey, JSON.stringify(next));
+  },
+
+  apply() {
+    const { hidden } = this.state();
+    const root = document.getElementById('view-creator-studio') || document;
+    root.querySelectorAll('[data-cs-module]').forEach((el) => {
+      const id = el.getAttribute('data-cs-module');
+      el.classList.toggle('hidden', hidden.includes(id));
+    });
+    const rail = document.getElementById('cs-integrations');
+    if (rail) {
+      const visible = rail.querySelectorAll('[data-cs-module]:not(.hidden)').length;
+      rail.classList.toggle('hidden', visible === 0);
+    }
+    this.renderFilter();
+    this.renderApiFilter();
+    if (typeof DIMAD_NOTEPAD !== 'undefined' && DIMAD_NOTEPAD.renderDash) DIMAD_NOTEPAD.renderDash();
+    if (typeof CREATOR_AI !== 'undefined' && CREATOR_AI.renderStudio) CREATOR_AI.renderStudio();
+    if (typeof SCHEDULER !== 'undefined' && SCHEDULER.renderStudio) SCHEDULER.renderStudio();
+    if (typeof PIPELINE !== 'undefined' && PIPELINE.renderStudio) PIPELINE.renderStudio();
+    if (typeof CALENDAR_NAV !== 'undefined' && CALENDAR_NAV.render) CALENDAR_NAV.render();
+    if (typeof DAILY_INSPO !== 'undefined' && DAILY_INSPO.render) DAILY_INSPO.render();
+    this.renderJournal();
+  },
+
+  toggleVisible(id, show) {
+    const next = this.state();
+    if (show) next.hidden = next.hidden.filter((item) => item !== id);
+    else if (!next.hidden.includes(id)) next.hidden.push(id);
+    this.persist(next);
+    this.apply();
+  },
+
+  toggleFilter(kind) {
+    const core = document.getElementById('cs-module-filter');
+    const api = document.getElementById('cs-api-filter');
+    if (core) {
+      const show = kind === 'core' && core.classList.contains('hidden');
+      core.classList.toggle('hidden', !show);
+      if (show) this.renderFilter();
+    }
+    if (api) {
+      const show = kind === 'api' && api.classList.contains('hidden');
+      api.classList.toggle('hidden', !show);
+      if (show) this.renderApiFilter();
+    }
+  },
+
+  filterChecks(items, hidden) {
+    return items.map((item) => `
+      <label class="flex items-center gap-2 px-1 py-1 rounded hover:bg-slate-900 cursor-pointer">
+        <input type="checkbox" ${hidden.includes(item.id) ? '' : 'checked'} onchange="DIMAD_STUDIO.toggleVisible('${item.id}', this.checked)" class="accent-amber-400">
+        <span class="text-[11px] text-slate-200">${item.label}</span>
+      </label>
+    `).join('');
+  },
+
+  renderFilter() {
+    const panel = document.getElementById('cs-module-filter');
+    if (!panel) return;
+    const { hidden } = this.state();
+    const items = this.catalog.filter((item) => item.group === 'core');
+    panel.innerHTML = `
+      <div class="text-[9px] font-mono text-slate-500 uppercase px-1 pb-1">Show on dashboard</div>
+      ${this.filterChecks(items, hidden)}
+    `;
+  },
+
+  renderApiFilter() {
+    const panel = document.getElementById('cs-api-filter');
+    if (!panel) return;
+    const { hidden } = this.state();
+    const items = this.catalog.filter((item) => item.group === 'api');
+    panel.innerHTML = `
+      <div class="text-[9px] font-mono text-slate-500 uppercase px-1 pb-1">API Widgets</div>
+      <p class="text-[9px] text-slate-500 px-1 pb-1.5">Check to add to Dimad Studio.</p>
+      ${this.filterChecks(items, hidden)}
+    `;
+  },
+
+  markConnected(id) {
+    const indicator = document.getElementById(`cs-${id}-indicator`);
+    if (indicator) indicator.className = 'w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]';
+  },
+
+  renderJournal() {
+    if (typeof WRITESPACE === 'undefined') return;
+    const dateEl = document.getElementById('cs-journal-date');
+    const bodyEl = document.getElementById('cs-journal-body');
+    if (!dateEl && !bodyEl) return;
+    const j = WRITESPACE.ensureJournalEntry();
+    const entry = (j.entries || []).find((e) => e.id === j.currentId) || (j.entries || [])[0];
+    if (dateEl) dateEl.textContent = WRITESPACE.formatJournalDate(entry && entry.date);
+    if (bodyEl && document.activeElement !== bodyEl) bodyEl.value = (entry && entry.body) || '';
+  },
+
+  saveJournal() {
+    if (typeof WRITESPACE === 'undefined') return;
+    const bodyEl = document.getElementById('cs-journal-body');
+    const j = WRITESPACE.ensureJournalEntry();
+    const entry = (j.entries || []).find((e) => e.id === j.currentId);
+    if (entry && bodyEl) {
+      entry.body = bodyEl.value;
+      entry.updatedAt = Date.now();
+      WRITESPACE.persistJournal(j);
+    }
+    const status = document.getElementById('cs-journal-status');
+    if (status) status.textContent = 'Saved to WriteSpace Journal.';
+  },
+
+  openJournal() {
+    if (typeof WRITESPACE !== 'undefined') {
+      const s = WRITESPACE.state();
+      if (s.layoutStyle !== 'journal') s.prevLayout = s.layoutStyle;
+      s.layoutStyle = 'journal';
+      WRITESPACE.persist(s);
+    }
+    if (typeof switchTab === 'function') switchTab('creator-writespace');
+  }
+};
+
 window.onload = async function() {
   loadAiChats();
   await loadViews();
   if (typeof WORLD_CLOCKS !== 'undefined') WORLD_CLOCKS.render();
+  if (typeof DIMAD_GEO !== 'undefined') DIMAD_GEO.init();
   updateClocks();
   setInterval(updateClocks, 1000);
   renderModeNav('entrepreneur');
@@ -11501,6 +18607,7 @@ window.onload = async function() {
   initGoalsRewards();
   DIM_ENGINE.updateUI();
   FOCUS_TIMER.init();
+  if (typeof DIMAD_GOALS !== 'undefined') DIMAD_GOALS.checkReminders();
   switchTab('ent-dashboard');
   if (typeof CALENDAR_NAV !== 'undefined' && CALENDAR_NAV.render) CALENDAR_NAV.render();
   if (typeof FINNHUB_MARKETS !== 'undefined') FINNHUB_MARKETS.init();

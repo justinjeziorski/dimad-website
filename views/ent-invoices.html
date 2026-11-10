@@ -1,4 +1,147 @@
-<div id="view-ent-invoices" class="tab-view hidden p-4 border border-brand-border bg-brand-panel rounded">
-  <h2 class="text-sm font-bold text-brand-gold mb-2">INVOICES & PROPOSALS</h2>
-  <p class="text-slate-400">Billing, quotes, and proposal drafts.</p>
+<div id="view-ent-invoices" class="tab-view hidden w-full h-full overflow-y-auto">
+  <style>
+    #view-ent-invoices { font-family: 'JetBrains Mono', monospace; scrollbar-color: #F59E0B #070A0F; scrollbar-width: thin; }
+    #view-ent-invoices::-webkit-scrollbar { width: 6px; }
+    #view-ent-invoices::-webkit-scrollbar-track { background: #070A0F; }
+    #view-ent-invoices::-webkit-scrollbar-thumb { background: #1E293B; border-radius: 3px; }
+    #view-ent-invoices::-webkit-scrollbar-thumb:hover { background: #F59E0B; }
+    @media print {
+      body * { visibility: hidden; }
+      #inv-preview-paper, #inv-preview-paper * { visibility: visible; }
+      #inv-preview-paper { position: absolute; left: 0; top: 0; width: 100%; }
+      .inv-no-print { display: none !important; }
+    }
+  </style>
+  <div class="p-4 lg:p-6 max-w-6xl mx-auto w-full space-y-4">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div>
+        <h2 class="text-sm font-black text-brand-gold tracking-wide uppercase">Invoices &amp; Proposals</h2>
+        <p class="text-[11px] text-slate-400 mt-0.5">Proposals, retainers, and payment links.</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <button type="button" onclick="INVOICES.openProposalModal()" class="px-2.5 py-1.5 rounded-lg bg-brand-black border border-brand-border text-[10px] font-bold text-slate-200 hover:text-brand-gold"><i class="fa-solid fa-file-contract text-brand-gold mr-1"></i>+ Proposal</button>
+        <button type="button" onclick="INVOICES.openInvoiceModal()" class="px-2.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-[10px] font-bold"><i class="fa-solid fa-plus mr-1"></i>+ Invoice</button>
+        <button type="button" onclick="INVOICES.openClientModal()" class="px-2.5 py-1.5 rounded-lg bg-brand-black border border-brand-border text-[10px] font-bold text-slate-200 hover:text-brand-gold"><i class="fa-solid fa-user-plus text-slate-400 mr-1"></i>+ Client</button>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-2">
+      <div class="bg-brand-panel border border-brand-border rounded-xl p-3">
+        <div class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Outstanding</div>
+        <div id="inv-m-outstanding" class="text-lg font-black text-white">$0.00</div>
+        <div id="inv-m-unpaid" class="text-[9px] text-brand-gold mt-1">0 pending</div>
+      </div>
+      <div class="bg-brand-panel border border-brand-border rounded-xl p-3">
+        <div class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Collected</div>
+        <div id="inv-m-collected" class="text-lg font-black text-brand-mint">$0.00</div>
+        <div class="text-[9px] text-brand-mint mt-1">Paid invoices</div>
+      </div>
+      <div class="bg-brand-panel border border-brand-border rounded-xl p-3">
+        <div class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Overdue</div>
+        <div id="inv-m-overdue" class="text-lg font-black text-brand-alert">$0.00</div>
+        <div id="inv-m-overdue-n" class="text-[9px] text-brand-alert mt-1">0 need attention</div>
+      </div>
+      <div class="bg-brand-panel border border-brand-border rounded-xl p-3">
+        <div class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Pipeline</div>
+        <div id="inv-m-pipeline" class="text-lg font-black text-brand-accent">$0.00</div>
+        <div id="inv-m-props" class="text-[9px] text-brand-accent mt-1">0 active proposals</div>
+      </div>
+    </div>
+
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+      <div class="flex items-center gap-1.5 flex-wrap">
+        <button type="button" data-inv-tab="invoices" onclick="INVOICES.setTab('invoices')" class="px-3 py-1.5 rounded-lg text-[10px] font-bold border">Invoices</button>
+        <button type="button" data-inv-tab="proposals" onclick="INVOICES.setTab('proposals')" class="px-3 py-1.5 rounded-lg text-[10px] font-bold border">Proposals</button>
+        <button type="button" data-inv-tab="clients" onclick="INVOICES.setTab('clients')" class="px-3 py-1.5 rounded-lg text-[10px] font-bold border">Clients</button>
+      </div>
+      <div class="relative">
+        <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2 text-slate-500 text-[10px]"></i>
+        <input id="inv-search" type="text" oninput="INVOICES.setSearch(this.value)" placeholder="Filter documents…" class="bg-brand-black border border-brand-border rounded-lg pl-7 pr-3 py-1.5 text-[11px] text-slate-200 placeholder-slate-500 focus:outline-none focus:border-brand-gold w-52">
+      </div>
+    </div>
+
+    <div id="inv-panel-invoices" class="space-y-3"></div>
+    <div id="inv-panel-proposals" class="hidden"></div>
+    <div id="inv-panel-clients" class="hidden"></div>
+  </div>
+
+  <div id="inv-toast" class="hidden fixed bottom-6 right-6 z-[360] bg-brand-panel border border-brand-gold/40 text-[11px] text-slate-200 px-3 py-2 rounded-lg"></div>
+
+  <div id="inv-invoice-modal" class="hidden fixed inset-0 z-[350] bg-slate-950/80 backdrop-blur-md items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-brand-panel border border-brand-border rounded-2xl max-w-3xl w-full p-5 space-y-4 my-8">
+      <div class="flex items-center justify-between">
+        <h3 id="inv-modal-title" class="text-sm font-black text-brand-gold uppercase">Create invoice</h3>
+        <button type="button" onclick="INVOICES.closeModals()" class="text-slate-400 hover:text-white">✕</button>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-[11px]">
+        <label class="space-y-1"><span class="text-slate-400">Client</span><select id="inv-new-client" class="w-full bg-brand-black border border-brand-border rounded-lg px-2 py-2 text-slate-200"></select></label>
+        <label class="space-y-1"><span class="text-slate-400">Reference</span><input id="inv-new-number" class="w-full bg-brand-black border border-brand-border rounded-lg px-2 py-2 text-slate-200 font-mono"></label>
+        <label class="space-y-1"><span class="text-slate-400">Currency</span>
+          <select id="inv-new-currency" class="w-full bg-brand-black border border-brand-border rounded-lg px-2 py-2 text-slate-200">
+            <option>USD</option><option>EUR</option><option>GBP</option><option>CAD</option><option>AUD</option>
+          </select>
+        </label>
+        <label class="space-y-1"><span class="text-slate-400">Terms</span>
+          <select id="inv-new-terms" class="w-full bg-brand-black border border-brand-border rounded-lg px-2 py-2 text-slate-200">
+            <option>Due on Receipt</option><option>Net 15</option><option>Net 30</option>
+          </select>
+        </label>
+        <label class="space-y-1"><span class="text-slate-400">Issue date</span><input id="inv-new-date" type="date" class="w-full bg-brand-black border border-brand-border rounded-lg px-2 py-2 text-slate-200"></label>
+        <label class="space-y-1"><span class="text-slate-400">Due date</span><input id="inv-new-due" type="date" class="w-full bg-brand-black border border-brand-border rounded-lg px-2 py-2 text-slate-200"></label>
+        <label class="space-y-1"><span class="text-slate-400">Status</span>
+          <select id="inv-new-status" class="w-full bg-brand-black border border-brand-border rounded-lg px-2 py-2 text-slate-200">
+            <option>Draft</option><option>Sent</option><option>Paid</option><option>Overdue</option>
+          </select>
+        </label>
+        <label class="space-y-1 md:col-span-2"><span class="text-slate-400">Stripe link</span><input id="inv-new-stripe" placeholder="https://buy.stripe.com/…" class="w-full bg-brand-black border border-brand-border rounded-lg px-2 py-2 text-slate-200"></label>
+      </div>
+      <div class="flex items-center justify-between text-[11px]">
+        <span class="font-bold text-white">Line items</span>
+        <button type="button" onclick="INVOICES.addLine()" class="text-brand-gold font-bold">+ Add item</button>
+      </div>
+      <div id="inv-new-lines" class="space-y-2"></div>
+      <div class="flex items-center justify-between pt-2 border-t border-brand-border">
+        <div class="text-[11px] text-slate-400">Total <strong id="inv-new-total" class="text-brand-gold font-mono text-sm">$0.00</strong></div>
+        <div class="flex gap-2">
+          <button type="button" onclick="INVOICES.closeModals()" class="px-3 py-1.5 rounded-lg bg-brand-black border border-brand-border text-[10px] font-bold text-slate-300">Cancel</button>
+          <button type="button" id="inv-modal-save" onclick="INVOICES.saveInvoice()" class="px-4 py-1.5 rounded-lg bg-amber-500 text-slate-950 text-[10px] font-bold">Generate</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="inv-proposal-modal" class="hidden fixed inset-0 z-[350] bg-slate-950/80 backdrop-blur-md items-center justify-center p-4">
+    <div class="bg-brand-panel border border-brand-border rounded-2xl max-w-md w-full p-5 space-y-3">
+      <div class="flex items-center justify-between"><h3 class="text-sm font-black text-brand-gold uppercase">New proposal</h3><button type="button" onclick="INVOICES.closeModals()" class="text-slate-400 hover:text-white">✕</button></div>
+      <label class="block text-[11px] space-y-1"><span class="text-slate-400">Client</span><select id="prop-new-client" class="w-full bg-brand-black border border-brand-border rounded-lg px-2 py-2 text-slate-200"></select></label>
+      <label class="block text-[11px] space-y-1"><span class="text-slate-400">Title</span><input id="prop-new-title" class="w-full bg-brand-black border border-brand-border rounded-lg px-2 py-2 text-slate-200"></label>
+      <label class="block text-[11px] space-y-1"><span class="text-slate-400">Amount</span><input id="prop-new-total" type="number" class="w-full bg-brand-black border border-brand-border rounded-lg px-2 py-2 text-slate-200"></label>
+      <label class="block text-[11px] space-y-1"><span class="text-slate-400">Currency</span><select id="prop-new-currency" class="w-full bg-brand-black border border-brand-border rounded-lg px-2 py-2 text-slate-200"><option>USD</option><option>EUR</option><option>GBP</option></select></label>
+      <div class="flex gap-2 pt-1">
+        <button type="button" onclick="INVOICES.closeModals()" class="flex-1 py-2 rounded-lg bg-brand-black border border-brand-border text-[10px] font-bold text-slate-300">Cancel</button>
+        <button type="button" onclick="INVOICES.saveProposal()" class="flex-1 py-2 rounded-lg bg-amber-500 text-slate-950 text-[10px] font-bold">Save draft</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="inv-client-modal" class="hidden fixed inset-0 z-[350] bg-slate-950/80 backdrop-blur-md items-center justify-center p-4">
+    <div class="bg-brand-panel border border-brand-border rounded-2xl max-w-md w-full p-5 space-y-3">
+      <div class="flex items-center justify-between"><h3 id="cli-modal-title" class="text-sm font-black text-brand-gold uppercase">New client</h3><button type="button" onclick="INVOICES.closeModals()" class="text-slate-400 hover:text-white">✕</button></div>
+      <input id="cli-name" placeholder="Name" class="w-full bg-brand-black border border-brand-border rounded-lg px-2 py-2 text-[11px] text-slate-200">
+      <input id="cli-company" placeholder="Company" class="w-full bg-brand-black border border-brand-border rounded-lg px-2 py-2 text-[11px] text-slate-200">
+      <input id="cli-email" placeholder="Email" class="w-full bg-brand-black border border-brand-border rounded-lg px-2 py-2 text-[11px] text-slate-200">
+      <input id="cli-location" placeholder="Location" class="w-full bg-brand-black border border-brand-border rounded-lg px-2 py-2 text-[11px] text-slate-200">
+      <input id="cli-tz" placeholder="Timezone (e.g. Europe/Berlin)" class="w-full bg-brand-black border border-brand-border rounded-lg px-2 py-2 text-[11px] text-slate-200">
+      <select id="cli-currency" class="w-full bg-brand-black border border-brand-border rounded-lg px-2 py-2 text-[11px] text-slate-200"><option>USD</option><option>EUR</option><option>GBP</option></select>
+      <select id="cli-terms" class="w-full bg-brand-black border border-brand-border rounded-lg px-2 py-2 text-[11px] text-slate-200"><option>Due on Receipt</option><option>Net 15</option><option>Net 30</option></select>
+      <div class="flex gap-2">
+        <button type="button" onclick="INVOICES.closeModals()" class="flex-1 py-2 rounded-lg bg-brand-black border border-brand-border text-[10px] font-bold text-slate-300">Cancel</button>
+        <button type="button" id="cli-modal-save" onclick="INVOICES.saveClient()" class="flex-1 py-2 rounded-lg bg-amber-500 text-slate-950 text-[10px] font-bold">Add client</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="inv-preview-modal" class="hidden fixed inset-0 z-[350] bg-slate-950/90 backdrop-blur-md items-center justify-center p-4 overflow-y-auto">
+    <div id="inv-preview-paper" class="bg-white text-slate-900 rounded-xl max-w-2xl w-full p-8 space-y-5 my-8"></div>
+  </div>
 </div>

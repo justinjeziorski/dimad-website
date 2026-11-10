@@ -1,4 +1,33 @@
-<div id="view-ent-tasks" class="tab-view hidden p-4 border border-brand-border bg-brand-panel rounded">
-  <h2 class="text-sm font-bold text-brand-gold mb-2">TASK MANAGER</h2>
-  <p class="text-slate-400">Operational task list and execution queue.</p>
+<div id="view-ent-tasks" class="tab-view hidden w-full h-full overflow-y-auto">
+  <style>
+    #view-ent-tasks { scrollbar-color: #F59E0B #070A0F; scrollbar-width: thin; }
+    #view-ent-tasks::-webkit-scrollbar { width: 6px; }
+    #view-ent-tasks::-webkit-scrollbar-track { background: #070A0F; }
+    #view-ent-tasks::-webkit-scrollbar-thumb { background: #1E293B; border-radius: 3px; }
+    #view-ent-tasks::-webkit-scrollbar-thumb:hover { background: #F59E0B; }
+  </style>
+  <div class="p-4 lg:p-6 max-w-5xl mx-auto w-full">
+    <section class="bg-brand-panel border border-brand-border rounded-2xl p-5 flex flex-col space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <h2 class="text-sm font-black tracking-wide uppercase text-white flex items-center gap-2">
+          <i class="fa-solid fa-list-check text-brand-gold"></i>
+          <span>Task Manager (To-Do List)</span>
+        </h2>
+        <div class="flex items-center gap-2">
+          <button type="button" id="tm-tab-today" onclick="TASK_MANAGER.setView('today')" class="text-[10px] font-bold px-2.5 py-1 rounded-lg border border-amber-500/40 bg-amber-500/10 text-brand-gold">Today</button>
+          <button type="button" id="tm-tab-history" onclick="TASK_MANAGER.setView('history')" class="text-[10px] font-bold px-2.5 py-1 rounded-lg border border-brand-border bg-brand-black text-slate-400 hover:text-slate-200">History</button>
+          <button type="button" id="tm-tab-future" onclick="TASK_MANAGER.setView('future')" class="text-[10px] font-bold px-2.5 py-1 rounded-lg border border-brand-border bg-brand-black text-slate-400 hover:text-slate-200">Future</button>
+          <span id="tm-pending" class="text-[10px] font-mono px-2.5 py-1 rounded-md bg-brand-black border border-brand-border text-slate-300">0 / 20</span>
+        </div>
+      </div>
+
+      <form id="tm-add-form" class="relative flex items-center">
+        <input id="tm-new-task" type="text" placeholder="Type a task and hit Enter…" class="w-full bg-brand-black border border-brand-border rounded-xl px-4 py-2.5 text-[11px] font-mono text-slate-200 placeholder-slate-500 focus:outline-none focus:border-brand-gold transition pr-24">
+        <button type="submit" id="tm-add-btn" class="absolute right-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[10px] px-3 py-1.5 rounded-lg transition shadow-lg shadow-amber-500/10">+ Add Task</button>
+      </form>
+      <p id="tm-limit" class="hidden text-[11px] font-mono text-brand-gold">Complete or Delete tasks to add more</p>
+
+      <div id="tm-list" class="space-y-2 max-h-[520px] overflow-y-auto pr-1"></div>
+    </section>
+  </div>
 </div>

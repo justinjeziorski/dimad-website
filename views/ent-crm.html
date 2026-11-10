@@ -1,43 +1,144 @@
-<div id="view-ent-crm" class="tab-view hidden p-4 border border-brand-border bg-brand-panel rounded space-y-3">
-  <div>
-    <h2 class="text-sm font-bold text-brand-accent">SALES & REVENUE</h2>
-    <p class="text-[11px] text-slate-400 mt-0.5">Stripe payments, storefront orders, and revenue operations in one board.</p>
+<div id="view-ent-crm" class="tab-view hidden w-full h-full min-h-0 flex flex-col overflow-hidden">
+  <style>
+    #view-ent-crm { font-family: 'JetBrains Mono', monospace; }
+    #sheet-grid-wrap::-webkit-scrollbar { width: 8px; height: 8px; }
+    #sheet-grid-wrap::-webkit-scrollbar-track { background: #070A0F; }
+    #sheet-grid-wrap::-webkit-scrollbar-thumb { background: #1E293B; }
+    #sheet-grid-wrap::-webkit-scrollbar-thumb:hover { background: #F59E0B; }
+    .sheet-active { outline: 2px solid #F59E0B; outline-offset: -2px; z-index: 5; }
+    #sheet-table { width: max-content; table-layout: fixed; }
+    #sheet-table .sheet-col,
+    #sheet-table .sheet-cell { width: 200px; min-width: 200px; height: 32px; }
+    #sheet-table .sheet-cell { cursor: text; }
+    #sheet-table input { outline: none; width: 100%; height: 100%; }
+    #sheet-zoom-slider { accent-color: #F59E0B; width: 88px; height: 4px; cursor: pointer; }
+  </style>
+  <div class="px-4 pt-3 pb-2 shrink-0 flex items-end justify-between gap-3">
+    <div>
+      <h2 class="text-sm font-black text-brand-gold tracking-wide uppercase">Sales &amp; Revenue</h2>
+      <p class="text-[11px] text-slate-400 mt-0.5">Workbook for runway, Stripe, and storefront numbers.</p>
+    </div>
+    <p class="text-[10px] text-slate-500 font-mono hidden sm:block">Saved workbooks live in dimDrive → Sales Workbooks.</p>
   </div>
 
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-    <div class="border border-brand-accent/20 bg-brand-accent/5 rounded-xl p-3 space-y-1">
-      <div class="text-[10px] font-mono text-brand-accent">STRIPE MRR</div>
-      <div class="text-lg font-bold text-white">$14,250</div>
-      <div class="text-[10px] text-emerald-400">+8.4% vs last month</div>
+  <div class="px-4 pb-2 grid grid-cols-3 gap-2 shrink-0">
+    <div class="border border-brand-accent/20 bg-brand-accent/5 rounded-xl px-3 py-2">
+      <div class="text-[9px] font-mono text-brand-accent">STRIPE MRR</div>
+      <div class="text-sm font-black text-white">$14,250</div>
     </div>
-    <div class="border border-amber-500/20 bg-amber-500/5 rounded-xl p-3 space-y-1">
-      <div class="text-[10px] font-mono text-brand-gold">SHOPIFY ORDERS</div>
-      <div class="text-lg font-bold text-white">38 today</div>
-      <div class="text-[10px] text-slate-400">$4,820 gross merchandise</div>
+    <div class="border border-amber-500/20 bg-amber-500/5 rounded-xl px-3 py-2">
+      <div class="text-[9px] font-mono text-brand-gold">SHOPIFY ORDERS</div>
+      <div class="text-sm font-black text-white">38 today</div>
     </div>
-    <div class="border border-brand-mint/20 bg-brand-mint/5 rounded-xl p-3 space-y-1">
-      <div class="text-[10px] font-mono text-brand-mint">NET CASH</div>
-      <div class="text-lg font-bold text-white">$9,410</div>
-      <div class="text-[10px] text-slate-400">After fees & refunds</div>
+    <div class="border border-brand-mint/20 bg-brand-mint/5 rounded-xl px-3 py-2">
+      <div class="text-[9px] font-mono text-brand-mint">NET CASH</div>
+      <div class="text-sm font-black text-white">$9,410</div>
     </div>
   </div>
 
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
-    <div class="border border-slate-800 rounded-xl bg-slate-950/50 p-3 space-y-2">
-      <h3 class="text-[11px] font-bold text-slate-200">Stripe pipeline</h3>
-      <div class="text-[11px] text-slate-400 space-y-1.5">
-        <div class="flex justify-between border-b border-slate-800 pb-1.5"><span>Active subscriptions</span><span class="text-slate-200 font-mono">186</span></div>
-        <div class="flex justify-between border-b border-slate-800 pb-1.5"><span>Failed payments</span><span class="text-brand-gold font-mono">4</span></div>
-        <div class="flex justify-between"><span>Trial conversions this week</span><span class="text-brand-mint font-mono">12</span></div>
+  <div class="relative flex-1 min-h-0 mx-4 mb-3 border border-brand-border rounded-xl bg-brand-panel overflow-hidden flex flex-col">
+    <div class="bg-brand-black border-b border-brand-border px-3 py-1.5 flex items-center justify-between gap-3 shrink-0 flex-wrap">
+      <div class="flex items-center gap-2 text-slate-200 min-w-0">
+        <i class="fa-solid fa-table text-brand-gold"></i>
+        <span class="text-[11px] font-bold truncate" id="sheet-book-name">Sales_Revenue_Workbook.xlsx</span>
+        <span id="sheet-save-status" class="text-[9px] font-mono text-slate-400 bg-slate-900 border border-brand-border px-1.5 py-0.5 rounded shrink-0">Not saved</span>
+      </div>
+      <div class="flex items-center gap-1.5 text-[10px] shrink-0">
+        <button type="button" onclick="DIMAD_SHEET.saveToDrive()" class="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold"><i class="fa-solid fa-cloud-arrow-up mr-1"></i>Save</button>
+        <button type="button" onclick="DIMAD_SHEET.openPicker()" class="px-2.5 py-1 rounded-lg bg-slate-950 hover:bg-slate-800 border border-brand-border text-slate-200 font-bold"><i class="fa-solid fa-folder-open mr-1"></i>Open</button>
+        <div class="relative">
+          <button type="button" onclick="DIMAD_SHEET.toggleExportMenu()" class="px-2.5 py-1 rounded-lg bg-slate-950 hover:bg-slate-800 border border-brand-border text-slate-200 font-bold"><i class="fa-solid fa-download mr-1"></i>Export</button>
+          <div id="sheet-export-menu" class="hidden absolute right-0 top-full mt-1 z-40 w-52 bg-brand-panel border border-brand-border rounded-lg overflow-hidden shadow-xl">
+            <button type="button" onclick="DIMAD_SHEET.exportCsv()" class="w-full text-left px-3 py-2 text-[10px] text-slate-200 hover:bg-slate-800">Export CSV (this sheet)</button>
+            <button type="button" onclick="DIMAD_SHEET.exportWorkbook()" class="w-full text-left px-3 py-2 text-[10px] text-slate-200 hover:bg-slate-800">Export workbook file</button>
+          </div>
+        </div>
+        <span class="w-px h-4 bg-brand-border mx-1"></span>
+        <button type="button" data-sheet-ribbon="home" onclick="DIMAD_SHEET.setRibbon('home')" class="px-3 py-1 rounded-t bg-brand-panel text-brand-gold font-bold">Home</button>
+        <button type="button" data-sheet-ribbon="insert" onclick="DIMAD_SHEET.setRibbon('insert')" class="px-3 py-1 rounded-t text-slate-400 hover:text-slate-200">Insert</button>
+        <button type="button" data-sheet-ribbon="formulas" onclick="DIMAD_SHEET.setRibbon('formulas')" class="px-3 py-1 rounded-t text-slate-400 hover:text-slate-200">Formulas</button>
       </div>
     </div>
-    <div class="border border-slate-800 rounded-xl bg-slate-950/50 p-3 space-y-2">
-      <h3 class="text-[11px] font-bold text-slate-200">Storefront</h3>
-      <div class="text-[11px] text-slate-400 space-y-1.5">
-        <div class="flex justify-between border-b border-slate-800 pb-1.5"><span>Shopify</span><span class="text-slate-200">Ready to sync</span></div>
-        <div class="flex justify-between border-b border-slate-800 pb-1.5"><span>Lemon Squeezy</span><span class="text-slate-200">Ready to sync</span></div>
-        <div class="flex justify-between"><span>Top SKU</span><span class="text-brand-gold">Founders Carry Kit</span></div>
+    <div class="bg-brand-panel border-b border-brand-border px-3 py-1.5 flex items-center gap-2 text-[10px] shrink-0 min-h-[40px]">
+      <div id="sheet-ribbon-home" class="items-center gap-1.5 flex-wrap" style="display:flex">
+        <button type="button" onclick="DIMAD_SHEET.copyCell()" class="w-7 h-7 rounded border border-brand-border text-slate-300 hover:text-brand-gold" title="Copy"><i class="fa-solid fa-copy"></i></button>
+        <button type="button" onclick="DIMAD_SHEET.clearCell()" class="w-7 h-7 rounded border border-brand-border text-slate-300 hover:text-brand-alert" title="Clear"><i class="fa-solid fa-eraser"></i></button>
+        <span class="w-px h-5 bg-brand-border mx-1"></span>
+        <button type="button" id="sheet-bold" onclick="DIMAD_SHEET.toggleStyle('bold')" class="w-7 h-7 rounded border border-brand-border text-slate-200 font-black">B</button>
+        <button type="button" id="sheet-italic" onclick="DIMAD_SHEET.toggleStyle('italic')" class="w-7 h-7 rounded border border-brand-border text-slate-200 italic">I</button>
+        <label class="w-7 h-7 rounded border border-brand-border flex items-center justify-center cursor-pointer text-slate-200" title="Text color">A<input type="color" id="sheet-text-color" onchange="DIMAD_SHEET.applyColor('color', this.value)" class="absolute opacity-0 w-0 h-0"></label>
+        <label class="w-7 h-7 rounded border border-brand-border flex items-center justify-center cursor-pointer text-slate-300" title="Fill"><i class="fa-solid fa-fill-drip"></i><input type="color" id="sheet-bg-color" onchange="DIMAD_SHEET.applyColor('bgColor', this.value)" class="absolute opacity-0 w-0 h-0"></label>
+        <span class="w-px h-5 bg-brand-border mx-1"></span>
+        <button type="button" onclick="DIMAD_SHEET.setAlign('left')" class="w-7 h-7 rounded border border-brand-border text-slate-300"><i class="fa-solid fa-align-left"></i></button>
+        <button type="button" onclick="DIMAD_SHEET.setAlign('center')" class="w-7 h-7 rounded border border-brand-border text-slate-300"><i class="fa-solid fa-align-center"></i></button>
+        <button type="button" onclick="DIMAD_SHEET.setAlign('right')" class="w-7 h-7 rounded border border-brand-border text-slate-300"><i class="fa-solid fa-align-right"></i></button>
+        <button type="button" onclick="DIMAD_SHEET.formatMoney()" class="px-2 h-7 rounded border border-brand-border text-slate-200 font-mono">$</button>
+        <button type="button" onclick="DIMAD_SHEET.formatPercent()" class="px-2 h-7 rounded border border-brand-border text-slate-200 font-mono">%</button>
       </div>
+      <div id="sheet-ribbon-insert" class="items-center gap-2" style="display:none">
+        <button type="button" onclick="DIMAD_SHEET.insertSample()" class="px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/30 text-brand-gold font-bold"><i class="fa-solid fa-table mr-1"></i>Insert demo model</button>
+        <button type="button" onclick="DIMAD_SHEET.clearSheet()" class="px-2.5 py-1 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 font-bold"><i class="fa-solid fa-trash-can mr-1"></i>Clear sheet</button>
+      </div>
+      <div id="sheet-ribbon-formulas" class="items-center gap-1.5" style="display:none">
+        <span class="text-slate-500 mr-1">Functions</span>
+        <button type="button" onclick="DIMAD_SHEET.insertFormula('SUM')" class="px-2 py-1 rounded border border-brand-border text-slate-200 font-mono">SUM</button>
+        <button type="button" onclick="DIMAD_SHEET.insertFormula('AVERAGE')" class="px-2 py-1 rounded border border-brand-border text-slate-200 font-mono">AVERAGE</button>
+        <button type="button" onclick="DIMAD_SHEET.insertFormula('MIN')" class="px-2 py-1 rounded border border-brand-border text-slate-200 font-mono">MIN</button>
+        <button type="button" onclick="DIMAD_SHEET.insertFormula('MAX')" class="px-2 py-1 rounded border border-brand-border text-slate-200 font-mono">MAX</button>
+        <button type="button" onclick="DIMAD_SHEET.insertFormula('COUNT')" class="px-2 py-1 rounded border border-brand-border text-slate-200 font-mono">COUNT</button>
+      </div>
+    </div>
+    <div class="bg-brand-black border-b border-brand-border px-2 py-1 flex items-center gap-2 shrink-0">
+      <div id="sheet-ref" class="w-14 text-center text-[10px] font-mono font-bold text-brand-gold border border-brand-border rounded py-1">A1</div>
+      <span class="text-slate-500 italic font-serif text-sm">fx</span>
+      <input id="sheet-formula" type="text" oninput="DIMAD_SHEET.formulaInput(this.value)" onkeydown="if(event.key==='Enter') DIMAD_SHEET.commitEdit()" placeholder="Enter text, numbers, or =SUM(B4:B6)" class="flex-1 bg-brand-panel border border-brand-border rounded px-2 py-1 text-[11px] font-mono text-slate-200 focus:outline-none focus:border-brand-gold">
+    </div>
+    <div id="sheet-grid-wrap" class="flex-1 min-h-0 overflow-auto bg-brand-black">
+      <table id="sheet-table" class="border-collapse text-[11px] font-mono"></table>
+    </div>
+    <div class="bg-brand-black border-t border-brand-border px-2 py-1 flex items-center justify-between gap-3 shrink-0">
+      <div class="flex items-center gap-1 overflow-x-auto">
+        <button type="button" onclick="DIMAD_SHEET.addSheet()" class="w-6 h-6 rounded text-slate-400 hover:text-brand-gold" title="Add sheet"><i class="fa-solid fa-plus text-[10px]"></i></button>
+        <div id="sheet-tabs" class="flex items-center"></div>
+      </div>
+      <div class="hidden sm:flex items-center gap-3 text-[10px] font-mono text-slate-400 pr-1">
+        <span>Avg <strong id="sheet-avg" class="text-slate-200">0</strong></span>
+        <span>Count <strong id="sheet-count" class="text-slate-200">0</strong></span>
+        <span>Sum <strong id="sheet-sum" class="text-slate-200">0</strong></span>
+        <span class="text-brand-mint"><i class="fa-solid fa-circle-check text-[9px]"></i> Ready</span>
+        <div class="flex items-center gap-1.5 pl-2 border-l border-brand-border text-slate-300">
+          <i class="fa-solid fa-magnifying-glass text-brand-gold text-[9px]" title="View magnifier"></i>
+          <button type="button" onclick="DIMAD_SHEET.zoomBy(-10)" class="w-5 h-5 rounded border border-brand-border hover:text-brand-gold" title="Zoom out">−</button>
+          <input id="sheet-zoom-slider" type="range" min="25" max="200" step="5" value="100" oninput="DIMAD_SHEET.setZoom(this.value)">
+          <button type="button" onclick="DIMAD_SHEET.zoomBy(10)" class="w-5 h-5 rounded border border-brand-border hover:text-brand-gold" title="Zoom in">+</button>
+          <div class="relative">
+            <button type="button" id="sheet-zoom-label" onclick="event.stopPropagation(); DIMAD_SHEET.toggleZoomMenu()" class="min-w-[2.5rem] px-1.5 py-0.5 rounded border border-brand-border text-center text-brand-gold font-bold hover:bg-amber-500/10" title="Zoom presets">100%</button>
+            <div id="sheet-zoom-menu" class="hidden absolute bottom-full right-0 mb-1 z-50 w-[4.5rem] bg-brand-panel border border-brand-border rounded-lg overflow-hidden shadow-xl">
+              <button type="button" onclick="DIMAD_SHEET.pickZoom(25)" class="w-full px-2 py-1.5 text-left text-slate-200 hover:bg-slate-800 hover:text-brand-gold">25%</button>
+              <button type="button" onclick="DIMAD_SHEET.pickZoom(50)" class="w-full px-2 py-1.5 text-left text-slate-200 hover:bg-slate-800 hover:text-brand-gold">50%</button>
+              <button type="button" onclick="DIMAD_SHEET.pickZoom(75)" class="w-full px-2 py-1.5 text-left text-slate-200 hover:bg-slate-800 hover:text-brand-gold">75%</button>
+              <button type="button" onclick="DIMAD_SHEET.pickZoom(100)" class="w-full px-2 py-1.5 text-left text-slate-200 hover:bg-slate-800 hover:text-brand-gold">100%</button>
+              <button type="button" onclick="DIMAD_SHEET.pickZoom(200)" class="w-full px-2 py-1.5 text-left text-slate-200 hover:bg-slate-800 hover:text-brand-gold">200%</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="sheet-open-modal" class="hidden absolute inset-0 z-50 bg-black/70 items-center justify-center p-4">
+    <div class="bg-brand-panel border border-brand-border rounded-2xl w-full max-w-md p-4 space-y-3">
+      <div class="flex items-center justify-between">
+        <h3 class="text-xs font-black text-brand-gold uppercase">Open from dimDrive</h3>
+        <button type="button" onclick="DIMAD_SHEET.closePicker()" class="text-slate-400 hover:text-white">✕</button>
+      </div>
+      <p class="text-[10px] text-slate-400">Workbooks saved on this account. Upload a <span class="text-slate-200 font-mono">.dimsheet.json</span> file to bring one in from another computer.</p>
+      <div id="sheet-open-list" class="max-h-56 overflow-y-auto space-y-1"></div>
+      <label class="flex items-center justify-center gap-2 w-full py-2 rounded-lg border border-dashed border-brand-border text-[10px] text-slate-300 cursor-pointer hover:border-brand-gold">
+        <i class="fa-solid fa-upload"></i> Upload workbook or CSV
+        <input type="file" accept=".json,.dimsheet.json,.csv,application/json,text/csv" class="hidden" onchange="DIMAD_SHEET.importPortable(event)">
+      </label>
+      <button type="button" onclick="DIMAD_SHEET.closePicker()" class="w-full py-2 rounded-lg bg-slate-950 border border-brand-border text-[10px] font-bold text-slate-300">Cancel</button>
     </div>
   </div>
 </div>

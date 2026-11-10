@@ -87,9 +87,14 @@
     .sidebar-collapsed .nav-item-btn { justify-content: center !important; padding-left: 0 !important; padding-right: 0 !important; }
     .sidebar-collapsed .nav-header-box { justify-content: center !important; padding-left: 0 !important; padding-right: 0 !important; }
 
+    [data-tm-row][draggable="true"] { cursor: grab; }
+    [data-tm-row].tm-dragging { opacity: 0.45; cursor: grabbing; }
+    [data-tm-row].tm-drop-before { box-shadow: inset 0 2px 0 #F59E0B; }
+    [data-tm-row].tm-drop-after { box-shadow: inset 0 -2px 0 #F59E0B; }
+
     .cc-rail-card { width: fit-content; max-width: 100%; }
     .cc-rail-card.cc-rail-open { width: 100%; }
-    .cal-dual-condensed, #cal-dual.cal-dual-condensed {
+    .cal-dual-condensed, #cal-dual.cal-dual-condensed, #cs-cal-dual.cal-dual-condensed {
       display: grid;
       grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
       gap: 0.75rem;
@@ -129,13 +134,21 @@
           </div>
         </div>
         <div class="flex items-center pl-1 border-l border-brand-border">
-          <button id="btn-timer-pause" type="button" onclick="pauseFocusTimer()" class="hidden bg-amber-500/15 hover:bg-amber-500/25 text-brand-gold px-2 py-0.5 rounded text-[9px] font-bold border border-amber-500/40 transition-all">PAUSE</button>
+          <button id="btn-timer-pause" type="button" onclick="toggleFocusClock()" class="bg-amber-500/15 hover:bg-amber-500/25 text-brand-gold px-2 py-0.5 rounded text-[9px] font-bold border border-amber-500/40 transition-all whitespace-nowrap">Clock In</button>
         </div>
       </div>
     </div>
 
     <!-- BALANCE & FOCUS LOG -->
     <div class="flex items-center space-x-3">
+      <button type="button" onclick="switchTab('ent-goals')" title="Clock-in streak" class="hidden sm:flex items-center gap-2 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 px-2 py-0.5 rounded text-[10px] whitespace-nowrap max-w-[28rem]">
+        <span class="inline-flex items-center gap-0.5 text-brand-gold leading-none">
+          <span class="text-[17px] leading-none">🔥</span>
+          <span data-streak-badge class="text-[13px] font-black font-mono leading-none tracking-tight">0d</span>
+        </span>
+        <span data-streak-next class="text-slate-400 font-mono truncate leading-none">Next Milestone: 10 Days</span>
+      </button>
+
       <button onclick="openFocusLog()" class="flex items-center space-x-1 bg-brand-accent/10 hover:bg-brand-accent/20 border border-brand-accent/30 px-2 py-1 rounded text-brand-accent text-[10px] transition-all">
         <i class="fa-solid fa-chart-line text-[9px]"></i>
         <span class="hidden md:inline">Focus Log</span>
@@ -143,8 +156,7 @@
 
       <div class="flex items-center space-x-1 bg-brand-border/40 px-2 py-1 rounded border border-brand-border/60">
         <i class="fa-solid fa-coins text-brand-gold text-[10px]"></i>
-        <span class="text-slate-400 hidden sm:inline">CREDITS:</span>
-        <span id="dim-balance" class="text-brand-gold font-bold">500 $DIM</span>
+        <span id="dim-balance" class="text-brand-gold font-bold whitespace-nowrap">18,400 $DIM</span>
       </div>
 
       <div class="flex items-center space-x-2 border-l border-brand-border pl-3">
@@ -152,13 +164,12 @@
           <i class="fa-solid fa-user"></i>
         </div>
         <span class="font-medium text-slate-300 hidden md:inline">FOUNDER</span>
-        <span class="px-1 py-0.2 text-[8px] bg-brand-mint/10 text-brand-mint border border-brand-mint/30 rounded">PILOT</span>
       </div>
     </div>
   </header>
 
   <!-- FINANCIAL & CURRENCY TICKER STRIP -->
-  <div class="h-6 bg-brand-black border-b border-brand-border/60 flex items-center justify-between px-3 text-[9px] font-mono overflow-x-auto whitespace-nowrap">
+  <div data-cc-module="ticker" class="h-6 bg-brand-black border-b border-brand-border/60 flex items-center justify-between px-3 text-[9px] font-mono overflow-x-auto whitespace-nowrap">
     <div class="flex items-center space-x-4">
       <button type="button" onclick="openStocksFromTicker()" title="Open Stocks & Finance" class="text-slate-400 hover:text-brand-gold font-bold flex items-center gap-1 transition">
         <i class="fa-solid fa-chart-simple text-brand-gold"></i> STOCK TICKER
@@ -171,7 +182,7 @@
     <div class="flex items-center space-x-4 text-slate-400 hidden md:flex">
       <span>AMD/USD <span id="mkt-amd" class="text-brand-mint">388.50 ▲</span></span>
       <span>GEL/USD <span class="text-brand-mint">2.72 ▲</span></span>
-      <span class="text-brand-accent font-semibold">FX NODE: YEREVAN</span>
+      <span class="text-brand-accent font-semibold">Location: <span id="geo-location-label">Yerevan</span></span>
     </div>
   </div>
 
@@ -311,7 +322,7 @@
           <span>🎨</span> <span>Creator AI</span>
         </button>
         <button type="button" onclick="switchAiMode('travel')" class="ai-mode-btn w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 text-xs transition" data-mode="travel">
-          <span>✈️</span> <span>AI Travel Planner</span>
+          <span>✈️</span> <span>Nomad AI</span>
         </button>
       </div>
 
@@ -701,6 +712,40 @@
   </main>
 </div>
 
+<!-- TASK SNOOZE -->
+<div id="tm-snooze-modal" onclick="if(event.target===this) TASK_MANAGER.closeSnooze()" class="fixed inset-0 bg-brand-black/80 z-[1000] hidden items-center justify-center p-4">
+  <div class="border border-brand-gold/40 bg-brand-panel max-w-sm w-full p-5 rounded-2xl space-y-4 shadow-2xl font-mono">
+    <div class="space-y-1">
+      <p class="text-[10px] font-bold uppercase tracking-wider text-brand-gold">Snooze</p>
+      <h3 class="text-sm font-black text-white">When should this come back?</h3>
+      <p id="tm-snooze-title" class="text-[11px] text-slate-400 truncate"></p>
+    </div>
+    <label class="block space-y-1.5">
+      <span class="text-[10px] uppercase tracking-wider text-slate-500">Snooze until</span>
+      <input id="tm-snooze-date" type="date" class="w-full bg-brand-black border border-brand-border rounded-xl px-3 py-2 text-[12px] text-slate-200 focus:outline-none focus:border-brand-gold">
+    </label>
+    <div class="flex gap-2">
+      <button type="button" onclick="TASK_MANAGER.closeSnooze()" class="flex-1 bg-slate-900 hover:bg-slate-800 border border-brand-border text-slate-300 font-bold py-2 rounded-xl text-[11px]">Cancel</button>
+      <button type="button" onclick="TASK_MANAGER.confirmSnooze()" class="flex-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-2 rounded-xl text-[11px]">Snooze</button>
+    </div>
+  </div>
+</div>
+
+<!-- TASK DELETE CONFIRM -->
+<div id="tm-delete-modal" onclick="if(event.target===this) TASK_MANAGER.closeDelete()" class="fixed inset-0 bg-brand-black/80 z-[1000] hidden items-center justify-center p-4">
+  <div class="border border-brand-gold/40 bg-brand-panel max-w-sm w-full p-5 rounded-2xl space-y-4 shadow-2xl font-mono">
+    <div class="space-y-1">
+      <p class="text-[10px] font-bold uppercase tracking-wider text-brand-gold">Delete task</p>
+      <h3 class="text-sm font-black text-white">Are you sure you want to delete?</h3>
+      <p id="tm-delete-title" class="text-[11px] text-slate-400 truncate"></p>
+    </div>
+    <div class="flex gap-2">
+      <button type="button" onclick="TASK_MANAGER.closeDelete()" class="flex-1 bg-slate-900 hover:bg-slate-800 border border-brand-border text-slate-300 font-bold py-2 rounded-xl text-[11px]">No</button>
+      <button type="button" onclick="TASK_MANAGER.confirmDelete()" class="flex-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-2 rounded-xl text-[11px]">Yes</button>
+    </div>
+  </div>
+</div>
+
 <!-- DAILY CLOCK IN -->
 <div id="clock-in-modal" class="fixed inset-0 bg-brand-black/80 z-[1000] hidden items-center justify-center p-4">
   <div class="border border-brand-gold/40 bg-brand-panel max-w-md w-full p-6 rounded-2xl space-y-5 shadow-2xl">
@@ -862,6 +907,6 @@
   </div>
 </div>
 
-<script src="../script.js?v=open-writespace-nav"></script>
+<script src="../script.js?v=nomad-ai-clone"></script>
 </body>
 </html>

@@ -33,7 +33,7 @@
           <i class="fa-solid fa-book"></i><span class="hidden sm:inline">Journal</span>
         </button>
         <button type="button" onclick="WRITESPACE.toggleTheme()" id="ws-theme-btn" class="p-1.5 rounded-md border bg-[#1e1b26] border-amber-900/40 text-amber-300 text-xs font-medium flex items-center gap-1.5">
-          <i class="fa-solid fa-sun text-blue-400"></i><span class="hidden sm:inline">Word Light</span>
+          <i class="fa-solid fa-sun text-blue-400"></i><span class="hidden sm:inline">Day Mode</span>
         </button>
         <button type="button" onclick="WRITESPACE.toggleFullscreen()" id="ws-full-btn" title="Expand WriteSpace" class="p-1.5 rounded-md border bg-[#1e1b26] border-amber-900/40 text-amber-300 text-xs font-medium flex items-center gap-1.5">
           <i class="fa-solid fa-expand"></i><span class="hidden sm:inline">Expand</span>
@@ -73,13 +73,9 @@
         <option value="24">24px</option>
       </select>
       <div class="h-4 w-px bg-amber-900/40 mx-1"></div>
-      <button type="button" id="ws-bold" onclick="WRITESPACE.toggleFormat('bold')" class="p-1.5 rounded border border-transparent"><i class="fa-solid fa-bold"></i></button>
-      <button type="button" id="ws-italic" onclick="WRITESPACE.toggleFormat('italic')" class="p-1.5 rounded border border-transparent"><i class="fa-solid fa-italic"></i></button>
-      <button type="button" id="ws-underline" onclick="WRITESPACE.toggleFormat('underline')" class="p-1.5 rounded border border-transparent"><i class="fa-solid fa-underline"></i></button>
-      <div class="h-4 w-px bg-amber-900/40 mx-1"></div>
-      <button type="button" id="ws-grammar-btn" onclick="WRITESPACE.toggleGrammar()" class="px-2.5 py-1 rounded border border-amber-500/40 bg-amber-500/10 text-amber-500 flex items-center gap-1.5">
-        <i class="fa-solid fa-circle-check"></i><span>Grammar Check</span>
-      </button>
+      <button type="button" id="ws-bold" onclick="WRITESPACE.toggleFormat('bold')" class="p-1.5 rounded border border-transparent text-amber-200"><i class="fa-solid fa-bold"></i></button>
+      <button type="button" id="ws-italic" onclick="WRITESPACE.toggleFormat('italic')" class="p-1.5 rounded border border-transparent text-amber-200"><i class="fa-solid fa-italic"></i></button>
+      <button type="button" id="ws-underline" onclick="WRITESPACE.toggleFormat('underline')" class="p-1.5 rounded border border-transparent text-amber-200"><i class="fa-solid fa-underline"></i></button>
     </div>
 
     <div class="flex-1 flex overflow-hidden min-h-0">
@@ -170,7 +166,7 @@
 
       <aside id="ws-aside" class="w-80 md:w-96 border-l border-amber-900/30 bg-[#121018] flex flex-col min-h-0 h-full overflow-hidden text-amber-200">
         <div class="flex items-center border-b border-amber-900/30 bg-[#171520] text-xs font-medium">
-          <button type="button" data-ws-tab="ai-editor" onclick="WRITESPACE.setTab('ai-editor')" class="ws-tab flex-1 py-3 flex items-center justify-center gap-1.5 border-b-2 border-brand-gold text-brand-gold font-semibold"><i class="fa-solid fa-sparkles"></i> AI Copilot</button>
+          <button type="button" data-ws-tab="ai-editor" onclick="WRITESPACE.setTab('ai-editor')" class="ws-tab flex-1 py-3 flex items-center justify-center gap-1.5 border-b-2 border-brand-gold text-brand-gold font-semibold"><i class="fa-solid fa-sparkles"></i> WriteAI</button>
           <button type="button" data-ws-tab="seo" onclick="WRITESPACE.setTab('seo')" class="ws-tab flex-1 py-3 flex items-center justify-center gap-1.5 border-b-2 border-transparent text-amber-200 hover:text-amber-300"><i class="fa-solid fa-magnifying-glass"></i> SEO Audit</button>
           <button type="button" data-ws-tab="export" onclick="WRITESPACE.setTab('export')" class="ws-tab flex-1 py-3 flex items-center justify-center gap-1.5 border-b-2 border-transparent text-amber-200 hover:text-amber-300"><i class="fa-solid fa-share-nodes"></i> Publish</button>
           <button type="button" onclick="WRITESPACE.toggleSidebar()" title="Collapse tools" class="px-2 py-3 text-brand-gold/70 hover:text-amber-300"><i class="fa-solid fa-chevron-right"></i></button>
@@ -178,26 +174,52 @@
 
         <div id="ws-tools-scroll" class="flex-1 min-h-0 overflow-y-scroll p-4 space-y-5 text-xs">
           <div id="ws-tab-ai-editor" class="ws-pane space-y-4">
-            <div class="font-semibold text-sm flex items-center gap-1.5 text-brand-gold"><i class="fa-solid fa-wand-magic-sparkles"></i> AI Editing &amp; Tone Tools</div>
-            <div>
-              <label class="block text-[11px] font-medium text-amber-300 mb-1.5">Select Audience Tone</label>
-              <div class="grid grid-cols-2 gap-1.5" id="ws-tones"></div>
-            </div>
-            <div class="space-y-2">
-              <label class="block text-[11px] font-medium text-amber-300">Quick Enhancements</label>
-              <button type="button" onclick="WRITESPACE.aiAction('grammar')" class="w-full py-2 px-3 rounded-lg border border-amber-500/40 bg-amber-500/5 hover:bg-amber-500/10 text-left flex items-center justify-between font-medium text-amber-200"><span class="flex items-center gap-2"><i class="fa-solid fa-circle-check text-brand-gold"></i> Fix Grammar &amp; Punctuation</span><i class="fa-solid fa-bolt text-brand-gold"></i></button>
-              <button type="button" onclick="WRITESPACE.aiAction('improve')" class="w-full py-2 px-3 rounded-lg border border-amber-500/40 bg-amber-500/5 hover:bg-amber-500/10 text-left flex items-center justify-between font-medium text-amber-200"><span class="flex items-center gap-2"><i class="fa-solid fa-sparkles text-brand-gold"></i> Improve Flow &amp; Rhythm</span><i class="fa-solid fa-bolt text-brand-gold"></i></button>
-              <button type="button" onclick="WRITESPACE.aiAction('tone')" class="w-full py-2 px-3 rounded-lg border border-amber-500/40 bg-amber-500/5 hover:bg-amber-500/10 text-left flex items-center justify-between font-medium text-amber-200"><span class="flex items-center gap-2"><i class="fa-solid fa-sliders text-brand-gold"></i> Apply Tone</span><i class="fa-solid fa-bolt text-brand-gold"></i></button>
-              <button type="button" onclick="WRITESPACE.aiAction('summarize')" class="w-full py-2 px-3 rounded-lg border border-amber-500/40 bg-amber-500/5 hover:bg-amber-500/10 text-left flex items-center justify-between font-medium text-amber-200"><span class="flex items-center gap-2"><i class="fa-solid fa-book-open text-brand-gold"></i> Generate Executive Summary</span><i class="fa-solid fa-bolt text-brand-gold"></i></button>
-            </div>
-            <div>
-              <label class="block text-[11px] font-medium text-amber-300 mb-1">Custom Instruction</label>
-              <div class="flex items-center gap-1.5">
-                <input id="ws-ai-prompt" type="text" placeholder="e.g., Make opening paragraph more compelling..." class="flex-1 py-1.5 px-2.5 rounded border bg-[#1a1724] border-amber-900/40 text-amber-100">
-                <button type="button" onclick="WRITESPACE.aiAction('custom')" class="p-2 bg-amber-500 text-slate-950 rounded hover:bg-amber-400"><i class="fa-solid fa-paper-plane"></i></button>
+            <div class="flex items-center justify-between gap-2">
+              <div class="font-semibold text-sm flex items-center gap-1.5 text-brand-gold"><i class="fa-solid fa-wand-magic-sparkles"></i> WriteAI</div>
+              <div class="flex rounded-lg border border-amber-900/40 overflow-hidden text-[10px] font-bold">
+                <button type="button" id="ws-writeai-tools-btn" onclick="WRITESPACE.setWriteAiMode('tools')" class="px-2.5 py-1 bg-amber-500/20 text-amber-300">Tools</button>
+                <button type="button" id="ws-writeai-chat-btn" onclick="WRITESPACE.setWriteAiMode('chat')" class="px-2.5 py-1 bg-[#1a1724] text-amber-200/80">Chat</button>
               </div>
             </div>
-            <div id="ws-ai-out" class="hidden p-3 rounded-lg border bg-[#171421] border-amber-900/40 space-y-2"></div>
+
+            <div id="ws-writeai-tools" class="space-y-4">
+              <div class="font-semibold text-sm flex items-center gap-1.5 text-brand-gold"><i class="fa-solid fa-sliders"></i> AI Editing &amp; Tone Tools</div>
+              <div>
+                <label class="block text-[11px] font-medium text-amber-300 mb-1.5">Select Audience Tone</label>
+                <div class="grid grid-cols-2 gap-1.5" id="ws-tones"></div>
+                <button type="button" id="ws-custom-tone-btn" onclick="WRITESPACE.openCustomTone()" class="mt-1.5 w-full py-2 px-3 rounded-lg border border-amber-500/40 bg-amber-500/5 hover:bg-amber-500/10 text-left font-medium text-amber-200 flex items-center justify-between">
+                  <span class="flex items-center gap-2"><i class="fa-solid fa-pen-nib text-brand-gold"></i> Set Custom Tone</span>
+                  <i class="fa-solid fa-chevron-right text-[9px] text-amber-500/70"></i>
+                </button>
+                <p id="ws-custom-tone-hint" class="hidden mt-1.5 text-[10px] text-amber-200/70 leading-relaxed"></p>
+              </div>
+              <div class="space-y-2">
+                <label class="block text-[11px] font-medium text-amber-300">Quick Enhancements</label>
+                <button type="button" onclick="WRITESPACE.aiAction('grammar')" class="w-full py-2 px-3 rounded-lg border border-amber-500/40 bg-amber-500/5 hover:bg-amber-500/10 text-left flex items-center justify-between font-medium text-amber-200"><span class="flex items-center gap-2"><i class="fa-solid fa-circle-check text-brand-gold"></i> Fix Grammar &amp; Punctuation</span><i class="fa-solid fa-bolt text-brand-gold"></i></button>
+                <button type="button" onclick="WRITESPACE.aiAction('improve')" class="w-full py-2 px-3 rounded-lg border border-amber-500/40 bg-amber-500/5 hover:bg-amber-500/10 text-left flex items-center justify-between font-medium text-amber-200"><span class="flex items-center gap-2"><i class="fa-solid fa-sparkles text-brand-gold"></i> Improve Flow &amp; Rhythm</span><i class="fa-solid fa-bolt text-brand-gold"></i></button>
+                <button type="button" onclick="WRITESPACE.aiAction('tone')" class="w-full py-2 px-3 rounded-lg border border-amber-500/40 bg-amber-500/5 hover:bg-amber-500/10 text-left flex items-center justify-between font-medium text-amber-200"><span class="flex items-center gap-2"><i class="fa-solid fa-sliders text-brand-gold"></i> Apply Tone</span><i class="fa-solid fa-bolt text-brand-gold"></i></button>
+                <button type="button" onclick="WRITESPACE.aiAction('summarize')" class="w-full py-2 px-3 rounded-lg border border-amber-500/40 bg-amber-500/5 hover:bg-amber-500/10 text-left flex items-center justify-between font-medium text-amber-200"><span class="flex items-center gap-2"><i class="fa-solid fa-book-open text-brand-gold"></i> Generate Executive Summary</span><i class="fa-solid fa-bolt text-brand-gold"></i></button>
+              </div>
+              <div>
+                <label class="block text-[11px] font-medium text-amber-300 mb-1">Custom Instruction</label>
+                <div class="flex items-center gap-1.5">
+                  <input id="ws-ai-prompt" type="text" placeholder="e.g., Make opening paragraph more compelling..." class="flex-1 py-1.5 px-2.5 rounded border bg-[#1a1724] border-amber-900/40 text-amber-100">
+                  <button type="button" onclick="WRITESPACE.aiAction('custom')" class="p-2 bg-amber-500 text-slate-950 rounded hover:bg-amber-400"><i class="fa-solid fa-paper-plane"></i></button>
+                </div>
+              </div>
+              <div id="ws-ai-out" class="hidden p-3 rounded-lg border bg-[#171421] border-amber-900/40 space-y-2"></div>
+            </div>
+
+            <div id="ws-writeai-chat" class="hidden space-y-3">
+              <div id="ws-writeai-feed" class="min-h-[220px] max-h-[340px] overflow-y-auto space-y-2.5 p-2 rounded-lg border border-amber-900/40 bg-[#171421]"></div>
+              <button type="button" onclick="WRITESPACE.reviseDraft()" class="w-full py-2.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold flex items-center justify-center gap-2">
+                <i class="fa-solid fa-pen-to-square"></i> Revise Draft
+              </button>
+              <div class="flex items-end gap-1.5">
+                <textarea id="ws-writeai-input" rows="2" onkeydown="WRITESPACE.writeAiKey(event)" placeholder="Tell WriteAI how to revise this draft..." class="flex-1 py-1.5 px-2.5 rounded border bg-[#1a1724] border-amber-900/40 text-amber-100 resize-none"></textarea>
+                <button type="button" onclick="WRITESPACE.sendWriteAi()" class="p-2 bg-amber-500 text-slate-950 rounded hover:bg-amber-400"><i class="fa-solid fa-paper-plane"></i></button>
+              </div>
+            </div>
           </div>
 
           <div id="ws-tab-seo" class="ws-pane hidden space-y-4">
@@ -248,7 +270,7 @@
 
       <div id="ws-aside-rail" class="hidden w-12 border-l border-amber-900/30 bg-[#121018] flex-col items-center py-3 gap-2">
         <button type="button" onclick="WRITESPACE.toggleSidebar()" title="Expand tools" class="p-2 rounded-lg text-brand-gold hover:bg-amber-500/10"><i class="fa-solid fa-chevron-left"></i></button>
-        <button type="button" onclick="WRITESPACE.openSidebarTab('ai-editor')" title="AI Copilot" class="p-2 rounded-lg text-amber-300/80 hover:bg-amber-500/10"><i class="fa-solid fa-sparkles"></i></button>
+        <button type="button" onclick="WRITESPACE.openSidebarTab('ai-editor')" title="WriteAI" class="p-2 rounded-lg text-amber-300/80 hover:bg-amber-500/10"><i class="fa-solid fa-sparkles"></i></button>
         <button type="button" onclick="WRITESPACE.openSidebarTab('seo')" title="SEO Audit" class="p-2 rounded-lg text-amber-300/80 hover:bg-amber-500/10"><i class="fa-solid fa-magnifying-glass"></i></button>
         <button type="button" onclick="WRITESPACE.openSidebarTab('export')" title="Publish" class="p-2 rounded-lg text-amber-300/80 hover:bg-amber-500/10"><i class="fa-solid fa-share-nodes"></i></button>
       </div>
@@ -313,6 +335,25 @@
         <button type="button" onclick="WRITESPACE.closeOpenModal()" class="text-slate-400 hover:text-white">✕</button>
       </div>
       <div id="ws-open-list" class="flex-1 overflow-y-auto space-y-2 min-h-[160px]"></div>
+    </div>
+  </div>
+
+  <div id="ws-custom-tone-modal" class="hidden fixed inset-0 z-[350] bg-slate-950/80 backdrop-blur-md items-center justify-center p-4" onclick="if(event.target===this)WRITESPACE.closeCustomTone()">
+    <div class="w-full max-w-md rounded-2xl border border-amber-900/40 bg-brand-panel p-5 space-y-3 text-amber-50">
+      <div class="flex items-center justify-between">
+        <h3 class="text-sm font-bold text-brand-gold">Custom tone</h3>
+        <button type="button" onclick="WRITESPACE.closeCustomTone()" class="text-slate-400 hover:text-white">✕</button>
+      </div>
+      <p class="text-[11px] text-amber-200/80 leading-relaxed">Save up to 4 voices. Pick one from the dropdown to edit or use.</p>
+      <label class="block space-y-1">
+        <span class="text-[10px] text-amber-300/80">Saved tones</span>
+        <select id="ws-custom-tone-pick" onchange="WRITESPACE.pickCustomTone(this.value)" class="w-full bg-slate-950 border border-amber-900/40 rounded-lg px-2 py-2 text-[12px] text-amber-100"></select>
+      </label>
+      <div id="ws-custom-tone-editor" class="space-y-2"></div>
+      <div class="flex gap-2 pt-1">
+        <button type="button" onclick="WRITESPACE.saveCustomTone()" class="flex-1 py-2 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs">Save tone</button>
+        <button type="button" onclick="WRITESPACE.deleteCustomTone()" class="px-3 py-2 rounded-xl border border-rose-500/40 text-rose-300 font-semibold text-xs hover:bg-rose-500/10">Delete</button>
+      </div>
     </div>
   </div>
 

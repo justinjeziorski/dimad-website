@@ -1,50 +1,230 @@
-<!-- TAB: CREATOR STUDIO -->
+<!-- TAB: DIMAD STUDIO (Creator Command Center) -->
 <div id="view-creator-studio" class="tab-view hidden space-y-3 w-full">
-  <div class="border border-brand-border bg-brand-panel p-4 rounded flex items-center justify-between">
-    <div>
-      <h2 class="text-sm font-bold text-brand-gold flex items-center gap-2"><i class="fa-solid fa-feather"></i> DIMAD STUDIO</h2>
-      <p class="text-[10px] text-slate-400">Creator's central publishing, AI creator chat, daily journal, and sponsorship pipeline.</p>
+  <div class="flex items-center justify-between gap-2">
+    <span class="text-[9px] font-bold text-slate-500 tracking-wider uppercase">Dimad Studio</span>
+    <div class="flex items-center gap-2">
+      <div class="relative">
+        <button type="button" onclick="DIMAD_STUDIO.toggleFilter('core')" class="text-[10px] font-semibold text-slate-300 hover:text-brand-gold border border-slate-700 bg-slate-950 px-2.5 py-1 rounded-lg transition">
+          Dashboard Filters
+        </button>
+        <div id="cs-module-filter" class="hidden absolute right-0 top-full mt-1 z-30 w-56 bg-slate-950 border border-slate-700 rounded-xl p-2 shadow-xl"></div>
+      </div>
+      <div class="relative">
+        <button type="button" onclick="DIMAD_STUDIO.toggleFilter('api')" class="text-[10px] font-semibold text-slate-300 hover:text-brand-gold border border-slate-700 bg-slate-950 px-2.5 py-1 rounded-lg transition">
+          API Widgets
+        </button>
+        <div id="cs-api-filter" class="hidden absolute right-0 top-full mt-1 z-30 w-60 bg-slate-950 border border-slate-700 rounded-xl p-2 shadow-xl"></div>
+      </div>
     </div>
-    <span class="text-[9px] bg-brand-gold/10 text-brand-gold border border-brand-gold/30 px-2 py-1 rounded">CREATOR MODE ACTIVE</span>
   </div>
 
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-    <div class="border border-brand-border bg-brand-panel p-3.5 rounded space-y-3">
-      <h3 class="font-bold text-slate-200 text-xs border-b border-brand-border pb-1.5 flex items-center gap-1.5">
-        <i class="fa-solid fa-bolt text-brand-gold"></i> AI Creator Chat & Brainstorm Notepad
-      </h3>
-      <div class="bg-brand-black/60 p-2.5 rounded border border-brand-border text-[10px] h-24 overflow-y-auto font-mono text-slate-300">
-        <p class="text-brand-gold"><strong>CREATOR AI:</strong> Ready to brainstorm essay concepts or video hooks.</p>
+  <div data-cs-module="inspo" class="border border-brand-gold/40 bg-brand-panel p-2.5 rounded">
+    <div class="flex items-center justify-between gap-2">
+      <span class="text-[8px] text-brand-gold font-bold">⚡ DAILY INSPO</span>
+      <button type="button" onclick="DAILY_INSPO.openPhilosophy()" title="View design philosophy" class="w-4 h-4 rounded-full border border-brand-gold/40 text-brand-gold text-[9px] font-bold flex items-center justify-center hover:bg-brand-gold/15">?</button>
+    </div>
+    <div data-cs-body>
+      <p id="cs-inspo-line" class="text-[10px] text-slate-200 italic mt-0.5"></p>
+      <div class="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
+        <button type="button" onclick="DAILY_INSPO.openInCreatorAI()" class="text-[9px] font-bold text-brand-gold hover:text-amber-300">Click here for today's inspo →</button>
+        <span class="text-[8px] text-brand-mint font-semibold">Pre-rendered (0 $DIM)</span>
       </div>
-      <textarea placeholder="Quick Brainstorm Scratchpad..." class="w-full bg-brand-black border border-brand-border p-2 rounded text-[10px] text-slate-200 h-14 resize-none"></textarea>
+    </div>
+  </div>
+
+  <div id="cs-inspo-modal" class="hidden fixed inset-0 z-[420] bg-slate-950/80 backdrop-blur-sm items-center justify-center p-4" onclick="if(event.target===this)DAILY_INSPO.closePhilosophy()">
+    <div class="bg-brand-panel border border-brand-gold/30 max-w-lg w-full rounded-2xl p-5 shadow-2xl relative space-y-3">
+      <button type="button" onclick="DAILY_INSPO.closePhilosophy()" class="absolute top-3 right-3 text-slate-400 hover:text-white px-1.5 py-0.5 rounded hover:bg-slate-800">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <div class="flex items-center gap-2 text-brand-gold pr-6">
+        <i class="fa-solid fa-bolt"></i>
+        <h3 id="cs-inspo-philosophy-title" class="font-bold text-sm text-white"></h3>
+      </div>
+      <p id="cs-inspo-philosophy-body" class="text-[12px] text-slate-300 leading-relaxed border-t border-b border-brand-border py-3"></p>
+      <div class="flex justify-end">
+        <button type="button" onclick="DAILY_INSPO.closePhilosophy()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold px-4 py-2 rounded-xl text-[10px]">Close & Return to Studio</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="cs-inspo-app-modal" class="hidden fixed inset-0 z-[420] bg-slate-950/80 backdrop-blur-sm items-center justify-center p-4" onclick="if(event.target===this)DAILY_INSPO.closeApplication()">
+    <div class="bg-brand-panel border border-brand-gold/30 max-w-lg w-full rounded-2xl p-5 shadow-2xl relative space-y-3">
+      <button type="button" onclick="DAILY_INSPO.closeApplication()" class="absolute top-3 right-3 text-slate-400 hover:text-white px-1.5 py-0.5 rounded hover:bg-slate-800">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <div class="flex items-center gap-2 text-brand-gold pr-6">
+        <i class="fa-solid fa-layer-group"></i>
+        <h3 class="font-bold text-sm text-white">Application</h3>
+      </div>
+      <div id="cs-inspo-app-body" class="text-[12px] text-slate-300 leading-relaxed border-t border-b border-brand-border py-3 space-y-3"></div>
+      <div class="flex justify-end">
+        <button type="button" onclick="DAILY_INSPO.closeApplication()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold px-4 py-2 rounded-xl text-[10px]">Close & Return to Studio</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="cs-integrations" class="flex flex-col items-start gap-2 w-full">
+    <div data-cs-module="youtube" class="cc-rail-card bg-slate-900 border border-slate-800 p-3 rounded-2xl transition-all duration-300 flex items-center gap-3 min-w-0 w-full">
+      <div class="shrink-0 min-w-[132px] space-y-1">
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-[9px] font-mono bg-rose-500/10 border border-rose-500/20 text-rose-400 px-1.5 py-0.5 rounded">VIDEO</span>
+          <span class="w-2 h-2 rounded-full bg-slate-600" id="cs-youtube-indicator"></span>
+        </div>
+        <h4 class="text-xs font-bold text-white">YouTube</h4>
+      </div>
+      <div data-cs-body class="flex-1 min-w-0 space-y-1.5">
+        <p class="text-[10px] text-slate-400">Uploads, analytics, and channel cadence.</p>
+        <button type="button" onclick="DIMAD_STUDIO.markConnected('youtube')" class="w-full bg-slate-950 hover:bg-slate-800 border border-slate-700 text-[10px] font-semibold text-rose-400 py-1.5 rounded-xl transition">Connect YouTube</button>
+      </div>
+    </div>
+    <div data-cs-module="substack" class="cc-rail-card bg-slate-900 border border-slate-800 p-3 rounded-2xl transition-all duration-300 flex items-center gap-3 min-w-0 w-full">
+      <div class="shrink-0 min-w-[132px] space-y-1">
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-[9px] font-mono bg-orange-500/10 border border-orange-500/20 text-orange-400 px-1.5 py-0.5 rounded">NEWSLETTER</span>
+          <span class="w-2 h-2 rounded-full bg-slate-600" id="cs-substack-indicator"></span>
+        </div>
+        <h4 class="text-xs font-bold text-white">Substack</h4>
+      </div>
+      <div data-cs-body class="flex-1 min-w-0 space-y-1.5">
+        <p class="text-[10px] text-slate-400">Drafts, list growth, and publish queue.</p>
+        <button type="button" onclick="DIMAD_STUDIO.markConnected('substack')" class="w-full bg-slate-950 hover:bg-slate-800 border border-slate-700 text-[10px] font-semibold text-orange-400 py-1.5 rounded-xl transition">Connect Substack</button>
+      </div>
+    </div>
+    <div data-cs-module="instagram" class="cc-rail-card bg-slate-900 border border-slate-800 p-3 rounded-2xl transition-all duration-300 flex items-center gap-3 min-w-0 w-full">
+      <div class="shrink-0 min-w-[132px] space-y-1">
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-[9px] font-mono bg-fuchsia-500/10 border border-fuchsia-500/20 text-fuchsia-400 px-1.5 py-0.5 rounded">SOCIAL</span>
+          <span class="w-2 h-2 rounded-full bg-slate-600" id="cs-instagram-indicator"></span>
+        </div>
+        <h4 class="text-xs font-bold text-white">Instagram</h4>
+      </div>
+      <div data-cs-body class="flex-1 min-w-0 space-y-1.5">
+        <p class="text-[10px] text-slate-400">Reels, carousels, and story slots.</p>
+        <button type="button" onclick="DIMAD_STUDIO.markConnected('instagram')" class="w-full bg-slate-950 hover:bg-slate-800 border border-slate-700 text-[10px] font-semibold text-fuchsia-400 py-1.5 rounded-xl transition">Connect Instagram</button>
+      </div>
+    </div>
+    <div data-cs-module="tiktok" class="cc-rail-card bg-slate-900 border border-slate-800 p-3 rounded-2xl transition-all duration-300 flex items-center gap-3 min-w-0 w-full">
+      <div class="shrink-0 min-w-[132px] space-y-1">
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-[9px] font-mono bg-slate-100/10 border border-slate-500/30 text-slate-200 px-1.5 py-0.5 rounded">SHORTS</span>
+          <span class="w-2 h-2 rounded-full bg-slate-600" id="cs-tiktok-indicator"></span>
+        </div>
+        <h4 class="text-xs font-bold text-white">TikTok</h4>
+      </div>
+      <div data-cs-body class="flex-1 min-w-0 space-y-1.5">
+        <p class="text-[10px] text-slate-400">Hooks, posting windows, and UGC cuts.</p>
+        <button type="button" onclick="DIMAD_STUDIO.markConnected('tiktok')" class="w-full bg-slate-950 hover:bg-slate-800 border border-slate-700 text-[10px] font-semibold text-slate-200 py-1.5 rounded-xl transition">Connect TikTok</button>
+      </div>
+    </div>
+  </div>
+
+  <div data-cs-module="scheduler" class="flex flex-col space-y-3">
+    <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-900 border border-slate-800 p-4 rounded-2xl">
+      <div class="flex items-center flex-wrap gap-3">
+        <button type="button" onclick="CALENDAR_NAV.shiftCursor(-1)" class="bg-slate-950 hover:bg-slate-800 border border-slate-700 text-slate-200 px-3 py-1.5 rounded-xl text-xs font-semibold">◀ Prev</button>
+        <button type="button" onclick="CALENDAR_NAV.shiftCursor(1)" class="bg-slate-950 hover:bg-slate-800 border border-slate-700 text-slate-200 px-3 py-1.5 rounded-xl text-xs font-semibold">Next ▶</button>
+        <button type="button" onclick="CALENDAR_NAV.goToday()" class="bg-slate-950 hover:bg-slate-800 border border-slate-700 text-slate-200 px-3 py-1.5 rounded-xl text-xs font-semibold">Today</button>
+        <button type="button" onclick="switchTab('creator-scheduler')" class="text-sm font-bold text-brand-gold hover:text-amber-300 transition text-left">
+          Content Scheduler
+        </button>
+        <h3 class="text-sm font-bold text-white" id="cs-cal-view-title">Thursday, Nov 5</h3>
+      </div>
+      <div class="flex items-center flex-wrap gap-2">
+        <label class="sr-only" for="cs-cal-mode-select">Calendar view</label>
+        <select id="cs-cal-mode-select" onchange="CALENDAR_NAV.setMode(this.value)" class="text-[10px] font-mono bg-amber-500/10 text-brand-gold border border-amber-500/20 px-2 py-0.5 rounded outline-none cursor-pointer hover:bg-amber-500/20">
+          <option value="hourly">Hourly</option>
+          <option value="weekly">Weekly</option>
+          <option value="monthly">Monthly</option>
+        </select>
+        <label class="flex items-center gap-1 text-[10px] font-semibold text-slate-400 cursor-pointer select-none">
+          <input id="cs-cal-show-content" type="checkbox" checked onchange="DIMAD_CAL.setShowContent(this.checked)" class="accent-amber-500">
+          Content calendar
+        </label>
+        <label class="sr-only" for="cs-cal-layout-select">Calendar layout</label>
+        <select id="cs-cal-layout-select" data-cal-layout onchange="CALENDAR_NAV.setLayout(this.value)" class="text-[10px] font-mono bg-slate-950 text-slate-300 border border-slate-700 px-2 py-0.5 rounded outline-none cursor-pointer hover:text-brand-gold hover:border-amber-500/30">
+          <option value="full">Full view</option>
+          <option value="multi">Multiview</option>
+        </select>
+        <button type="button" onclick="CAL_SETTINGS.open()" title="Calendar settings" class="text-slate-400 hover:text-brand-gold px-1.5 py-0.5 border border-slate-700 rounded-lg bg-slate-950"><i class="fa-solid fa-gear text-[10px]"></i></button>
+        <button type="button" onclick="SCHEDULER.openFromStudio()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold px-4 py-2 rounded-xl transition shadow-lg shadow-amber-500/10">＋ Schedule Content</button>
+      </div>
+    </div>
+    <p class="hidden" id="cs-cal-view-hint"></p>
+    <div data-cs-body class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+      <div id="cs-cal-dual" class="grid grid-cols-1 gap-3 items-start">
+        <div class="min-w-0" id="cs-hourly-slots-container"></div>
+        <div class="hidden min-w-0" id="cs-cal-companion-container"></div>
+      </div>
+      <div class="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500 border-t border-slate-800 pt-2.5">
+        <span id="cs-calendar-timezone-label">Timezone: Auto-detected</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+    <div data-cs-module="creator-ai" class="border border-brand-gold/40 bg-brand-panel p-3.5 rounded space-y-2">
+      <h3 class="font-bold text-slate-100 text-xs border-b border-brand-border pb-1.5 flex items-center justify-between">
+        <button type="button" onclick="switchTab('creator-ai')" class="inline-flex items-center gap-1.5 hover:text-brand-gold transition">
+          <i class="fa-solid fa-bolt text-brand-gold"></i> Creator AI Chat
+        </button>
+        <span class="text-[8px] bg-brand-gold/20 text-brand-gold px-1.5 py-0.5 rounded">READY</span>
+      </h3>
+      <div data-cs-body class="space-y-2">
+        <div id="cs-cai-feed" class="bg-brand-black/60 p-2.5 rounded border border-brand-border text-[10px] h-20 overflow-y-auto font-mono text-slate-300 space-y-1">
+          <p class="text-brand-gold"><strong>CREATOR AI:</strong> Ready to brainstorm essay concepts or video hooks.</p>
+        </div>
+        <form onsubmit="CREATOR_AI.sendStudio(event)" class="flex space-x-1">
+          <input id="cs-cai-input" type="text" placeholder="Ask Creator AI..." class="flex-1 bg-brand-black border border-brand-border px-2 py-1 rounded text-[10px] text-slate-200">
+          <button type="submit" class="bg-brand-gold text-slate-950 font-bold px-3 py-1 rounded text-[10px]">SEND</button>
+        </form>
+      </div>
     </div>
 
-    <div class="border border-brand-border bg-brand-panel p-3.5 rounded space-y-3">
-      <h3 class="font-bold text-slate-200 text-xs border-b border-brand-border pb-1.5 flex items-center gap-1.5">
-        <i class="fa-solid fa-book-open text-brand-accent"></i> Daily Journal (Yerevan Node)
+    <div data-cs-module="notepad" class="border border-amber-500/30 bg-brand-panel p-3.5 rounded space-y-2">
+      <h3 class="font-bold text-slate-100 text-xs border-b border-brand-border pb-1.5 flex items-center justify-between gap-2">
+        <button type="button" onclick="DIMAD_NOTEPAD.openTab()" class="inline-flex items-center gap-1.5 shrink-0 hover:text-brand-gold transition">
+          <i class="fa-solid fa-note-sticky text-brand-gold"></i> DIMAD Notepad
+        </button>
+        <span class="flex flex-wrap items-center justify-end gap-1.5">
+          <span class="relative">
+            <button type="button" onclick="DIMAD_NOTEPAD.toggleRecent(event, 'cs')" class="text-[9px] font-semibold text-slate-200 hover:text-brand-gold border border-slate-700 bg-slate-950 px-2 py-0.5 rounded-lg transition">Recent</button>
+            <div id="cs-notepad-recent" class="hidden absolute right-0 top-full mt-1 z-30 w-52 rounded-lg border border-slate-700 bg-slate-950 shadow-xl py-1"></div>
+          </span>
+          <button type="button" id="cs-notepad-save" onclick="DIMAD_NOTEPAD.saveDash('cs')" class="text-[9px] font-semibold text-slate-200 hover:text-brand-gold border border-slate-700 bg-slate-950 px-2 py-0.5 rounded-lg transition">Save</button>
+          <button type="button" onclick="DIMAD_NOTEPAD.createFromDash('cs')" class="text-[9px] font-semibold text-brand-gold hover:text-amber-300 border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 rounded-lg transition">+ New Note</button>
+        </span>
       </h3>
-      <textarea placeholder="Reflections on slow mornings, coffee, and philosophy..." class="w-full bg-brand-black border border-brand-border p-2 rounded text-[10px] text-slate-200 h-28 resize-none"></textarea>
-      <button class="w-full bg-brand-accent/20 text-brand-accent border border-brand-accent/40 py-1.5 rounded text-[10px] font-bold">SAVE JOURNAL ENTRY</button>
+      <div data-cs-body class="space-y-2">
+        <button type="button" id="cs-notepad-title" onclick="DIMAD_NOTEPAD.beginTitleEdit(event, 'cs')" title="Click to edit title" class="block w-full text-left text-[11px] font-semibold text-slate-100 truncate hover:text-brand-gold cursor-text">Untitled</button>
+        <input id="cs-notepad-title-input" type="text" class="hidden w-full bg-slate-950 border border-amber-500/40 rounded-lg px-2 py-1 text-[11px] text-slate-100 outline-none" onkeydown="DIMAD_NOTEPAD.titleKey(event)" onblur="DIMAD_NOTEPAD.commitTitleEdit()">
+        <textarea id="cs-notepad-body" rows="5" placeholder="Write a note…" oninput="DIMAD_NOTEPAD.markDirty('cs')" class="w-full min-h-[5rem] bg-brand-black/60 p-2.5 rounded border border-brand-border text-[11px] leading-relaxed text-slate-200 placeholder:text-slate-600 outline-none focus:border-amber-500/40 resize-none font-mono"></textarea>
+        <p id="cs-notepad-status" class="text-[9px] text-slate-500">Autosaves to DIMAD Notepad.</p>
+      </div>
     </div>
 
-    <div class="border border-brand-border bg-brand-panel p-3.5 rounded space-y-3">
-      <h3 class="font-bold text-slate-200 text-xs border-b border-brand-border pb-1.5 flex items-center gap-1.5">
-        <i class="fa-solid fa-calendar-week text-brand-mint"></i> Content & Sponsor Pipeline
+    <div data-cs-module="journal" class="border border-brand-border bg-brand-panel p-3.5 rounded space-y-2">
+      <h3 class="font-bold text-slate-200 text-xs border-b border-brand-border pb-1.5 flex items-center justify-between">
+        <button type="button" onclick="DIMAD_STUDIO.openJournal()" class="inline-flex items-center gap-1.5 hover:text-brand-gold transition">
+          <i class="fa-solid fa-book-open text-brand-gold"></i> Daily Journal
+        </button>
+        <span id="cs-journal-date" class="text-[8px] text-brand-gold font-mono"></span>
       </h3>
-      <div class="space-y-2 text-[10px]">
-        <div class="bg-brand-black/40 p-2 rounded border border-brand-border flex justify-between">
-          <span class="text-slate-300">Weekly Essay: "Slow Work"</span>
-          <span class="text-brand-mint font-bold">Scheduled (Thu)</span>
-        </div>
-        <div class="bg-brand-black/40 p-2 rounded border border-brand-border flex justify-between">
-          <span class="text-slate-300">Sponsor: Carry System Partner</span>
-          <span class="text-brand-gold font-bold">Confirmed ($5k)</span>
-        </div>
-        <div class="bg-brand-black/40 p-2 rounded border border-brand-border flex justify-between">
-          <span class="text-slate-300">Leadership Cohort Brief</span>
-          <span class="text-brand-accent font-bold">Drafting</span>
-        </div>
+      <div data-cs-body class="space-y-2">
+        <textarea id="cs-journal-body" rows="5" placeholder="Reflections on slow mornings, coffee, and philosophy..." class="w-full min-h-[5rem] bg-brand-black/60 p-2.5 rounded border border-brand-border text-[11px] leading-relaxed text-slate-200 placeholder:text-slate-600 outline-none focus:border-amber-500/40 resize-none font-mono"></textarea>
+        <button type="button" onclick="DIMAD_STUDIO.saveJournal()" class="w-full bg-brand-gold/15 hover:bg-brand-gold/25 text-brand-gold border border-brand-gold/40 py-1.5 rounded-lg text-[10px] font-bold transition">Save Journal Entry</button>
+        <p id="cs-journal-status" class="text-[9px] text-slate-500">Writes to WriteSpace Journal.</p>
       </div>
+    </div>
+
+    <div data-cs-module="pipeline" class="border border-brand-border bg-brand-panel p-3.5 rounded space-y-2 md:col-span-2">
+      <h3 class="font-bold text-slate-200 text-xs border-b border-brand-border pb-1.5 flex items-center justify-between">
+        <button type="button" onclick="switchTab('creator-pipeline')" class="inline-flex items-center gap-1.5 hover:text-brand-gold transition">
+          <i class="fa-solid fa-diagram-project text-brand-accent"></i> Creator Pipeline
+        </button>
+        <button type="button" onclick="switchTab('creator-pipeline')" class="text-[9px] font-bold text-brand-gold hover:text-amber-300">Expand</button>
+      </h3>
+      <div data-cs-body id="cs-pipeline-list" class="space-y-1.5 text-[10px]"></div>
     </div>
   </div>
 </div>
