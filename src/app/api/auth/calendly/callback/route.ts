@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { uidFromIdToken, writeCalendlyTokens } from "@/lib/firebase-server";
+import { syncCalendlyForUser } from "@/lib/calendly-sync";
 import { readOauthState } from "@/lib/oauth-state";
 import { fetchWithTimeout, withTimeout } from "@/lib/with-timeout";
 
@@ -128,6 +129,12 @@ export async function GET(req: NextRequest) {
           8000,
           "firestore_calendly_write"
         );
+        try {
+          const synced = await withTimeout(syncCalendlyForUser(uid, idToken), 15000, "calendly_sync_after_oauth");
+          console.log("Calendly post-OAuth sync wrote", synced.count, "events");
+        } catch (syncErr) {
+          console.error("Calendly post-OAuth sync failed; user can retry from dashboard", syncErr);
+        }
       } catch (writeErr) {
         console.error("Firestore Calendly token write failed; continuing to dashboard", writeErr);
       }

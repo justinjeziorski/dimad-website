@@ -41,7 +41,11 @@ async function loadOnce(uid) {
       getDoc(doc(db, "users", uid)),
       new Promise((_, reject) => setTimeout(() => reject(new Error("firestore_timeout")), 8000))
     ]);
-    paint(!!snap.data()?.calendly_access_token);
+    const connected = !!snap.data()?.calendly_access_token;
+    paint(connected);
+    if (connected || querySaysConnected()) {
+      void window.DIMAD_CALENDLY.sync();
+    }
   } catch (err) {
     console.warn("Calendly Firestore read skipped", err);
     paint(querySaysConnected());
@@ -83,7 +87,37 @@ function calendlyApiBase() {
 
 window.DIMAD_CALENDLY = {
   paint,
+  async sync() {
+    const user = auth.currentUser || window.DIMAD_FIREBASE?.auth?.currentUser;
+    if (!user) {
+      console.error("Calendly sync skipped: no Firebase user");
+      return { ok: false, error: "not_signed_in" };
+    }
+    const idToken = await user.getIdToken();
+    const res = await fetch(`${calendlyApiBase()}/api/calendly/sync`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${idToken}` }
+    });
+    const data = await res.json().catch(() => ({}));
+    console.log("Calendly sync response", res.status, data);
+    if (!res.ok || data.ok === false) {
+      console.error("Calendly sync failed", data);
+      return data;
+    }
+    if (typeof DIMAD_CAL !== "undefined" && DIMAD_CAL.mergeCalendlyEvents) {
+      DIMAD_CAL.mergeCalendlyEvents(data.events || []);
+    }
+    paint(true);
+    return data;
+  },
   async connect() {
+    const btn = document.getElementById("calendar-source-status");
+    if (btn?.dataset.calendlyConnected === "1") {
+      btn.textContent = "Syncing…";
+      await window.DIMAD_CALENDLY.sync();
+      paint(true);
+      return;
+    }
     const user = auth.currentUser || window.DIMAD_FIREBASE?.auth?.currentUser;
     const idToken = user ? await user.getIdToken() : "";
     const path = idToken

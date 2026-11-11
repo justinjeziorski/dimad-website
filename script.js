@@ -12457,6 +12457,46 @@ const DIMAD_CAL = {
     localStorage.setItem(this.storageKey, JSON.stringify(rows));
   },
 
+  clockPad(n) {
+    return String(n).padStart(2, '0');
+  },
+
+  fromCalendlyRemote(ev) {
+    const start = new Date(ev.start_time || ev.startTime);
+    const end = new Date(ev.end_time || ev.endTime || ev.start_time);
+    if (Number.isNaN(start.getTime())) return null;
+    const endSafe = Number.isNaN(end.getTime()) ? new Date(start.getTime() + 3600000) : end;
+    return {
+      id: ev.id || `cal_${Date.now()}`,
+      title: ev.title || 'Calendly event',
+      date: this.dateKey(start),
+      startTime: `${this.clockPad(start.getHours())}:${this.clockPad(start.getMinutes())}`,
+      endTime: `${this.clockPad(endSafe.getHours())}:${this.clockPad(endSafe.getMinutes())}`,
+      time: `${this.clockPad(start.getHours())}:${this.clockPad(start.getMinutes())}`,
+      type: 'meeting',
+      source: 'Calendly',
+      tone: 'indigo',
+      notes: ev.calendly_uri || '',
+      reminder: ev.reminder || 'none',
+      reminded: false,
+      cancelled: !!(ev.cancelled || ev.status === 'canceled'),
+      calendly_uri: ev.calendly_uri || ''
+    };
+  },
+
+  mergeCalendlyEvents(incoming) {
+    const rows = this.load();
+    const keep = rows.filter((ev) => ev.source !== 'Calendly' && !String(ev.id || '').startsWith('cal_'));
+    const mapped = (incoming || []).map((ev) => this.fromCalendlyRemote(ev)).filter(Boolean);
+    const byId = new Map(keep.map((ev) => [String(ev.id), ev]));
+    mapped.forEach((ev) => byId.set(String(ev.id), ev));
+    this.persist(Array.from(byId.values()));
+    if (typeof dimadCal !== 'undefined' && dimadCal && dimadCal.syncFromStore) dimadCal.syncFromStore();
+    this.refreshViews();
+    if (typeof CALENDAR_NAV !== 'undefined' && CALENDAR_NAV.render) CALENDAR_NAV.render();
+    return mapped.length;
+  },
+
   contentFilterKey: 'dimad_cal_show_content',
 
   showContentSchedule() {
