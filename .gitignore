@@ -1,6 +1,13 @@
 node_modules/
 .tools/
 .next/
+public/dashboard/
+public/views/
+public/auth/
+public/index.html
+public/login.html
+public/script.js
+public/firebase.js
 .env
 .env.local
 .env*.local
