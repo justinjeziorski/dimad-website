@@ -81,12 +81,22 @@ export async function aurinkoFetch(path: string, accessToken: string, init: Requ
 
 export function aurinkoRecords(data: unknown): Record<string, unknown>[] {
   if (!data || typeof data !== "object") return [];
+  if (Array.isArray(data)) return data as Record<string, unknown>[];
   const row = data as Record<string, unknown>;
   if (Array.isArray(row.records)) return row.records as Record<string, unknown>[];
   if (Array.isArray(row.collection)) return row.collection as Record<string, unknown>[];
   if (Array.isArray(row.events)) return row.events as Record<string, unknown>[];
   if (Array.isArray(row.messages)) return row.messages as Record<string, unknown>[];
-  if (Array.isArray(data)) return data as Record<string, unknown>[];
+  if (Array.isArray(row.folders)) return row.folders as Record<string, unknown>[];
+  if (Array.isArray(row.labels)) return row.labels as Record<string, unknown>[];
+  if (row.messages && typeof row.messages === "object") {
+    const nested = aurinkoRecords(row.messages);
+    if (nested.length) return nested;
+  }
+  if (row.data && typeof row.data === "object") {
+    const nested = aurinkoRecords(row.data);
+    if (nested.length) return nested;
+  }
   return [];
 }
 

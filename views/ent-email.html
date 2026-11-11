@@ -34,9 +34,13 @@
       </div>
     </div>
 
-    <div id="mail-connected" class="hidden flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[minmax(0,18rem)_minmax(0,1fr)] gap-3">
+    <div id="mail-connected" class="hidden flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[minmax(11rem,13rem)_minmax(0,18rem)_minmax(0,1fr)] gap-3">
+      <aside class="bg-brand-panel border border-brand-border rounded-2xl overflow-hidden flex flex-col min-h-0 max-h-40 lg:max-h-none lg:min-h-[360px]">
+        <div class="px-3 py-2 border-b border-brand-border text-[10px] font-mono uppercase tracking-wide text-slate-500">Folders</div>
+        <div id="mail-folders" class="flex-1 overflow-x-auto lg:overflow-y-auto flex lg:flex-col"></div>
+      </aside>
       <div class="bg-brand-panel border border-brand-border rounded-2xl overflow-hidden flex flex-col min-h-[360px]">
-        <div class="px-3 py-2 border-b border-brand-border text-[10px] font-mono uppercase tracking-wide text-slate-500">Inbox</div>
+        <div id="mail-folder-title" class="px-3 py-2 border-b border-brand-border text-[10px] font-mono uppercase tracking-wide text-slate-500">Inbox</div>
         <div id="mail-list" class="flex-1 overflow-y-auto"></div>
       </div>
       <div class="bg-brand-panel border border-brand-border rounded-2xl overflow-hidden flex flex-col min-h-[360px]">
@@ -64,9 +68,10 @@
       <label class="block space-y-1 text-[11px]"><span class="text-slate-400">Message</span>
         <textarea id="mail-body" rows="8" class="w-full bg-brand-black border border-brand-border rounded-lg px-2 py-2 text-slate-200"></textarea>
       </label>
+      <p id="mail-send-status" class="hidden text-[11px] font-mono"></p>
       <div class="flex justify-end gap-2">
         <button type="button" onclick="DIMAD_MAIL.closeCompose()" class="px-3 py-1.5 rounded-lg border border-brand-border text-[10px] font-bold text-slate-300">Cancel</button>
-        <button type="button" onclick="DIMAD_MAIL.send()" class="px-3 py-1.5 rounded-lg bg-amber-500 text-slate-950 text-[10px] font-bold">Send</button>
+        <button type="button" id="mail-send-btn" onclick="DIMAD_MAIL.send()" class="px-3 py-1.5 rounded-lg bg-amber-500 text-slate-950 text-[10px] font-bold">Send</button>
       </div>
     </div>
   </div>

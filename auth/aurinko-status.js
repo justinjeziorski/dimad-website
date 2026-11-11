@@ -154,6 +154,34 @@ window.DIMAD_AURINKO = {
     paint(true, data.count);
     return data;
   },
+  async createEvent(localEvent) {
+    const user = auth.currentUser || window.DIMAD_FIREBASE?.auth?.currentUser;
+    if (!user) {
+      return { ok: false, error: "Sign in before adding events to Google Calendar." };
+    }
+    const idToken = await user.getIdToken();
+    const res = await fetch(`${apiBase()}/api/calendar/events`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${idToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        title: localEvent.title,
+        subject: localEvent.title,
+        date: localEvent.date,
+        startTime: localEvent.startTime || localEvent.time,
+        endTime: localEvent.endTime || "",
+        notes: localEvent.notes || "",
+        description: localEvent.notes || "",
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+        localId: localEvent.id || ""
+      })
+    });
+    const data = await res.json().catch(() => ({}));
+    console.log("Google calendar create", res.status, data);
+    return { ok: res.ok && data.ok !== false, status: res.status, ...data };
+  },
   async diagnose() {
     const user = auth.currentUser || window.DIMAD_FIREBASE?.auth?.currentUser;
     if (!user) {
@@ -162,16 +190,18 @@ window.DIMAD_AURINKO = {
     }
     const idToken = await user.getIdToken();
     const headers = { Authorization: `Bearer ${idToken}` };
-    const [status, calendar, mail] = await Promise.all([
+    const [status, calendar, mail, folders] = await Promise.all([
       fetch(`${apiBase()}/api/aurinko/status`, { headers }).then((r) => r.json()).catch((err) => ({ error: String(err) })),
       fetch(`${apiBase()}/api/calendar/events`, { method: "POST", headers }).then((r) => r.json()).catch((err) => ({ error: String(err) })),
-      fetch(`${apiBase()}/api/email/messages`, { headers }).then((r) => r.json()).catch((err) => ({ error: String(err) }))
+      fetch(`${apiBase()}/api/email/messages`, { headers }).then((r) => r.json()).catch((err) => ({ error: String(err) })),
+      fetch(`${apiBase()}/api/email/folders`, { headers }).then((r) => r.json()).catch((err) => ({ error: String(err) }))
     ]);
     const report = {
       uid: user.uid,
       status,
       calendar: { ok: calendar.ok, error: calendar.error, count: calendar.count },
-      email: { ok: mail.ok, error: mail.error, count: (mail.messages || []).length }
+      email: { ok: mail.ok, error: mail.error, count: (mail.messages || []).length },
+      folders: { ok: folders.ok, error: folders.error, count: (folders.folders || []).length, names: (folders.folders || []).map((row) => row.name) }
     };
     console.log("DIMAD Google diagnose", report, { calendar, mail });
     return report;

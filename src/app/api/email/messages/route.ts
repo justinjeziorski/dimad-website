@@ -14,8 +14,9 @@ export async function GET(req: NextRequest) {
       const message = await getEmailMessage(session.uid, session.idToken, id);
       return NextResponse.json({ ok: true, message });
     }
-    const messages = await listEmailMessages(session.uid, session.idToken);
-    return NextResponse.json({ ok: true, messages });
+    const folderId = req.nextUrl.searchParams.get("folderId") || "";
+    const messages = await listEmailMessages(session.uid, session.idToken, folderId);
+    return NextResponse.json({ ok: true, folderId, messages });
   } catch (err) {
     const message = err instanceof Error ? err.message : "email_list_failed";
     console.error("Email list failed", session.uid, message, err);

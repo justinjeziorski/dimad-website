@@ -150,3 +150,98 @@ export async function syncCalendarForUser(
 
   return { count: events.length, events };
 }
+
+export async function createCalendarEvent(
+  uid: string,
+  idToken: string,
+  input: {
+    title?: string;
+    subject?: string;
+    date?: string;
+    startTime?: string;
+    endTime?: string;
+    notes?: string;
+    description?: string;
+    timeZone?: string;
+    localId?: string;
+  }
+) {
+  const userDoc = await getUserDocument(uid, idToken);
+  const accessToken = readString(userDoc.fields, "aurinko_access_token");
+  if (!accessToken) throw new Error("aurinko_not_connected");
+
+  const title = String(input.subject || input.title || "").trim();
+  const date = String(input.date || "").trim();
+  const startTime = String(input.startTime || "09:00");
+  const endTime = String(input.endTime || "");
+  if (!title || !date) throw new Error("missing_event_fields");
+
+  const timeZone = input.timeZone || "UTC";
+  const startIso = `${date}T${startTime.length === 5 ? `${startTime}:00` : startTime}`;
+  const endIso = endTime
+    ? `${date}T${endTime.length === 5 ? `${endTime}:00` : endTime}`
+    : startIso;
+
+  const created = await aurinkoFetch("/calendars/primary/events?bodyType=text", accessToken, {
+    method: "POST",
+    body: JSON.stringify({
+      subject: title,
+      body: input.description || input.notes || "",
+      start: { dateTime: startIso, timezone: timeZone },
+      end: { dateTime: endIso, timezone: timeZone }
+    })
+  });
+  console.log("Aurinko create calendar event", created.status, created.data);
+  if (created.status === 401) throw new Error("aurinko_unauthorized");
+  if (!created.ok) {
+    const row = (created.data || {}) as Record<string, unknown>;
+    throw new Error(String(row.message || row.error || "calendar_create_failed"));
+  }
+
+  const raw = ((created.data as Record<string, unknown>)?.resource || created.data) as Record<string, unknown>;
+  const mapped =
+    mapEvent(raw) ||
+    ({
+      id: eventId(raw),
+      title,
+      start_time: startIso,
+      end_time: endIso,
+      status: "active",
+      source: "Calendar",
+      type: "meeting",
+      cancelled: false,
+      location: ""
+    } satisfies DimadRemoteEvent);
+
+  try {
+    await adminWriteCalendarEvents(uid, [
+      {
+        ...mapped,
+        local_id: input.localId || ""
+      }
+    ]);
+  } catch (adminErr) {
+    console.warn("Admin write for created event failed; using user token", adminErr);
+    await commitWrites(idToken, [
+      {
+        update: {
+          name: `projects/${FIREBASE_WEB.projectId}/databases/(default)/documents/users/${uid}/dimad_calendar_events/${mapped.id}`,
+          fields: {
+            id: strField(mapped.id),
+            title: strField(mapped.title),
+            start_time: strField(mapped.start_time),
+            end_time: strField(mapped.end_time),
+            status: strField(mapped.status),
+            source: strField(mapped.source),
+            type: strField(mapped.type),
+            location: strField(mapped.location),
+            cancelled: boolField(mapped.cancelled),
+            local_id: strField(input.localId || "")
+          }
+        }
+      }
+    ]);
+  }
+
+  return mapped;
+}

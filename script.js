@@ -12733,7 +12733,7 @@ const DIMAD_CAL = {
     else rows.push(payload);
     this.persist(rows);
     if (typeof dimadCal !== 'undefined' && dimadCal) dimadCal.syncFromStore();
-    return true;
+    return payload;
   },
 
   deleteEvent(eventId) {
@@ -13173,7 +13173,8 @@ const DIMAD_CAL = {
       return;
     }
     const existing = rec && rec.origin === 'calendar' ? rec : null;
-    const ok = this.addEvent({
+    const isNew = !existingId;
+    const saved = this.addEvent({
       id: existingId || undefined,
       title,
       date,
@@ -13186,11 +13187,41 @@ const DIMAD_CAL = {
       source: existing ? (existing.source || 'DIMAD Calendar') : 'DIMAD Calendar',
       cancelled: existing ? !!existing.cancelled : false
     });
-    if (!ok) return;
+    if (!saved) return;
     this.closeComposer();
     this.refreshViews();
+    if (isNew) void this.pushToGoogle(saved);
     if (reminder !== 'none' && typeof Notification !== 'undefined' && Notification.permission === 'default') {
       Notification.requestPermission();
+    }
+  },
+
+  async pushToGoogle(localEvent) {
+    if (!localEvent || localEvent.id === '1' || localEvent.id === '2') return;
+    if (String(localEvent.id || '').startsWith('aur_') || String(localEvent.id || '').startsWith('sch-')) return;
+    if (typeof window.DIMAD_AURINKO?.createEvent !== 'function') return;
+    try {
+      const result = await window.DIMAD_AURINKO.createEvent(localEvent);
+      if (!result.ok) {
+        if (result.error === 'aurinko_not_connected' || result.status === 401) return;
+        console.error('Google calendar create failed', result);
+        window.alert(result.error || 'Could not add this event to Google Calendar.');
+        return;
+      }
+      const converted = this.fromRemoteEvent(result.event || {});
+      if (!converted) return;
+      const rows = this.load().filter((ev) => String(ev.id) !== String(localEvent.id));
+      rows.push({
+        ...converted,
+        notes: localEvent.notes || converted.notes,
+        reminder: localEvent.reminder || 'none',
+        type: localEvent.type || converted.type
+      });
+      this.persist(rows);
+      this.refreshViews();
+    } catch (err) {
+      console.error('Google calendar create failed', err);
+      window.alert(err instanceof Error ? err.message : 'Could not add this event to Google Calendar.');
     }
   },
 
