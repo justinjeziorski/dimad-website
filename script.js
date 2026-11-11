@@ -95,6 +95,7 @@ async function loadViews() {
       return res.text();
     }));
     container.innerHTML = fragments.join('\n');
+    window.dispatchEvent(new Event('dimad-views-ready'));
   } catch (err) {
     container.innerHTML = `
       <div class="p-4 border border-brand-alert/40 bg-brand-panel rounded text-slate-300 space-y-2">
@@ -12476,7 +12477,7 @@ const DIMAD_CAL = {
   },
 
   fromRemoteEvent(ev) {
-    const startRaw = ev.start_time || ev.startTime || ev.start?.dateTime || ev.start;
+    const startRaw = ev.start_time || ev.startTime || ev.start?.dateTime || ev.start?.time || ev.start;
     const endRaw = ev.end_time || ev.endTime || ev.end?.dateTime || ev.end || startRaw;
     const start = new Date(startRaw);
     const end = new Date(endRaw);
@@ -18919,6 +18920,7 @@ window.onload = async function() {
   const bootParams = new URLSearchParams(window.location.search);
   if (bootParams.get('aurinko') === 'success') switchTab('ent-email');
   else switchTab('ent-dashboard');
+  if (typeof window.DIMAD_AURINKO?.boot === 'function') void window.DIMAD_AURINKO.boot();
   if (typeof CALENDAR_NAV !== 'undefined' && CALENDAR_NAV.render) CALENDAR_NAV.render();
   if (typeof FINNHUB_MARKETS !== 'undefined') FINNHUB_MARKETS.init();
   if (typeof COMMAND_CENTER !== 'undefined') COMMAND_CENTER.apply();

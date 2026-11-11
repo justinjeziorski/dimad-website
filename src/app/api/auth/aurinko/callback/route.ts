@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { uidFromIdToken, writeUserFields } from "@/lib/firebase-server";
 import { readOauthState } from "@/lib/oauth-state";
-import { exchangeAurinkoCode } from "@/lib/aurinko";
+import { aurinkoAccount, exchangeAurinkoCode, startAurinkoSync } from "@/lib/aurinko";
 import { syncCalendarForUser } from "@/lib/calendar-sync";
 import { withTimeout } from "@/lib/with-timeout";
 
@@ -57,18 +57,31 @@ export async function GET(req: NextRequest) {
 
     if (uid && idToken) {
       try {
+        let accountEmail = "";
+        try {
+          const account = await aurinkoAccount(token.accessToken);
+          accountEmail = String(account.email || account.userPrincipalName || "");
+        } catch (accountErr) {
+          console.warn("Aurinko account lookup skipped", accountErr);
+        }
         await withTimeout(
           writeUserFields(uid, idToken, {
             aurinko_access_token: token.accessToken,
             aurinko_account_id: String(token.accountId || ""),
             aurinko_service_type: serviceType,
+            aurinko_email: accountEmail,
             aurinko_connected_at: new Date().toISOString()
           }),
           8000,
           "firestore_aurinko_write"
         );
         try {
-          const synced = await withTimeout(syncCalendarForUser(uid, idToken), 15000, "calendar_sync_after_oauth");
+          await startAurinkoSync(token.accessToken, "/email/sync?daysWithin=14&awaitReady=true");
+        } catch (mailWarmErr) {
+          console.warn("Aurinko inbox warm failed; client will retry", mailWarmErr);
+        }
+        try {
+          const synced = await withTimeout(syncCalendarForUser(uid, idToken), 20000, "calendar_sync_after_oauth");
           console.log("Aurinko post-OAuth calendar sync wrote", synced.count, "events");
         } catch (syncErr) {
           console.error("Aurinko post-OAuth calendar sync failed; user can retry from dashboard", syncErr);

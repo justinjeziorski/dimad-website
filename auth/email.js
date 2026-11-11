@@ -20,6 +20,21 @@ function escapeHtml(value) {
     .replace(/>/g, "&gt;");
 }
 
+function waitForAuth(ms = 8000) {
+  if (auth.currentUser || window.DIMAD_FIREBASE?.auth?.currentUser) {
+    return Promise.resolve(auth.currentUser || window.DIMAD_FIREBASE.auth.currentUser);
+  }
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("not_signed_in")), ms);
+    const unsub = auth.onAuthStateChanged((user) => {
+      if (!user) return;
+      clearTimeout(timer);
+      unsub();
+      resolve(user);
+    });
+  });
+}
+
 window.DIMAD_MAIL = {
   connected: false,
   messages: [],
@@ -44,9 +59,21 @@ window.DIMAD_MAIL = {
     if (on) on.classList.toggle("hidden", !this.connected);
   },
 
+  bindList() {
+    const root = document.getElementById("mail-list");
+    if (!root || root.dataset.bound === "1") return;
+    root.dataset.bound = "1";
+    root.addEventListener("click", (event) => {
+      const btn = event.target.closest?.("[data-mail-id]");
+      if (!btn) return;
+      void window.DIMAD_MAIL.open(btn.getAttribute("data-mail-id"));
+    });
+  },
+
   renderList() {
     const root = document.getElementById("mail-list");
     if (!root) return;
+    this.bindList();
     if (!this.messages.length) {
       root.innerHTML = '<div class="p-4 text-[11px] text-slate-500">Inbox is empty.</div>';
       return;
@@ -54,7 +81,7 @@ window.DIMAD_MAIL = {
     root.innerHTML = this.messages
       .map((msg) => {
         const active = msg.id === this.activeId ? "border-l-2 border-amber-400 bg-amber-500/10" : "border-l-2 border-transparent";
-        return `<button type="button" onclick="DIMAD_MAIL.open('${escapeHtml(msg.id)}')" class="w-full text-left px-3 py-2.5 border-b border-brand-border hover:bg-brand-black/40 ${active}">
+        return `<button type="button" data-mail-id="${escapeHtml(msg.id)}" class="w-full text-left px-3 py-2.5 border-b border-brand-border hover:bg-brand-black/40 ${active}">
           <div class="flex items-center justify-between gap-2">
             <span class="text-[11px] font-semibold text-slate-100 truncate">${escapeHtml(msg.from?.name || msg.from?.address || "Unknown")}</span>
             <span class="text-[9px] font-mono text-slate-500 flex-shrink-0">${escapeHtml((msg.receivedAt || "").slice(0, 10))}</span>
@@ -86,28 +113,25 @@ window.DIMAD_MAIL = {
   },
 
   async mount() {
+    this.bindList();
+    const list = document.getElementById("mail-list");
+    if (list) list.innerHTML = '<div class="p-4 text-[11px] text-slate-500">Loading inbox…</div>';
+    this.connected = true;
     this.paintShell();
-    if (this.connected) await this.refresh();
-    else {
-      try {
-        await this.refresh();
-      } catch {
-        this.connected = false;
-        this.paintShell();
-      }
-    }
+    await this.refresh();
   },
 
   async refresh() {
     const list = document.getElementById("mail-list");
     if (list) list.innerHTML = '<div class="p-4 text-[11px] text-slate-500">Loading inbox…</div>';
     try {
+      await waitForAuth();
       const token = await idToken();
       const res = await fetch(`${apiBase()}/api/email/messages`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json().catch(() => ({}));
-      console.log("Email messages", res.status, data);
+      console.log("Email inbox payload", res.status, data);
       if (!res.ok || data.ok === false) {
         this.connected = false;
         this.paintShell();
@@ -188,7 +212,3 @@ window.DIMAD_MAIL = {
     await this.refresh();
   }
 };
-
-if (new URLSearchParams(window.location.search).get("aurinko") === "success") {
-  window.DIMAD_MAIL.connected = true;
-}

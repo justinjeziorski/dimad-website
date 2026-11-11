@@ -1,4 +1,4 @@
-import { aurinkoFetch, aurinkoRecords } from "./aurinko";
+import { aurinkoFetch, aurinkoRecords, pullAurinkoUpdated, startAurinkoSync } from "./aurinko";
 import { boolField, commitWrites, FIREBASE_WEB, getUserDocument, readString, strField } from "./firestore-rest";
 
 export type DimadRemoteEvent = {
@@ -23,9 +23,17 @@ function dateTimeOf(value: unknown): string {
   if (typeof value === "string") return value;
   if (typeof value === "object") {
     const row = value as Record<string, unknown>;
-    return String(row.dateTime || row.date || "");
+    return String(row.dateTime || row.time || row.date || row.start || "");
   }
   return "";
+}
+
+function locationOf(raw: Record<string, unknown>) {
+  const loc = raw.location;
+  if (!loc) return "";
+  if (typeof loc === "string") return loc;
+  const row = loc as Record<string, unknown>;
+  return String(row.name || row.displayName || row.address || "");
 }
 
 function mapEvent(raw: Record<string, unknown>): DimadRemoteEvent | null {
@@ -42,25 +50,42 @@ function mapEvent(raw: Record<string, unknown>): DimadRemoteEvent | null {
     source: "Calendar",
     type: "meeting",
     cancelled,
-    location: String(raw.location || "")
+    location: locationOf(raw)
   };
 }
 
 async function listCalendarEvents(accessToken: string) {
   const timeMin = new Date(Date.now() - 7 * 86400000).toISOString();
   const timeMax = new Date(Date.now() + 90 * 86400000).toISOString();
+  const records: Record<string, unknown>[] = [];
+
+  const started = await startAurinkoSync(
+    accessToken,
+    `/calendars/primary/sync?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}&awaitReady=true`
+  );
+  if (started.unauthorized) return { unauthorized: true as const, records: [] as Record<string, unknown>[] };
+  if (started.deltaToken) {
+    records.push(...(await pullAurinkoUpdated(accessToken, "/calendars/primary/sync/updated", started.deltaToken)));
+  }
+
   const paths = [
-    `/calendar/events?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}`,
     `/calendars/primary/events/range?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}`,
-    `/calendars/primary/events?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}`
+    `/calendars/primary/events?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}`,
+    `/calendar/events?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}`
   ];
   for (const path of paths) {
     const listed = await aurinkoFetch(path, accessToken);
     console.log("Aurinko calendar list", path, listed.status, listed.data);
     if (listed.status === 401) return { unauthorized: true as const, records: [] as Record<string, unknown>[] };
-    if (listed.ok) return { unauthorized: false as const, records: aurinkoRecords(listed.data) };
+    if (listed.ok) records.push(...aurinkoRecords(listed.data));
   }
-  throw new Error("calendar_list_failed");
+
+  const byId = new Map<string, Record<string, unknown>>();
+  records.forEach((row) => {
+    const id = String(row.id || row.eventId || JSON.stringify(row.start || row));
+    byId.set(id, row);
+  });
+  return { unauthorized: false as const, records: Array.from(byId.values()) };
 }
 
 export async function syncCalendarForUser(uid: string, idToken: string) {
@@ -73,7 +98,7 @@ export async function syncCalendarForUser(uid: string, idToken: string) {
   if (listed.unauthorized) throw new Error("aurinko_unauthorized");
 
   const events = listed.records.map(mapEvent).filter((row): row is DimadRemoteEvent => !!row);
-  console.log("Mapped Aurinko calendar events", events.length, events);
+  console.log("Mapped Google/Aurinko calendar events", events.length, events);
 
   const writes = events.map((ev) => ({
     update: {

@@ -89,3 +89,52 @@ export function aurinkoRecords(data: unknown): Record<string, unknown>[] {
   if (Array.isArray(data)) return data as Record<string, unknown>[];
   return [];
 }
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export async function startAurinkoSync(accessToken: string, path: string) {
+  let last: unknown = null;
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const listed = await aurinkoFetch(path, accessToken, { method: "POST" }, 20000);
+    last = listed.data;
+    console.log("Aurinko sync start", path, listed.status, listed.data);
+    if (listed.status === 401) return { unauthorized: true as const, deltaToken: "" };
+    const row = (listed.data || {}) as Record<string, unknown>;
+    if (listed.ok && (row.ready === true || row.syncUpdatedToken)) {
+      return { unauthorized: false as const, deltaToken: String(row.syncUpdatedToken || "") };
+    }
+    await sleep(900);
+  }
+  console.warn("Aurinko sync did not report ready", path, last);
+  return { unauthorized: false as const, deltaToken: "" };
+}
+
+export async function pullAurinkoUpdated(accessToken: string, path: string, deltaToken: string) {
+  const collected: Record<string, unknown>[] = [];
+  if (!deltaToken) return collected;
+  let token = deltaToken;
+  let useDelta = true;
+  for (let page = 0; page < 8; page += 1) {
+    const query = useDelta ? `deltaToken=${encodeURIComponent(token)}` : `pageToken=${encodeURIComponent(token)}`;
+    const listed = await aurinkoFetch(`${path}?${query}`, accessToken, {}, 20000);
+    console.log("Aurinko sync updated", path, listed.status, listed.data);
+    if (!listed.ok) break;
+    collected.push(...aurinkoRecords(listed.data));
+    const row = (listed.data || {}) as Record<string, unknown>;
+    if (row.nextPageToken) {
+      token = String(row.nextPageToken);
+      useDelta = false;
+      continue;
+    }
+    break;
+  }
+  return collected;
+}
+
+export async function aurinkoAccount(accessToken: string) {
+  const listed = await aurinkoFetch("/account", accessToken, {}, 8000);
+  console.log("Aurinko account", listed.status, listed.data);
+  return (listed.ok ? listed.data : {}) as Record<string, unknown>;
+}

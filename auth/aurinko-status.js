@@ -15,13 +15,23 @@ function querySaysConnected() {
   }
 }
 
+function viewsReady() {
+  if (document.getElementById("view-ent-email") && document.getElementById("hourly-slots-container")) {
+    return Promise.resolve();
+  }
+  return new Promise((resolve) => {
+    window.addEventListener("dimad-views-ready", () => resolve(), { once: true });
+    setTimeout(resolve, 8000);
+  });
+}
+
 function paint(connected, count) {
   const btn = document.getElementById("calendar-source-status");
   if (!btn) return;
   const on = connected || querySaysConnected();
   btn.dataset.aurinkoConnected = on ? "1" : "0";
   btn.title = on
-    ? "Syncs Gmail/Outlook calendar into Command Center and DIMAD Calendar."
+    ? "Google/Outlook calendar is synced into Command Center and DIMAD Calendar."
     : "Connect Gmail or Outlook to sync calendar and email.";
   if (on) {
     btn.classList.remove("text-brand-gold", "hover:text-amber-300");
@@ -42,7 +52,7 @@ function applyEvents(events) {
     return 0;
   }
   const n = DIMAD_CAL.mergeRemoteEvents(events || []);
-  console.log("Merged Aurinko calendar events into DIMAD calendars", n, events);
+  console.log("Merged Google calendar events into DIMAD calendars", n, events);
   return n;
 }
 
@@ -66,6 +76,7 @@ async function loadOnce(uid) {
     paint(true);
     sessionStorage.setItem("aurinko_connected", "1");
   }
+  await viewsReady();
   try {
     const snap = await Promise.race([
       getDoc(doc(db, "users", uid)),
@@ -76,8 +87,8 @@ async function loadOnce(uid) {
     if (connected || querySaysConnected()) {
       await hydrateFromFirestore(uid);
       await window.DIMAD_AURINKO.sync();
-      if (typeof window.DIMAD_MAIL?.refresh === "function" && querySaysConnected()) {
-        window.DIMAD_MAIL.connected = true;
+      if (typeof window.DIMAD_MAIL?.mount === "function") {
+        await window.DIMAD_MAIL.mount();
       }
     }
   } catch (err) {
@@ -116,6 +127,10 @@ function apiBase() {
 window.DIMAD_AURINKO = {
   paint,
   apiBase,
+  async boot() {
+    const user = auth.currentUser || window.DIMAD_FIREBASE?.auth?.currentUser;
+    if (user) await loadOnce(user.uid);
+  },
   async sync() {
     const user = auth.currentUser || window.DIMAD_FIREBASE?.auth?.currentUser;
     if (!user) {
@@ -128,9 +143,9 @@ window.DIMAD_AURINKO = {
       headers: { Authorization: `Bearer ${idToken}` }
     });
     const data = await res.json().catch(() => ({}));
-    console.log("Aurinko calendar sync response", res.status, data);
+    console.log("Google calendar sync response", res.status, data);
     if (!res.ok || data.ok === false) {
-      console.error("Aurinko calendar sync failed", data);
+      console.error("Google calendar sync failed", data);
       const cached = await hydrateFromFirestore(user.uid);
       paint(true, cached.length);
       return data;
@@ -144,6 +159,7 @@ window.DIMAD_AURINKO = {
     if (btn?.dataset.aurinkoConnected === "1" && !serviceType) {
       btn.textContent = "Syncing…";
       await window.DIMAD_AURINKO.sync();
+      if (typeof window.DIMAD_MAIL?.mount === "function") await window.DIMAD_MAIL.mount();
       return;
     }
     const user = auth.currentUser || window.DIMAD_FIREBASE?.auth?.currentUser;
