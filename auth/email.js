@@ -132,10 +132,19 @@ window.DIMAD_MAIL = {
       });
       const data = await res.json().catch(() => ({}));
       console.log("Email inbox payload", res.status, data);
+      const errEl = document.getElementById("mail-error");
       if (!res.ok || data.ok === false) {
         this.connected = false;
         this.paintShell();
+        if (errEl) {
+          errEl.classList.remove("hidden");
+          errEl.textContent = `Inbox failed: ${data.error || res.status}. Open DevTools → Network for /api/email/messages.`;
+        }
         return data;
+      }
+      if (errEl) {
+        errEl.classList.add("hidden");
+        errEl.textContent = "";
       }
       this.connected = true;
       this.messages = data.messages || [];

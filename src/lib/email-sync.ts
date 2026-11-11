@@ -76,11 +76,10 @@ async function listFromEndpoints(token: string) {
   return records;
 }
 
-export async function listEmailMessages(uid: string, idToken: string) {
-  const { token } = await aurinkoTokenForUser(uid, idToken);
-  const account = await aurinkoAccount(token);
+export async function listInboxWithAccessToken(accessToken: string) {
+  const account = await aurinkoAccount(accessToken);
   console.log("Listing inbox for Aurinko account", account?.email || account?.id);
-  const records = await listFromEndpoints(token);
+  const records = await listFromEndpoints(accessToken);
   const byId = new Map<string, ReturnType<typeof mapMessage>>();
   records.forEach((row) => {
     const mapped = mapMessage(row);
@@ -89,6 +88,11 @@ export async function listEmailMessages(uid: string, idToken: string) {
   const messages = Array.from(byId.values());
   console.log("Mapped inbox messages", messages.length);
   return messages;
+}
+
+export async function listEmailMessages(uid: string, idToken: string) {
+  const { token } = await aurinkoTokenForUser(uid, idToken);
+  return listInboxWithAccessToken(token);
 }
 
 export async function getEmailMessage(uid: string, idToken: string, id: string) {

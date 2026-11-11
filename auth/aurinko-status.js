@@ -154,6 +154,28 @@ window.DIMAD_AURINKO = {
     paint(true, data.count);
     return data;
   },
+  async diagnose() {
+    const user = auth.currentUser || window.DIMAD_FIREBASE?.auth?.currentUser;
+    if (!user) {
+      console.error("Diagnose skipped: sign in to the dashboard first");
+      return { ok: false, error: "not_signed_in" };
+    }
+    const idToken = await user.getIdToken();
+    const headers = { Authorization: `Bearer ${idToken}` };
+    const [status, calendar, mail] = await Promise.all([
+      fetch(`${apiBase()}/api/aurinko/status`, { headers }).then((r) => r.json()).catch((err) => ({ error: String(err) })),
+      fetch(`${apiBase()}/api/calendar/events`, { method: "POST", headers }).then((r) => r.json()).catch((err) => ({ error: String(err) })),
+      fetch(`${apiBase()}/api/email/messages`, { headers }).then((r) => r.json()).catch((err) => ({ error: String(err) }))
+    ]);
+    const report = {
+      uid: user.uid,
+      status,
+      calendar: { ok: calendar.ok, error: calendar.error, count: calendar.count },
+      email: { ok: mail.ok, error: mail.error, count: (mail.messages || []).length }
+    };
+    console.log("DIMAD Google diagnose", report, { calendar, mail });
+    return report;
+  },
   async connect(serviceType) {
     const btn = document.getElementById("calendar-source-status");
     if (btn?.dataset.aurinkoConnected === "1" && !serviceType) {

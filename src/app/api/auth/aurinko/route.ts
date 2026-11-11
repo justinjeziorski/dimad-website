@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { uidFromIdToken } from "@/lib/firebase-server";
-import { signOauthState } from "@/lib/oauth-state";
+import { signUserId } from "@/lib/oauth-state";
 import { aurinkoAuthorizeUrl, aurinkoCallbackUrl } from "@/lib/aurinko";
 
 export const dynamic = "force-dynamic";
@@ -31,32 +31,36 @@ export async function GET(req: NextRequest) {
     req.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ||
     "";
 
-  let uid = "";
+  let uid = req.cookies.get("aurinko_uid")?.value || "";
   if (idToken) {
     try {
       uid = await uidFromIdToken(idToken);
-    } catch {
-      uid = "";
+    } catch (err) {
+      console.error("Aurinko connect could not verify Firebase session", err);
+      uid = uid && /^[A-Za-z0-9_-]{16,128}$/.test(uid) ? uid : "";
     }
   }
 
-  const returnUrl = aurinkoCallbackUrl(req);
-  const state = signOauthState({
-    uid,
-    ts: String(Date.now()),
-    serviceType
-  });
+  if (!uid) {
+    const login = new URL("/login.html", req.nextUrl.origin);
+    login.searchParams.set("reason", "login_required");
+    login.searchParams.set("next", "/dashboard");
+    console.error("Aurinko connect blocked: no Firebase user");
+    return NextResponse.redirect(login, 302);
+  }
 
+  const returnUrl = aurinkoCallbackUrl(req);
+  const state = signUserId(uid);
   const authUrl = aurinkoAuthorizeUrl({
     clientId,
     serviceType,
     returnUrl,
     state
   });
+  console.log("Aurinko authorize redirect for uid", uid, "service", serviceType);
 
   const res = NextResponse.redirect(authUrl, 307);
-  if (idToken) res.cookies.set("dimad_fb_token", idToken, COOKIE);
-  if (uid) res.cookies.set("aurinko_uid", uid, COOKIE);
+  res.cookies.set("aurinko_uid", uid, COOKIE);
   res.cookies.set("aurinko_service", serviceType, COOKIE);
   return res;
 }

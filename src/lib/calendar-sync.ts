@@ -1,4 +1,5 @@
 import { aurinkoFetch, aurinkoRecords, pullAurinkoUpdated, startAurinkoSync } from "./aurinko";
+import { adminWriteCalendarEvents } from "./firebase-admin";
 import { boolField, commitWrites, FIREBASE_WEB, getUserDocument, readString, strField } from "./firestore-rest";
 
 export type DimadRemoteEvent = {
@@ -88,10 +89,16 @@ async function listCalendarEvents(accessToken: string) {
   return { unauthorized: false as const, records: Array.from(byId.values()) };
 }
 
-export async function syncCalendarForUser(uid: string, idToken: string) {
-  const userDoc = await getUserDocument(uid, idToken);
-  const fields = userDoc.fields || {};
-  const accessToken = readString(fields, "aurinko_access_token");
+export async function syncCalendarForUser(
+  uid: string,
+  opts: string | { idToken?: string; accessToken?: string } = {}
+) {
+  const options = typeof opts === "string" ? { idToken: opts } : opts;
+  let accessToken = options.accessToken || "";
+  if (!accessToken && options.idToken) {
+    const userDoc = await getUserDocument(uid, options.idToken);
+    accessToken = readString(userDoc.fields, "aurinko_access_token");
+  }
   if (!accessToken) throw new Error("aurinko_not_connected");
 
   const listed = await listCalendarEvents(accessToken);
@@ -100,27 +107,45 @@ export async function syncCalendarForUser(uid: string, idToken: string) {
   const events = listed.records.map(mapEvent).filter((row): row is DimadRemoteEvent => !!row);
   console.log("Mapped Google/Aurinko calendar events", events.length, events);
 
-  const writes = events.map((ev) => ({
-    update: {
-      name: `projects/${FIREBASE_WEB.projectId}/databases/(default)/documents/users/${uid}/dimad_calendar_events/${ev.id}`,
-      fields: {
-        id: strField(ev.id),
-        title: strField(ev.title),
-        start_time: strField(ev.start_time),
-        end_time: strField(ev.end_time),
-        status: strField(ev.status),
-        source: strField(ev.source),
-        type: strField(ev.type),
-        location: strField(ev.location),
-        cancelled: boolField(ev.cancelled)
+  try {
+    await adminWriteCalendarEvents(
+      uid,
+      events.map((ev) => ({
+        id: ev.id,
+        title: ev.title,
+        start_time: ev.start_time,
+        end_time: ev.end_time,
+        status: ev.status,
+        source: ev.source,
+        type: ev.type,
+        location: ev.location,
+        cancelled: ev.cancelled
+      }))
+    );
+  } catch (adminErr) {
+    console.warn("Admin calendar write failed; falling back to user token", adminErr);
+    if (!options.idToken) throw adminErr;
+    const writes = events.map((ev) => ({
+      update: {
+        name: `projects/${FIREBASE_WEB.projectId}/databases/(default)/documents/users/${uid}/dimad_calendar_events/${ev.id}`,
+        fields: {
+          id: strField(ev.id),
+          title: strField(ev.title),
+          start_time: strField(ev.start_time),
+          end_time: strField(ev.end_time),
+          status: strField(ev.status),
+          source: strField(ev.source),
+          type: strField(ev.type),
+          location: strField(ev.location),
+          cancelled: boolField(ev.cancelled)
+        }
       }
+    }));
+    for (let i = 0; i < writes.length; i += 20) {
+      const chunk = writes.slice(i, i + 20);
+      await commitWrites(options.idToken, chunk);
+      console.log("Wrote calendar events chunk", i / 20 + 1, chunk.length);
     }
-  }));
-
-  for (let i = 0; i < writes.length; i += 20) {
-    const chunk = writes.slice(i, i + 20);
-    await commitWrites(idToken, chunk);
-    console.log("Wrote calendar events chunk", i / 20 + 1, chunk.length);
   }
 
   return { count: events.length, events };

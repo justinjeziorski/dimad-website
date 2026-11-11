@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { uidFromIdToken, writeUserFields } from "@/lib/firebase-server";
-import { readOauthState } from "@/lib/oauth-state";
+import { readUserId } from "@/lib/oauth-state";
 import { aurinkoAccount, exchangeAurinkoCode, startAurinkoSync } from "@/lib/aurinko";
+import { adminWriteUser } from "@/lib/firebase-admin";
 import { syncCalendarForUser } from "@/lib/calendar-sync";
+import { listInboxWithAccessToken } from "@/lib/email-sync";
 import { withTimeout } from "@/lib/with-timeout";
 
 export const dynamic = "force-dynamic";
@@ -34,7 +35,15 @@ export async function GET(req: NextRequest) {
       return dashboardRedirect(req, "aurinko=error&reason=missing_code");
     }
 
-    const statePayload = readOauthState(req.nextUrl.searchParams.get("state"));
+    const userId =
+      readUserId(req.nextUrl.searchParams.get("state")) ||
+      req.cookies.get("aurinko_uid")?.value ||
+      "";
+    if (!userId) {
+      console.error("Aurinko callback missing Firestore userId in state");
+      return dashboardRedirect(req, "aurinko=error&reason=login_required");
+    }
+
     let token;
     try {
       token = await withTimeout(exchangeAurinkoCode(code), 12000, "aurinko_token");
@@ -43,57 +52,53 @@ export async function GET(req: NextRequest) {
       return dashboardRedirect(req, "aurinko=error&reason=token_exchange_failed");
     }
 
-    const idToken = req.cookies.get("dimad_fb_token")?.value || "";
-    let uid = req.cookies.get("aurinko_uid")?.value || statePayload.uid || "";
-    if (!uid && idToken) {
-      try {
-        uid = await withTimeout(uidFromIdToken(idToken), 8000, "firebase_uid_lookup");
-      } catch (err) {
-        console.error("Firebase ID token lookup failed", err);
-      }
+    const serviceType = req.cookies.get("aurinko_service")?.value || "Google";
+    let accountEmail = "";
+    try {
+      const account = await aurinkoAccount(token.accessToken);
+      accountEmail = String(account.email || account.userPrincipalName || "");
+    } catch (accountErr) {
+      console.warn("Aurinko account lookup skipped", accountErr);
     }
 
-    const serviceType = req.cookies.get("aurinko_service")?.value || statePayload.serviceType || "Google";
-
-    if (uid && idToken) {
-      try {
-        let accountEmail = "";
-        try {
-          const account = await aurinkoAccount(token.accessToken);
-          accountEmail = String(account.email || account.userPrincipalName || "");
-        } catch (accountErr) {
-          console.warn("Aurinko account lookup skipped", accountErr);
-        }
-        await withTimeout(
-          writeUserFields(uid, idToken, {
-            aurinko_access_token: token.accessToken,
-            aurinko_account_id: String(token.accountId || ""),
-            aurinko_service_type: serviceType,
-            aurinko_email: accountEmail,
-            aurinko_connected_at: new Date().toISOString()
-          }),
-          8000,
-          "firestore_aurinko_write"
-        );
-        try {
-          await startAurinkoSync(token.accessToken, "/email/sync?daysWithin=14&awaitReady=true");
-        } catch (mailWarmErr) {
-          console.warn("Aurinko inbox warm failed; client will retry", mailWarmErr);
-        }
-        try {
-          const synced = await withTimeout(syncCalendarForUser(uid, idToken), 20000, "calendar_sync_after_oauth");
-          console.log("Aurinko post-OAuth calendar sync wrote", synced.count, "events");
-        } catch (syncErr) {
-          console.error("Aurinko post-OAuth calendar sync failed; user can retry from dashboard", syncErr);
-        }
-      } catch (writeErr) {
-        console.error("Firestore Aurinko token write failed; continuing to dashboard", writeErr);
-      }
-    } else {
-      console.error("Aurinko tokens received but DIMAD user session is missing", {
-        uid: !!uid,
-        idToken: !!idToken
+    try {
+      await withTimeout(
+        adminWriteUser(userId, {
+          aurinko_access_token: token.accessToken,
+          aurinko_account_id: String(token.accountId || ""),
+          aurinko_service_type: serviceType,
+          aurinko_email: accountEmail,
+          aurinko_connected_at: new Date().toISOString()
+        }),
+        8000,
+        "firestore_admin_aurinko_write"
+      );
+      console.log("Saved Aurinko tokens to users/" + userId, {
+        accountId: token.accountId,
+        email: accountEmail
       });
+    } catch (writeErr) {
+      console.error("Admin Firestore Aurinko token write failed", writeErr);
+      return dashboardRedirect(req, "aurinko=error&reason=firestore_write_failed");
+    }
+
+    try {
+      await startAurinkoSync(token.accessToken, "/email/sync?daysWithin=14&awaitReady=true");
+      const inbox = await withTimeout(listInboxWithAccessToken(token.accessToken), 12000, "inbox_after_oauth");
+      console.log("Aurinko post-OAuth inbox fetched", inbox.length, "messages");
+    } catch (mailErr) {
+      console.error("Aurinko post-OAuth inbox fetch failed; Email tab can retry", mailErr);
+    }
+
+    try {
+      const synced = await withTimeout(
+        syncCalendarForUser(userId, { accessToken: token.accessToken }),
+        20000,
+        "calendar_sync_after_oauth"
+      );
+      console.log("Aurinko post-OAuth calendar sync wrote", synced.count, "events");
+    } catch (syncErr) {
+      console.error("Aurinko post-OAuth calendar sync failed; user can retry from dashboard", syncErr);
     }
 
     return clearOauthCookies(dashboardRedirect(req, "aurinko=success"));
