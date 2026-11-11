@@ -7,6 +7,7 @@ const VIEW_FILES = [
   'ent-crm',
   'ent-stocks',
   'ent-invoices',
+  'ent-email',
   'ent-goals',
   'ent-tasks',
   'creator-studio',
@@ -662,7 +663,7 @@ function renderModeNav(mode) {
       : '';
     return `
       <button type="button" onclick="switchTab('${item.id}')" class="sub-nav-btn ${color} flex items-center justify-between gap-1 w-full text-left py-1 px-2 rounded">
-        <span>${item.label}</span>
+        <span class="inline-flex items-center gap-1.5">${item.icon ? `<i class="fa-solid ${item.icon} text-[10px] w-3 text-center"></i>` : ''}${item.label}</span>
         ${badge}
       </button>
     `;
@@ -780,13 +781,25 @@ function switchTab(tabId) {
   if (tabId === 'ent-stocks' && typeof FINNHUB_MARKETS !== 'undefined') {
     FINNHUB_MARKETS.open();
   }
+  if (tabId === 'ent-email' && typeof window.DIMAD_MAIL?.mount === 'function') {
+    void window.DIMAD_MAIL.mount();
+  }
   if (tabId === 'ent-dashboard' && typeof COMMAND_CENTER !== 'undefined') {
     COMMAND_CENTER.apply();
+    if (typeof DIMAD_CAL !== 'undefined' && typeof CALENDAR_NAV !== 'undefined') {
+      CALENDAR_NAV.dayOffset = DIMAD_CAL.dayOffset || 0;
+      CALENDAR_NAV.mode = DIMAD_CAL.mode === 'week' ? 'weekly' : DIMAD_CAL.mode === 'month' ? 'monthly' : 'hourly';
+      CALENDAR_NAV.render();
+    }
   }
   if (tabId === 'creator-studio' && typeof DIMAD_STUDIO !== 'undefined') {
     DIMAD_STUDIO.apply();
   }
   if (tabId === 'dimad-calendar' && typeof DIMAD_CAL !== 'undefined') {
+    if (typeof CALENDAR_NAV !== 'undefined') {
+      DIMAD_CAL.dayOffset = CALENDAR_NAV.dayOffset || 0;
+      DIMAD_CAL.mode = CALENDAR_NAV.mode === 'weekly' ? 'week' : CALENDAR_NAV.mode === 'monthly' ? 'month' : 'day';
+    }
     DIMAD_CAL.renderFull();
   }
   if (typeof BUSINESS_AI !== 'undefined' && tabId !== 'ent-ai-business' && !(typeof DIMAD_AI_HOST !== 'undefined' && DIMAD_AI_HOST.holding('business'))) {
@@ -4018,13 +4031,14 @@ const CONNECT_MODULARS = {
   },
 
   connectCalendar(provider) {
-    if (provider === 'Calendly') {
-      if (typeof window.DIMAD_CALENDLY?.connect === 'function') {
-        return window.DIMAD_CALENDLY.connect();
+    if (provider === 'Calendly' || provider === 'Aurinko' || provider === 'Google' || provider === 'Outlook') {
+      const kind = provider === 'Outlook' ? 'Office365' : 'Google';
+      if (typeof window.DIMAD_AURINKO?.connect === 'function') {
+        return window.DIMAD_AURINKO.connect(kind);
       }
       const host = window.location.hostname;
       const base = (host === '127.0.0.1' || host === 'localhost') ? 'http://localhost:3000' : '';
-      window.location.assign(`${base}/api/auth/calendly/connect`);
+      window.location.assign(`${base}/api/auth/aurinko?serviceType=${encodeURIComponent(kind)}`);
       return;
     }
     const status = document.getElementById('calendar-source-status');
@@ -12461,40 +12475,44 @@ const DIMAD_CAL = {
     return String(n).padStart(2, '0');
   },
 
-  fromCalendlyRemote(ev) {
-    const start = new Date(ev.start_time || ev.startTime);
-    const end = new Date(ev.end_time || ev.endTime || ev.start_time);
+  fromRemoteEvent(ev) {
+    const startRaw = ev.start_time || ev.startTime || ev.start?.dateTime || ev.start;
+    const endRaw = ev.end_time || ev.endTime || ev.end?.dateTime || ev.end || startRaw;
+    const start = new Date(startRaw);
+    const end = new Date(endRaw);
     if (Number.isNaN(start.getTime())) return null;
     const endSafe = Number.isNaN(end.getTime()) ? new Date(start.getTime() + 3600000) : end;
     return {
-      id: ev.id || `cal_${Date.now()}`,
-      title: ev.title || 'Calendly event',
+      id: ev.id || `aur_${Date.now()}`,
+      title: ev.title || ev.subject || 'Calendar event',
       date: this.dateKey(start),
       startTime: `${this.clockPad(start.getHours())}:${this.clockPad(start.getMinutes())}`,
       endTime: `${this.clockPad(endSafe.getHours())}:${this.clockPad(endSafe.getMinutes())}`,
       time: `${this.clockPad(start.getHours())}:${this.clockPad(start.getMinutes())}`,
       type: 'meeting',
-      source: 'Calendly',
+      source: ev.source || 'Calendar',
       tone: 'indigo',
-      notes: ev.calendly_uri || '',
+      notes: ev.location || ev.notes || '',
       reminder: ev.reminder || 'none',
       reminded: false,
-      cancelled: !!(ev.cancelled || ev.status === 'canceled'),
-      calendly_uri: ev.calendly_uri || ''
+      cancelled: !!(ev.cancelled || ev.status === 'canceled')
     };
   },
 
-  mergeCalendlyEvents(incoming) {
+  mergeRemoteEvents(incoming) {
     const rows = this.load();
-    const keep = rows.filter((ev) => ev.source !== 'Calendly' && !String(ev.id || '').startsWith('cal_'));
-    const mapped = (incoming || []).map((ev) => this.fromCalendlyRemote(ev)).filter(Boolean);
+    const remoteSources = new Set(['Calendly', 'Calendar', 'Aurinko', 'Google Calendar', 'Outlook']);
+    const keep = rows.filter((ev) => !remoteSources.has(ev.source) && !String(ev.id || '').startsWith('cal_') && !String(ev.id || '').startsWith('aur_'));
+    const mapped = (incoming || []).map((ev) => this.fromRemoteEvent(ev)).filter(Boolean);
     const byId = new Map(keep.map((ev) => [String(ev.id), ev]));
     mapped.forEach((ev) => byId.set(String(ev.id), ev));
     this.persist(Array.from(byId.values()));
-    if (typeof dimadCal !== 'undefined' && dimadCal && dimadCal.syncFromStore) dimadCal.syncFromStore();
     this.refreshViews();
-    if (typeof CALENDAR_NAV !== 'undefined' && CALENDAR_NAV.render) CALENDAR_NAV.render();
     return mapped.length;
+  },
+
+  mergeCalendlyEvents(incoming) {
+    return this.mergeRemoteEvents(incoming);
   },
 
   contentFilterKey: 'dimad_cal_show_content',
@@ -12639,7 +12657,7 @@ const DIMAD_CAL = {
       const top = ((visStart - colStart) / 60) * hourPx + 1;
       const hgt = Math.max(18, ((visEnd - visStart) / 60) * hourPx - 3);
       const content = ev.type === 'content' || ev.source === 'Content Scheduler' || ev.tone === 'sky';
-      const indigo = ev.type === 'meeting' || ev.source === 'Calendly' || ev.tone === 'indigo';
+      const indigo = ev.type === 'meeting' || ev.source === 'Calendly' || ev.source === 'Calendar' || ev.source === 'Aurinko' || ev.tone === 'indigo';
       const wrap = content
         ? 'bg-sky-500/20 border-sky-500/40'
         : indigo ? 'bg-brand-gold/20 border-brand-gold/40' : 'bg-amber-500/20 border-amber-500/40';
@@ -12784,6 +12802,10 @@ const DIMAD_CAL = {
   refreshViews() {
     this.renderFull();
     if (typeof CALENDAR_NAV !== 'undefined') CALENDAR_NAV.render();
+    if (typeof dimadCal !== 'undefined' && dimadCal) {
+      dimadCal.syncFromStore();
+      dimadCal.render();
+    }
     if (typeof SCHEDULER !== 'undefined' && SCHEDULER.render) {
       try { SCHEDULER.render(); } catch (err) { /* tab may be unmounted */ }
     }
@@ -12938,6 +12960,7 @@ const DIMAD_CAL = {
       dimadCal.currentDate = this.anchorDate();
       dimadCal.currentView = this.mode === 'week' || this.mode === 'weekly' ? 'week' : this.mode === 'month' || this.mode === 'monthly' ? 'month' : 'day';
       dimadCal.syncFromStore();
+      dimadCal.render();
     }
     this.renderAgenda();
     this.fillTimeSelect();
@@ -13258,7 +13281,7 @@ class DimadCalendar {
   ensureSeeds() {
     if (this.events.length) return;
     const today = this.formatDateKey(new Date());
-    DIMAD_CAL.addEvent({ id: '1', title: 'Client Onboarding & Setup', date: today, startTime: '10:00', endTime: '11:00', type: 'meeting', source: 'Calendly' });
+    DIMAD_CAL.addEvent({ id: '1', title: 'Client Onboarding & Setup', date: today, startTime: '10:00', endTime: '11:00', type: 'meeting', source: 'Manual Entry' });
     DIMAD_CAL.addEvent({ id: '2', title: 'Deep Work Code Sprint', date: today, startTime: '13:00', endTime: '15:00', type: 'task', source: 'Execution Queue' });
     this.syncFromStore();
   }
@@ -18893,7 +18916,9 @@ window.onload = async function() {
   DIM_ENGINE.updateUI();
   FOCUS_TIMER.init();
   if (typeof DIMAD_GOALS !== 'undefined') DIMAD_GOALS.checkReminders();
-  switchTab('ent-dashboard');
+  const bootParams = new URLSearchParams(window.location.search);
+  if (bootParams.get('aurinko') === 'success') switchTab('ent-email');
+  else switchTab('ent-dashboard');
   if (typeof CALENDAR_NAV !== 'undefined' && CALENDAR_NAV.render) CALENDAR_NAV.render();
   if (typeof FINNHUB_MARKETS !== 'undefined') FINNHUB_MARKETS.init();
   if (typeof COMMAND_CENTER !== 'undefined') COMMAND_CENTER.apply();

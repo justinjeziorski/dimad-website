@@ -22,32 +22,15 @@ export async function uidFromIdToken(idToken: string): Promise<string> {
   return uid as string;
 }
 
-export async function writeCalendlyTokens(
+export async function writeUserFields(
   uid: string,
   idToken: string,
-  payload: {
-    calendly_access_token: string;
-    calendly_refresh_token: string;
-    calendly_user_uri: string;
-    calendly_connected_at: string;
-  }
+  payload: Record<string, string>
 ): Promise<void> {
-  const mask = [
-    "calendly_access_token",
-    "calendly_refresh_token",
-    "calendly_user_uri",
-    "calendly_connected_at"
-  ]
-    .map((field) => `updateMask.fieldPaths=${encodeURIComponent(field)}`)
-    .join("&");
-
+  const keys = Object.keys(payload);
+  const mask = keys.map((field) => `updateMask.fieldPaths=${encodeURIComponent(field)}`).join("&");
   const docPath = `https://firestore.googleapis.com/v1/projects/${FIREBASE_WEB.projectId}/databases/(default)/documents/users/${encodeURIComponent(uid)}`;
-  const fields = {
-    calendly_access_token: { stringValue: payload.calendly_access_token },
-    calendly_refresh_token: { stringValue: payload.calendly_refresh_token },
-    calendly_user_uri: { stringValue: payload.calendly_user_uri },
-    calendly_connected_at: { timestampValue: payload.calendly_connected_at }
-  };
+  const fields = Object.fromEntries(keys.map((key) => [key, { stringValue: payload[key] || "" }]));
   const headers = {
     Authorization: `Bearer ${idToken}`,
     "Content-Type": "application/json"

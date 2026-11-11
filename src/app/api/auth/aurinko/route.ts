@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { uidFromIdToken } from "@/lib/firebase-server";
-import { createPkce } from "@/lib/pkce";
 import { signOauthState } from "@/lib/oauth-state";
+import { aurinkoAuthorizeUrl, aurinkoCallbackUrl } from "@/lib/aurinko";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -15,10 +15,15 @@ const COOKIE = {
 };
 
 export async function GET(req: NextRequest) {
-  const clientId = process.env.NEXT_PUBLIC_CALENDLY_CLIENT_ID;
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
-  const redirectUri = `${appUrl}/api/auth/calendly/callback`;
-  const { verifier, challenge } = createPkce();
+  const clientId = process.env.NEXT_PUBLIC_AURINKO_CLIENT_ID || "";
+  if (!clientId) {
+    return NextResponse.json({ error: "missing_aurinko_client_id" }, { status: 500 });
+  }
+
+  const serviceTypeRaw = (req.nextUrl.searchParams.get("serviceType") || "Google").toLowerCase();
+  const serviceType = serviceTypeRaw.includes("365") || serviceTypeRaw.includes("outlook") || serviceTypeRaw.includes("office")
+    ? "Office365"
+    : "Google";
 
   const idToken =
     req.nextUrl.searchParams.get("id_token") ||
@@ -35,23 +40,23 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  const returnUrl = aurinkoCallbackUrl(req);
   const state = signOauthState({
     uid,
-    ts: String(Date.now())
+    ts: String(Date.now()),
+    serviceType
   });
 
-  const authUrl =
-    `https://auth.calendly.com/oauth/authorize?client_id=${clientId}` +
-    `&response_type=code` +
-    `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-    `&code_challenge_method=S256` +
-    `&code_challenge=${challenge}` +
-    `&state=${state}`;
+  const authUrl = aurinkoAuthorizeUrl({
+    clientId,
+    serviceType,
+    returnUrl,
+    state
+  });
 
   const res = NextResponse.redirect(authUrl, 307);
-  res.cookies.set("calendly_pkce", verifier, COOKIE);
-  res.cookies.set("calendly_redirect_uri", redirectUri, COOKIE);
   if (idToken) res.cookies.set("dimad_fb_token", idToken, COOKIE);
-  if (uid) res.cookies.set("calendly_uid", uid, COOKIE);
+  if (uid) res.cookies.set("aurinko_uid", uid, COOKIE);
+  res.cookies.set("aurinko_service", serviceType, COOKIE);
   return res;
 }

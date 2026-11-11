@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from "crypto";
 
 function secret() {
-  return process.env.CALENDLY_CLIENT_SECRET || "dimad-oauth-state";
+  return process.env.AURINKO_CLIENT_SECRET || "dimad-oauth-state";
 }
 
 export function signOauthState(payload: Record<string, string>) {
