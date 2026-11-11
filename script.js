@@ -9,7 +9,6 @@ const VIEW_FILES = [
   'ent-invoices',
   'ent-goals',
   'ent-tasks',
-  'ent-custom',
   'creator-studio',
   'creator-ai',
   'creator-writespace',
@@ -46,8 +45,7 @@ const MODE_NAV = {
       { id: 'ent-stocks', label: 'Stocks & Finance' },
       { id: 'ent-invoices', label: 'Invoices & Proposals' },
       { id: 'ent-goals', label: 'Goals & Achievements' },
-      { id: 'ent-tasks', label: 'Task Manager' },
-      { type: 'workspace', workspaces: ['Workspace 1', 'Workspace 2', 'Workspace 3'] }
+      { id: 'ent-tasks', label: 'Task Manager' }
     ]
   },
   creator: {
@@ -59,8 +57,7 @@ const MODE_NAV = {
       { id: 'creator-design', label: 'Design Suite' },
       { id: 'creator-pipeline', label: 'Creator Pipeline' },
       { id: 'creator-scheduler', label: 'Content Scheduler' },
-      { id: 'creator-vault', label: 'Asset & Media Vault' },
-      { type: 'workspace', workspaces: ['Workspace 1', 'Workspace 2', 'Workspace 3'] }
+      { id: 'creator-vault', label: 'Asset & Media Vault' }
     ]
   },
   nomad: {
@@ -72,8 +69,7 @@ const MODE_NAV = {
       { id: 'nomad-maps', label: 'Digital Maps' },
       { id: 'nomad-guides', label: 'Travel Guides' },
       { id: 'nomad-language', label: 'Language Survival Kit' },
-      { id: 'nomad-toolbox', label: 'Travel Toolbox' },
-      { type: 'workspace', workspaces: ['Workspace 1'] }
+      { id: 'nomad-toolbox', label: 'Travel Toolbox' }
     ]
   },
   community: {
@@ -88,35 +84,6 @@ const MODE_NAV = {
   }
 };
 
-const modePresets = {
-  nomad: [
-    { name: "Google Flights", url: "https://www.google.com/travel/flights" },
-    { name: "Wise Currency", url: "https://wise.com" },
-    { name: "Airbnb Stays", url: "https://www.airbnb.com" },
-    { name: "NomadList", url: "https://nomadlist.com" },
-    { name: "Google Maps", url: "https://maps.google.com" }
-  ],
-  entrepreneur: [
-    { name: "Superhuman Inbox", url: "https://app.superhuman.com" },
-    { name: "Notion Workspace", url: "https://www.notion.so" },
-    { name: "Stripe Billing", url: "https://dashboard.stripe.com" },
-    { name: "GitHub Repos", url: "https://github.com" },
-    { name: "Linear Tasks", url: "https://linear.app" }
-  ],
-  creator: [
-    { name: "Canva Design Deck", url: "https://www.canva.com/design/" },
-    { name: "YouTube Studio", url: "https://studio.youtube.com" },
-    { name: "Substack Dashboard", url: "https://substack.com" },
-    { name: "Descript Editor", url: "https://www.descript.com" },
-    { name: "X (Twitter)", url: "https://twitter.com" }
-  ]
-};
-
-let customWorkspaces = [
-  { name: "Google Flights", url: "https://www.google.com/travel/flights" },
-  { name: "Wise Currency", url: "https://wise.com" }
-];
-let activeWorkspaceIdx = 0;
 
 async function loadViews() {
   const container = document.getElementById('view-container');
@@ -236,6 +203,7 @@ const WORLD_CLOCK_CITIES = [
 const DIMAD_GEO = {
   storageKey: 'dimad_geo_city',
   watchId: null,
+  refreshing: false,
   hubs: [
     { city: 'Yerevan', lat: 40.1792, lon: 44.4991, km: 40 },
     { city: 'London', lat: 51.5074, lon: -0.1278, km: 40 },
@@ -244,10 +212,9 @@ const DIMAD_GEO = {
 
   init() {
     const el = document.getElementById('geo-location-label');
-    if (!el) return;
     const cached = this.readCache();
-    if (cached) el.textContent = cached;
-    if (!navigator.geolocation) return;
+    if (cached) this.setLabel(cached);
+    if (!el || !navigator.geolocation) return;
     const opts = { enableHighAccuracy: false, timeout: 12000, maximumAge: 300000 };
     const onOk = (pos) => this.resolve(pos.coords.latitude, pos.coords.longitude);
     try {
@@ -266,8 +233,139 @@ const DIMAD_GEO = {
   },
 
   setLabel(city) {
+    if (!city) return;
     const el = document.getElementById('geo-location-label');
-    if (el && city) el.textContent = city;
+    if (el) el.textContent = city;
+    const heading = document.getElementById('nomad-city-heading');
+    if (heading) {
+      heading.replaceChildren();
+      const icon = document.createElement('i');
+      icon.className = 'fa-solid fa-city';
+      heading.append(icon, document.createTextNode(' YOUR CITY: ' + String(city).toUpperCase()));
+    }
+  },
+
+  modal() {
+    return document.getElementById('geo-refresh-modal');
+  },
+
+  async permissionState() {
+    if (!navigator.geolocation) return 'unsupported';
+    try {
+      const status = await navigator.permissions.query({ name: 'geolocation' });
+      return status.state || 'unknown';
+    } catch {
+      return 'unknown';
+    }
+  },
+
+  setRefreshCopy(state) {
+    const label = document.getElementById('geo-refresh-state');
+    const copy = document.getElementById('geo-refresh-copy');
+    const help = document.getElementById('geo-refresh-help');
+    const allow = document.getElementById('geo-refresh-allow');
+    const denied = state === 'denied';
+    if (label) {
+      label.textContent = state === 'granted' ? 'Location allowed' : denied ? 'Location blocked' : state === 'unsupported' ? 'GPS unavailable' : 'Request site access';
+      label.className = `text-[11px] font-mono ${denied || state === 'unsupported' ? 'text-brand-alert' : 'text-brand-mint'}`;
+    }
+    if (copy) {
+      copy.textContent = denied
+        ? 'This site cannot read your location until you change tracking permissions in the browser, then refresh again.'
+        : 'Refresh Your City from this device. Allow location tracking for this site so DIMAD can pin your current node.';
+    }
+    if (help) help.classList.toggle('hidden', !denied);
+    if (allow) allow.textContent = denied ? 'Change permissions' : 'Allow & update';
+  },
+
+  setRefreshStatus(text, kind) {
+    const status = document.getElementById('geo-refresh-status');
+    if (!status) return;
+    if (!text) {
+      status.classList.add('hidden');
+      status.textContent = '';
+      return;
+    }
+    status.classList.remove('hidden');
+    status.className = `text-[10px] font-mono ${kind === 'error' ? 'text-brand-alert' : 'text-brand-mint'}`;
+    status.textContent = text;
+  },
+
+  spinRefresh(on) {
+    const icon = document.querySelector('#geo-refresh-btn i');
+    if (icon) icon.classList.toggle('fa-spin', !!on);
+  },
+
+  async openRefresh() {
+    const modal = this.modal();
+    if (!modal) return;
+    if (modal.parentElement !== document.body) document.body.appendChild(modal);
+    this.setRefreshStatus('');
+    this.setRefreshCopy(await this.permissionState());
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  },
+
+  closeRefresh() {
+    const modal = this.modal();
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    this.spinRefresh(false);
+  },
+
+  async confirmRefresh() {
+    const state = await this.permissionState();
+    if (state === 'unsupported') {
+      this.setRefreshStatus('This browser does not support location.', 'error');
+      return;
+    }
+    if (state === 'denied') {
+      this.setRefreshCopy('denied');
+      this.setRefreshStatus('Open the lock icon in the address bar, set Location to Allow, then Retry.', 'error');
+      const allow = document.getElementById('geo-refresh-allow');
+      if (allow) allow.textContent = 'Retry';
+      this.requestLocation();
+      return;
+    }
+    this.requestLocation();
+  },
+
+  requestLocation() {
+    if (!navigator.geolocation) {
+      this.setRefreshStatus('This browser does not support location.', 'error');
+      return;
+    }
+    if (this.refreshing) return;
+    this.refreshing = true;
+    this.spinRefresh(true);
+    this.setRefreshStatus('Requesting location…');
+    const opts = { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 };
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        await this.resolve(pos.coords.latitude, pos.coords.longitude);
+        this.refreshing = false;
+        this.spinRefresh(false);
+        this.setRefreshCopy('granted');
+        this.setRefreshStatus(`Updated: ${this.readCache() || 'current node'}`, 'ok');
+        setTimeout(() => this.closeRefresh(), 900);
+      },
+      (err) => {
+        this.refreshing = false;
+        this.spinRefresh(false);
+        const denied = err && err.code === 1;
+        if (denied) this.setRefreshCopy('denied');
+        this.setRefreshStatus(
+          denied
+            ? 'Permission denied. Change site location tracking to Allow, then Retry.'
+            : 'Could not read a fix. Check GPS and try again.',
+          'error'
+        );
+        const allow = document.getElementById('geo-refresh-allow');
+        if (allow) allow.textContent = denied ? 'Retry' : 'Try again';
+      },
+      opts
+    );
   },
 
   km(aLat, aLon, bLat, bLon) {
@@ -558,23 +656,6 @@ function renderModeNav(mode) {
   if (!container || !config) return;
 
   container.innerHTML = config.items.map((item) => {
-    if (item.type === 'workspace') {
-      const options = item.workspaces.map((name, idx) => `
-        <button type="button" onclick="openCustomWorkspace(${idx})" class="block w-full text-left py-1 px-2 rounded text-slate-400 hover:text-slate-200">
-          ${name}
-        </button>
-      `).join('');
-      return `
-        <div class="workspace-nav">
-          <button type="button" onclick="toggleWorkspaceMenu(this)" class="sub-nav-btn text-slate-400 hover:text-slate-200 flex items-center justify-between w-full text-left py-1 px-2 rounded">
-            <span>Custom Workspace</span>
-            <i class="fa-solid fa-chevron-right text-[8px]"></i>
-          </button>
-          <div class="workspace-menu hidden pl-2 space-y-0.5 border-l border-brand-border/40 ml-1">${options}</div>
-        </div>
-      `;
-    }
-
     const color = item.highlight ? 'text-amber-400 font-semibold hover:text-amber-300' : 'text-slate-400 hover:text-slate-200';
     const badge = item.premium
       ? '<span class="text-[7px] bg-brand-gold/15 text-brand-gold border border-brand-gold/40 px-1 py-0.5 rounded uppercase tracking-wide">Premium</span>'
@@ -586,25 +667,6 @@ function renderModeNav(mode) {
       </button>
     `;
   }).join('');
-}
-
-function toggleWorkspaceMenu(btn) {
-  const menu = btn.nextElementSibling;
-  if (!menu) return;
-  menu.classList.toggle('hidden');
-  const icon = btn.querySelector('i');
-  if (icon) {
-    icon.classList.toggle('fa-chevron-right');
-    icon.classList.toggle('fa-chevron-down');
-  }
-}
-
-function openCustomWorkspace(idx) {
-  while (customWorkspaces.length <= idx) {
-    customWorkspaces.push({ name: `Workspace ${customWorkspaces.length + 1}`, url: 'https://www.notion.so' });
-  }
-  activeWorkspaceIdx = idx;
-  switchTab('ent-custom');
 }
 
 function openSalesRevenue() {
@@ -681,6 +743,18 @@ function switchTab(tabId) {
     openDimadAiNav();
     return;
   }
+  if (tabId === 'ent-ai-business') {
+    openDimadAiNav('business');
+    return;
+  }
+  if (tabId === 'creator-ai') {
+    openDimadAiNav('creator');
+    return;
+  }
+  if (tabId === 'nomad-ai') {
+    openDimadAiNav('travel');
+    return;
+  }
   if (tabId === 'nomad-concierge') {
     openConciergeNav();
     return;
@@ -692,14 +766,11 @@ function switchTab(tabId) {
   closeDimDriveNav();
   document.querySelectorAll('.tab-view').forEach((el) => {
     if (el.id === 'view-nomad-concierge' || el.id === 'view-dimad-dimdrive') return;
+    if (el.closest && el.closest('#dimad-ai-engine-stage')) return;
     el.classList.add('hidden');
   });
   const target = document.getElementById(`view-${tabId}`);
   if (target) target.classList.remove('hidden');
-  if (tabId === 'ent-custom') {
-    renderCustomWorkspaces();
-    renderModePresets();
-  }
   if (typeof DIMAD_NOTEPAD !== 'undefined' && tabId !== 'dimad-notepad') {
     DIMAD_NOTEPAD.unmount();
   }
@@ -718,19 +789,19 @@ function switchTab(tabId) {
   if (tabId === 'dimad-calendar' && typeof DIMAD_CAL !== 'undefined') {
     DIMAD_CAL.renderFull();
   }
-  if (typeof BUSINESS_AI !== 'undefined' && tabId !== 'ent-ai-business') {
+  if (typeof BUSINESS_AI !== 'undefined' && tabId !== 'ent-ai-business' && !(typeof DIMAD_AI_HOST !== 'undefined' && DIMAD_AI_HOST.holding('business'))) {
     BUSINESS_AI.unmount();
   }
   if (tabId === 'ent-ai-business' && typeof BUSINESS_AI !== 'undefined') {
     BUSINESS_AI.mount();
   }
-  if (typeof NOMAD_AI !== 'undefined' && tabId !== 'nomad-ai') {
+  if (typeof NOMAD_AI !== 'undefined' && tabId !== 'nomad-ai' && !(typeof DIMAD_AI_HOST !== 'undefined' && DIMAD_AI_HOST.holding('travel'))) {
     NOMAD_AI.unmount();
   }
   if (tabId === 'nomad-ai' && typeof NOMAD_AI !== 'undefined') {
     NOMAD_AI.mount();
   }
-  if (typeof CREATOR_AI !== 'undefined' && tabId !== 'creator-ai') {
+  if (typeof CREATOR_AI !== 'undefined' && tabId !== 'creator-ai' && !(typeof DIMAD_AI_HOST !== 'undefined' && DIMAD_AI_HOST.holding('creator'))) {
     CREATOR_AI.unmount();
   }
   if (tabId === 'creator-ai' && typeof CREATOR_AI !== 'undefined') {
@@ -844,6 +915,111 @@ function persistAiQuota() {
     /* ignore quota persist failures */
   }
 }
+
+const DIMAD_AI_USAGE = {
+  storageKey: 'dimad_platform_ai_usage',
+  engines: [
+    { id: 'business', label: 'Business AI', icon: '💼' },
+    { id: 'creator', label: 'Creator AI', icon: '🎨' },
+    { id: 'travel', label: 'Nomad AI', icon: '✈️' },
+    { id: 'hub', label: 'Dimad AI Hub', icon: '⚡' }
+  ],
+
+  monthKey() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  },
+
+  monthLabel() {
+    return new Date().toLocaleDateString([], { month: 'long', year: 'numeric' });
+  },
+
+  defaults() {
+    return {
+      monthKey: this.monthKey(),
+      units: { business: 18, creator: 16, travel: 8, hub: 0 }
+    };
+  },
+
+  load() {
+    let state = this.defaults();
+    try {
+      const saved = JSON.parse(localStorage.getItem(this.storageKey) || '');
+      if (saved && saved.units) state = { ...state, ...saved, units: { ...state.units, ...saved.units } };
+    } catch (_) { /* seed */ }
+    if (state.monthKey !== this.monthKey()) state = this.defaults();
+    this._state = state;
+    return state;
+  },
+
+  persist() {
+    try { localStorage.setItem(this.storageKey, JSON.stringify(this._state || this.load())); } catch (_) { /* ignore */ }
+  },
+
+  total() {
+    const units = this.load().units || {};
+    return this.engines.reduce((sum, e) => sum + (Number(units[e.id]) || 0), 0);
+  },
+
+  percent() {
+    return Math.max(0, Math.min(100, this.total()));
+  },
+
+  record(engineId, amount) {
+    const s = this.load();
+    const key = this.engines.some((e) => e.id === engineId) ? engineId : 'hub';
+    s.units[key] = Math.max(0, (Number(s.units[key]) || 0) + (Number(amount) || 2));
+    this._state = s;
+    this.persist();
+    this.paint();
+  },
+
+  paint() {
+    const pct = this.percent();
+    const tone = pct > 80 ? 'bg-brand-gold' : 'bg-brand-mint';
+    ['dimad-ai-usage-bar', 'bai-usage-bar', 'cai-usage-bar', 'nai-usage-bar', 'sub-ai-usage-bar'].forEach((id) => {
+      const bar = document.getElementById(id);
+      if (!bar) return;
+      bar.style.width = pct + '%';
+      bar.className = `h-full rounded-full ${tone}`;
+    });
+    ['dimad-ai-usage-pct', 'bai-usage-pct', 'cai-usage-pct', 'nai-usage-pct', 'sub-ai-usage-pct'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = pct + '%';
+    });
+    const used = document.getElementById('sub-ai-usage-used');
+    if (used) used.textContent = pct + '% used this month';
+    this.renderPage();
+  },
+
+  openSubscription() {
+    if (typeof openSettingsVaultNav === 'function') openSettingsVaultNav('subscription');
+  },
+
+  renderPage() {
+    const root = document.getElementById('sub-ai-usage-breakdown');
+    const label = document.getElementById('sub-ai-usage-month');
+    if (label) label.textContent = this.monthLabel();
+    if (!root) return;
+    const s = this.load();
+    const total = Math.max(this.total(), 1);
+    root.innerHTML = this.engines.map((engine) => {
+      const value = Number(s.units[engine.id]) || 0;
+      const share = Math.round((value / total) * 100);
+      return `<div class="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-1.5">
+        <div class="flex items-center justify-between gap-2 text-[11px]">
+          <span class="text-slate-200 font-semibold">${engine.icon} ${engine.label}</span>
+          <span class="font-mono text-brand-gold">${value}%</span>
+        </div>
+        <div class="bg-slate-800 rounded-full h-1.5 overflow-hidden">
+          <div class="h-full rounded-full bg-brand-gold" style="width:${share}%"></div>
+        </div>
+        <p class="text-[10px] text-slate-500">${share}% of this month's usage</p>
+      </div>`;
+    }).join('');
+  }
+};
+window.DIMAD_AI_USAGE = DIMAD_AI_USAGE;
 
 // DIMAD OS: $DIM ECONOMICS — 16,000 $DIM = $10.00 USD ($1 $DIM = $0.000625)
 const DIM_ENGINE = {
@@ -1081,6 +1257,7 @@ function switchVaultTab(tabName) {
     targetBtn.classList.remove('text-slate-400');
     targetBtn.classList.add('text-amber-400', 'bg-amber-500/10', 'border', 'border-amber-500/20', 'font-bold');
   }
+  if (tabName === 'subscription' && typeof DIMAD_AI_USAGE !== 'undefined') DIMAD_AI_USAGE.paint();
 }
 
 const DIMAD_AI_STATE = {
@@ -1120,18 +1297,128 @@ function escapeAiHtml(value) {
     .replace(/"/g, '&quot;');
 }
 
-function openDimadAiNav() {
+const DIMAD_AI_HOST = {
+  engines: {
+    business: { viewId: 'view-ent-ai-business', railId: 'bai-rail', engine: () => window.BUSINESS_AI },
+    creator: { viewId: 'view-creator-ai', railId: 'cai-rail', engine: () => window.CREATOR_AI },
+    travel: { viewId: 'view-nomad-ai', railId: 'nai-rail', engine: () => window.NOMAD_AI }
+  },
+
+  isOpen() {
+    const panel = document.getElementById('dimad-ai-panel');
+    return !!(panel && !panel.classList.contains('hidden'));
+  },
+
+  holding(modeKey) {
+    return this.isOpen() && DIMAD_AI_STATE.activeMode === modeKey;
+  },
+
+  home() {
+    return document.getElementById('view-container');
+  },
+
+  stage() {
+    return document.getElementById('dimad-ai-engine-stage');
+  },
+
+  active() {
+    return this.engines[DIMAD_AI_STATE.activeMode] || this.engines.business;
+  },
+
+  hideRail(id) {
+    const rail = document.getElementById(id);
+    if (!rail) return;
+    rail.classList.add('hidden');
+    rail.classList.remove('flex');
+  },
+
+  setUsageChips(view, hide) {
+    if (!view) return;
+    view.querySelectorAll('.engine-usage-chip').forEach((el) => el.classList.toggle('hidden', !!hide));
+  },
+
+  paintUsage() {
+    if (typeof DIMAD_AI_USAGE !== 'undefined') DIMAD_AI_USAGE.paint();
+  },
+
+  openUsage() {
+    if (typeof DIMAD_AI_USAGE !== 'undefined') DIMAD_AI_USAGE.openSubscription();
+  },
+
+  restoreView(spec) {
+    const view = document.getElementById(spec.viewId);
+    const home = this.home();
+    if (!view || !home) return;
+    this.setUsageChips(view, false);
+    if (view.parentElement !== home) home.appendChild(view);
+    view.classList.add('hidden');
+    view.classList.remove('h-full', 'min-h-0', 'overflow-hidden');
+    this.hideRail(spec.railId);
+    const engine = spec.engine();
+    if (engine && engine.unmount) engine.unmount();
+  },
+
+  parkOthers(keepKey) {
+    Object.keys(this.engines).forEach((key) => {
+      if (key === keepKey) return;
+      this.restoreView(this.engines[key]);
+    });
+  },
+
+  show(modeKey) {
+    const spec = this.engines[modeKey] || this.engines.business;
+    const stage = this.stage();
+    const view = document.getElementById(spec.viewId);
+    if (!stage || !view) return;
+    this.parkOthers(modeKey);
+    stage.appendChild(view);
+    view.classList.remove('hidden');
+    view.classList.add('h-full', 'min-h-0', 'overflow-hidden');
+    stage.classList.remove('hidden');
+    const chrome = document.getElementById('dimad-ai-hub-chrome');
+    if (chrome) chrome.classList.add('hidden');
+    const engine = spec.engine();
+    if (engine && engine.mount) engine.mount();
+    this.hideRail(spec.railId);
+    this.setUsageChips(view, true);
+    this.paintUsage();
+    this.syncChats();
+  },
+
+  close() {
+    Object.keys(this.engines).forEach((key) => this.restoreView(this.engines[key]));
+    const stage = this.stage();
+    if (stage) stage.classList.add('hidden');
+  },
+
+  newChat() {
+    const engine = this.active().engine();
+    if (engine && engine.newChat) engine.newChat();
+    this.syncChats();
+  },
+
+  openChat(id) {
+    const engine = this.active().engine();
+    if (engine && engine.openChat) engine.openChat(id);
+    this.syncChats();
+  },
+
+  syncChats() {
+    if (typeof renderChatList === 'function') renderChatList();
+  }
+};
+
+function openDimadAiNav(modeKey) {
   const panel = document.getElementById('dimad-ai-panel');
   if (!panel) return;
   panel.classList.remove('hidden');
   panel.classList.add('flex');
-  switchAiMode(DIMAD_AI_STATE.activeMode || 'business');
+  switchAiMode(modeKey || DIMAD_AI_STATE.activeMode || 'business');
   renderAiQuotaUi();
-  if (!DIMAD_AI_STATE.activeChatId) startNewChat(true);
-  renderChatList();
 }
 
 function closeDimadAiNav() {
+  DIMAD_AI_HOST.close();
   const panel = document.getElementById('dimad-ai-panel');
   if (!panel) return;
   panel.classList.add('hidden');
@@ -1153,7 +1440,7 @@ function switchAiMode(modeKey) {
   if (input) input.placeholder = config.placeholder;
 
   document.querySelectorAll('.ai-mode-btn').forEach((btn) => {
-    btn.classList.remove('text-amber-400', 'bg-amber-500/10', 'border', 'border-amber-500/20', 'font-bold');
+    btn.classList.remove('text-amber-400', 'text-brand-gold', 'bg-amber-500/10', 'border', 'border-amber-500/20', 'font-bold');
     btn.classList.add('text-slate-400');
   });
 
@@ -1162,6 +1449,8 @@ function switchAiMode(modeKey) {
     activeBtn.classList.remove('text-slate-400');
     activeBtn.classList.add('text-amber-400', 'bg-amber-500/10', 'border', 'border-amber-500/20', 'font-bold');
   }
+
+  if (DIMAD_AI_HOST.isOpen()) DIMAD_AI_HOST.show(modeKey);
 }
 
 let currentSelectedSnippet = '';
@@ -1298,6 +1587,10 @@ function persistActiveChat() {
 }
 
 function startNewChat(keepExistingIfEmpty) {
+  if (typeof DIMAD_AI_HOST !== 'undefined' && DIMAD_AI_HOST.isOpen()) {
+    DIMAD_AI_HOST.newChat();
+    return;
+  }
   if (keepExistingIfEmpty) {
     if (!DIMAD_AI_STATE.activeChatId && DIMAD_AI_STATE.chats[0]) {
       DIMAD_AI_STATE.activeChatId = DIMAD_AI_STATE.chats[0].id;
@@ -1326,6 +1619,10 @@ function startNewChat(keepExistingIfEmpty) {
 }
 
 function loadChat(chatId) {
+  if (typeof DIMAD_AI_HOST !== 'undefined' && DIMAD_AI_HOST.isOpen()) {
+    DIMAD_AI_HOST.openChat(chatId);
+    return;
+  }
   persistActiveChat();
   const chat = DIMAD_AI_STATE.chats.find((c) => c.id === chatId);
   if (!chat) return;
@@ -1339,21 +1636,21 @@ function loadChat(chatId) {
 function renderChatList() {
   const list = document.getElementById('chat-history-list');
   const count = document.getElementById('chat-count');
-  if (count) count.textContent = String(DIMAD_AI_STATE.chats.length);
+  const hosted = typeof DIMAD_AI_HOST !== 'undefined' && DIMAD_AI_HOST.isOpen();
+  const engine = hosted ? DIMAD_AI_HOST.active().engine() : null;
+  const chats = hosted && engine && engine.chats ? engine.chats().filter((c) => !c.archived) : DIMAD_AI_STATE.chats;
+  const activeId = hosted && engine && engine.state ? engine.state().activeChatId : DIMAD_AI_STATE.activeChatId;
+  if (count) count.textContent = String((chats || []).length);
   if (!list) return;
-  if (!DIMAD_AI_STATE.chats.length) {
+  if (!(chats || []).length) {
     list.innerHTML = `<div class="text-slate-500 italic text-[11px] px-2 py-1">No chats yet. Start a conversation and it will auto-save here.</div>`;
     return;
   }
-  list.innerHTML = DIMAD_AI_STATE.chats.map((chat) => {
-    const active = chat.id === DIMAD_AI_STATE.activeChatId;
-    const meta = chatModeMeta(chat.mode);
+  list.innerHTML = chats.map((chat) => {
+    const active = String(chat.id) === String(activeId);
     return `
-      <button type="button" onclick="loadChat('${chat.id}')" class="w-full text-left bg-slate-950 p-2.5 rounded-xl border ${active ? 'border-amber-500/40 bg-amber-500/10' : 'border-slate-800 hover:border-slate-700'} space-y-1">
-        <div class="flex justify-between items-center text-[10px] font-mono text-amber-400">
-          <span>${meta.icon} ${escapeAiHtml(meta.label)}</span>
-        </div>
-        <p class="text-slate-200 truncate">${escapeAiHtml(chat.title || 'Untitled chat')}</p>
+      <button type="button" onclick="loadChat('${chat.id}')" class="w-full text-left px-2 py-1 rounded border leading-tight ${active ? 'border-amber-500/40 bg-amber-500/10 text-slate-100' : 'border-transparent text-slate-300 hover:bg-slate-800/50'}">
+        <p class="text-[11px] font-semibold truncate">${escapeAiHtml(chat.title || 'Untitled chat')}</p>
       </button>`;
   }).join('');
 }
@@ -1684,6 +1981,7 @@ function sendChatMessage() {
     </div>
   `;
   persistActiveChat();
+  if (typeof DIMAD_AI_USAGE !== 'undefined') DIMAD_AI_USAGE.record('hub', 2);
 
   setTimeout(() => {
     container.innerHTML += `
@@ -1711,101 +2009,6 @@ function sendChatMessage() {
     container.scrollTop = container.scrollHeight;
     persistActiveChat();
   }, 500);
-}
-
-function renderModePresets() {
-  const container = document.getElementById('suggestions-container');
-  const label = document.getElementById('suggestion-mode-label');
-  if (!container || !label) return;
-
-  label.innerText = currentActiveMode.toUpperCase();
-  const presets = modePresets[currentActiveMode] || modePresets['nomad'];
-
-  container.innerHTML = '';
-  presets.forEach(p => {
-    container.innerHTML += `
-      <button onclick="pinPreset('${p.name}', '${p.url}')" class="bg-brand-black/60 hover:bg-brand-gold/20 border border-brand-border hover:border-brand-gold text-slate-300 hover:text-brand-gold px-2.5 py-1 rounded text-[9px] font-mono flex items-center space-x-1.5 whitespace-nowrap transition-all">
-        <i class="fa-solid fa-plus text-[8px] text-brand-gold"></i>
-        <span>${p.name}</span>
-      </button>
-    `;
-  });
-}
-
-function pinPreset(name, url) {
-  const existingIdx = customWorkspaces.findIndex(w => w.name === name);
-  if (existingIdx !== -1) {
-    activeWorkspaceIdx = existingIdx;
-  } else {
-    customWorkspaces.push({ name, url });
-    activeWorkspaceIdx = customWorkspaces.length - 1;
-  }
-  renderCustomWorkspaces();
-}
-
-function renderCustomWorkspaces() {
-  const bar = document.getElementById('workspace-tabs-bar');
-  const canvas = document.getElementById('full-embed-canvas');
-  if (!bar || !canvas) return;
-
-  bar.innerHTML = '';
-  customWorkspaces.forEach((ws, idx) => {
-    const isActive = idx === activeWorkspaceIdx;
-    bar.innerHTML += `
-      <button onclick="selectWorkspace(${idx})" class="px-3 py-1.5 rounded text-[10px] font-mono flex items-center space-x-2 border transition-all ${isActive ? 'bg-brand-gold/20 border-brand-gold text-brand-gold font-bold' : 'bg-brand-black/50 border-brand-border text-slate-400 hover:text-slate-200'}">
-        <i class="fa-solid fa-window-maximize text-[9px]"></i>
-        <span>${ws.name}</span>
-      </button>
-    `;
-  });
-
-  if (customWorkspaces.length > 0) {
-    const activeWs = customWorkspaces[activeWorkspaceIdx];
-    let embedUrl = activeWs.url;
-    if (embedUrl.includes('canva.com/design/')) {
-      embedUrl = embedUrl.replace('/view', '/view?embed');
-    }
-    canvas.innerHTML = `
-      <div class="absolute top-2 right-3 z-10 flex items-center space-x-2 bg-brand-panel/90 border border-brand-border px-2 py-1 rounded text-[9px]">
-        <span class="text-slate-400">URL: <strong class="text-slate-200">${activeWs.url}</strong></span>
-        <a href="${activeWs.url}" target="_blank" class="text-brand-gold hover:underline">Open in Tab ↗</a>
-      </div>
-      <iframe src="${embedUrl}" class="w-full h-full border-0" sandbox="allow-scripts allow-same-origin allow-popups allow-forms"></iframe>
-    `;
-  } else {
-    canvas.innerHTML = `<p class="text-slate-500">No custom workspaces pinned yet.</p>`;
-  }
-}
-
-function selectWorkspace(idx) {
-  activeWorkspaceIdx = idx;
-  renderCustomWorkspaces();
-}
-
-function addCustomWorkspace() {
-  const nameInput = document.getElementById('new-workspace-name');
-  const urlInput = document.getElementById('new-workspace-url');
-  const name = nameInput.value.trim();
-  let url = urlInput.value.trim();
-
-  if (!name || !url) {
-    alert("Please provide both a workspace name and a valid URL.");
-    return;
-  }
-
-  if (!url.startsWith('http://') && !url.startsWith('https://')) {
-    url = 'https://' + url;
-  }
-
-  customWorkspaces.push({ name, url });
-  activeWorkspaceIdx = customWorkspaces.length - 1;
-  nameInput.value = '';
-  urlInput.value = '';
-  renderCustomWorkspaces();
-}
-
-function toggleHowToModal() {
-  document.getElementById('howto-modal').classList.toggle('hidden');
 }
 
 function toggleNotificationModal() {
@@ -3815,12 +4018,17 @@ const CONNECT_MODULARS = {
   },
 
   connectCalendar(provider) {
-    const status = document.getElementById('calendar-source-status');
-    if (status) {
-      status.textContent = provider === 'Calendly'
-        ? 'Calendly synced • Google, Outlook, Apple'
-        : `${provider} Calendar synced`;
+    if (provider === 'Calendly') {
+      if (typeof window.DIMAD_CALENDLY?.connect === 'function') {
+        return window.DIMAD_CALENDLY.connect();
+      }
+      const host = window.location.hostname;
+      const base = (host === '127.0.0.1' || host === 'localhost') ? 'http://localhost:3000' : '';
+      window.location.assign(`${base}/api/auth/calendly/connect`);
+      return;
     }
+    const status = document.getElementById('calendar-source-status');
+    if (status) status.textContent = `${provider} Calendar synced`;
     const locked = document.querySelector('[data-cal-locked-source]');
     if (locked) locked.textContent = `Synced via ${provider}`;
   }
@@ -16089,6 +16297,10 @@ const BUSINESS_AI = {
   backToDashboard() {
     this.closeCtx();
     this.closeSummary();
+    if (typeof DIMAD_AI_HOST !== 'undefined' && DIMAD_AI_HOST.isOpen()) {
+      closeDimadAiNav();
+      return;
+    }
     if (typeof switchTab === 'function') switchTab('ent-dashboard');
   },
 
@@ -16113,6 +16325,13 @@ const BUSINESS_AI = {
 
   placeRail() {
     const rail = document.getElementById('bai-rail');
+    if (typeof DIMAD_AI_HOST !== 'undefined' && DIMAD_AI_HOST.isOpen()) {
+      if (rail) {
+        rail.classList.add('hidden');
+        rail.classList.remove('flex');
+      }
+      return;
+    }
     const nav = document.getElementById('main-sidebar');
     if (!rail || !nav) return;
     const box = nav.getBoundingClientRect();
@@ -16175,7 +16394,7 @@ const BUSINESS_AI = {
     s.messages.push(userMsg);
     chat.thread = chat.thread || [];
     chat.thread.push(userMsg);
-    s.usage = Math.min(100, (s.usage || 0) + 2);
+    if (typeof DIMAD_AI_USAGE !== 'undefined') DIMAD_AI_USAGE.record('business', 2);
     if (input) input.value = '';
     this.generating = true;
     this.persist(s);
@@ -16478,7 +16697,7 @@ const BUSINESS_AI = {
 
   renderChrome() {
     const s = this.state();
-    const pct = Math.max(0, Math.min(100, Number(s.usage) || 0));
+    const pct = typeof DIMAD_AI_USAGE !== 'undefined' ? DIMAD_AI_USAGE.percent() : Math.max(0, Math.min(100, Number(s.usage) || 0));
     const bar = document.getElementById('bai-usage-bar');
     const label = document.getElementById('bai-usage-pct');
     const tip = document.getElementById('bai-usage-tip-pct');
@@ -16497,6 +16716,7 @@ const BUSINESS_AI = {
     const heading = document.getElementById('bai-active-title');
     const chat = this.activeChat();
     if (heading) heading.textContent = chat && chat.title && chat.title !== 'New chat' ? chat.title : 'Chat for strategy, pricing, offers, sales, and ops.';
+    if (typeof DIMAD_AI_HOST !== 'undefined' && DIMAD_AI_HOST.holding('business')) DIMAD_AI_HOST.paintUsage();
   },
 
   renderStarters() {
@@ -16569,20 +16789,20 @@ const BUSINESS_AI = {
         return `<div class="px-1 py-1"><input id="bai-rename-input" type="text" value="${this.escape(chat.title || '')}" onkeydown="BUSINESS_AI.renameKey(event)" onblur="BUSINESS_AI.commitRename()" class="w-full bg-slate-900 border border-brand-gold/40 rounded px-2 py-1 text-[11px] text-slate-100 outline-none"></div>`;
       }
       const on = String(chat.id) === String(activeId);
-      return `<button type="button" onclick="BUSINESS_AI.openChat('${chat.id}')" oncontextmenu="BUSINESS_AI.openCtx(event, '${chat.id}')" class="w-full text-left px-2 py-1.5 rounded border ${on ? 'bg-brand-gold/10 border-brand-gold/40 text-slate-100' : 'border-transparent text-slate-400 hover:bg-slate-900 hover:text-slate-200'}">
+      return `<button type="button" onclick="BUSINESS_AI.openChat('${chat.id}')" oncontextmenu="BUSINESS_AI.openCtx(event, '${chat.id}')" class="w-full text-left px-2 py-1 rounded border leading-tight ${on ? 'bg-brand-gold/10 border-brand-gold/40 text-slate-100' : 'border-transparent text-slate-400 hover:bg-slate-900 hover:text-slate-200'}">
         <div class="flex items-center gap-1.5 min-w-0">
           ${chat.pinned ? '<i class="fa-solid fa-thumbtack text-brand-gold text-[8px] shrink-0"></i>' : ''}
           <span class="truncate text-[11px] font-semibold">${this.escape(chat.title || 'Untitled')}</span>
         </div>
-        <div class="text-[9px] text-slate-500 mt-0.5">${this.escape(chat.tag || 'Chat')}</div>
       </button>`;
     };
-    const block = (label, items) => items.length ? `<div class="space-y-0.5"><div class="px-1 text-[8px] font-bold uppercase tracking-wider text-slate-500">${label}</div>${items.map(row).join('')}</div>` : '';
+    const block = (label, items) => items.length ? `<div class="space-y-0"><div class="px-1 py-0.5 text-[8px] font-bold uppercase tracking-wider text-slate-500">${label}</div>${items.map(row).join('')}</div>` : '';
     if (archivedView) {
-      root.innerHTML = archived.length ? archived.map(row).join('') : '<p class="px-2 text-[10px] text-slate-500">No archived chats.</p>';
+      root.innerHTML = archived.length ? `<div class="space-y-0">${archived.map(row).join('')}</div>` : '<p class="px-2 text-[10px] text-slate-500">No archived chats.</p>';
       return;
     }
     root.innerHTML = `${block('Pinned', pinned)}${block('Chats', live)}` || '<p class="px-2 text-[10px] text-slate-500">No saved chats yet.</p>';
+    if (typeof DIMAD_AI_HOST !== 'undefined' && DIMAD_AI_HOST.holding('business')) DIMAD_AI_HOST.syncChats();
   }
 };
 window.BUSINESS_AI = BUSINESS_AI;
@@ -16714,6 +16934,10 @@ const NOMAD_AI = {
   backToDashboard() {
     this.closeCtx();
     this.closeSummary();
+    if (typeof DIMAD_AI_HOST !== 'undefined' && DIMAD_AI_HOST.isOpen()) {
+      closeDimadAiNav();
+      return;
+    }
     if (typeof switchTab === 'function') switchTab('nomad-city');
   },
 
@@ -16738,6 +16962,13 @@ const NOMAD_AI = {
 
   placeRail() {
     const rail = document.getElementById('nai-rail');
+    if (typeof DIMAD_AI_HOST !== 'undefined' && DIMAD_AI_HOST.isOpen()) {
+      if (rail) {
+        rail.classList.add('hidden');
+        rail.classList.remove('flex');
+      }
+      return;
+    }
     const nav = document.getElementById('main-sidebar');
     if (!rail || !nav) return;
     const box = nav.getBoundingClientRect();
@@ -16800,7 +17031,7 @@ const NOMAD_AI = {
     s.messages.push(userMsg);
     chat.thread = chat.thread || [];
     chat.thread.push(userMsg);
-    s.usage = Math.min(100, (s.usage || 0) + 2);
+    if (typeof DIMAD_AI_USAGE !== 'undefined') DIMAD_AI_USAGE.record('travel', 2);
     if (input) input.value = '';
     this.generating = true;
     this.persist(s);
@@ -17103,7 +17334,7 @@ const NOMAD_AI = {
 
   renderChrome() {
     const s = this.state();
-    const pct = Math.max(0, Math.min(100, Number(s.usage) || 0));
+    const pct = typeof DIMAD_AI_USAGE !== 'undefined' ? DIMAD_AI_USAGE.percent() : Math.max(0, Math.min(100, Number(s.usage) || 0));
     const bar = document.getElementById('nai-usage-bar');
     const label = document.getElementById('nai-usage-pct');
     const tip = document.getElementById('nai-usage-tip-pct');
@@ -17122,6 +17353,7 @@ const NOMAD_AI = {
     const heading = document.getElementById('nai-active-title');
     const chat = this.activeChat();
     if (heading) heading.textContent = chat && chat.title && chat.title !== 'New chat' ? chat.title : 'Chat for strategy, pricing, offers, sales, and ops.';
+    if (typeof DIMAD_AI_HOST !== 'undefined' && DIMAD_AI_HOST.holding('travel')) DIMAD_AI_HOST.paintUsage();
   },
 
   renderStarters() {
@@ -17194,20 +17426,20 @@ const NOMAD_AI = {
         return `<div class="px-1 py-1"><input id="nai-rename-input" type="text" value="${this.escape(chat.title || '')}" onkeydown="NOMAD_AI.renameKey(event)" onblur="NOMAD_AI.commitRename()" class="w-full bg-slate-900 border border-brand-gold/40 rounded px-2 py-1 text-[11px] text-slate-100 outline-none"></div>`;
       }
       const on = String(chat.id) === String(activeId);
-      return `<button type="button" onclick="NOMAD_AI.openChat('${chat.id}')" oncontextmenu="NOMAD_AI.openCtx(event, '${chat.id}')" class="w-full text-left px-2 py-1.5 rounded border ${on ? 'bg-brand-gold/10 border-brand-gold/40 text-slate-100' : 'border-transparent text-slate-400 hover:bg-slate-900 hover:text-slate-200'}">
+      return `<button type="button" onclick="NOMAD_AI.openChat('${chat.id}')" oncontextmenu="NOMAD_AI.openCtx(event, '${chat.id}')" class="w-full text-left px-2 py-1 rounded border leading-tight ${on ? 'bg-brand-gold/10 border-brand-gold/40 text-slate-100' : 'border-transparent text-slate-400 hover:bg-slate-900 hover:text-slate-200'}">
         <div class="flex items-center gap-1.5 min-w-0">
           ${chat.pinned ? '<i class="fa-solid fa-thumbtack text-brand-gold text-[8px] shrink-0"></i>' : ''}
           <span class="truncate text-[11px] font-semibold">${this.escape(chat.title || 'Untitled')}</span>
         </div>
-        <div class="text-[9px] text-slate-500 mt-0.5">${this.escape(chat.tag || 'Chat')}</div>
       </button>`;
     };
-    const block = (label, items) => items.length ? `<div class="space-y-0.5"><div class="px-1 text-[8px] font-bold uppercase tracking-wider text-slate-500">${label}</div>${items.map(row).join('')}</div>` : '';
+    const block = (label, items) => items.length ? `<div class="space-y-0"><div class="px-1 py-0.5 text-[8px] font-bold uppercase tracking-wider text-slate-500">${label}</div>${items.map(row).join('')}</div>` : '';
     if (archivedView) {
-      root.innerHTML = archived.length ? archived.map(row).join('') : '<p class="px-2 text-[10px] text-slate-500">No archived chats.</p>';
+      root.innerHTML = archived.length ? `<div class="space-y-0">${archived.map(row).join('')}</div>` : '<p class="px-2 text-[10px] text-slate-500">No archived chats.</p>';
       return;
     }
     root.innerHTML = `${block('Pinned', pinned)}${block('Chats', live)}` || '<p class="px-2 text-[10px] text-slate-500">No saved chats yet.</p>';
+    if (typeof DIMAD_AI_HOST !== 'undefined' && DIMAD_AI_HOST.holding('travel')) DIMAD_AI_HOST.syncChats();
   }
 };
 window.NOMAD_AI = NOMAD_AI;
@@ -17453,6 +17685,10 @@ const CREATOR_AI = {
   backToDashboard() {
     this.closeCtx();
     this.closeSummary();
+    if (typeof DIMAD_AI_HOST !== 'undefined' && DIMAD_AI_HOST.isOpen()) {
+      closeDimadAiNav();
+      return;
+    }
     if (typeof switchTab === 'function') switchTab('creator-studio');
   },
 
@@ -17477,6 +17713,13 @@ const CREATOR_AI = {
 
   placeRail() {
     const rail = document.getElementById('cai-rail');
+    if (typeof DIMAD_AI_HOST !== 'undefined' && DIMAD_AI_HOST.isOpen()) {
+      if (rail) {
+        rail.classList.add('hidden');
+        rail.classList.remove('flex');
+      }
+      return;
+    }
     const nav = document.getElementById('main-sidebar');
     if (!rail || !nav) return;
     const box = nav.getBoundingClientRect();
@@ -17779,20 +18022,20 @@ const CREATOR_AI = {
         return `<div class="px-1 py-1"><input id="cai-rename-input" type="text" value="${this.escape(chat.title || '')}" onkeydown="CREATOR_AI.renameKey(event)" onblur="CREATOR_AI.commitRename()" class="w-full bg-slate-900 border border-brand-gold/40 rounded px-2 py-1 text-[11px] text-slate-100 outline-none"></div>`;
       }
       const on = String(chat.id) === String(activeId);
-      return `<button type="button" onclick="CREATOR_AI.openChat('${chat.id}')" oncontextmenu="CREATOR_AI.openCtx(event, '${chat.id}')" class="w-full text-left px-2 py-1.5 rounded border ${on ? 'bg-brand-gold/10 border-brand-gold/40 text-slate-100' : 'border-transparent text-slate-400 hover:bg-slate-900 hover:text-slate-200'}">
+      return `<button type="button" onclick="CREATOR_AI.openChat('${chat.id}')" oncontextmenu="CREATOR_AI.openCtx(event, '${chat.id}')" class="w-full text-left px-2 py-1 rounded border leading-tight ${on ? 'bg-brand-gold/10 border-brand-gold/40 text-slate-100' : 'border-transparent text-slate-400 hover:bg-slate-900 hover:text-slate-200'}">
         <div class="flex items-center gap-1.5 min-w-0">
           ${chat.pinned ? '<i class="fa-solid fa-thumbtack text-brand-gold text-[8px] shrink-0"></i>' : ''}
           <span class="truncate text-[11px] font-semibold">${this.escape(chat.title || 'Untitled')}</span>
         </div>
-        <div class="text-[9px] text-slate-500 mt-0.5">${this.escape(chat.tag || 'Chat')}</div>
       </button>`;
     };
-    const block = (label, items) => items.length ? `<div class="space-y-0.5"><div class="px-1 text-[8px] font-bold uppercase tracking-wider text-slate-500">${label}</div>${items.map(row).join('')}</div>` : '';
+    const block = (label, items) => items.length ? `<div class="space-y-0"><div class="px-1 py-0.5 text-[8px] font-bold uppercase tracking-wider text-slate-500">${label}</div>${items.map(row).join('')}</div>` : '';
     if (archivedView) {
-      root.innerHTML = archived.length ? archived.map(row).join('') : '<p class="px-2 text-[10px] text-slate-500">No archived chats.</p>';
+      root.innerHTML = archived.length ? `<div class="space-y-0">${archived.map(row).join('')}</div>` : '<p class="px-2 text-[10px] text-slate-500">No archived chats.</p>';
       return;
     }
     root.innerHTML = `${block('Pinned', pinned)}${block('Chats', live)}` || '<p class="px-2 text-[10px] text-slate-500">No saved chats yet.</p>';
+    if (typeof DIMAD_AI_HOST !== 'undefined' && DIMAD_AI_HOST.holding('creator')) DIMAD_AI_HOST.syncChats();
   },
 
   openModal(id) {
@@ -17893,7 +18136,7 @@ const CREATOR_AI = {
     s.messages.push(userMsg);
     chat.thread = chat.thread || [];
     chat.thread.push(userMsg);
-    s.usage = Math.min(100, (s.usage || 0) + 2);
+    if (typeof DIMAD_AI_USAGE !== 'undefined') DIMAD_AI_USAGE.record('creator', 2);
     s.input = '';
     if (input) input.value = '';
     this.generating = true;
@@ -18002,7 +18245,7 @@ const CREATOR_AI = {
       return;
     }
     const s = this.state();
-    s.usage = Math.min(100, (s.usage || 0) + 3);
+    if (typeof DIMAD_AI_USAGE !== 'undefined') DIMAD_AI_USAGE.record('creator', 3);
     s.messages = s.messages.map((msg) => {
       if (msg.id !== msgId) return msg;
       if (msg.draftData) return { ...msg, draftData: { ...msg.draftData, isExported: true } };
@@ -18113,7 +18356,7 @@ const CREATOR_AI = {
 
   renderChrome() {
     const s = this.state();
-    const pct = Math.max(0, Math.min(100, Number(s.usage) || 0));
+    const pct = typeof DIMAD_AI_USAGE !== 'undefined' ? DIMAD_AI_USAGE.percent() : Math.max(0, Math.min(100, Number(s.usage) || 0));
     const bar = document.getElementById('cai-usage-bar');
     const label = document.getElementById('cai-usage-pct');
     const tipPct = document.getElementById('cai-usage-tip-pct');
@@ -18147,6 +18390,7 @@ const CREATOR_AI = {
     if (heading) heading.textContent = chat && chat.title && chat.title !== 'New chat' ? chat.title : 'Chat for social, image, branding, and marketing work.';
     const inspoActions = document.getElementById('cai-inspo-actions');
     if (inspoActions) inspoActions.classList.toggle('hidden', !(chat && chat.tag === 'Inspo'));
+    if (typeof DIMAD_AI_HOST !== 'undefined' && DIMAD_AI_HOST.holding('creator')) DIMAD_AI_HOST.paintUsage();
   },
 
   renderFeed() {
@@ -18600,6 +18844,7 @@ window.onload = async function() {
   await loadViews();
   if (typeof WORLD_CLOCKS !== 'undefined') WORLD_CLOCKS.render();
   if (typeof DIMAD_GEO !== 'undefined') DIMAD_GEO.init();
+  if (typeof DIMAD_AI_USAGE !== 'undefined') DIMAD_AI_USAGE.paint();
   updateClocks();
   setInterval(updateClocks, 1000);
   renderModeNav('entrepreneur');

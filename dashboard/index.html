@@ -5,9 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DIMADOS</title>
   <script>
-    if (!localStorage.getItem('dimad_user')) {
-      window.location.replace('/');
-    }
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      var calendlyOk = params.get('calendly') === 'success' || sessionStorage.getItem('calendly_connected') === '1';
+      if (!localStorage.getItem('dimad_user') && !calendlyOk) {
+        window.location.replace('/login.html');
+      }
+    })();
   </script>
 
   <!-- TAILWIND & FONTS DEPENDENCIES -->
@@ -302,7 +306,7 @@
 <!-- DIMAD AI COMMAND CENTER PANEL -->
 <div id="dimad-ai-panel" class="hidden fixed inset-0 z-[200] min-h-screen bg-slate-950 text-slate-100 flex-col md:flex-row">
 
-  <aside class="w-full md:w-80 bg-slate-900 border-r border-slate-800 p-5 flex flex-col justify-between flex-shrink-0">
+  <aside class="w-full md:w-80 bg-slate-900 border-r border-slate-800 p-5 flex flex-col flex-shrink-0">
     <div class="space-y-6">
       <button type="button" onclick="closeDimadAiNav()" class="w-full flex items-center justify-center space-x-2 bg-slate-950 hover:bg-slate-800 border border-slate-700/60 text-slate-300 text-xs font-semibold py-2.5 px-4 rounded-xl transition shadow-sm">
         <span>← Back to Dashboard</span>
@@ -333,40 +337,38 @@
           <span class="text-[10px] font-mono text-brand-gold uppercase tracking-wider">💬 Chats</span>
           <span id="chat-count" class="text-[10px] font-mono bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded">0</span>
         </div>
-        <div id="chat-history-list" class="space-y-1.5 max-h-56 overflow-y-auto text-xs">
+        <div id="chat-history-list" class="space-y-0 leading-tight max-h-56 overflow-y-auto text-xs">
           <div class="text-slate-500 italic text-[11px] px-2 py-1">No chats yet. Start a conversation and it will auto-save here.</div>
         </div>
       </div>
     </div>
-
-    <div class="bg-slate-950 p-3.5 rounded-xl border border-slate-800 space-y-1 text-xs">
-      <div class="flex justify-between text-slate-400 font-mono text-[11px] gap-2">
-        <span>Dimad AI Credits</span>
-        <span id="ai-credits-label" class="text-brand-gold text-right">UNLIMITED Standard AI Active</span>
-      </div>
-      <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-        <div class="bg-amber-400 h-full w-full"></div>
-      </div>
-    </div>
   </aside>
 
-  <main class="flex-1 flex flex-col h-screen overflow-hidden">
-    <header class="bg-slate-900 border-b border-slate-800 p-4 px-6 flex items-center justify-between">
-      <div class="flex items-center space-x-3">
-        <span id="active-mode-icon" class="text-xl">💼</span>
+  <main class="flex-1 flex flex-col h-screen overflow-hidden min-h-0">
+    <header class="bg-slate-900 border-b border-slate-800 p-4 px-6 flex items-center justify-between gap-4 shrink-0">
+      <div class="flex items-center space-x-3 min-w-0">
+        <span class="text-xl">⚡</span>
         <div>
-          <h3 id="active-mode-title" class="text-sm font-bold text-white">Business AI Command</h3>
-          <p id="active-mode-desc" class="text-[11px] text-slate-400">Strategy, unit economics, and high-agency scaling.</p>
+          <h3 class="text-sm font-bold text-white">Dimad AI</h3>
+          <p class="text-[11px] text-slate-400">Combined Business, Creator, and Nomad engines.</p>
         </div>
       </div>
-      <div class="flex items-center space-x-2">
-        <span id="ai-active-model-badge" class="text-[10px] font-mono bg-slate-800 text-brand-gold px-2 py-1 rounded-lg border border-slate-700">UNLIMITED Standard AI Active</span>
-        <button type="button" onclick="openPinnedChatsPage()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-3 py-1.5 rounded-xl transition flex items-center space-x-1.5">
+      <div class="flex flex-col items-stretch gap-2 min-w-[240px] max-w-md w-full sm:w-auto">
+        <button type="button" onclick="DIMAD_AI_USAGE.openSubscription()" title="Open monthly AI usage in Subscription" class="bg-slate-950 border border-slate-800 hover:border-brand-gold/50 rounded-xl px-3 py-1.5 flex items-center gap-3 text-left">
+          <span class="text-[10px] text-slate-300 font-medium flex items-center gap-1.5 whitespace-nowrap"><i class="fa-solid fa-bolt text-brand-gold"></i> Monthly AI Usage</span>
+          <div class="flex-1 min-w-[88px] bg-slate-800 rounded-full h-1.5 overflow-hidden border border-slate-700">
+            <div id="dimad-ai-usage-bar" class="h-full bg-brand-mint rounded-full" style="width:42%"></div>
+          </div>
+          <span id="dimad-ai-usage-pct" class="text-[10px] font-mono font-bold text-white">42%</span>
+        </button>
+        <button type="button" onclick="openPinnedChatsPage()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-3 py-1.5 rounded-xl transition flex items-center justify-center space-x-1.5">
           <span>📌 View Pinned Chats</span>
         </button>
       </div>
     </header>
 
+    <div id="dimad-ai-engine-stage" class="flex-1 min-h-0 overflow-hidden p-3 hidden"></div>
+    <div id="dimad-ai-hub-chrome" class="hidden flex-1 flex flex-col overflow-hidden min-h-0">
     <div id="chat-messages-container" class="flex-1 overflow-y-auto p-6 space-y-6">
       <div class="flex items-start space-x-3 max-w-2xl">
         <div class="w-8 h-8 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-brand-gold font-bold text-xs flex-shrink-0">
@@ -392,6 +394,7 @@
           Send ↵
         </button>
       </div>
+    </div>
     </div>
   </main>
 </div>
@@ -480,7 +483,7 @@
 </div>
 
 <!-- SETTINGS & VAULT SUB-NAVIGATION PANEL (HIDDEN BY DEFAULT) -->
-<div id="settings-vault-panel" class="hidden fixed inset-0 z-[200] min-h-screen bg-slate-950 text-slate-100 flex-col md:flex-row">
+<div id="settings-vault-panel" class="hidden fixed inset-0 z-[500] min-h-screen bg-slate-950 text-slate-100 flex-col md:flex-row">
 
   <!-- LEFT SUB-NAV SIDEBAR -->
   <aside class="w-full md:w-64 bg-slate-900 border-r border-slate-800 p-5 space-y-6 flex-shrink-0">
@@ -699,6 +702,24 @@
     <div id="vault-tab-subscription" class="vault-tab-content hidden space-y-4">
       <h2 class="text-xl font-bold text-white">Subscription Management</h2>
       <p class="text-xs text-slate-400">Switch between Free, Explore ($9), Premium ($59), and VIP Unlimited ($199).</p>
+      <div class="bg-slate-900 border border-amber-500/20 rounded-2xl p-5 space-y-4">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 class="text-sm font-bold text-white flex items-center gap-2"><i class="fa-solid fa-bolt text-brand-gold"></i> Monthly AI Usage</h3>
+            <p id="sub-ai-usage-month" class="text-[11px] text-slate-400 mt-0.5"></p>
+          </div>
+          <p id="sub-ai-usage-used" class="text-[11px] font-mono text-brand-mint">42% used this month</p>
+        </div>
+        <p class="text-[11px] text-slate-400 leading-relaxed">One platform meter for Business AI, Creator AI, Nomad AI, and Dimad AI Hub. Usage resets on the first of each month.</p>
+        <div class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 flex items-center gap-3">
+          <span class="text-[10px] text-slate-300 font-medium whitespace-nowrap">This cycle</span>
+          <div class="flex-1 bg-slate-800 rounded-full h-2 overflow-hidden border border-slate-700">
+            <div id="sub-ai-usage-bar" class="h-full bg-brand-mint rounded-full" style="width:42%"></div>
+          </div>
+          <span id="sub-ai-usage-pct" class="text-[11px] font-mono font-bold text-white">42%</span>
+        </div>
+        <div id="sub-ai-usage-breakdown" class="grid grid-cols-1 sm:grid-cols-2 gap-2"></div>
+      </div>
     </div>
 
     <div id="vault-tab-support" class="vault-tab-content hidden">
@@ -775,24 +796,6 @@
       Enable daily streak reminder
     </label>
     <button type="button" onclick="toggleNotificationModal()" class="w-full bg-brand-gold text-brand-black font-bold py-2 rounded text-[10px]">SAVE</button>
-  </div>
-</div>
-
-<!-- HOW-TO POPUP MODAL -->
-<div id="howto-modal" class="fixed inset-0 bg-brand-black/80 z-[999] hidden flex items-center justify-center p-4">
-  <div class="border border-brand-gold bg-brand-panel max-w-md w-full p-5 rounded-lg space-y-4 shadow-2xl font-mono text-[11px]">
-    <div class="flex items-center justify-between border-b border-brand-border pb-2">
-      <h3 class="font-bold text-brand-gold flex items-center gap-2"><i class="fa-solid fa-circle-question"></i> How to Add a Custom Workspace</h3>
-      <button onclick="toggleHowToModal()" class="text-slate-400 hover:text-white font-bold text-xs">✕</button>
-    </div>
-    <div class="space-y-3 text-slate-300">
-      <ol class="list-decimal pl-4 space-y-2">
-        <li><strong>Open your tool</strong> in your browser and copy its web URL.</li>
-        <li><strong>Paste the URL</strong> into the input field at the top.</li>
-        <li>Click <strong>+ PIN</strong> to embed it securely.</li>
-      </ol>
-    </div>
-    <button onclick="toggleHowToModal()" class="w-full bg-brand-gold text-brand-black font-bold py-2 rounded text-[10px]">GOT IT</button>
   </div>
 </div>
 
@@ -907,6 +910,28 @@
   </div>
 </div>
 
-<script src="../script.js?v=nomad-ai-clone"></script>
+<script type="importmap">
+{
+  "imports": {
+    "firebase/app": "https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js",
+    "firebase/analytics": "https://www.gstatic.com/firebasejs/13.2.0/firebase-analytics.js",
+    "firebase/auth": "https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js",
+    "firebase/firestore": "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js",
+    "react": "https://esm.sh/react@19.3.1"
+  }
+}
+</script>
+<script>
+  window.DIMAD_CALENDLY = window.DIMAD_CALENDLY || {
+    connect: function () {
+      var host = window.location.hostname;
+      var base = (host === '127.0.0.1' || host === 'localhost') ? 'http://localhost:3000' : '';
+      window.location.assign(base + '/api/auth/calendly/connect');
+    }
+  };
+</script>
+<script type="module" src="../firebase.js"></script>
+<script type="module" src="../auth/calendly-status.js"></script>
+<script src="../script.js?v=calendly-no-hang"></script>
 </body>
 </html>

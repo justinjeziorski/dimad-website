@@ -177,7 +177,7 @@
         </div>
         <div class="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500 border-t border-slate-800 pt-2.5">
           <span id="calendar-timezone-label">Timezone: Auto-detected</span>
-          <button type="button" id="calendar-source-status" onclick="CONNECT_MODULARS.connectCalendar('Calendly')" class="bg-transparent border-0 text-[11px] font-semibold text-brand-gold hover:text-amber-300 px-0 py-0.5 transition">
+          <button type="button" id="calendar-source-status" onclick="event.preventDefault(); (window.DIMAD_CALENDLY && window.DIMAD_CALENDLY.connect ? window.DIMAD_CALENDLY.connect() : (window.location.href='/api/auth/calendly/connect'))" class="bg-transparent border-0 text-[11px] font-semibold text-brand-gold hover:text-amber-300 px-0 py-0.5 transition inline-flex items-center gap-1.5">
             Connect via Calendly to sync
           </button>
         </div>

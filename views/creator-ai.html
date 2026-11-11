@@ -15,7 +15,7 @@
     </div>
 
     <div class="flex flex-col items-stretch gap-1.5 min-w-[240px] max-w-md w-full sm:w-auto">
-      <div class="bg-brand-black border border-brand-border rounded px-3 py-1.5 flex items-center gap-3">
+      <div class="engine-usage-chip bg-brand-black border border-brand-border rounded px-3 py-1.5 flex items-center gap-3">
         <span class="text-[10px] text-slate-300 font-medium flex items-center gap-1.5 whitespace-nowrap"><i class="fa-solid fa-bolt text-brand-gold"></i> Monthly AI Usage</span>
         <div class="flex-1 min-w-[88px] bg-slate-800 rounded-full h-1.5 overflow-hidden border border-slate-700">
           <div id="cai-usage-bar" class="h-full bg-brand-mint rounded-full" style="width:42%"></div>
@@ -84,7 +84,7 @@
     <span id="cai-rail-heading" class="text-[10px] font-bold text-brand-gold tracking-wide">SAVED CHATS</span>
     <button type="button" id="cai-rail-new" onclick="CREATOR_AI.newChat()" class="text-[9px] font-bold bg-brand-gold text-slate-950 px-2 py-1 rounded hover:bg-amber-400">+ New</button>
   </div>
-  <div id="cai-chat-list" class="flex-1 overflow-y-auto p-2 space-y-3"></div>
+  <div id="cai-chat-list" class="flex-1 overflow-y-auto p-2 space-y-0 leading-tight"></div>
   <div class="px-2 py-2 border-t border-brand-border">
     <button type="button" id="cai-rail-switch" onclick="CREATOR_AI.toggleArchivedView()" class="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 rounded text-[10px] font-bold text-slate-300 border border-brand-border bg-brand-black hover:border-brand-gold hover:text-brand-gold">
       <i class="fa-solid fa-box-archive text-[9px]"></i>
