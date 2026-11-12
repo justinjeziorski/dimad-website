@@ -44,6 +44,11 @@ export async function adminWriteUser(uid: string, payload: Record<string, string
   console.log("Admin wrote Aurinko fields to users/" + uid, Object.keys(payload));
 }
 
+export async function adminReadUser(uid: string) {
+  const snap = await getAdminDb().collection("users").doc(uid).get();
+  return (snap.data() || {}) as Record<string, unknown>;
+}
+
 export async function adminWriteCalendarEvents(uid: string, events: Array<Record<string, string | boolean>>) {
   const db = getAdminDb();
   for (let i = 0; i < events.length; i += 400) {

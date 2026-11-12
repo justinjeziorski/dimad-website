@@ -1,4 +1,5 @@
-import { aurinkoAccount, aurinkoFetch, aurinkoRecords, pullAurinkoUpdated, startAurinkoSync } from "./aurinko";
+import { aurinkoFetch, aurinkoRecords, pullAurinkoUpdated, startAurinkoSync } from "./aurinko";
+import { adminReadUser } from "./firebase-admin";
 import { getUserDocument, readString } from "./firestore-rest";
 
 function addressOf(value: unknown): { name: string; address: string } {
@@ -22,50 +23,74 @@ function bodyOf(raw: Record<string, unknown>) {
   return String(raw.htmlBody || raw.textBody || raw.snippet || raw.bodyPreview || raw.preview || "");
 }
 
-function mapMessage(raw: Record<string, unknown>) {
+function mapMessage(raw: Record<string, unknown>, lightweight = false) {
   const from = addressOf(raw.from || raw.sender);
   const toRaw = Array.isArray(raw.to) ? raw.to : [];
   const id = String(raw.id || raw.messageId || raw.internetMessageId || raw.threadId || raw.conversationId || "");
+  const labels = Array.isArray(raw.sysLabels) ? raw.sysLabels.map((row) => String(row).toLowerCase()) : [];
+  const flagged = raw.flagged === true || raw.isStarred === true || labels.includes("flagged") || labels.includes("starred");
   return {
     id,
     threadId: String(raw.threadId || raw.conversationId || id),
     subject: String(raw.subject || "(no subject)"),
-    snippet: String(raw.snippet || raw.preview || raw.bodyPreview || "").slice(0, 240),
-    body: bodyOf(raw),
+    snippet: String(raw.snippet || raw.preview || raw.bodyPreview || raw.bodySnippet || "").slice(0, 160),
+    body: lightweight ? "" : bodyOf(raw),
     from,
     to: toRaw.map(addressOf),
     receivedAt: String(
       raw.receivedAt || raw.receivedDateTime || raw.sentAt || raw.sentDateTime || raw.createdDateTime || raw.date || ""
     ),
-    unread: raw.unread === true || raw.isRead === false
+    unread: raw.unread === true || raw.isRead === false,
+    flagged
   };
 }
 
 export async function aurinkoTokenForUser(uid: string, idToken: string) {
-  const userDoc = await getUserDocument(uid, idToken);
-  const token = readString(userDoc.fields, "aurinko_access_token");
-  const accountId = readString(userDoc.fields, "aurinko_account_id");
-  const serviceType = readString(userDoc.fields, "aurinko_service_type");
-  const email = readString(userDoc.fields, "aurinko_email");
+  let token = "";
+  let accountId = "";
+  let serviceType = "";
+  let provider = "";
+  let email = "";
+  try {
+    const userDoc = await getUserDocument(uid, idToken);
+    token = readString(userDoc.fields, "aurinko_access_token");
+    accountId = readString(userDoc.fields, "aurinko_account_id");
+    serviceType = readString(userDoc.fields, "aurinko_service_type");
+    provider = readString(userDoc.fields, "aurinko_provider");
+    email = readString(userDoc.fields, "aurinko_email");
+  } catch (err) {
+    console.warn("Firestore REST token read failed; trying Admin", err);
+  }
+  if (!token) {
+    try {
+      const row = await adminReadUser(uid);
+      token = String(row.aurinko_access_token || "");
+      accountId = String(row.aurinko_account_id || accountId);
+      serviceType = String(row.aurinko_service_type || serviceType);
+      provider = String(row.aurinko_provider || provider);
+      email = String(row.aurinko_email || email);
+    } catch (adminErr) {
+      console.warn("Admin token read failed", adminErr);
+    }
+  }
   if (!token) throw new Error("aurinko_not_connected");
-  return { token, accountId, serviceType, email };
+  if (!serviceType) serviceType = provider === "microsoft" ? "Office365" : provider ? "Google" : "";
+  return { token, accountId, serviceType, provider, email };
 }
 
 async function listFromEndpoints(token: string) {
   const paths = [
-    "/email/messages?folder=inbox&count=50",
-    "/email/messages?folder=INBOX&limit=50",
-    "/email/messages?q=in%3Ainbox&count=50",
-    "/email/messages?q=label%3Ainbox&limit=50",
-    "/email/messages?count=50"
+    "/email/messages?folder=inbox&count=30",
+    "/email/messages?folder=INBOX&limit=30",
+    "/email/messages?q=in%3Ainbox&count=30",
+    "/email/messages?q=label%3Ainbox&limit=30",
+    "/email/messages?count=30"
   ];
   for (const path of paths) {
     const listed = await aurinkoFetch(path, token);
     console.log("Aurinko email list", path, listed.status, listed.data);
     if (listed.status === 401) throw new Error("aurinko_unauthorized");
-    if (!listed.ok) continue;
-    const batch = aurinkoRecords(listed.data);
-    if (batch.length) return batch;
+    if (listed.ok) return aurinkoRecords(listed.data);
   }
 
   const started = await startAurinkoSync(token, "/email/sync?daysWithin=14&awaitReady=true");
@@ -78,15 +103,8 @@ async function listFromEndpoints(token: string) {
 }
 
 export async function listInboxWithAccessToken(accessToken: string) {
-  const account = await aurinkoAccount(accessToken);
-  console.log("Listing inbox for Aurinko account", account?.email || account?.id);
   const records = await listFromEndpoints(accessToken);
-  const byId = new Map<string, ReturnType<typeof mapMessage>>();
-  records.forEach((row) => {
-    const mapped = mapMessage(row);
-    if (mapped.id) byId.set(mapped.id, mapped);
-  });
-  const messages = Array.from(byId.values());
+  const messages = mapListedMessages(records, true);
   console.log("Mapped inbox messages", messages.length);
   return messages;
 }
@@ -144,10 +162,10 @@ function sortFolders(folders: DimadMailFolder[]) {
   });
 }
 
-function mapListedMessages(records: Record<string, unknown>[]) {
+function mapListedMessages(records: Record<string, unknown>[], lightweight = true) {
   const byId = new Map<string, ReturnType<typeof mapMessage>>();
   records.forEach((row) => {
-    const mapped = mapMessage(row);
+    const mapped = mapMessage(row, lightweight);
     if (mapped.id) byId.set(mapped.id, mapped);
   });
   return Array.from(byId.values());
@@ -170,10 +188,10 @@ export async function listEmailFolders(uid: string, idToken: string) {
 async function listFromFolder(token: string, folderId: string) {
   const encoded = encodeURIComponent(folderId);
   const paths = [
-    `/email/folders/${encoded}/messages?count=50`,
-    `/email/folders/${encoded}/messages?limit=50`,
-    `/email/messages?folderId=${encoded}&count=50`,
-    `/email/messages?folder=${encoded}&count=50`
+    `/email/folders/${encoded}/messages?count=30`,
+    `/email/folders/${encoded}/messages?limit=30`,
+    `/email/messages?folderId=${encoded}&count=30`,
+    `/email/messages?folder=${encoded}&count=30`
   ];
   for (const path of paths) {
     const listed = await aurinkoFetch(path, token);
@@ -190,7 +208,7 @@ export async function listEmailMessages(uid: string, idToken: string, folderId?:
   const { token } = await aurinkoTokenForUser(uid, idToken);
   if (folderId) {
     const records = await listFromFolder(token, folderId);
-    const messages = mapListedMessages(records);
+    const messages = mapListedMessages(records, true);
     console.log("Mapped folder messages", folderId, messages.length);
     return messages;
   }
@@ -213,22 +231,31 @@ function aurinkoError(data: unknown, fallback: string) {
   return String(row.message || row.error || row.detail || row.title || fallback);
 }
 
-export async function sendEmailMessage(
-  uid: string,
-  idToken: string,
-  payload: { to: string; subject: string; body: string }
-) {
-  const { token } = await aurinkoTokenForUser(uid, idToken);
-  const to = payload.to
+function parseAddresses(value: string) {
+  return String(value || "")
     .split(/[,;]+/)
     .map((part) => part.trim())
     .filter(Boolean)
     .map((address) => ({ address }));
+}
+
+export async function sendEmailMessage(
+  uid: string,
+  idToken: string,
+  payload: { to: string; subject: string; body: string; cc?: string; bcc?: string; threadId?: string }
+) {
+  const { token } = await aurinkoTokenForUser(uid, idToken);
+  const to = parseAddresses(payload.to);
   if (!to.length) throw new Error("Enter at least one recipient.");
+  const cc = parseAddresses(payload.cc || "");
+  const bcc = parseAddresses(payload.bcc || "");
   const body = JSON.stringify({
-    subject: payload.subject,
+    subject: payload.subject || "(No Subject)",
     body: payload.body,
-    to
+    to,
+    ...(cc.length ? { cc } : {}),
+    ...(bcc.length ? { bcc } : {}),
+    ...(payload.threadId ? { threadId: payload.threadId } : {})
   });
   let sent = await aurinkoFetch("/email/messages/send", token, { method: "POST", body });
   console.log("Aurinko send email /messages/send", sent.status, sent.data);
@@ -239,4 +266,38 @@ export async function sendEmailMessage(
   if (sent.status === 401) throw new Error("Mailbox session expired. Reconnect Gmail / Outlook.");
   if (!sent.ok) throw new Error(aurinkoError(sent.data, "Aurinko could not send this email."));
   return sent.data;
+}
+
+export async function mutateEmailMessage(
+  uid: string,
+  idToken: string,
+  input: { id: string; action: "read" | "unread" | "star" | "unstar" | "trash" }
+) {
+  const { token } = await aurinkoTokenForUser(uid, idToken);
+  const id = encodeURIComponent(input.id);
+  if (input.action === "trash") {
+    const deleted = await aurinkoFetch(`/email/messages/${id}`, token, { method: "DELETE" });
+    console.log("Aurinko trash message", deleted.status, deleted.data);
+    if (deleted.status === 401) throw new Error("aurinko_unauthorized");
+    if (!deleted.ok && deleted.status !== 404) {
+      throw new Error(aurinkoError(deleted.data, "Could not move this message to Trash."));
+    }
+    return { ok: true, action: input.action };
+  }
+  const payload =
+    input.action === "read"
+      ? { unread: false }
+      : input.action === "unread"
+        ? { unread: true }
+        : input.action === "star"
+          ? { flagged: true }
+          : { flagged: false };
+  const updated = await aurinkoFetch(`/email/messages/${id}/status`, token, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+  console.log("Aurinko message status", input.action, updated.status, updated.data);
+  if (updated.status === 401) throw new Error("aurinko_unauthorized");
+  if (!updated.ok) throw new Error(aurinkoError(updated.data, "Could not update this message."));
+  return { ok: true, action: input.action };
 }

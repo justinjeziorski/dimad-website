@@ -1,7 +1,30 @@
 import type { NextRequest } from "next/server";
 import { fetchWithTimeout } from "./with-timeout";
 
-export const AURINKO_SCOPES = "Mail.Read Mail.Send Calendar.ReadWrite";
+export const AURINKO_SCOPES = "Mail.ReadWrite,Mail.Send,Calendar.ReadWrite";
+
+export type AurinkoProvider = "google" | "microsoft";
+
+export function aurinkoClientId() {
+  return process.env.AURINKO_CLIENT_ID || process.env.NEXT_PUBLIC_AURINKO_CLIENT_ID || "";
+}
+
+export function resolveAurinkoProvider(raw?: string | null): AurinkoProvider {
+  const value = String(raw || "google").toLowerCase();
+  if (
+    value.includes("microsoft") ||
+    value.includes("365") ||
+    value.includes("outlook") ||
+    value.includes("office")
+  ) {
+    return "microsoft";
+  }
+  return "google";
+}
+
+export function aurinkoServiceType(provider: AurinkoProvider) {
+  return provider === "microsoft" ? "Office365" : "Google";
+}
 
 export function appOrigin(req?: NextRequest) {
   const host = req?.nextUrl.hostname || "";
@@ -12,7 +35,7 @@ export function appOrigin(req?: NextRequest) {
 }
 
 export function aurinkoCallbackUrl(req?: NextRequest) {
-  return `${appOrigin(req)}/api/auth/aurinko/callback`;
+  return `${appOrigin(req)}/api/aurinko/callback`;
 }
 
 export function aurinkoAuthorizeUrl(params: {
@@ -32,7 +55,7 @@ export function aurinkoAuthorizeUrl(params: {
 }
 
 export async function exchangeAurinkoCode(code: string) {
-  const clientId = process.env.NEXT_PUBLIC_AURINKO_CLIENT_ID || "";
+  const clientId = aurinkoClientId();
   const clientSecret = process.env.AURINKO_CLIENT_SECRET || "";
   const basic = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
   const res = await fetchWithTimeout(
@@ -51,7 +74,14 @@ export async function exchangeAurinkoCode(code: string) {
     console.error("Aurinko token exchange failed", res.status, data);
     throw new Error(data.message || data.error || "token_exchange_failed");
   }
-  return data as { accountId: number | string; accessToken: string };
+  return data as {
+    accountId: number | string;
+    accessToken: string;
+    refreshToken?: string;
+    expiresIn?: number;
+    email?: string;
+    serviceType?: string;
+  };
 }
 
 export async function aurinkoFetch(path: string, accessToken: string, init: RequestInit = {}, ms = 15000) {

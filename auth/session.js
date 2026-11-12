@@ -22,6 +22,12 @@ function todayStamp() {
 export function syncDimadLocalUser(user) {
   if (!user) {
     localStorage.removeItem("dimad_user");
+    localStorage.removeItem("dimad_aurinko");
+    try {
+      sessionStorage.removeItem("aurinko_connected");
+    } catch {
+      /* ignore */
+    }
     return;
   }
   let existing = {};

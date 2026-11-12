@@ -1,6 +1,7 @@
 import { aurinkoFetch, aurinkoRecords, pullAurinkoUpdated, startAurinkoSync } from "./aurinko";
+import { aurinkoTokenForUser } from "./email-sync";
 import { adminWriteCalendarEvents } from "./firebase-admin";
-import { boolField, commitWrites, FIREBASE_WEB, getUserDocument, readString, strField } from "./firestore-rest";
+import { boolField, commitWrites, FIREBASE_WEB, strField } from "./firestore-rest";
 
 export type DimadRemoteEvent = {
   id: string;
@@ -96,8 +97,7 @@ export async function syncCalendarForUser(
   const options = typeof opts === "string" ? { idToken: opts } : opts;
   let accessToken = options.accessToken || "";
   if (!accessToken && options.idToken) {
-    const userDoc = await getUserDocument(uid, options.idToken);
-    accessToken = readString(userDoc.fields, "aurinko_access_token");
+    accessToken = (await aurinkoTokenForUser(uid, options.idToken)).token;
   }
   if (!accessToken) throw new Error("aurinko_not_connected");
 
@@ -166,8 +166,7 @@ export async function createCalendarEvent(
     localId?: string;
   }
 ) {
-  const userDoc = await getUserDocument(uid, idToken);
-  const accessToken = readString(userDoc.fields, "aurinko_access_token");
+  const accessToken = (await aurinkoTokenForUser(uid, idToken)).token;
   if (!accessToken) throw new Error("aurinko_not_connected");
 
   const title = String(input.subject || input.title || "").trim();

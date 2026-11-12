@@ -1,16 +1,42 @@
-<div id="view-ent-email" class="tab-view hidden w-full h-full overflow-hidden">
-  <div class="p-4 lg:p-6 max-w-6xl mx-auto w-full h-full flex flex-col gap-3">
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-        <h2 class="text-sm font-black text-brand-gold tracking-wide uppercase">Email</h2>
-        <p class="text-[11px] text-slate-400 mt-0.5">Inbox from the connected Gmail or Outlook account. Same Aurinko link also fills Command Center and DIMAD Calendar.</p>
-      </div>
-      <div class="flex items-center gap-2">
-        <button type="button" onclick="DIMAD_MAIL.compose()" class="hidden px-2.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-[10px] font-bold" data-mail-connected>
-          <i class="fa-solid fa-pen-to-square mr-1"></i>Compose
+<style>
+  [data-mail-editor][data-placeholder]:empty:before {
+    content: attr(data-placeholder);
+    color: #525252;
+    pointer-events: none;
+  }
+</style>
+<div id="view-ent-email" class="tab-view hidden fixed inset-0 z-[380] min-h-screen bg-[#070A0F] text-slate-100 flex-col overflow-hidden">
+  <div class="p-3 lg:p-4 w-full h-full flex flex-col gap-2.5">
+    <div class="flex flex-wrap items-center justify-between gap-2 shrink-0">
+      <div class="flex items-center gap-3 min-w-0">
+        <button type="button" onclick="closeEmailNav()" class="flex items-center gap-1.5 bg-slate-950 hover:bg-slate-800 border border-slate-700 text-slate-200 text-[10px] font-semibold font-mono px-2.5 py-1.5 rounded-lg transition shrink-0">
+          <i class="fa-solid fa-arrow-left text-[9px]"></i> Back to dashboard
         </button>
-        <button type="button" onclick="DIMAD_MAIL.refresh()" class="hidden px-2.5 py-1.5 rounded-lg bg-brand-black border border-brand-border text-[10px] font-bold text-slate-200 hover:text-brand-gold" data-mail-connected>
-          <i class="fa-solid fa-rotate mr-1"></i>Refresh
+        <h2 class="text-[11px] font-black text-brand-gold tracking-[0.18em] uppercase font-mono">Inbox</h2>
+      </div>
+      <div class="flex items-center gap-2 min-w-0">
+        <div class="relative hidden max-w-[18rem]" data-mail-connected data-account-wrap>
+          <button type="button" id="mail-account-badge" class="flex w-full items-center gap-2 pl-1.5 pr-2.5 py-1 rounded-full border border-brand-border bg-brand-black text-left" title="">
+            <span id="mail-account-icon" class="w-5 h-5 rounded-full bg-amber-500/15 border border-amber-500/30 text-brand-gold text-[9px] font-mono font-bold flex items-center justify-center shrink-0">@</span>
+            <span class="min-w-0">
+              <span class="block text-[8px] font-mono uppercase tracking-[0.14em] text-slate-500 leading-none">Account</span>
+              <span id="mail-account-email" class="block text-[10px] font-mono text-slate-200 truncate leading-tight">Mailbox</span>
+            </span>
+          </button>
+          <div id="mail-account-menu" data-account-menu class="hidden absolute right-0 top-full mt-1 z-50 min-w-[7.5rem] rounded-md border border-brand-border bg-neutral-950 shadow-xl">
+            <button type="button" data-account-logout class="w-full text-left px-3 py-2 text-[11px] font-mono text-slate-200 hover:bg-neutral-800 hover:text-brand-alert">Log out</button>
+          </div>
+        </div>
+        <div id="mail-layout-toggle" class="hidden flex items-center rounded-md border border-brand-border bg-brand-black p-0.5" data-mail-connected role="group" aria-label="Email layout">
+          <button type="button" data-mail-layout="split" onclick="DIMAD_MAIL.setLayout('split')" class="px-2 py-1 rounded-[5px] text-[9px] font-mono font-bold tracking-wide text-slate-400 hover:text-slate-100">
+            <i class="fa-solid fa-table-columns mr-1"></i>Split
+          </button>
+          <button type="button" data-mail-layout="list" onclick="DIMAD_MAIL.setLayout('list')" class="px-2 py-1 rounded-[5px] text-[9px] font-mono font-bold tracking-wide text-slate-400 hover:text-slate-100">
+            <i class="fa-solid fa-list mr-1"></i>List
+          </button>
+        </div>
+        <button type="button" onclick="DIMAD_MAIL.refresh()" title="Refresh" aria-label="Refresh" class="hidden w-8 h-8 rounded-md bg-brand-black border border-brand-border text-slate-200 hover:text-brand-gold flex items-center justify-center" data-mail-connected>
+          <i class="fa-solid fa-rotate text-[11px]"></i>
         </button>
       </div>
     </div>
@@ -20,59 +46,139 @@
         <div class="mx-auto w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-brand-gold">
           <i class="fa-solid fa-inbox text-lg"></i>
         </div>
-        <h3 class="text-sm font-black text-white uppercase tracking-wide">Connect Gmail / Outlook</h3>
+        <h3 class="text-sm font-black text-white uppercase tracking-wide font-mono">Connect Gmail / Outlook</h3>
         <p class="text-[11px] text-slate-400 leading-relaxed">Authorize calendar and mail through Aurinko. Booked and native calendar events land on both DIMAD calendars; this tab reads and sends from the same mailbox.</p>
         <p id="mail-error" class="hidden text-[11px] text-brand-alert font-mono"></p>
         <div class="flex flex-col sm:flex-row gap-2 justify-center">
-          <button type="button" onclick="DIMAD_MAIL.connect('Google')" class="px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-[11px] font-bold">
+          <button type="button" onclick="DIMAD_MAIL.connect('Google')" class="px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-[11px] font-bold font-mono">
             <i class="fa-brands fa-google mr-1.5"></i>Connect Gmail
           </button>
-          <button type="button" onclick="DIMAD_MAIL.connect('Office365')" class="px-3 py-2 rounded-xl bg-brand-black border border-brand-border text-[11px] font-bold text-slate-200 hover:text-brand-gold">
+          <button type="button" onclick="DIMAD_MAIL.connect('Office365')" class="px-3 py-2 rounded-xl bg-brand-black border border-brand-border text-[11px] font-bold font-mono text-slate-200 hover:text-brand-gold">
             <i class="fa-brands fa-microsoft mr-1.5"></i>Connect Outlook
           </button>
         </div>
       </div>
     </div>
 
-    <div id="mail-connected" class="hidden flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[minmax(11rem,13rem)_minmax(0,18rem)_minmax(0,1fr)] gap-3">
-      <aside class="bg-brand-panel border border-brand-border rounded-2xl overflow-hidden flex flex-col min-h-0 max-h-40 lg:max-h-none lg:min-h-[360px]">
-        <div class="px-3 py-2 border-b border-brand-border text-[10px] font-mono uppercase tracking-wide text-slate-500">Folders</div>
-        <div id="mail-folders" class="flex-1 overflow-x-auto lg:overflow-y-auto flex lg:flex-col"></div>
+    <div id="mail-connected" data-layout="split" class="hidden flex-1 min-h-0 grid gap-2 min-w-0" style="grid-template-columns: 11.5rem minmax(16rem, 22rem) minmax(0, 1fr);">
+      <aside class="bg-brand-panel border border-brand-border rounded-xl overflow-hidden flex flex-col min-h-0">
+        <div class="px-3 pt-3 pb-2">
+          <button type="button" onclick="DIMAD_MAIL.compose()" class="w-full px-2.5 py-2 rounded-md bg-amber-500 hover:bg-amber-400 text-slate-950 text-[10px] font-bold font-mono tracking-wide">
+            <i class="fa-solid fa-pen-to-square mr-1"></i>Compose
+          </button>
+        </div>
+        <div class="px-3 py-2 border-y border-brand-border text-[9px] font-mono uppercase tracking-[0.16em] text-slate-500">Folders</div>
+        <div id="mail-folders" class="flex-1 overflow-x-auto lg:overflow-y-auto flex lg:flex-col py-1"></div>
       </aside>
-      <div class="bg-brand-panel border border-brand-border rounded-2xl overflow-hidden flex flex-col min-h-[360px]">
-        <div id="mail-folder-title" class="px-3 py-2 border-b border-brand-border text-[10px] font-mono uppercase tracking-wide text-slate-500">Inbox</div>
+
+      <div id="mail-list-pane" class="bg-brand-panel border border-brand-border rounded-xl overflow-hidden flex flex-col min-h-[360px] min-w-0">
+        <div class="px-3 py-2 border-b border-brand-border space-y-2">
+          <div id="mail-folder-title" class="text-[9px] font-mono uppercase tracking-[0.16em] text-slate-500">Inbox</div>
+          <label class="block relative">
+            <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-1/2 -translate-y-1/2 text-[9px] text-slate-500"></i>
+            <input id="mail-search" type="search" autocomplete="off" placeholder="search mail..." class="w-full bg-brand-black border border-brand-border rounded-md pl-7 pr-2 py-1.5 text-[10px] font-mono text-slate-200 placeholder:text-slate-600 outline-none focus:border-amber-500/50">
+          </label>
+        </div>
         <div id="mail-list" class="flex-1 overflow-y-auto"></div>
       </div>
-      <div class="bg-brand-panel border border-brand-border rounded-2xl overflow-hidden flex flex-col min-h-[360px]">
+
+      <div id="mail-reader-pane" class="bg-brand-panel border border-brand-border rounded-xl overflow-hidden flex flex-col min-h-[360px] min-w-0">
         <div class="px-3 py-2 border-b border-brand-border flex items-center justify-between gap-2">
-          <div class="text-[10px] font-mono uppercase tracking-wide text-slate-500">Reader</div>
-          <button type="button" onclick="DIMAD_MAIL.compose()" class="text-[10px] font-bold text-brand-gold hover:text-amber-300">Compose Email</button>
+          <button type="button" id="mail-reader-back" onclick="DIMAD_MAIL.backToList()" class="hidden items-center gap-1.5 px-1.5 py-0.5 rounded-md text-[10px] font-mono font-bold text-slate-200 hover:text-brand-gold">
+            <i class="fa-solid fa-arrow-left text-[9px]"></i>
+            <span id="mail-reader-back-label">Back to Inbox</span>
+          </button>
+          <div id="mail-reader-label" class="text-[9px] font-mono uppercase tracking-[0.16em] text-slate-500">Reader</div>
         </div>
-        <div id="mail-reader" class="flex-1 overflow-y-auto p-4 text-[12px] text-slate-300"></div>
+        <div id="mail-reader" class="mail-doc mail-doc-sans flex-1 overflow-y-auto min-h-0"></div>
       </div>
     </div>
   </div>
 
-  <div id="mail-compose" class="hidden fixed inset-0 z-[360] bg-slate-950/80 backdrop-blur-md items-center justify-center p-4">
-    <div class="bg-brand-panel border border-brand-border rounded-2xl max-w-lg w-full p-5 space-y-3">
-      <div class="flex items-center justify-between">
-        <h3 class="text-sm font-black text-brand-gold uppercase">Compose Email</h3>
-        <button type="button" onclick="DIMAD_MAIL.closeCompose()" class="text-slate-400 hover:text-white">✕</button>
+  <input id="mail-attach-input" type="file" multiple class="hidden">
+
+  <div id="mail-popout" class="hidden fixed inset-0 z-[400] items-center justify-center bg-black/55 p-4" onclick="if(event.target===this) DIMAD_MAIL.closePopout()">
+    <div class="w-full max-w-2xl max-h-[86vh] flex flex-col rounded-xl bg-neutral-900 border border-amber-500/40 shadow-2xl shadow-black/80 overflow-hidden">
+      <div class="flex items-center justify-between px-4 py-2.5 bg-neutral-950 border-b border-neutral-800 font-mono text-xs text-amber-400 shrink-0">
+        <span class="flex items-center gap-2 min-w-0">
+          <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+          <span id="mail-popout-title" class="truncate">REPLY</span>
+        </span>
+        <button type="button" onclick="DIMAD_MAIL.closePopout()" class="text-neutral-400 hover:text-neutral-100 font-bold px-1.5">✕</button>
       </div>
-      <label class="block space-y-1 text-[11px]"><span class="text-slate-400">To</span>
-        <input id="mail-to" class="w-full bg-brand-black border border-brand-border rounded-lg px-2 py-2 text-slate-200" placeholder="name@studio.com">
-      </label>
-      <label class="block space-y-1 text-[11px]"><span class="text-slate-400">Subject</span>
-        <input id="mail-subject" class="w-full bg-brand-black border border-brand-border rounded-lg px-2 py-2 text-slate-200">
-      </label>
-      <label class="block space-y-1 text-[11px]"><span class="text-slate-400">Message</span>
-        <textarea id="mail-body" rows="8" class="w-full bg-brand-black border border-brand-border rounded-lg px-2 py-2 text-slate-200"></textarea>
-      </label>
-      <p id="mail-send-status" class="hidden text-[11px] font-mono"></p>
-      <div class="flex justify-end gap-2">
-        <button type="button" onclick="DIMAD_MAIL.closeCompose()" class="px-3 py-1.5 rounded-lg border border-brand-border text-[10px] font-bold text-slate-300">Cancel</button>
-        <button type="button" id="mail-send-btn" onclick="DIMAD_MAIL.send()" class="px-3 py-1.5 rounded-lg bg-amber-500 text-slate-950 text-[10px] font-bold">Send</button>
+      <div class="px-4 py-3 border-b border-neutral-800 space-y-1 shrink-0">
+        <div class="text-[13px] text-white font-semibold truncate" id="mail-popout-subject"></div>
+        <div class="text-[10px] font-mono text-slate-500 truncate" id="mail-popout-meta"></div>
+      </div>
+      <div class="flex-1 overflow-y-auto px-4 py-3 min-h-0">
+        <div id="mail-popout-original" class="text-[12px] text-slate-400 leading-relaxed max-h-32 overflow-y-auto border border-neutral-800 rounded-lg p-3 mb-3 bg-neutral-950/60"></div>
+        <div id="mail-popout-body" contenteditable="true" data-mail-editor data-placeholder="Type your reply here..." class="min-h-[9rem] p-3 rounded-lg bg-neutral-950 border border-neutral-800 text-neutral-100 text-sm focus:outline-none focus:border-amber-500 mail-doc-sans"></div>
+        <div id="mail-popout-files" class="mt-2 flex flex-wrap gap-1"></div>
+      </div>
+      <div class="px-4 py-3 bg-neutral-950/50 border-t border-neutral-800 flex items-center justify-between gap-2 shrink-0">
+        <div id="mail-popout-tools" class="flex flex-wrap items-center gap-1"></div>
+        <div class="flex items-center gap-2">
+          <p id="mail-popout-status" class="hidden text-[10px] font-mono"></p>
+          <button type="button" onclick="DIMAD_MAIL.closePopout()" class="px-3 py-1.5 rounded-lg text-xs font-mono text-neutral-400 hover:bg-neutral-800">Cancel</button>
+          <button type="button" id="mail-popout-send" onclick="DIMAD_MAIL.sendPopout()" class="px-4 py-1.5 rounded-lg text-xs font-mono bg-amber-500 hover:bg-amber-400 text-neutral-950 font-semibold disabled:opacity-50">Send Reply</button>
+        </div>
       </div>
     </div>
   </div>
+
+  <div id="mail-compose" class="hidden fixed bottom-0 right-6 z-[360] w-full max-w-lg rounded-t-xl bg-neutral-900 border border-amber-500/40 shadow-2xl shadow-black/80 flex-col overflow-hidden">
+    <div class="flex items-center justify-between px-4 py-2.5 bg-neutral-950 border-b border-neutral-800 font-mono text-xs text-amber-400">
+      <span class="flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+        <span id="mail-compose-title">NEW MESSAGE</span>
+      </span>
+      <div class="flex items-center gap-1.5">
+        <button type="button" id="mail-compose-font" onclick="DIMAD_MAIL.toggleComposeFont()" class="text-neutral-400 hover:text-amber-400 text-[10px] px-1.5 py-0.5 rounded bg-neutral-900 border border-neutral-800">SANS</button>
+        <button type="button" onclick="DIMAD_MAIL.toggleComposeMin()" class="text-neutral-400 hover:text-neutral-100 px-1.5" title="Minimize">—</button>
+        <button type="button" onclick="DIMAD_MAIL.closeCompose()" class="text-neutral-400 hover:text-neutral-100 font-bold px-1.5">✕</button>
+      </div>
+    </div>
+    <form id="mail-compose-form" class="flex flex-col flex-1 min-h-0" onsubmit="event.preventDefault(); DIMAD_MAIL.send();">
+      <div class="border-b border-neutral-800 px-4 py-2 flex items-start gap-2">
+        <span class="w-16 mt-1 font-mono text-xs text-neutral-500 shrink-0">To:</span>
+        <div class="min-w-0 flex-1 flex flex-wrap items-center gap-1">
+          <div id="mail-chips-compose-to" class="contents"></div>
+          <input id="mail-to" data-chip-field="to" data-chip-scope="compose" type="text" autocomplete="off" placeholder="add recipients…" class="min-w-[8rem] flex-1 bg-transparent text-sm text-neutral-100 font-mono focus:outline-none placeholder-neutral-700">
+        </div>
+        <button type="button" onclick="DIMAD_MAIL.toggleComposeExtras()" class="mt-1 text-[10px] font-mono text-neutral-500 hover:text-amber-400 shrink-0">Cc/Bcc</button>
+      </div>
+      <div id="mail-compose-extras" class="hidden">
+        <div class="border-b border-neutral-800 px-4 py-2 flex items-start gap-2">
+          <span class="w-16 mt-1 font-mono text-xs text-neutral-500 shrink-0">Cc:</span>
+          <div class="min-w-0 flex-1 flex flex-wrap items-center gap-1">
+            <div id="mail-chips-compose-cc" class="contents"></div>
+            <input id="mail-cc" data-chip-field="cc" data-chip-scope="compose" type="text" autocomplete="off" class="min-w-[8rem] flex-1 bg-transparent text-sm text-neutral-100 font-mono focus:outline-none placeholder-neutral-700" placeholder="add cc…">
+          </div>
+        </div>
+        <div class="border-b border-neutral-800 px-4 py-2 flex items-start gap-2">
+          <span class="w-16 mt-1 font-mono text-xs text-neutral-500 shrink-0">Bcc:</span>
+          <div class="min-w-0 flex-1 flex flex-wrap items-center gap-1">
+            <div id="mail-chips-compose-bcc" class="contents"></div>
+            <input id="mail-bcc" data-chip-field="bcc" data-chip-scope="compose" type="text" autocomplete="off" class="min-w-[8rem] flex-1 bg-transparent text-sm text-neutral-100 font-mono focus:outline-none placeholder-neutral-700" placeholder="add bcc…">
+          </div>
+        </div>
+      </div>
+      <div class="border-b border-neutral-800 px-4 py-2 flex items-center">
+        <span class="w-16 font-mono text-xs text-neutral-500 shrink-0">Subject:</span>
+        <input id="mail-subject" type="text" autocomplete="off" placeholder="Subject line…" class="w-full bg-transparent text-sm text-neutral-100 font-mono focus:outline-none placeholder-neutral-700">
+      </div>
+      <div class="p-4 flex-1">
+        <textarea id="mail-body" rows="8" placeholder="Compose your message…" class="w-full bg-transparent text-neutral-100 placeholder-neutral-700 focus:outline-none resize-none text-sm mail-doc-sans leading-relaxed min-h-[10rem]"></textarea>
+      </div>
+      <div class="flex items-center justify-between px-4 py-3 bg-neutral-950/50 border-t border-neutral-800 gap-2">
+        <div class="font-mono text-[10px] text-neutral-500">AURINKO RELAY ACTIVE</div>
+        <p id="mail-send-status" class="hidden text-[10px] font-mono"></p>
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="DIMAD_MAIL.closeCompose()" class="px-3 py-1.5 rounded-lg text-xs font-mono text-neutral-400 hover:bg-neutral-800">Cancel</button>
+          <button type="submit" id="mail-send-btn" class="px-4 py-1.5 rounded-lg text-xs font-mono bg-amber-500 hover:bg-amber-400 text-neutral-950 font-semibold disabled:opacity-50">Send Message</button>
+        </div>
+      </div>
+    </form>
+  </div>
+  <div id="mail-contact-suggest" class="hidden fixed z-[420] max-h-48 overflow-y-auto min-w-[16rem] rounded-md border border-brand-border bg-neutral-950 shadow-2xl"></div>
 </div>

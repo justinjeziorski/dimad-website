@@ -177,9 +177,18 @@
         </div>
         <div class="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500 border-t border-slate-800 pt-2.5">
           <span id="calendar-timezone-label">Timezone: Auto-detected</span>
-          <button type="button" id="calendar-source-status" title="Connect Gmail or Outlook to sync calendar into Command Center and DIMAD Calendar." onclick="event.preventDefault(); (window.DIMAD_AURINKO && window.DIMAD_AURINKO.connect ? window.DIMAD_AURINKO.connect() : (window.location.href='/api/auth/aurinko'))" class="bg-transparent border-0 text-[11px] font-semibold text-brand-gold hover:text-amber-300 px-0 py-0.5 transition inline-flex items-center gap-1.5">
-            Connect Gmail / Outlook
-          </button>
+          <div class="relative inline-flex" data-account-wrap>
+            <button type="button" id="calendar-source-status" title="Connect Gmail or Outlook to sync calendar into Command Center and DIMAD Calendar." onclick="event.preventDefault(); (window.DIMAD_AURINKO && window.DIMAD_AURINKO.connect ? window.DIMAD_AURINKO.connect() : (window.location.href='/api/auth/aurinko'))" class="bg-transparent border-0 text-[11px] font-semibold text-brand-gold hover:text-amber-300 px-0 py-0.5 transition inline-flex items-center gap-1.5">
+              Connect Gmail / Outlook
+            </button>
+            <div id="calendar-account-menu" data-account-menu class="hidden absolute right-0 bottom-full mb-1 z-50 min-w-[7.5rem] rounded-md border border-brand-border bg-neutral-950 shadow-xl">
+              <button type="button" data-account-logout class="w-full text-left px-3 py-2 text-[11px] font-mono text-slate-200 hover:bg-neutral-800 hover:text-brand-alert">Log out</button>
+            </div>
+            <div id="calendar-connect-menu" data-account-menu class="hidden absolute right-0 bottom-full mb-1 z-50 min-w-[10.5rem] rounded-md border border-brand-border bg-neutral-950 shadow-xl">
+              <button type="button" data-account-connect="google" class="w-full text-left px-3 py-2 text-[11px] font-mono text-slate-200 hover:bg-neutral-800 hover:text-brand-gold">Connect Gmail</button>
+              <button type="button" data-account-connect="microsoft" class="w-full text-left px-3 py-2 text-[11px] font-mono text-slate-200 hover:bg-neutral-800 hover:text-brand-gold">Connect Outlook</button>
+            </div>
+          </div>
         </div>
       </div>
   </div>

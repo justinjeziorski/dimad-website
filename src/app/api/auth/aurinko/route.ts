@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { uidFromIdToken } from "@/lib/firebase-server";
-import { signUserId } from "@/lib/oauth-state";
-import { aurinkoAuthorizeUrl, aurinkoCallbackUrl } from "@/lib/aurinko";
+import {
+  aurinkoAuthorizeUrl,
+  aurinkoCallbackUrl,
+  aurinkoClientId,
+  aurinkoServiceType,
+  resolveAurinkoProvider
+} from "@/lib/aurinko";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -15,15 +20,15 @@ const COOKIE = {
 };
 
 export async function GET(req: NextRequest) {
-  const clientId = process.env.NEXT_PUBLIC_AURINKO_CLIENT_ID || "";
+  const clientId = aurinkoClientId();
   if (!clientId) {
     return NextResponse.json({ error: "missing_aurinko_client_id" }, { status: 500 });
   }
 
-  const serviceTypeRaw = (req.nextUrl.searchParams.get("serviceType") || "Google").toLowerCase();
-  const serviceType = serviceTypeRaw.includes("365") || serviceTypeRaw.includes("outlook") || serviceTypeRaw.includes("office")
-    ? "Office365"
-    : "Google";
+  const provider = resolveAurinkoProvider(
+    req.nextUrl.searchParams.get("provider") || req.nextUrl.searchParams.get("serviceType") || "google"
+  );
+  const serviceType = aurinkoServiceType(provider);
 
   const idToken =
     req.nextUrl.searchParams.get("id_token") ||
@@ -50,17 +55,18 @@ export async function GET(req: NextRequest) {
   }
 
   const returnUrl = aurinkoCallbackUrl(req);
-  const state = signUserId(uid);
+  const state = JSON.stringify({ userId: uid, provider });
   const authUrl = aurinkoAuthorizeUrl({
     clientId,
     serviceType,
     returnUrl,
     state
   });
-  console.log("Aurinko authorize redirect for uid", uid, "service", serviceType);
+  console.log("Aurinko authorize redirect for uid", uid, "provider", provider, "service", serviceType);
 
   const res = NextResponse.redirect(authUrl, 307);
   res.cookies.set("aurinko_uid", uid, COOKIE);
   res.cookies.set("aurinko_service", serviceType, COOKIE);
+  res.cookies.set("aurinko_provider", provider, COOKIE);
   return res;
 }

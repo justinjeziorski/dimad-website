@@ -11,12 +11,22 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const to = String(body.to || "").trim();
-    const subject = String(body.subject || "").trim();
-    const text = String(body.body || "").trim();
-    if (!to || !subject) {
-      return NextResponse.json({ ok: false, error: "Add a recipient and subject before sending." }, { status: 400 });
+    const subject = String(body.subject || "").trim() || "(No Subject)";
+    const text = String(body.body || "");
+    const cc = String(body.cc || "").trim();
+    const bcc = String(body.bcc || "").trim();
+    const threadId = String(body.threadId || "").trim();
+    if (!to) {
+      return NextResponse.json({ ok: false, error: "Add a recipient before sending." }, { status: 400 });
     }
-    const sent = await sendEmailMessage(session.uid, session.idToken, { to, subject, body: text });
+    const sent = await sendEmailMessage(session.uid, session.idToken, {
+      to,
+      subject,
+      body: text,
+      cc,
+      bcc,
+      threadId
+    });
     return NextResponse.json({ ok: true, sent });
   } catch (err) {
     const message = err instanceof Error ? err.message : "email_send_failed";

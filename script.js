@@ -765,9 +765,14 @@ function switchTab(tabId) {
     openDimDriveNav();
     return;
   }
+  if (tabId === 'ent-email') {
+    openEmailNav();
+    return;
+  }
+  closeEmailNav();
   closeDimDriveNav();
   document.querySelectorAll('.tab-view').forEach((el) => {
-    if (el.id === 'view-nomad-concierge' || el.id === 'view-dimad-dimdrive') return;
+    if (el.id === 'view-nomad-concierge' || el.id === 'view-dimad-dimdrive' || el.id === 'view-ent-email') return;
     if (el.closest && el.closest('#dimad-ai-engine-stage')) return;
     el.classList.add('hidden');
   });
@@ -781,9 +786,6 @@ function switchTab(tabId) {
   }
   if (tabId === 'ent-stocks' && typeof FINNHUB_MARKETS !== 'undefined') {
     FINNHUB_MARKETS.open();
-  }
-  if (tabId === 'ent-email' && typeof window.DIMAD_MAIL?.mount === 'function') {
-    void window.DIMAD_MAIL.mount();
   }
   if (tabId === 'ent-dashboard' && typeof COMMAND_CENTER !== 'undefined') {
     COMMAND_CENTER.apply();
@@ -877,6 +879,24 @@ function closeConciergeNav() {
   if (!panel) return;
   panel.classList.add('hidden');
   panel.classList.remove('flex');
+}
+
+function openEmailNav() {
+  const panel = document.getElementById('view-ent-email');
+  if (!panel) return;
+  if (panel.parentElement !== document.body) document.body.appendChild(panel);
+  panel.classList.remove('hidden');
+  panel.classList.add('flex');
+  if (typeof window.DIMAD_MAIL?.mount === 'function') void window.DIMAD_MAIL.mount();
+}
+
+function closeEmailNav() {
+  const panel = document.getElementById('view-ent-email');
+  if (!panel) return;
+  panel.classList.add('hidden');
+  panel.classList.remove('flex');
+  if (typeof window.DIMAD_MAIL?.closeCompose === 'function') window.DIMAD_MAIL.closeCompose();
+  if (typeof window.DIMAD_MAIL?.closePopout === 'function') window.DIMAD_MAIL.closePopout();
 }
 
 function openDimDriveNav() {
@@ -4033,13 +4053,13 @@ const CONNECT_MODULARS = {
 
   connectCalendar(provider) {
     if (provider === 'Calendly' || provider === 'Aurinko' || provider === 'Google' || provider === 'Outlook') {
-      const kind = provider === 'Outlook' ? 'Office365' : 'Google';
+      const kind = provider === 'Outlook' ? 'microsoft' : 'google';
       if (typeof window.DIMAD_AURINKO?.connect === 'function') {
         return window.DIMAD_AURINKO.connect(kind);
       }
       const host = window.location.hostname;
       const base = (host === '127.0.0.1' || host === 'localhost') ? 'http://localhost:3000' : '';
-      window.location.assign(`${base}/api/auth/aurinko?serviceType=${encodeURIComponent(kind)}`);
+      window.location.assign(`${base}/api/auth/aurinko?provider=${encodeURIComponent(kind)}`);
       return;
     }
     const status = document.getElementById('calendar-source-status');

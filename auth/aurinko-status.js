@@ -1,17 +1,73 @@
 import { app, auth } from "../firebase.js";
-import { onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged, signOut } from "firebase/auth";
 import { collection, doc, getDoc, getDocs, getFirestore } from "firebase/firestore";
 
 const db = getFirestore(app);
+const STORE_KEY = "dimad_aurinko";
 let started = false;
-let loadStarted = false;
+let loadStarted = "";
+
+function currentUid() {
+  try {
+    return (
+      auth.currentUser?.uid ||
+      window.DIMAD_FIREBASE?.auth?.currentUser?.uid ||
+      JSON.parse(localStorage.getItem("dimad_user") || "{}").uid ||
+      ""
+    );
+  } catch {
+    return "";
+  }
+}
+
+function readSaved(uid) {
+  try {
+    const raw = JSON.parse(localStorage.getItem(STORE_KEY) || "null");
+    if (!raw || raw.connected !== true) return null;
+    if (uid && raw.uid && raw.uid !== uid) return null;
+    return raw;
+  } catch {
+    return null;
+  }
+}
+
+function saveConnected(uid, extra) {
+  const prev = readSaved(uid) || {};
+  const next = {
+    connected: true,
+    uid: uid || prev.uid || currentUid() || "",
+    email: extra?.email || prev.email || "",
+    accountId: extra?.accountId || prev.accountId || "",
+    serviceType: extra?.serviceType || prev.serviceType || extra?.provider || prev.provider || "",
+    provider: extra?.provider || prev.provider || extra?.serviceType || prev.serviceType || "",
+    at: Date.now()
+  };
+  localStorage.setItem(STORE_KEY, JSON.stringify(next));
+  try {
+    sessionStorage.setItem("aurinko_connected", "1");
+  } catch {
+    /* ignore */
+  }
+  return next;
+}
+
+function clearSaved() {
+  localStorage.removeItem(STORE_KEY);
+  try {
+    sessionStorage.removeItem("aurinko_connected");
+  } catch {
+    /* ignore */
+  }
+}
 
 function querySaysConnected() {
   try {
     const params = new URLSearchParams(window.location.search);
-    return params.get("aurinko") === "success" || sessionStorage.getItem("aurinko_connected") === "1";
+    if (params.get("aurinko") === "success") return true;
+    if (sessionStorage.getItem("aurinko_connected") === "1") return true;
+    return !!readSaved(currentUid());
   } catch {
-    return false;
+    return !!readSaved(currentUid());
   }
 }
 
@@ -25,25 +81,79 @@ function viewsReady() {
   });
 }
 
+function connectedMailbox() {
+  const saved = readSaved(currentUid()) || {};
+  return {
+    email: String(saved.email || "").trim(),
+    serviceType: String(saved.serviceType || saved.provider || "")
+  };
+}
+
+function mailboxBadgeIcon(email, serviceType) {
+  if (/google|gmail/i.test(serviceType) || /gmail\.com$/i.test(email)) {
+    return '<i class="fa-brands fa-google text-[8px]"></i>';
+  }
+  if (/office|microsoft|outlook/i.test(serviceType)) {
+    return '<i class="fa-brands fa-microsoft text-[8px]"></i>';
+  }
+  return (String(email).replace(/[^A-Za-z0-9]/g, "").charAt(0) || "@").toUpperCase();
+}
+
+function escapeBadge(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
 function paint(connected, count) {
   const btn = document.getElementById("calendar-source-status");
   if (!btn) return;
+  if (!btn.dataset.baseClass) btn.dataset.baseClass = btn.getAttribute("class") || "";
   const on = connected || querySaysConnected();
   btn.dataset.aurinkoConnected = on ? "1" : "0";
-  btn.title = on
-    ? "Google/Outlook calendar is synced into Command Center and DIMAD Calendar."
-    : "Connect Gmail or Outlook to sync calendar and email.";
   if (on) {
-    btn.classList.remove("text-brand-gold", "hover:text-amber-300");
-    btn.classList.add("text-emerald-400", "inline-flex", "items-center", "gap-1.5");
-    const n = typeof count === "number" ? count : null;
-    const label = n == null ? "Connected" : n === 1 ? "Connected · 1 event" : `Connected · ${n} events`;
-    btn.innerHTML = `<span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400"></span><span>${label}</span>`;
+    const { email, serviceType } = connectedMailbox();
+    const address = email || "Mailbox";
+    btn.title = `${address} connected`;
+    btn.className =
+      "max-w-[18rem] inline-flex items-center gap-2 pl-1.5 pr-2.5 py-1 rounded-full border border-brand-border bg-brand-black text-left cursor-pointer";
+    btn.innerHTML = `<span class="w-5 h-5 rounded-full bg-amber-500/15 border border-amber-500/30 text-brand-gold text-[9px] font-mono font-bold flex items-center justify-center shrink-0">${mailboxBadgeIcon(address, serviceType)}</span>
+      <span class="min-w-0">
+        <span class="block text-[8px] font-mono uppercase tracking-[0.14em] text-slate-500 leading-none">Account</span>
+        <span class="block text-[10px] font-mono text-slate-200 truncate leading-tight">${escapeBadge(address)} connected</span>
+      </span>`;
     return;
   }
-  btn.classList.add("text-brand-gold", "hover:text-amber-300");
-  btn.classList.remove("text-emerald-400");
+  hideAccountMenus();
+  btn.className = btn.dataset.baseClass;
+  btn.title = "Connect Gmail or Outlook to sync calendar and email.";
   btn.textContent = "Connect Gmail / Outlook";
+}
+
+function hideAccountMenus() {
+  document.querySelectorAll("[data-account-menu]").forEach((menu) => menu.classList.add("hidden"));
+}
+
+function toggleAccountMenu(id) {
+  const menu = document.getElementById(id);
+  if (!menu) return;
+  const open = !menu.classList.contains("hidden");
+  hideAccountMenus();
+  if (!open) menu.classList.remove("hidden");
+}
+
+async function logoutMailbox() {
+  hideAccountMenus();
+  clearSaved();
+  paint(false);
+  try {
+    await signOut(auth);
+  } catch (err) {
+    console.warn("Sign out failed", err);
+  }
+  localStorage.removeItem("dimad_user");
+  window.location.replace("/login.html");
 }
 
 function applyEvents(events) {
@@ -69,38 +179,94 @@ async function hydrateFromFirestore(uid) {
   }
 }
 
+async function restoreMailbox(uid) {
+  await hydrateFromFirestore(uid);
+  await window.DIMAD_AURINKO.sync();
+  if (typeof window.DIMAD_MAIL?.mount === "function") {
+    await window.DIMAD_MAIL.mount();
+  }
+}
+
 async function loadOnce(uid) {
-  if (loadStarted) return;
-  loadStarted = true;
-  if (querySaysConnected()) {
+  if (loadStarted === uid) return;
+  loadStarted = uid;
+  const remembered = querySaysConnected() || !!readSaved(uid);
+  if (remembered) {
     paint(true);
-    sessionStorage.setItem("aurinko_connected", "1");
+    saveConnected(uid);
   }
   await viewsReady();
+  if (remembered && typeof window.DIMAD_MAIL?.paintShell === "function") {
+    window.DIMAD_MAIL.connected = true;
+    window.DIMAD_MAIL.paintShell();
+  }
   try {
-    const snap = await Promise.race([
-      getDoc(doc(db, "users", uid)),
-      new Promise((_, reject) => setTimeout(() => reject(new Error("firestore_timeout")), 8000))
-    ]);
-    const connected = !!snap.data()?.aurinko_access_token;
-    paint(connected);
-    if (connected || querySaysConnected()) {
-      await hydrateFromFirestore(uid);
-      await window.DIMAD_AURINKO.sync();
-      if (typeof window.DIMAD_MAIL?.mount === "function") {
-        await window.DIMAD_MAIL.mount();
+    const user = auth.currentUser || window.DIMAD_FIREBASE?.auth?.currentUser;
+    const idToken = user ? await user.getIdToken() : "";
+    let connected = remembered;
+    let email = readSaved(uid)?.email || "";
+    if (idToken) {
+      const status = await fetch(`${apiBase()}/api/aurinko/status`, {
+        headers: { Authorization: `Bearer ${idToken}` }
+      }).then((res) => res.json()).catch(() => ({}));
+      console.log("Aurinko restored status", status);
+      if (status.connected) {
+        connected = true;
+        email = status.email || email;
+        saveConnected(uid, status);
+      } else if (status.ok && status.connected === false && !remembered) {
+        connected = false;
       }
     }
+    if (!connected) {
+      const snap = await Promise.race([
+        getDoc(doc(db, "users", uid)),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("firestore_timeout")), 8000))
+      ]);
+      connected = !!snap.data()?.aurinko_access_token;
+      if (connected) {
+        saveConnected(uid, {
+          email: snap.data()?.aurinko_email,
+          accountId: snap.data()?.aurinko_account_id,
+          serviceType: snap.data()?.aurinko_service_type,
+          provider: snap.data()?.aurinko_provider
+        });
+      }
+    }
+    paint(connected);
+    if (connected) {
+      saveConnected(uid, { email });
+      await restoreMailbox(uid);
+      return;
+    }
+    if (remembered) {
+      paint(true);
+      await restoreMailbox(uid);
+      return;
+    }
+    clearSaved();
+    paint(false);
   } catch (err) {
-    console.warn("Aurinko Firestore read skipped", err);
-    paint(querySaysConnected());
+    console.warn("Aurinko restore skipped", err);
+    const fallback = remembered || querySaysConnected();
+    paint(fallback);
+    if (fallback) {
+      try {
+        await restoreMailbox(uid);
+      } catch (restoreErr) {
+        console.warn("Aurinko restore from cache failed", restoreErr);
+      }
+    }
   }
 }
 
 function init() {
   if (started) return;
   started = true;
-  if (querySaysConnected()) paint(true);
+  if (querySaysConnected()) {
+    paint(true);
+    saveConnected(currentUid());
+  }
   onAuthStateChanged(auth, (user) => {
     if (!user) {
       paint(querySaysConnected());
@@ -127,6 +293,9 @@ function apiBase() {
 window.DIMAD_AURINKO = {
   paint,
   apiBase,
+  isConnected() {
+    return querySaysConnected() || document.getElementById("calendar-source-status")?.dataset.aurinkoConnected === "1";
+  },
   async boot() {
     const user = auth.currentUser || window.DIMAD_FIREBASE?.auth?.currentUser;
     if (user) await loadOnce(user.uid);
@@ -152,6 +321,7 @@ window.DIMAD_AURINKO = {
     }
     applyEvents(data.events || []);
     paint(true, data.count);
+    saveConnected(user.uid);
     return data;
   },
   async createEvent(localEvent) {
@@ -215,10 +385,23 @@ window.DIMAD_AURINKO = {
       return;
     }
     const user = auth.currentUser || window.DIMAD_FIREBASE?.auth?.currentUser;
+    if (!serviceType && (readSaved(user?.uid)?.connected || querySaysConnected())) {
+      paint(true);
+      await window.DIMAD_AURINKO.sync();
+      if (typeof window.DIMAD_MAIL?.mount === "function") await window.DIMAD_MAIL.mount();
+      return;
+    }
+    if (!serviceType) {
+      toggleAccountMenu("calendar-connect-menu");
+      return;
+    }
     const idToken = user ? await user.getIdToken() : "";
-    const kind = serviceType || "Google";
-    const path = `/api/auth/aurinko?serviceType=${encodeURIComponent(kind)}${idToken ? `&id_token=${encodeURIComponent(idToken)}` : ""}`;
+    const provider = /microsoft|365|outlook|office/i.test(String(serviceType)) ? "microsoft" : "google";
+    const path = `/api/auth/aurinko?provider=${encodeURIComponent(provider)}${idToken ? `&id_token=${encodeURIComponent(idToken)}` : ""}`;
     window.location.assign(`${apiBase()}${path}`);
+  },
+  logout() {
+    return logoutMailbox();
   }
 };
 
@@ -228,11 +411,39 @@ document.addEventListener("DOMContentLoaded", init);
 document.addEventListener(
   "click",
   (event) => {
-    const btn = event.target.closest?.("#calendar-source-status");
-    if (!btn) return;
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    void window.DIMAD_AURINKO.connect();
+    const logout = event.target.closest?.("[data-account-logout]");
+    if (logout) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      void logoutMailbox();
+      return;
+    }
+    const pick = event.target.closest?.("[data-account-connect]");
+    if (pick) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      hideAccountMenus();
+      void window.DIMAD_AURINKO.connect(pick.getAttribute("data-account-connect"));
+      return;
+    }
+    const cal = event.target.closest?.("#calendar-source-status");
+    if (cal) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (cal.dataset.aurinkoConnected === "1") {
+        toggleAccountMenu("calendar-account-menu");
+        return;
+      }
+      toggleAccountMenu("calendar-connect-menu");
+      return;
+    }
+    const mail = event.target.closest?.("#mail-account-badge");
+    if (mail) {
+      event.preventDefault();
+      toggleAccountMenu("mail-account-menu");
+      return;
+    }
+    if (!event.target.closest?.("[data-account-wrap]")) hideAccountMenus();
   },
   true
 );
