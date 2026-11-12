@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { fetchWithTimeout } from "./with-timeout";
 
-export const AURINKO_SCOPES = "Mail.ReadWrite,Mail.Send,Calendar.ReadWrite";
+export const AURINKO_SCOPES = "Mail.ReadWrite Mail.Send Calendar.ReadWrite";
 
 export type AurinkoProvider = "google" | "microsoft";
 
