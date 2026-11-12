@@ -8,6 +8,7 @@ public/index.html
 public/login.html
 public/script.js
 public/firebase.js
+public/assets/
 .env
 .env.local
 .env*.local

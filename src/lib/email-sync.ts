@@ -209,14 +209,48 @@ function folderTypeOf(raw: Record<string, unknown>, name: string) {
   return "custom";
 }
 
+const FOLDER_LABELS: Record<string, string> = {
+  inbox: "Inbox",
+  drafts: "Drafts",
+  sent: "Sent",
+  archive: "Archive",
+  starred: "Starred",
+  important: "Important",
+  junk: "Junk",
+  trash: "Trash"
+};
+
+function tidyFolderName(name: string, type: string) {
+  const raw = name.replace(/^\[Gmail\]\/?/i, "").trim();
+  const titled = raw
+    .replace(/^category[_ ]+/i, "")
+    .replace(/[_-]+/g, " ")
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+  if (titled) return titled;
+  return FOLDER_LABELS[type] || name;
+}
+
+function shouldKeepFolder(name: string, type: string) {
+  const key = name.toLowerCase().trim();
+  if (key === "[gmail]" || key === "gmail") return false;
+  if (key === "chats" || key === "[gmail]/chats") return false;
+  if (type === "archive" && /all mail/i.test(name)) return true;
+  return true;
+}
+
 function mapFolder(raw: Record<string, unknown>): DimadMailFolder | null {
   const id = String(raw.id || raw.folderId || raw.name || raw.displayName || "");
   if (!id) return null;
-  const name = String(raw.name || raw.displayName || raw.folderName || raw.label || "Folder");
+  const rawName = String(raw.name || raw.displayName || raw.folderName || raw.label || "Folder");
+  const type = folderTypeOf(raw, rawName);
+  if (!shouldKeepFolder(rawName, type)) return null;
   return {
     id,
-    name,
-    type: folderTypeOf(raw, name),
+    name: tidyFolderName(rawName, type),
+    type,
     unread: Number(raw.unreadCount || raw.unread || 0) || 0,
     total: Number(raw.totalCount || raw.total || raw.messageCount || raw.count || 0) || 0,
     parentId: String(raw.parentId || raw.parentFolderId || "")
@@ -224,14 +258,22 @@ function mapFolder(raw: Record<string, unknown>): DimadMailFolder | null {
 }
 
 function sortFolders(folders: DimadMailFolder[]) {
-  return folders.slice().sort((a, b) => {
-    const ai = SYSTEM_FOLDER_ORDER.indexOf(a.type);
-    const bi = SYSTEM_FOLDER_ORDER.indexOf(b.type);
-    const aRank = ai === -1 ? 100 : ai;
-    const bRank = bi === -1 ? 100 : bi;
-    if (aRank !== bRank) return aRank - bRank;
-    return a.name.localeCompare(b.name);
-  });
+  const seen = new Set<string>();
+  return folders
+    .filter((row) => {
+      if (row.type === "custom") return true;
+      if (seen.has(row.type)) return false;
+      seen.add(row.type);
+      return true;
+    })
+    .sort((a, b) => {
+      const ai = SYSTEM_FOLDER_ORDER.indexOf(a.type);
+      const bi = SYSTEM_FOLDER_ORDER.indexOf(b.type);
+      const aRank = ai === -1 ? 100 : ai;
+      const bRank = bi === -1 ? 100 : bi;
+      if (aRank !== bRank) return aRank - bRank;
+      return a.name.localeCompare(b.name);
+    });
 }
 
 function mapListedMessages(records: Record<string, unknown>[], lightweight = true) {

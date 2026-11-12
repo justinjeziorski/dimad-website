@@ -11,7 +11,8 @@ const copies = [
   ["firebase.js", "public/firebase.js"],
   ["dashboard", "public/dashboard"],
   ["views", "public/views"],
-  ["auth", "public/auth"]
+  ["auth", "public/auth"],
+  ["assets", "public/assets"]
 ];
 
 for (const [from, to] of copies) {

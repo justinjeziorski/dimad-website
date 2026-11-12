@@ -20,6 +20,18 @@ function escapeHtml(value) {
     .replace(/>/g, "&gt;");
 }
 
+function navLabel(name) {
+  const raw = String(name || "").replace(/\[gmail\]\/?/gi, "").trim();
+  if (!raw) return "Folder";
+  return raw
+    .replace(/^category[_ ]+/i, "")
+    .replace(/[_-]+/g, " ")
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+}
+
 function waitForAuth(ms = 8000) {
   if (auth.currentUser || window.DIMAD_FIREBASE?.auth?.currentUser) {
     return Promise.resolve(auth.currentUser || window.DIMAD_FIREBASE.auth.currentUser);
@@ -77,7 +89,7 @@ function folderIcon(type) {
   }
 }
 
-const HUD_SYSTEM = ["inbox", "drafts", "sent", "scheduled", "starred", "trash"];
+const HUD_SYSTEM = ["inbox", "drafts", "sent", "scheduled", "archive", "junk", "trash"];
 const LAYOUT_KEY = "dimad_mail_layout";
 const SCHEDULED_ID = "__dimad_scheduled__";
 const SCHEDULED_KEY = "dimad_mail_scheduled";
@@ -167,8 +179,32 @@ function safeBodyHtml(htmlOrText) {
       }
     });
   });
-  const styles = [...doc.head.querySelectorAll("style")].map((node) => node.outerHTML).join("");
-  return `${styles}${doc.body.innerHTML}` || `<div class="whitespace-pre-wrap">${escapeHtml(raw)}</div>`;
+  const styles = [...doc.querySelectorAll("style")]
+    .map((node) =>
+      String(node.textContent || "")
+        .replace(/:root\b/g, ":host")
+        .replace(/\bhtml\b/g, ":host")
+        .replace(/\bbody\b/g, ":host")
+    )
+    .join("\n");
+  const body = doc.body.innerHTML;
+  return { styles, body: body || `<div class="whitespace-pre-wrap">${escapeHtml(raw)}</div>` };
+}
+
+function paintMailBody(host, htmlOrText) {
+  if (!host) return;
+  const parsed = safeBodyHtml(htmlOrText);
+  const html = typeof parsed === "string" ? parsed : parsed.body;
+  const styles = typeof parsed === "string" ? "" : parsed.styles;
+  const root = host.shadowRoot || host.attachShadow({ mode: "open" });
+  root.innerHTML = `<style>
+    :host { display: block; background: #ffffff; color: #111827; padding: 1rem 1.15rem; border-radius: 0.75rem; overflow-x: auto; max-width: 48rem; font-size: 15px; line-height: 1.55; font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
+    img { max-width: 100%; height: auto; }
+    a { color: #b45309; }
+    table { max-width: 100%; border-collapse: collapse; }
+    blockquote { border-left: 3px solid #d1d5db; margin: 0.75rem 0; padding-left: 0.75rem; color: #4b5563; }
+    ${styles}
+  </style><div class="mail-html">${html}</div>`;
 }
 
 window.DIMAD_MAIL = {
@@ -514,11 +550,13 @@ window.DIMAD_MAIL = {
     if (!msg) return;
     const frame = window.open("", "_blank", "noopener,noreferrer,width=720,height=900");
     if (!frame) return;
+    const parsed = safeBodyHtml(msg.body || msg.snippet || "");
+    const bodyHtml = typeof parsed === "string" ? parsed : parsed.body;
     frame.document.write(`<!DOCTYPE html><html><head><title>${escapeHtml(msg.subject || "Email")}</title>
       <style>body{font-family:Inter,sans-serif;padding:24px;color:#111} .meta{color:#555;font-size:12px;margin-bottom:16px}</style></head><body>
       <h1>${escapeHtml(msg.subject || "(no subject)")}</h1>
       <div class="meta">${escapeHtml(senderLabel(msg))} · ${escapeHtml(msg.from?.address || "")} · ${escapeHtml(formatStamp(msg.receivedAt))}</div>
-      <div>${safeBodyHtml(msg.body || msg.snippet || "")}</div>
+      <div>${bodyHtml}</div>
       </body></html>`);
     frame.document.close();
     frame.focus();
@@ -542,7 +580,7 @@ window.DIMAD_MAIL = {
     if (title) title.textContent = "REPLY";
     if (subject) subject.textContent = msg.subject ? `Re: ${msg.subject.replace(/^Re:\s*/i, "")}` : "Reply";
     if (meta) meta.textContent = `${senderLabel(msg)} · ${msg.from?.address || ""}`;
-    if (original) original.innerHTML = safeBodyHtml(msg.body || msg.snippet || "");
+    if (original) paintMailBody(original, msg.body || msg.snippet || "");
     if (body) body.innerText = draft;
     if (tools) tools.innerHTML = this.replyToolsHtml("mail-popout-body", false);
     const status = document.getElementById("mail-popout-status");
@@ -650,14 +688,15 @@ window.DIMAD_MAIL = {
       const tone = active
         ? "border-amber-500 bg-amber-500/10 text-white"
         : "border-transparent text-slate-300 hover:bg-brand-black/50";
-      return `<button type="button" data-folder-id="${escapeHtml(folder.id)}" data-folder-name="${escapeHtml(folder.name)}" class="flex items-center gap-2 w-full text-left px-3 py-1.5 text-[11px] font-mono font-semibold border-l-2 ${tone} whitespace-nowrap">
+      const label = navLabel(folder.name);
+      return `<button type="button" data-folder-id="${escapeHtml(folder.id)}" data-folder-name="${escapeHtml(label)}" class="flex items-center gap-2 w-full text-left px-3 py-1.5 text-[11px] font-mono font-semibold border-l-2 ${tone} whitespace-nowrap">
         <i class="fa-solid ${folderIcon(folder.type)} w-3.5 text-center text-slate-400"></i>
-        <span class="truncate">${escapeHtml(folder.name)}</span>
+        <span class="truncate">${escapeHtml(label)}</span>
         ${unread}
       </button>`;
     };
     const head = (label) =>
-      `<div class="px-3 pt-2.5 pb-1 text-[8px] font-mono uppercase tracking-[0.16em] text-slate-600">${label}</div>`;
+      `<div class="px-3 pt-2.5 pb-1 text-[8px] font-mono tracking-[0.16em] text-slate-600">${label}</div>`;
     root.innerHTML = [
       hud.length ? head("Mailbox") + hud.map(item).join("") : "",
       more.length ? head("More") + more.map(item).join("") : "",
@@ -909,7 +948,7 @@ window.DIMAD_MAIL = {
           </div>
         </div>
         <div class="flex-1 overflow-y-auto px-5 py-4 space-y-6">
-          <div class="mail-doc-body">${safeBodyHtml(message.body || message.snippet)}</div>
+          <div class="mail-doc-body"></div>
           <div id="mail-inline-actions" class="flex flex-wrap gap-2">
             <button type="button" onclick="DIMAD_MAIL.startInline('reply')" class="px-4 py-1.5 rounded-lg text-xs font-mono bg-amber-500 hover:bg-amber-400 text-neutral-950 font-semibold">Reply</button>
             <button type="button" onclick="DIMAD_MAIL.startInline('forward')" class="px-4 py-1.5 rounded-lg text-xs font-mono border border-brand-border text-slate-200 hover:text-brand-gold">Forward</button>
@@ -974,6 +1013,7 @@ window.DIMAD_MAIL = {
       </div>`;
     this.applyReadFont();
     this.applyLayout();
+    paintMailBody(root.querySelector(".mail-doc-body"), message.body || message.snippet || "");
     this.renderAttachChips();
     if (this.draftMode) {
       this.startInline(this.draftMode, { restore: savedDraft, keepChips: true });
