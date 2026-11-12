@@ -35,7 +35,9 @@ export function appOrigin(req?: NextRequest) {
 }
 
 export function aurinkoCallbackUrl(req?: NextRequest) {
-  return `${appOrigin(req)}/api/aurinko/callback`;
+  const configured = (process.env.AURINKO_RETURN_URL || "").replace(/\/$/, "");
+  if (configured) return configured;
+  return `${appOrigin(req)}/api/auth/aurinko/callback`;
 }
 
 export function aurinkoAuthorizeUrl(params: {
