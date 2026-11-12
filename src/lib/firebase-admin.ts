@@ -1,5 +1,16 @@
 import { cert, getApps, initializeApp, type App } from "firebase-admin/app";
-import { getFirestore, type Firestore } from "firebase-admin/firestore";
+import { FieldValue, getFirestore, type Firestore } from "firebase-admin/firestore";
+
+const AURINKO_USER_FIELDS = [
+  "aurinko_access_token",
+  "aurinko_account_id",
+  "aurinko_email",
+  "aurinko_provider",
+  "aurinko_service_type",
+  "aurinko_updated_at",
+  "aurinko_connected_at",
+  "aurinko_refresh_token"
+] as const;
 
 const PROJECT_ID = "dimad-b463c";
 
@@ -47,6 +58,12 @@ export async function adminWriteUser(uid: string, payload: Record<string, string
 export async function adminReadUser(uid: string) {
   const snap = await getAdminDb().collection("users").doc(uid).get();
   return (snap.data() || {}) as Record<string, unknown>;
+}
+
+export async function adminClearAurinko(uid: string) {
+  const payload = Object.fromEntries(AURINKO_USER_FIELDS.map((key) => [key, FieldValue.delete()]));
+  await getAdminDb().collection("users").doc(uid).set(payload, { merge: true });
+  console.log("Admin cleared Aurinko fields on users/" + uid);
 }
 
 export async function adminWriteCalendarEvents(uid: string, events: Array<Record<string, string | boolean>>) {

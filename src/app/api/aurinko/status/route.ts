@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireFirebaseUser } from "@/lib/session";
-import { adminReadUser } from "@/lib/firebase-admin";
+import { adminClearAurinko, adminReadUser } from "@/lib/firebase-admin";
 import { getUserDocument, readString } from "@/lib/firestore-rest";
-import { aurinkoAccount } from "@/lib/aurinko";
+import { aurinkoAccount, aurinkoFetch } from "@/lib/aurinko";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -62,6 +62,29 @@ export async function GET(req: NextRequest) {
   } catch (err) {
     const message = err instanceof Error ? err.message : "status_failed";
     console.error("Aurinko status failed", session.uid, message, err);
+    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  const session = await requireFirebaseUser(req);
+  if ("error" in session) return session.error;
+
+  try {
+    const row = await adminReadUser(session.uid);
+    const token = String(row.aurinko_access_token || "");
+    if (token) {
+      const revoked = await aurinkoFetch("/account", token, { method: "DELETE" }, 8000).catch((err) => {
+        console.warn("Aurinko account revoke skipped", err);
+        return null;
+      });
+      if (revoked) console.log("Aurinko account revoke", revoked.status, revoked.data);
+    }
+    await adminClearAurinko(session.uid);
+    return NextResponse.json({ ok: true, connected: false });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "disconnect_failed";
+    console.error("Aurinko disconnect failed", session.uid, message, err);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }

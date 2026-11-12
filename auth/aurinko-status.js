@@ -1,11 +1,12 @@
 import { app, auth } from "../firebase.js";
-import { onAuthStateChanged, signOut } from "firebase/auth";
+import { onAuthStateChanged } from "firebase/auth";
 import { collection, doc, getDoc, getDocs, getFirestore } from "firebase/firestore";
 
 const db = getFirestore(app);
 const STORE_KEY = "dimad_aurinko";
 let started = false;
 let loadStarted = "";
+let mailboxDisconnected = false;
 
 function currentUid() {
   try {
@@ -143,17 +144,48 @@ function toggleAccountMenu(id) {
   if (!open) menu.classList.remove("hidden");
 }
 
+function dropOauthSuccessQuery() {
+  try {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("aurinko") !== "success") return;
+    url.searchParams.delete("aurinko");
+    const search = url.searchParams.toString();
+    window.history.replaceState({}, "", url.pathname + (search ? `?${search}` : "") + url.hash);
+  } catch {
+    /* ignore */
+  }
+}
+
+function paintMailDisconnected() {
+  if (!window.DIMAD_MAIL) return;
+  window.DIMAD_MAIL.connected = false;
+  window.DIMAD_MAIL.messages = [];
+  window.DIMAD_MAIL.folders = [];
+  window.DIMAD_MAIL.folderCache = {};
+  window.DIMAD_MAIL.bodyCache = {};
+  if (typeof window.DIMAD_MAIL.paintShell === "function") window.DIMAD_MAIL.paintShell();
+}
+
 async function logoutMailbox() {
+  mailboxDisconnected = true;
   hideAccountMenus();
+  dropOauthSuccessQuery();
   clearSaved();
   paint(false);
+  paintMailDisconnected();
   try {
-    await signOut(auth);
+    const user = auth.currentUser || window.DIMAD_FIREBASE?.auth?.currentUser;
+    const idToken = user ? await user.getIdToken() : "";
+    if (!idToken) return;
+    const res = await fetch(`${apiBase()}/api/aurinko/status`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${idToken}` }
+    });
+    const data = await res.json().catch(() => ({}));
+    console.log("Aurinko mailbox disconnected", res.status, data);
   } catch (err) {
-    console.warn("Sign out failed", err);
+    console.warn("Aurinko mailbox disconnect failed", err);
   }
-  localStorage.removeItem("dimad_user");
-  window.location.replace("/login.html");
 }
 
 function applyEvents(events) {
@@ -188,6 +220,11 @@ async function restoreMailbox(uid) {
 }
 
 async function loadOnce(uid) {
+  if (mailboxDisconnected) {
+    paint(false);
+    paintMailDisconnected();
+    return;
+  }
   if (loadStarted === uid) return;
   loadStarted = uid;
   const remembered = querySaysConnected() || !!readSaved(uid);
@@ -210,6 +247,11 @@ async function loadOnce(uid) {
         headers: { Authorization: `Bearer ${idToken}` }
       }).then((res) => res.json()).catch(() => ({}));
       console.log("Aurinko restored status", status);
+      if (mailboxDisconnected) {
+        paint(false);
+        paintMailDisconnected();
+        return;
+      }
       if (status.connected) {
         connected = true;
         email = status.email || email;
@@ -395,6 +437,7 @@ window.DIMAD_AURINKO = {
       toggleAccountMenu("calendar-connect-menu");
       return;
     }
+    mailboxDisconnected = false;
     const idToken = user ? await user.getIdToken() : "";
     const provider = /microsoft|365|outlook|office/i.test(String(serviceType)) ? "microsoft" : "google";
     const path = `/api/auth/aurinko?provider=${encodeURIComponent(provider)}${idToken ? `&id_token=${encodeURIComponent(idToken)}` : ""}`;
