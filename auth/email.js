@@ -152,15 +152,23 @@ function safeBodyHtml(htmlOrText) {
     return `<div class="whitespace-pre-wrap">${escapeHtml(raw)}</div>`;
   }
   const doc = new DOMParser().parseFromString(raw, "text/html");
-  doc.querySelectorAll("script,iframe,object,embed,link,style,form").forEach((node) => node.remove());
+  doc.querySelectorAll("script,iframe,object,embed,form").forEach((node) => node.remove());
+  doc.querySelectorAll("link").forEach((node) => node.remove());
   doc.querySelectorAll("*").forEach((el) => {
     [...el.attributes].forEach((attr) => {
       const name = attr.name.toLowerCase();
       const val = String(attr.value || "");
-      if (name.startsWith("on") || /^(javascript|data):/i.test(val)) el.removeAttribute(attr.name);
+      if (name.startsWith("on") || /^javascript:/i.test(val)) {
+        el.removeAttribute(attr.name);
+        return;
+      }
+      if ((name === "src" || name === "href") && val && !/^(https?:|data:image\/|cid:|blob:|mailto:|#|\/)/i.test(val)) {
+        el.removeAttribute(attr.name);
+      }
     });
   });
-  return doc.body.innerHTML || `<div class="whitespace-pre-wrap">${escapeHtml(raw)}</div>`;
+  const styles = [...doc.head.querySelectorAll("style")].map((node) => node.outerHTML).join("");
+  return `${styles}${doc.body.innerHTML}` || `<div class="whitespace-pre-wrap">${escapeHtml(raw)}</div>`;
 }
 
 window.DIMAD_MAIL = {
@@ -901,7 +909,7 @@ window.DIMAD_MAIL = {
           </div>
         </div>
         <div class="flex-1 overflow-y-auto px-5 py-4 space-y-6">
-          <div class="mail-doc-body text-[15px] leading-relaxed text-slate-100 max-w-3xl">${safeBodyHtml(message.body || message.snippet)}</div>
+          <div class="mail-doc-body">${safeBodyHtml(message.body || message.snippet)}</div>
           <div id="mail-inline-actions" class="flex flex-wrap gap-2">
             <button type="button" onclick="DIMAD_MAIL.startInline('reply')" class="px-4 py-1.5 rounded-lg text-xs font-mono bg-amber-500 hover:bg-amber-400 text-neutral-950 font-semibold">Reply</button>
             <button type="button" onclick="DIMAD_MAIL.startInline('forward')" class="px-4 py-1.5 rounded-lg text-xs font-mono border border-brand-border text-slate-200 hover:text-brand-gold">Forward</button>

@@ -111,6 +111,23 @@ export async function aurinkoFetch(path: string, accessToken: string, init: Requ
   return { ok: res.ok, status: res.status, data };
 }
 
+export async function aurinkoFetchBinary(path: string, accessToken: string, ms = 15000) {
+  const url = path.startsWith("http") ? path : `https://api.aurinko.io/v1${path}`;
+  const res = await fetchWithTimeout(
+    url,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "*/*"
+      }
+    },
+    ms
+  );
+  const mime = res.headers.get("content-type") || "application/octet-stream";
+  const buf = Buffer.from(await res.arrayBuffer());
+  return { ok: res.ok, status: res.status, mime, base64: buf.toString("base64"), size: buf.length };
+}
+
 export function aurinkoRecords(data: unknown): Record<string, unknown>[] {
   if (!data || typeof data !== "object") return [];
   if (Array.isArray(data)) return data as Record<string, unknown>[];

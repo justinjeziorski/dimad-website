@@ -1,4 +1,4 @@
-import { aurinkoFetch, aurinkoRecords, pullAurinkoUpdated, startAurinkoSync } from "./aurinko";
+import { aurinkoFetch, aurinkoFetchBinary, aurinkoRecords, pullAurinkoUpdated, startAurinkoSync } from "./aurinko";
 import { adminReadUser } from "./firebase-admin";
 import { getUserDocument, readString } from "./firestore-rest";
 
@@ -13,14 +13,86 @@ function addressOf(value: unknown): { name: string; address: string } {
   };
 }
 
+function looksLikeHtml(value: string) {
+  return /<[a-z][\s\S]*>/i.test(value);
+}
+
 function bodyOf(raw: Record<string, unknown>) {
+  const htmlDirect = String(raw.htmlBody || raw.html || "");
+  if (htmlDirect) return htmlDirect;
   const body = raw.body;
-  if (typeof body === "string" && body) return body;
   if (body && typeof body === "object") {
     const row = body as Record<string, unknown>;
-    return String(row.value || row.content || row.html || row.text || "");
+    const typed = String(row.html || "");
+    if (typed) return typed;
+    const type = String(row.type || row.contentType || "").toLowerCase();
+    const value = String(row.value || row.content || "");
+    if (value && (type.includes("html") || looksLikeHtml(value))) return value;
+    if (value) return value;
   }
-  return String(raw.htmlBody || raw.textBody || raw.snippet || raw.bodyPreview || raw.preview || "");
+  if (typeof body === "string" && body) return body;
+  return String(raw.textBody || raw.snippet || raw.bodyPreview || raw.preview || "");
+}
+
+function normalizeCid(value: string) {
+  return String(value || "")
+    .replace(/^cid:/i, "")
+    .replace(/^<|>$/g, "")
+    .trim()
+    .toLowerCase();
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+async function attachmentAsDataUrl(token: string, messageId: string, attachmentId: string, fallbackMime: string) {
+  const listed = await aurinkoFetch(
+    `/email/messages/${encodeURIComponent(messageId)}/attachments/${encodeURIComponent(attachmentId)}`,
+    token
+  );
+  const row = (listed.ok && listed.data && typeof listed.data === "object" ? listed.data : {}) as Record<string, unknown>;
+  const nested = (row.attachment && typeof row.attachment === "object" ? row.attachment : row) as Record<string, unknown>;
+  const b64 = String(nested.content || nested.contentBytes || nested.data || nested.bytes || "");
+  const mime = String(nested.mimeType || nested.contentType || fallbackMime || "image/png").split(";")[0];
+  if (listed.ok && b64 && !looksLikeHtml(b64) && b64.length > 24) {
+    return `data:${mime};base64,${b64.replace(/\s/g, "")}`;
+  }
+  const binary = await aurinkoFetchBinary(
+    `/email/messages/${encodeURIComponent(messageId)}/attachments/${encodeURIComponent(attachmentId)}`,
+    token
+  );
+  if (!binary.ok || binary.size < 16 || binary.size > 1_500_000) return "";
+  const binMime = binary.mime.startsWith("image/") ? binary.mime.split(";")[0] : mime;
+  return `data:${binMime};base64,${binary.base64}`;
+}
+
+async function embedInlineImages(token: string, messageId: string, html: string, raw: Record<string, unknown>) {
+  if (!html || !/cid:/i.test(html)) return html;
+  let attachments = Array.isArray(raw.attachments) ? (raw.attachments as Record<string, unknown>[]) : [];
+  if (!attachments.length) {
+    const listed = await aurinkoFetch(`/email/messages/${encodeURIComponent(messageId)}/attachments`, token);
+    attachments = listed.ok ? aurinkoRecords(listed.data) : [];
+  }
+  let next = html;
+  let embedded = 0;
+  for (const att of attachments) {
+    if (embedded >= 12) break;
+    const attId = String(att.id || att.attachmentId || "");
+    const contentId = normalizeCid(String(att.contentId || att.contentID || att.cid || ""));
+    const inline = att.inline === true || att.isInline === true || Boolean(contentId);
+    if (!attId || !inline || !contentId) continue;
+    if (!new RegExp(`cid:${escapeRegExp(contentId)}`, "i").test(next)) continue;
+    try {
+      const dataUrl = await attachmentAsDataUrl(token, messageId, attId, String(att.mimeType || att.contentType || "image/png"));
+      if (!dataUrl) continue;
+      next = next.replace(new RegExp(`cid:${escapeRegExp(contentId)}(?:@[^"'\\s>]+)?`, "ig"), dataUrl);
+      embedded += 1;
+    } catch (err) {
+      console.warn("Inline email image skipped", messageId, attId, err);
+    }
+  }
+  return next;
 }
 
 function mapMessage(raw: Record<string, unknown>, lightweight = false) {
@@ -217,12 +289,19 @@ export async function listEmailMessages(uid: string, idToken: string, folderId?:
 
 export async function getEmailMessage(uid: string, idToken: string, id: string) {
   const { token } = await aurinkoTokenForUser(uid, idToken);
-  const listed = await aurinkoFetch(`/email/messages/${encodeURIComponent(id)}?bodyType=text`, token);
-  console.log("Aurinko email message", id, listed.status);
+  let listed = await aurinkoFetch(`/email/messages/${encodeURIComponent(id)}?bodyType=html`, token);
+  console.log("Aurinko email message html", id, listed.status);
   if (listed.status === 401) throw new Error("aurinko_unauthorized");
+  if (!listed.ok) {
+    listed = await aurinkoFetch(`/email/messages/${encodeURIComponent(id)}`, token);
+    console.log("Aurinko email message fallback", id, listed.status);
+  }
   if (!listed.ok) throw new Error("email_get_failed");
-  const raw = listed.data as Record<string, unknown>;
-  return mapMessage((raw.resource as Record<string, unknown>) || raw);
+  const payload = listed.data as Record<string, unknown>;
+  const raw = (payload.resource as Record<string, unknown>) || payload;
+  const mapped = mapMessage(raw);
+  mapped.body = await embedInlineImages(token, mapped.id || id, mapped.body, raw);
+  return mapped;
 }
 
 function aurinkoError(data: unknown, fallback: string) {

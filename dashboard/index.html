@@ -104,7 +104,20 @@
 
     .mail-doc-sans { font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
     .mail-doc-serif { font-family: Lora, Georgia, 'Times New Roman', serif; }
-    .mail-doc-body a { color: #F59E0B; text-decoration: underline; }
+    .mail-doc-body {
+      background: #ffffff;
+      color: #111827;
+      padding: 1rem 1.15rem;
+      border-radius: 0.75rem;
+      overflow-x: auto;
+      max-width: 48rem;
+      font-size: 15px;
+      line-height: 1.55;
+    }
+    .mail-doc-body a { color: #b45309; text-decoration: underline; }
+    .mail-doc-body img { max-width: 100%; height: auto; }
+    .mail-doc-body table { max-width: 100%; border-collapse: collapse; }
+    .mail-doc-body blockquote { border-left: 3px solid #d1d5db; margin: 0.75rem 0; padding-left: 0.75rem; color: #4b5563; }
 
     .cc-rail-card { width: fit-content; max-width: 100%; }
     .cc-rail-card.cc-rail-open { width: 100%; }
@@ -946,7 +959,7 @@
 </script>
 <script type="module" src="../firebase.js"></script>
 <script type="module" src="../auth/aurinko-status.js?v=aurinko-disconnect"></script>
-<script type="module" src="../auth/email.js?v=aurinko-provider"></script>
+<script type="module" src="../auth/email.js?v=mail-html"></script>
 <script src="../script.js?v=aurinko-provider"></script>
 </body>
 </html>
