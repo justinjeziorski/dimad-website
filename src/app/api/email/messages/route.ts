@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "id and action are required." }, { status: 400 });
     }
     const result = await mutateEmailMessage(session.uid, session.idToken, { id, action });
-    return NextResponse.json({ ok: true, ...result });
+    return NextResponse.json({ ...result, ok: true });
   } catch (err) {
     const message = err instanceof Error ? err.message : "email_mutate_failed";
     console.error("Email mutate failed", session.uid, message, err);
