@@ -784,9 +784,6 @@ function switchTab(tabId) {
   if (tabId === 'dimad-notepad' && typeof DIMAD_NOTEPAD !== 'undefined') {
     DIMAD_NOTEPAD.mount();
   }
-  if (tabId === 'ent-stocks' && typeof FINNHUB_MARKETS !== 'undefined') {
-    FINNHUB_MARKETS.open();
-  }
   if (tabId === 'ent-dashboard' && typeof COMMAND_CENTER !== 'undefined') {
     COMMAND_CENTER.apply();
     if (typeof DIMAD_CAL !== 'undefined' && typeof CALENDAR_NAV !== 'undefined') {
@@ -908,13 +905,19 @@ function openDimDriveNav() {
   panel.style.zIndex = '400';
   if (typeof DIMDRIVE !== 'undefined') {
     if (!DIMDRIVE.viewMode) DIMDRIVE.viewMode = 'list';
+    DIMDRIVE.fetchState = 'loading';
+    DIMDRIVE.cloudBytes = null;
+    DIMDRIVE.selectedId = null;
+    DIMDRIVE.bindCloudAuth();
     DIMDRIVE.render();
+    void DIMDRIVE.refreshCloud();
   }
 }
 
 function closeDimDriveNav() {
   const panel = document.getElementById('view-dimad-dimdrive');
   if (!panel) return;
+  if (typeof DIMDRIVE !== 'undefined' && DIMDRIVE.closeNotePreview) DIMDRIVE.closeNotePreview();
   panel.classList.add('hidden');
   panel.classList.remove('flex');
 }
@@ -5384,13 +5387,14 @@ const DIMDRIVE = {
   query: '',
   viewMode: 'list',
   sortBy: 'name',
-  selectedId: 'file-1',
+  selectedId: null,
   detailsOpen: true,
   newOpen: false,
   folderId: null,
   composingFolder: false,
   renamingFolderId: null,
   folderCtxId: null,
+  fetchState: 'idle',
   folderStyles: [
     { color: 'from-amber-500/20 to-amber-500/5', border: 'border-amber-500/30' },
     { color: 'from-brand-accent/20 to-brand-accent/5', border: 'border-brand-accent/30' },
@@ -5399,27 +5403,12 @@ const DIMDRIVE = {
     { color: 'from-sky-500/20 to-sky-500/5', border: 'border-sky-500/30' }
   ],
 
-  seedFolders() {
-    return [
-      { id: 'f1', name: 'Personal Documents', color: 'from-amber-500/20 to-amber-500/5', border: 'border-amber-500/30' },
-      { id: 'f2', name: 'Travel', color: 'from-brand-accent/20 to-brand-accent/5', border: 'border-brand-accent/30' },
-      { id: 'f3', name: 'Brand Assets', color: 'from-emerald-500/20 to-emerald-500/5', border: 'border-emerald-500/30' },
-      { id: 'f4', name: 'Blog Posts', color: 'from-rose-500/20 to-rose-500/5', border: 'border-rose-500/30' },
-      { id: 'f-sheets', name: 'Sales Workbooks', color: 'from-amber-500/20 to-amber-500/5', border: 'border-amber-500/30' },
-      { id: 'f-notepad', name: 'Notepad', color: 'from-sky-500/20 to-sky-500/5', border: 'border-sky-500/30', locked: true }
-    ];
+  isMockFile(file) {
+    return /^file-[1-7]$/.test(String(file && file.id || ''));
   },
 
-  seedFiles() {
-    return [
-      { id: 'file-1', name: 'Armenia_Residency_Permit_Scan.pdf', type: 'pdf', size: '2.4 MB', sizeBytes: 2516582, folder: 'f1', category: 'Passports & Visas', updatedAt: 'Oct 24, 2026', createdAt: 'Oct 20, 2026', owner: 'You', starred: true, sharedWith: 'Dimad Travel Concierge Agent', permission: 'Shared', previewText: 'REPUBLIC OF ARMENIA - IMMIGRATION SERVICES. Temporary Residency Permit #AR-883921. Valid for 1 Year.' },
-      { id: 'file-2', name: 'Yerevan_Airbnb_Lease_Contract.pdf', type: 'pdf', size: '4.1 MB', sizeBytes: 4299161, folder: 'f1', category: 'Documents', updatedAt: 'Nov 02, 2026', createdAt: 'Nov 01, 2026', owner: 'You', starred: true, sharedWith: 'Private', permission: 'Private', previewText: 'RESIDENTIAL LEASE AGREEMENT. Kentron District, Yerevan. Monthly Rent: 320,000 AMD. Utilities included.' },
-      { id: 'file-3', name: 'Sole_Proprietorship_Tax_Certificate.pdf', type: 'pdf', size: '1.8 MB', sizeBytes: 1887436, folder: 'f2', category: 'Invoices & Tax', updatedAt: 'Sep 15, 2026', createdAt: 'Sep 10, 2026', owner: 'You', starred: false, sharedWith: 'Legal Sub-Agent', permission: 'Shared', previewText: 'MINISTRY OF FINANCE. Taxpayer Identification Number (TIN): 90124881. IT Micro-Business Exemption Code.' },
-      { id: 'file-4', name: 'QatarAirways_Flight_EVN_DOH_NYC.pdf', type: 'pdf', size: '850 KB', sizeBytes: 870400, folder: 'f3', category: 'Passports & Visas', updatedAt: 'Nov 04, 2026', createdAt: 'Nov 04, 2026', owner: 'Dimad Concierge Desk', starred: true, sharedWith: 'You', permission: 'Shared', previewText: 'BOARDING PASS CONFIRMATION. Booking Ref: #QX992A. Seat 14A. Zvartnots Int Airport (EVN) -> JFK.' },
-      { id: 'file-5', name: 'Dimad_Ecosystem_Vector_Logo.svg', type: 'svg', size: '320 KB', sizeBytes: 327680, folder: 'f4', category: 'Photos & Scans', updatedAt: 'Aug 12, 2026', createdAt: 'Aug 01, 2026', owner: 'Design by Dimad', starred: false, sharedWith: 'Public', permission: 'Public Link', previewText: 'SVG Vector Outline Asset. Dimad Brand Design System v2.4 (Dark & Amber Theme Rules).' },
-      { id: 'file-6', name: 'Q3_Remote_Expense_Report.csv', type: 'csv', size: '142 KB', sizeBytes: 145408, folder: 'f2', category: 'Invoices & Tax', updatedAt: 'Oct 01, 2026', createdAt: 'Oct 01, 2026', owner: 'You', starred: false, sharedWith: 'Private', permission: 'Private', previewText: 'Date,Category,Merchant,Amount USD,Payment Method. 2026-09-02,Coworking,LOFT Yerevan,140.00,Wise Card.' },
-      { id: 'file-7', name: 'Passport_Scan_HighRes_Color.png', type: 'png', size: '5.6 MB', sizeBytes: 5872025, folder: 'f1', category: 'Photos & Scans', updatedAt: 'Jul 19, 2026', createdAt: 'Jul 19, 2026', owner: 'You', starred: true, sharedWith: 'Private', permission: 'Private', previewText: '300 DPI High-Resolution Identity Scan. Passport No: P-882014992. Expire Date: 2032.' }
-    ];
+  isMockFolder(folder) {
+    return ['f1', 'f2', 'f3', 'f4'].includes(String(folder && folder.id || ''));
   },
 
   formatBytes(n) {
@@ -5486,47 +5475,27 @@ const DIMDRIVE = {
     };
   },
 
-  renameSeedFolders(folders) {
-    const map = {
-      f1: { old: 'Armenia Travel Docs & Visas', next: 'Personal Documents' },
-      f2: { old: 'Legal & Tax Registration', next: 'Travel' },
-      f3: { old: 'Concierge Flight Tickets', next: 'Brand Assets' },
-      f4: { old: 'Dimad Brand Assets', next: 'Blog Posts' },
-      'f-notepad': { old: 'DIMAD Notepad', next: 'Notepad' }
-    };
-    return (folders || []).map((folder) => {
-      const rule = map[folder.id];
-      if (folder.id === 'f-notepad') return { ...folder, name: 'Notepad', locked: true };
-      if (!rule) return folder;
-      if (folder.name === rule.next) return folder;
-      if (String(folder.name || '').includes(rule.old)) return { ...folder, name: rule.next };
-      return folder;
-    });
-  },
-
   workspace() {
     try {
       const raw = JSON.parse(localStorage.getItem(this.storageKey) || 'null');
-      if (raw && Array.isArray(raw.files) && Array.isArray(raw.folders)) {
-        let folders = this.renameSeedFolders(raw.folders);
-        const files = raw.files.map((f) => this.normalizeUser(f));
-        if (!folders.some((f) => f.id === 'f-notepad')) {
-          folders = folders.concat([this.notepadFolder()]);
-        }
-        if (JSON.stringify(folders) !== JSON.stringify(raw.folders)) {
-          localStorage.setItem(this.storageKey, JSON.stringify({ files: raw.files, folders }));
-        }
-        return { files, folders };
+      let files = [];
+      let folders = [];
+      if (raw && Array.isArray(raw.files)) {
+        files = raw.files.filter((file) => !this.isMockFile(file)).map((file) => this.normalizeUser(file));
+      } else if (Array.isArray(raw)) {
+        files = raw.filter((file) => !this.isMockFile(file)).map((file) => this.normalizeUser(file));
       }
-      const legacy = Array.isArray(raw) ? raw : [];
-      const user = legacy.map((f) => this.normalizeUser(f));
-      const files = [...this.seedFiles(), ...user];
-      const folders = this.seedFolders();
-      const ws = { files, folders };
-      localStorage.setItem(this.storageKey, JSON.stringify(ws));
-      return ws;
+      if (raw && Array.isArray(raw.folders)) {
+        folders = raw.folders.filter((folder) => !this.isMockFolder(folder));
+      }
+      folders = folders.filter((folder) => {
+        if (folder.id === 'f-notepad') return files.some((file) => file.type === 'notepad' && !file.trashed);
+        if (folder.id === 'f-sheets') return files.some((file) => !file.trashed && (file.type === 'sheet' || file.folder === 'f-sheets'));
+        return true;
+      });
+      return { files, folders };
     } catch (err) {
-      return { files: this.seedFiles(), folders: this.seedFolders() };
+      return { files: [], folders: [] };
     }
   },
 
@@ -5647,6 +5616,20 @@ const DIMDRIVE = {
     if (document.getElementById('view-dimad-dimdrive') && this.render) {
       try { this.render(); } catch (err) { /* drive tab not mounted */ }
     }
+    rows.forEach((file) => {
+      if (file.type !== 'notepad') return;
+      if (file.trashed && file.storagePath) {
+        void this.dropCloud(file);
+        file.storagePath = '';
+        file.downloadURL = '';
+        file.cloudId = '';
+        return;
+      }
+      if (file.trashed || Number(file.cloudSyncedAt) === Number(file.updatedAt)) return;
+      const body = String((file.payload && file.payload.body) || '');
+      this.scheduleMirror(file.id, file.folder || 'f-notepad', () => new File([body], file.name || 'note.txt', { type: 'text/plain' }), file.updatedAt);
+    });
+    this.persist(rows);
     return notes;
   },
 
@@ -5700,6 +5683,7 @@ const DIMDRIVE = {
         };
         this.persist(rows);
         this.toast(`Saved "${name}" to dimDrive`);
+        this.scheduleMirror(rows[idx].id, rows[idx].folder || folder, () => new File([JSON.stringify(payload)], name, { type: 'application/json' }), now);
         return rows[idx];
       }
     }
@@ -5725,6 +5709,7 @@ const DIMDRIVE = {
     rows.unshift(file);
     this.persist(rows);
     this.toast(`Saved "${name}" to dimDrive`);
+    this.scheduleMirror(file.id, folder, () => new File([JSON.stringify(payload)], name, { type: 'application/json' }), now);
     return file;
   },
 
@@ -5762,6 +5747,7 @@ const DIMDRIVE = {
       if (idx >= 0) {
         rows[idx] = { ...rows[idx], name, payload, previewText, updatedAt: now, type: 'writespace', folder: rows[idx].folder || 'user', category: 'Documents' };
         this.persist(rows);
+        this.scheduleMirror(rows[idx].id, rows[idx].folder || 'user', () => new File([String(payload.bodyText || '')], name, { type: 'text/markdown' }), now);
         return rows[idx];
       }
     }
@@ -5785,6 +5771,7 @@ const DIMDRIVE = {
     };
     rows.unshift(file);
     this.persist(rows);
+    this.scheduleMirror(file.id, 'user', () => new File([String(payload.bodyText || '')], name, { type: 'text/markdown' }), now);
     return file;
   },
 
@@ -5793,7 +5780,9 @@ const DIMDRIVE = {
   },
 
   remove(id) {
-    this.persist(this.load().map((f) => String(f.id) === String(id) ? { ...f, trashed: true } : f));
+    const current = this.get(id);
+    if (current && current.storagePath) void this.dropCloud(current);
+    this.persist(this.load().map((f) => String(f.id) === String(id) ? { ...f, trashed: true, storagePath: '', downloadURL: '', cloudId: '' } : f));
     const gone = this.get(id);
     this.toast(`Moved "${gone ? gone.name : 'file'}" to Trash.`);
     if (String(this.selectedId) === String(id)) {
@@ -5803,10 +5792,184 @@ const DIMDRIVE = {
     this.render();
   },
 
+  cloudUser() {
+    return (window.DIMAD_FIREBASE && window.DIMAD_FIREBASE.auth && window.DIMAD_FIREBASE.auth.currentUser) || null;
+  },
+
+  bindCloudAuth() {
+    if (this.cloudAuthBound) return;
+    const auth = window.DIMAD_FIREBASE && window.DIMAD_FIREBASE.auth;
+    if (!auth || !auth.onAuthStateChanged) return;
+    this.cloudAuthBound = true;
+    auth.onAuthStateChanged(() => {
+      const panel = document.getElementById('view-dimad-dimdrive');
+      if (panel && !panel.classList.contains('hidden')) void this.refreshCloud();
+    });
+  },
+
+  cloudFile(file) {
+    return {
+      id: file.cloudId || file.id,
+      name: file.name,
+      storagePath: file.storagePath,
+      downloadURL: file.downloadURL || '',
+      contentType: file.contentType || file.mime || 'application/octet-stream',
+      size: file.sizeBytes || 0,
+      folderPath: file.folder && file.folder !== 'user' ? file.folder : '',
+      createdAt: this.dateValue(file.createdAt)
+    };
+  },
+
+  async pushCloud(file, folderPath) {
+    const user = this.cloudUser();
+    const api = window.DIMAD_DIMDRIVE;
+    if (!user || !api || !api.uploadToDimDrive) return null;
+    try {
+      return await api.uploadToDimDrive(user.uid, file, folderPath || '');
+    } catch (err) {
+      console.error(err);
+      this.toast('Could not save that file to dimDrive.');
+      return null;
+    }
+  },
+
+  async dropCloud(file) {
+    const user = this.cloudUser();
+    const api = window.DIMAD_DIMDRIVE;
+    if (!user || !api || !api.deleteFromDimDrive || !file || !file.storagePath) return;
+    try {
+      await api.deleteFromDimDrive(user.uid, this.cloudFile(file));
+    } catch (err) {
+      console.error(err);
+    }
+  },
+
+  scheduleMirror(localId, folderPath, buildFile, stamp) {
+    this.cloudTimers = this.cloudTimers || {};
+    clearTimeout(this.cloudTimers[localId]);
+    this.cloudTimers[localId] = setTimeout(() => {
+      const file = buildFile();
+      if (!file) return;
+      void this.pushCloud(file, folderPath).then(async (cloud) => {
+        if (!cloud) return;
+        const rows = this.load();
+        const idx = rows.findIndex((row) => String(row.id) === String(localId));
+        if (idx < 0) return;
+        const previous = rows[idx];
+        if (previous.storagePath && previous.storagePath !== cloud.storagePath) await this.dropCloud(previous);
+        rows[idx] = {
+          ...previous,
+          storagePath: cloud.storagePath,
+          downloadURL: cloud.downloadURL,
+          cloudId: cloud.id,
+          contentType: cloud.contentType,
+          cloudSyncedAt: stamp,
+          sizeBytes: cloud.size,
+          size: this.formatBytes(cloud.size)
+        };
+        this.persist(rows);
+        if (document.getElementById('view-dimad-dimdrive') && !document.getElementById('view-dimad-dimdrive').classList.contains('hidden')) this.render();
+      });
+    }, 800);
+  },
+
+  fromCloud(doc) {
+    const type = this.extType(doc.name, doc.contentType, 'file');
+    return this.normalizeUser({
+      id: doc.id,
+      name: doc.name,
+      type,
+      sizeBytes: doc.size,
+      folder: doc.folderPath || 'user',
+      category: 'Documents',
+      updatedAt: doc.createdAt,
+      createdAt: doc.createdAt,
+      owner: 'You',
+      storagePath: doc.storagePath,
+      downloadURL: doc.downloadURL,
+      contentType: doc.contentType,
+      cloudId: doc.id,
+      previewText: 'Stored in dimDrive.',
+      trashed: false
+    });
+  },
+
+  ensureCloudFolders(paths) {
+    const ws = this.workspace();
+    let folders = ws.folders.slice();
+    (paths || []).forEach((path) => {
+      const name = String(path || '').trim();
+      if (!name || folders.some((folder) => folder.id === name || folder.name === name)) return;
+      const style = this.folderStyles[folders.length % this.folderStyles.length];
+      folders.push({ id: name, name, color: style.color, border: style.border });
+    });
+    if (folders.length !== ws.folders.length) this.persistFolders(folders);
+  },
+
+  async refreshCloud() {
+    if (this.cloudLoading) return;
+    const user = this.cloudUser();
+    const api = window.DIMAD_DIMDRIVE;
+    const finish = (bytes) => {
+      this.cloudBytes = bytes;
+      this.fetchState = 'ready';
+      const panel = document.getElementById('view-dimad-dimdrive');
+      if (panel && !panel.classList.contains('hidden')) this.render();
+    };
+    if (!user || !api || !api.listDimDriveFiles) {
+      finish(this.load().filter((file) => !file.trashed).reduce((sum, file) => sum + (file.sizeBytes || 0), 0));
+      return;
+    }
+    this.cloudLoading = true;
+    this.fetchState = 'loading';
+    try {
+      const remote = await api.listDimDriveFiles(user.uid);
+      this.ensureCloudFolders(remote.map((file) => file.folderPath));
+      const remotePaths = new Set(remote.map((file) => file.storagePath));
+      const kept = this.load().filter((file) => !file.storagePath || file.trashed || remotePaths.has(file.storagePath));
+      remote.forEach((doc) => {
+        if (!kept.some((file) => file.storagePath === doc.storagePath)) kept.unshift(this.fromCloud(doc));
+      });
+      this.persist(kept);
+      const visibleBytes = kept.filter((file) => !file.trashed).reduce((sum, file) => sum + (Number(file.sizeBytes) || 0), 0);
+      finish(visibleBytes);
+    } catch (err) {
+      console.error(err);
+      finish(this.load().filter((file) => !file.trashed).reduce((sum, file) => sum + (file.sizeBytes || 0), 0));
+    } finally {
+      this.cloudLoading = false;
+    }
+  },
+
   ingestBrowserFile(file, folderId) {
-    if (file.size > 750000) {
+    const cloud = !!(this.cloudUser() && window.DIMAD_DIMDRIVE && window.DIMAD_DIMDRIVE.uploadToDimDrive);
+    if (!cloud && file.size > 750000) {
       this.toast('Keep uploads under 750 KB for dimDrive on this device.');
       return Promise.resolve(null);
+    }
+    if (cloud) {
+      const now = Date.now();
+      const type = this.extType(file.name, file.type, 'file');
+      return Promise.resolve({
+        id: `drv_${now}_${Math.random().toString(36).slice(2, 7)}`,
+        name: file.name,
+        type,
+        kind: file.type || 'File',
+        createdAt: now,
+        updatedAt: now,
+        mime: file.type,
+        payload: {},
+        folder: folderId || 'user',
+        category: String(file.type || '').startsWith('image/') ? 'Photos & Scans' : 'Documents',
+        owner: 'You',
+        starred: false,
+        sharedWith: 'Private',
+        permission: 'Private',
+        previewText: 'Stored in dimDrive.',
+        size: this.formatBytes(file.size),
+        sizeBytes: file.size,
+        trashed: false
+      });
     }
     return new Promise((resolve) => {
       const reader = new FileReader();
@@ -5872,30 +6035,58 @@ const DIMDRIVE = {
     const file = input && input.files && input.files[0];
     this.newOpen = false;
     if (!file) return;
-    this.ingestBrowserFile(file, 'user').then((row) => {
+    const folder = this.folderId || 'user';
+    this.ingestBrowserFile(file, folder).then(async (row) => {
       input.value = '';
       if (!row) return;
+      const cloud = await this.pushCloud(file, folder === 'user' ? '' : folder);
+      if (cloud) {
+        row.storagePath = cloud.storagePath;
+        row.downloadURL = cloud.downloadURL;
+        row.cloudId = cloud.id;
+        row.contentType = cloud.contentType;
+        row.cloudSyncedAt = row.updatedAt;
+        row.sizeBytes = cloud.size;
+        row.size = this.formatBytes(cloud.size);
+      }
       const rows = this.load();
       rows.unshift(row);
       this.persist(rows);
       this.selectedId = row.id;
       this.tab = 'drive';
-      this.toast(`Uploaded "${row.name}"`);
+      this.toast(cloud ? `Uploaded "${row.name}" to dimDrive` : `Uploaded "${row.name}"`);
       this.render();
     });
   },
 
   uploadFolder(input) {
-    const list = input && input.files ? Array.from(input.files).slice(0, 8) : [];
+    const list = input && input.files ? Array.from(input.files).slice(0, 40) : [];
     this.newOpen = false;
     if (!list.length) return;
-    Promise.all(list.map((f) => this.ingestBrowserFile(f, 'user'))).then((rows) => {
+    const folder = this.folderId || 'user';
+    Promise.all(list.map(async (file) => {
+      const row = await this.ingestBrowserFile(file, folder);
+      if (!row) return null;
+      const relative = file.webkitRelativePath ? file.webkitRelativePath.split('/').slice(0, -1).join('/') : '';
+      const cloud = await this.pushCloud(file, relative || (folder === 'user' ? '' : folder));
+      if (cloud) {
+        row.storagePath = cloud.storagePath;
+        row.downloadURL = cloud.downloadURL;
+        row.cloudId = cloud.id;
+        row.contentType = cloud.contentType;
+        row.folder = cloud.folderPath || row.folder;
+        row.sizeBytes = cloud.size;
+        row.size = this.formatBytes(cloud.size);
+      }
+      return row;
+    })).then((rows) => {
       input.value = '';
       const ok = rows.filter(Boolean);
       if (!ok.length) return;
+      this.ensureCloudFolders(ok.map((row) => row.folder));
       this.persist([...ok, ...this.load()]);
       this.selectedId = ok[0].id;
-      this.toast(`Uploaded ${ok.length} file${ok.length === 1 ? '' : 's'} from folder.`);
+      this.toast(`Uploaded ${ok.length} file${ok.length === 1 ? '' : 's'} to dimDrive.`);
       this.render();
     });
   },
@@ -5911,6 +6102,15 @@ const DIMDRIVE = {
     if (!file) return;
     let blob;
     let filename = file.name || 'dimdrive-file';
+    if (file.downloadURL) {
+      const link = document.createElement('a');
+      link.href = file.downloadURL;
+      link.target = '_blank';
+      link.rel = 'noopener';
+      link.download = filename;
+      link.click();
+      return;
+    }
     if (file.type === 'writespace') {
       const body = `# ${(file.payload && file.payload.title) || file.name}\n\n${(file.payload && file.payload.subtitle) || ''}\n\n${(file.payload && file.payload.bodyText) || ''}`;
       blob = new Blob([body], { type: 'text/markdown' });
@@ -5928,8 +6128,8 @@ const DIMDRIVE = {
       a.download = filename;
       a.click();
       return;
-    } else if (!file.payload) {
-      this.toast(`Preview only — "${file.name}" is a workspace sample.`);
+    } else if (!file.payload && !file.downloadURL) {
+      this.toast(`"${file.name}" is not available to download yet.`);
       return;
     } else {
       blob = new Blob([file.payload.text ? file.payload.text : JSON.stringify(file.payload || {})], { type: 'text/plain' });
@@ -5969,6 +6169,9 @@ const DIMDRIVE = {
       }
       if (!e.target.closest('#dimdrive-folder-ctx')) this.closeFolderCtx();
     });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') this.closeNotePreview();
+    });
   },
 
   setTab(id) {
@@ -6000,7 +6203,59 @@ const DIMDRIVE = {
     this.render();
   },
 
+  isNotepadFile(file) {
+    if (!file) return false;
+    return file.type === 'notepad' || file.folder === 'f-notepad' || file.category === 'Notes';
+  },
+
+  noteTitle(file) {
+    const payload = file.payload || {};
+    const title = String(payload.title || '').trim();
+    if (title && title !== 'Untitled') return title;
+    return String(file.name || 'Untitled').replace(/\.txt$/i, '') || 'Untitled';
+  },
+
+  noteBody(file) {
+    const payload = file.payload || {};
+    const body = payload.body != null ? payload.body : (payload.text || '');
+    if (String(body).trim()) return String(body);
+    const preview = String(file.previewText || '');
+    if (preview && preview !== 'Stored in dimDrive.' && preview !== 'Stored in dimDrive on this device.') return preview;
+    return '';
+  },
+
+  openNotePreview(id) {
+    const file = this.get(id);
+    if (!this.isNotepadFile(file)) return;
+    const modal = document.getElementById('dimdrive-note-modal');
+    const title = document.getElementById('dimdrive-note-title');
+    const body = document.getElementById('dimdrive-note-body');
+    const open = document.getElementById('dimdrive-note-open');
+    if (!modal || !title || !body) return;
+    title.textContent = this.noteTitle(file);
+    const text = this.noteBody(file);
+    body.textContent = text || 'This note is empty.';
+    body.classList.toggle('text-slate-500', !text);
+    body.classList.toggle('text-slate-200', !!text);
+    if (open) open.onclick = () => this.openInNotepad(id);
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  },
+
+  closeNotePreview() {
+    const modal = document.getElementById('dimdrive-note-modal');
+    if (!modal || modal.classList.contains('hidden')) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  },
+
   select(id) {
+    const file = this.get(id);
+    if (this.isNotepadFile(file)) {
+      this.openNotePreview(id);
+      return;
+    }
+    this.closeNotePreview();
     this.selectedId = id;
     this.detailsOpen = true;
     this.render();
@@ -6197,6 +6452,7 @@ const DIMDRIVE = {
   },
 
   filteredFiles() {
+    if (this.fetchState === 'loading') return [];
     const q = this.query.trim().toLowerCase();
     return this.load().filter((f) => {
       if (this.tab === 'trash') return !!f.trashed;
@@ -6221,7 +6477,7 @@ const DIMDRIVE = {
   renderNav() {
     const nav = document.getElementById('dimdrive-nav');
     if (!nav) return;
-    const files = this.load();
+    const files = this.fetchState === 'loading' ? [] : this.load();
     const items = [
       { id: 'drive', label: 'My Drive', icon: 'fa-hard-drive' },
       { id: 'uploads', label: 'Uploads', icon: 'fa-cloud-arrow-up' },
@@ -6269,12 +6525,13 @@ const DIMDRIVE = {
   },
 
   renderFolders() {
-    if (this.tab !== 'drive' || this.query || this.category !== 'All' || this.folderId) return '';
+    if (this.fetchState === 'loading' || this.tab !== 'drive' || this.query || this.category !== 'All' || this.folderId) return '';
     const files = this.load().filter((f) => !f.trashed);
     const folders = this.visibleFolders().slice();
     if (files.some((f) => f.folder === 'user')) {
       folders.push({ id: 'user', name: '✍️ WriteSpace & Uploads', color: 'from-amber-500/20 to-amber-500/5', border: 'border-amber-500/30' });
     }
+    if (!folders.length) return '';
     return `<div class="space-y-1.5">
       <h3 class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Folders (${folders.length})</h3>
       <div class="grid grid-cols-2 xl:grid-cols-4 gap-1.5">
@@ -6296,9 +6553,32 @@ const DIMDRIVE = {
     </div>`;
   },
 
+  loadingSkeleton() {
+    return `<div class="space-y-2 animate-pulse" aria-busy="true" aria-label="Loading dimDrive">
+      ${Array.from({ length: 5 }, () => '<div class="h-11 rounded-xl border border-slate-800 bg-slate-900/80"></div>').join('')}
+    </div>`;
+  },
+
+  emptyDriveCard() {
+    return `<div class="text-center py-16 px-6 bg-slate-900/50 rounded-2xl border border-dashed border-slate-700 space-y-3">
+      <div class="w-12 h-12 mx-auto rounded-xl bg-slate-950 border border-amber-500/30 text-amber-400 flex items-center justify-center text-xl">
+        <i class="fa-solid fa-cloud-arrow-up"></i>
+      </div>
+      <p class="text-sm text-slate-100 font-bold">Your drive is empty</p>
+      <p class="text-[11px] text-slate-400 max-w-sm mx-auto leading-relaxed">Upload a file or create a folder. Everything you add is stored in your dimDrive account.</p>
+      <button type="button" onclick="document.getElementById('dimdrive-upload').click()" class="inline-flex items-center gap-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[11px] px-3 py-1.5 rounded-lg">
+        <i class="fa-solid fa-plus text-[10px]"></i> Upload your first file
+      </button>
+    </div>`;
+  },
+
   renderFiles() {
+    if (this.fetchState === 'loading') return '';
     const files = this.filteredFiles();
-    const empty = `<div class="text-center py-16 bg-slate-900/40 rounded-2xl border border-dashed border-slate-800 space-y-3">
+    const driveIsEmpty = !this.query && this.category === 'All' && !this.folderId && this.tab === 'drive' && !this.load().some((file) => !file.trashed);
+    const empty = driveIsEmpty
+      ? this.emptyDriveCard()
+      : `<div class="text-center py-16 bg-slate-900/40 rounded-2xl border border-dashed border-slate-800 space-y-3">
       <i class="fa-solid fa-folder-open text-3xl text-slate-600"></i>
       <p class="text-xs text-slate-400 font-medium">No files found matching your criteria.</p>
       <button type="button" onclick="DIMDRIVE.setSearch(''); DIMDRIVE.category='All'; DIMDRIVE.folderId=null; DIMDRIVE.render();" class="text-xs text-amber-400 font-bold hover:underline">Reset Filters</button>
@@ -6361,7 +6641,7 @@ const DIMDRIVE = {
     const files = this.filteredFiles();
     const selected = this.get(this.selectedId) || files[0] || null;
     if (selected && this.selectedId !== selected.id) this.selectedId = selected.id;
-    if (!this.detailsOpen || !selected) {
+    if (this.fetchState === 'loading' || !this.detailsOpen || !selected) {
       panel.classList.add('hidden');
       return;
     }
@@ -6442,19 +6722,28 @@ const DIMDRIVE = {
     const listBtn = document.getElementById('dimdrive-view-list');
     if (gridBtn) gridBtn.className = `px-2 py-0.5 rounded transition ${this.viewMode === 'grid' ? 'bg-slate-800 text-amber-400 font-bold' : 'text-slate-400 hover:text-white'}`;
     if (listBtn) listBtn.className = `px-2 py-0.5 rounded transition ${this.viewMode === 'list' ? 'bg-slate-800 text-amber-400 font-bold' : 'text-slate-400 hover:text-white'}`;
-    const bytes = this.load().filter((f) => !f.trashed).reduce((n, f) => n + (f.sizeBytes || 0), 0) + 4509715660;
+    const loading = this.fetchState === 'loading';
+    const bytes = loading
+      ? 0
+      : (typeof this.cloudBytes === 'number'
+        ? this.cloudBytes
+        : this.load().filter((f) => !f.trashed).reduce((n, f) => n + (f.sizeBytes || 0), 0));
     const cap = 15 * 1073741824;
-    const pct = Math.min(100, Math.round((bytes / cap) * 100));
+    const pct = !bytes ? 0 : Math.min(100, Math.round((bytes / cap) * 100));
     const copy = document.getElementById('dimdrive-storage-copy');
     const pctEl = document.getElementById('dimdrive-storage-pct');
     const bar = document.getElementById('dimdrive-storage-bar');
-    if (copy) copy.textContent = `${(bytes / 1073741824).toFixed(1)} GB of 15 GB`;
+    if (copy) copy.textContent = loading ? 'Loading…' : `${this.formatBytes(bytes)} of 15 GB`;
     if (pctEl) pctEl.textContent = `${pct}%`;
     if (bar) bar.style.width = `${pct}%`;
     this.renderNav();
     this.renderFolderNav();
     const body = document.getElementById('dimdrive-body');
-    if (body) body.innerHTML = `${this.renderFolders()}${this.renderFiles()}`;
+    if (body) {
+      body.innerHTML = this.fetchState === 'loading'
+        ? this.loadingSkeleton()
+        : `${this.renderFolders()}${this.renderFiles()}`;
+    }
     this.renderInspector();
   }
 };
@@ -14102,282 +14391,37 @@ const CALENDAR_NAV = {
   }
 };
 
-const FINNHUB_MARKETS = {
-  tokenKey: 'dimad_finnhub_token',
-  watchKey: 'dimad_watchlist',
-  selected: 'AAPL',
-  quotes: {},
-  searchTimer: null,
-  pollId: null,
-  fallback: {
-    AAPL: { c: 227.52, d: 1.84, dp: 0.81, h: 229.10, l: 225.40, o: 226.15, pc: 225.68, name: 'Apple Inc' },
-    MSFT: { c: 428.90, d: 2.11, dp: 0.49, h: 431.20, l: 425.80, o: 426.40, pc: 426.79, name: 'Microsoft Corp' },
-    NVDA: { c: 141.22, d: 3.45, dp: 2.51, h: 142.80, l: 137.10, o: 138.20, pc: 137.77, name: 'NVIDIA Corp' },
-    TSLA: { c: 248.60, d: -4.12, dp: -1.63, h: 254.00, l: 247.20, o: 252.10, pc: 252.72, name: 'Tesla Inc' },
-    AMZN: { c: 188.40, d: 0.92, dp: 0.49, h: 189.70, l: 186.50, o: 187.10, pc: 187.48, name: 'Amazon.com Inc' },
-    GOOGL: { c: 178.15, d: 1.05, dp: 0.59, h: 179.40, l: 176.80, o: 177.20, pc: 177.10, name: 'Alphabet Inc' },
-    META: { c: 572.30, d: -3.20, dp: -0.56, h: 578.00, l: 570.10, o: 575.40, pc: 575.50, name: 'Meta Platforms' },
-    SPY: { c: 581.52, d: 2.31, dp: 0.40, h: 583.10, l: 578.40, o: 579.20, pc: 579.21, name: 'SPDR S&P 500 ETF' },
-    QQQ: { c: 505.18, d: 3.02, dp: 0.60, h: 507.40, l: 501.90, o: 502.80, pc: 502.16, name: 'Invesco QQQ Trust' },
-    AMD: { c: 388.50, d: 4.20, dp: 1.09, h: 391.00, l: 382.40, o: 384.10, pc: 384.30, name: 'Advanced Micro Devices' },
-    'BINANCE:BTCUSDT': { c: 67420, d: 1384, dp: 2.10, h: 68100, l: 65900, o: 66040, pc: 66036, name: 'Bitcoin' },
-    'BINANCE:ETHUSDT': { c: 2640.50, d: -21.30, dp: -0.80, h: 2695, l: 2622, o: 2661, pc: 2661.80, name: 'Ethereum' }
-  },
-  fallbackNews: [
-    { headline: 'Global markets hold near highs as chipmakers lead the tape', source: 'DIMAD Wire', datetime: Math.floor(Date.now() / 1000) - 1800, url: 'https://finnhub.io', summary: 'Risk appetite stays firm with NVDA and the MAG7 supporting index futures.' },
-    { headline: 'Treasury yields ease ahead of the next inflation print', source: 'DIMAD Wire', datetime: Math.floor(Date.now() / 1000) - 5400, url: 'https://finnhub.io', summary: 'Duration caught a bid as traders fade a hawkish overshoot in front-end rates.' },
-    { headline: 'Bitcoin holds the $67k handle on ETF residual demand', source: 'DIMAD Wire', datetime: Math.floor(Date.now() / 1000) - 8600, url: 'https://finnhub.io', summary: 'Crypto beta remains correlated with Nasdaq as BTC tracks the liquidity impulse.' }
-  ],
+const MARKET_STRIP = {
+  timer: null,
 
-  token() {
-    return String(localStorage.getItem(this.tokenKey) || '').trim();
-  },
-
-  watchlist() {
+  async refresh() {
+    const root = document.getElementById('mkt-live-quotes');
+    if (!root) return;
     try {
-      const list = JSON.parse(localStorage.getItem(this.watchKey) || '');
-      if (Array.isArray(list) && list.length) return list;
-    } catch (err) { /* default */ }
-    return ['AAPL', 'NVDA', 'MSFT', 'TSLA', 'AMZN', 'GOOGL', 'META', 'AMD'];
-  },
-
-  saveToken(value) {
-    const token = String(value || '').trim();
-    if (token) localStorage.setItem(this.tokenKey, token);
-    else localStorage.removeItem(this.tokenKey);
-    this.refresh();
+      const res = await fetch('/api/market', { cache: 'no-store' });
+      if (!res.ok) throw new Error('market');
+      const data = await res.json();
+      const quotes = Array.isArray(data.quotes) ? data.quotes : [];
+      root.innerHTML = quotes.map((quote) => {
+        const pct = Number(quote.percent);
+        const px = Number(quote.price);
+        const up = Number.isFinite(pct) ? pct >= 0 : true;
+        const pctText = Number.isFinite(pct) ? (up && pct > 0 ? '+' : '') + pct.toFixed(2) + '%' : '—';
+        const pxText = Number.isFinite(px) ? px.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—';
+        const tone = up ? 'text-brand-mint' : 'text-brand-alert';
+        const arrow = up ? '▲' : '▼';
+        const symbol = String(quote.symbol || '').replace(/[<>&]/g, '');
+        return '<span>' + symbol + ' <span class="' + tone + '">' + pxText + ' ' + arrow + ' ' + pctText + '</span></span>';
+      }).join('');
+    } catch (err) {
+      if (!root.childElementCount) root.innerHTML = '<span class="text-slate-500">Quotes unavailable</span>';
+    }
   },
 
   init() {
-    const input = document.getElementById('finnhub-token');
-    if (input) input.value = this.token();
-    this.quotes = { ...this.fallback };
     this.refresh();
-    if (this.pollId) clearInterval(this.pollId);
-    this.pollId = setInterval(() => this.refresh(), 45000);
-  },
-
-  open() {
-    const input = document.getElementById('finnhub-token');
-    if (input && this.token()) input.value = this.token();
-    this.renderWatchlist();
-    this.renderQuote();
-    this.loadNews(this.selected);
-  },
-
-  async api(path) {
-    const token = this.token();
-    if (!token) throw new Error('no-token');
-    const url = `https://finnhub.io/api/v1/${path}${path.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}`;
-    const res = await fetch(url);
-    if (res.status === 401) throw new Error('bad-token');
-    if (!res.ok) throw new Error(`http-${res.status}`);
-    return res.json();
-  },
-
-  fmt(n, digits) {
-    const num = Number(n);
-    if (!Number.isFinite(num)) return '—';
-    return num.toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits });
-  },
-
-  headerQuote(id, quote, money) {
-    const el = document.getElementById(id);
-    if (!el || !quote) return;
-    const up = Number(quote.d) >= 0;
-    el.className = up ? 'text-brand-mint' : 'text-brand-alert';
-    const arrow = up ? '▲' : '▼';
-    const price = money ? `$${this.fmt(quote.c, 2)}` : this.fmt(quote.c, 2);
-    el.textContent = `${price} ${arrow} ${up ? '+' : ''}${this.fmt(quote.dp, 1)}%`;
-  },
-
-  async refresh() {
-    const symbols = [...new Set([...this.watchlist(), this.selected, 'SPY', 'QQQ', 'AMD', 'BINANCE:BTCUSDT', 'BINANCE:ETHUSDT'])];
-    const status = document.getElementById('finnhub-status');
-    try {
-      if (!this.token()) throw new Error('no-token');
-      const pack = await Promise.all(symbols.map(async (sym) => {
-        const q = await this.api(`quote?symbol=${encodeURIComponent(sym)}`);
-        return [sym, q];
-      }));
-      pack.forEach(([sym, q]) => {
-        if (q && typeof q.c === 'number' && q.c > 0) this.quotes[sym] = Object.assign({}, this.quotes[sym], q);
-      });
-      if (status) status.textContent = 'LIVE · Finnhub.io';
-      if (status) status.className = 'text-[9px] font-mono text-brand-mint';
-    } catch (err) {
-      if (status) {
-        status.textContent = err.message === 'bad-token'
-          ? 'Token rejected · check your Finnhub key'
-          : 'Demo quotes · add a Finnhub token for live prints';
-        status.className = 'text-[9px] font-mono text-slate-500';
-      }
-    }
-    this.syncHeader();
-    this.renderWatchlist();
-    this.renderQuote();
-  },
-
-  syncHeader() {
-    this.headerQuote('mkt-btc', this.quotes['BINANCE:BTCUSDT'], true);
-    this.headerQuote('mkt-eth', this.quotes['BINANCE:ETHUSDT'], true);
-    this.headerQuote('mkt-amd', this.quotes.AMD, false);
-  },
-
-  renderWatchlist() {
-    const root = document.getElementById('finnhub-watchlist');
-    if (!root) return;
-    root.innerHTML = this.watchlist().map((sym) => {
-      const q = this.quotes[sym] || {};
-      const up = Number(q.d) >= 0;
-      const active = sym === this.selected ? 'bg-amber-500/10' : 'hover:bg-slate-900';
-      return `
-        <button type="button" onclick="FINNHUB_MARKETS.select('${sym}')" class="w-full flex items-center justify-between px-3 py-2 text-left ${active} transition">
-          <span class="text-[11px] font-bold text-slate-200">${sym}</span>
-          <span class="text-right">
-            <span class="block text-[11px] font-mono text-slate-100">${this.fmt(q.c, 2)}</span>
-            <span class="block text-[9px] font-mono ${up ? 'text-brand-mint' : 'text-brand-alert'}">${up ? '+' : ''}${this.fmt(q.dp, 2)}%</span>
-          </span>
-        </button>`;
-    }).join('');
-  },
-
-  renderQuote() {
-    const q = this.quotes[this.selected] || {};
-    const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-    set('finnhub-quote-symbol', this.selected);
-    set('finnhub-quote-name', q.name || 'Finnhub quote');
-    set('finnhub-quote-price', this.fmt(q.c, 2));
-    set('finnhub-q-o', this.fmt(q.o, 2));
-    set('finnhub-q-h', this.fmt(q.h, 2));
-    set('finnhub-q-l', this.fmt(q.l, 2));
-    set('finnhub-q-pc', this.fmt(q.pc, 2));
-    const ch = document.getElementById('finnhub-quote-change');
-    if (ch) {
-      const up = Number(q.d) >= 0;
-      ch.className = `text-[11px] font-mono ${up ? 'text-brand-mint' : 'text-brand-alert'}`;
-      ch.textContent = `${up ? '+' : ''}${this.fmt(q.d, 2)} (${up ? '+' : ''}${this.fmt(q.dp, 2)}%)`;
-    }
-    const meta = document.getElementById('finnhub-quote-meta');
-    if (meta) meta.textContent = this.token() ? 'Live print via Finnhub.io' : 'Demo print — connect Finnhub for realtime US quotes.';
-  },
-
-  async select(sym) {
-    this.selected = sym;
-    this.renderWatchlist();
-    this.renderQuote();
-    const box = document.getElementById('finnhub-search-results');
-    if (box) box.classList.add('hidden');
-    try {
-      if (this.token()) {
-        const profile = await this.api(`stock/profile2?symbol=${encodeURIComponent(sym)}`);
-        if (profile && profile.name) {
-          this.quotes[sym] = Object.assign({}, this.quotes[sym], { name: profile.name });
-          this.renderQuote();
-        }
-        const q = await this.api(`quote?symbol=${encodeURIComponent(sym)}`);
-        if (q && q.c) {
-          this.quotes[sym] = Object.assign({}, this.quotes[sym], q);
-          this.renderQuote();
-          this.renderWatchlist();
-        }
-      }
-    } catch (err) { /* keep cached */ }
-    this.loadNews(sym);
-  },
-
-  addSymbol(sym, name) {
-    const list = this.watchlist();
-    if (!list.includes(sym)) {
-      list.unshift(sym);
-      localStorage.setItem(this.watchKey, JSON.stringify(list.slice(0, 16)));
-    }
-    if (name) this.quotes[sym] = Object.assign({}, this.quotes[sym], { name });
-    this.select(sym);
-    this.refresh();
-  },
-
-  search(q) {
-    clearTimeout(this.searchTimer);
-    const box = document.getElementById('finnhub-search-results');
-    const query = String(q || '').trim();
-    if (!box) return;
-    if (query.length < 1) {
-      box.classList.add('hidden');
-      box.innerHTML = '';
-      return;
-    }
-    this.searchTimer = setTimeout(() => this.runSearch(query), 280);
-  },
-
-  async runSearch(query) {
-    const box = document.getElementById('finnhub-search-results');
-    if (!box) return;
-    let rows = [];
-    try {
-      if (this.token()) {
-        const data = await this.api(`search?q=${encodeURIComponent(query)}`);
-        rows = (data.result || []).slice(0, 8);
-      }
-    } catch (err) { rows = []; }
-    if (!rows.length) {
-      const q = query.toUpperCase();
-      rows = Object.keys(this.fallback)
-        .filter((sym) => sym.includes(q) || String(this.fallback[sym].name).toUpperCase().includes(q))
-        .map((sym) => ({ symbol: sym, description: this.fallback[sym].name, type: 'Demo' }));
-    }
-    if (!rows.length) {
-      box.classList.remove('hidden');
-      box.innerHTML = '<div class="px-3 py-2 text-[11px] text-slate-500">No symbols found</div>';
-      return;
-    }
-    box.classList.remove('hidden');
-    box.innerHTML = rows.map((row) => {
-      const sym = String(row.symbol || row.displaySymbol || '').replace(/'/g, '');
-      const desc = String(row.description || '').replace(/</g, '&lt;');
-      return `
-        <button type="button" onclick="FINNHUB_MARKETS.addSymbol('${sym}', '${desc.replace(/'/g, '')}')" class="w-full text-left px-3 py-2 hover:bg-slate-900 flex items-center justify-between gap-2">
-          <span>
-            <span class="block text-[11px] font-bold text-amber-400">${sym}</span>
-            <span class="block text-[10px] text-slate-500 truncate">${desc}</span>
-          </span>
-          <span class="text-[9px] font-mono text-slate-600">${row.type || ''}</span>
-        </button>`;
-    }).join('');
-  },
-
-  async loadNews(symbol) {
-    const root = document.getElementById('finnhub-news');
-    const scope = document.getElementById('finnhub-news-scope');
-    if (!root) return;
-    let items = [];
-    try {
-      if (this.token()) {
-        const to = new Date();
-        const from = new Date(Date.now() - 5 * 86400000);
-        const iso = (d) => d.toISOString().slice(0, 10);
-        items = await this.api(`company-news?symbol=${encodeURIComponent(symbol)}&from=${iso(from)}&to=${iso(to)}`);
-        if (!Array.isArray(items) || !items.length) {
-          items = await this.api('news?category=general');
-          if (scope) scope.textContent = 'Market';
-        } else if (scope) scope.textContent = symbol;
-      }
-    } catch (err) { items = []; }
-    if (!Array.isArray(items) || !items.length) {
-      items = this.fallbackNews;
-      if (scope) scope.textContent = 'Market';
-    }
-    root.innerHTML = items.slice(0, 12).map((item) => {
-      const when = item.datetime ? new Date(item.datetime * 1000).toLocaleString() : '';
-      const headline = String(item.headline || 'Untitled').replace(/</g, '&lt;');
-      const source = String(item.source || 'News').replace(/</g, '&lt;');
-      const href = String(item.url || 'https://finnhub.io');
-      return `
-        <a href="${href}" target="_blank" rel="noopener noreferrer" class="block px-3 py-2 hover:bg-slate-900 transition">
-          <div class="text-[11px] text-slate-200 leading-snug">${headline}</div>
-          <div class="text-[9px] text-slate-500 mt-1 font-mono">${source} · ${when}</div>
-        </a>`;
-    }).join('');
+    if (this.timer) clearInterval(this.timer);
+    this.timer = setInterval(() => this.refresh(), 60000);
   }
 };
 
@@ -18973,7 +19017,7 @@ window.onload = async function() {
   else switchTab('ent-dashboard');
   if (typeof window.DIMAD_AURINKO?.boot === 'function') void window.DIMAD_AURINKO.boot();
   if (typeof CALENDAR_NAV !== 'undefined' && CALENDAR_NAV.render) CALENDAR_NAV.render();
-  if (typeof FINNHUB_MARKETS !== 'undefined') FINNHUB_MARKETS.init();
+  if (typeof MARKET_STRIP !== 'undefined') MARKET_STRIP.init();
   if (typeof COMMAND_CENTER !== 'undefined') COMMAND_CENTER.apply();
   if (typeof DIMAD_CAL !== 'undefined') {
     DIMAD_CAL.bindUi();

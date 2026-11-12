@@ -201,14 +201,9 @@
       <button type="button" onclick="openStocksFromTicker()" title="Open Stocks & Finance" class="text-slate-400 hover:text-brand-gold font-bold flex items-center gap-1 transition">
         <i class="fa-solid fa-chart-simple text-brand-gold"></i> STOCK TICKER
       </button>
-      <span>S&P 500 <span id="mkt-spy" class="text-brand-mint">5,815.20 ▲ +0.4%</span></span>
-      <span>NASDAQ <span id="mkt-qqq" class="text-brand-mint">18,518.61 ▲ +0.6%</span></span>
-      <span>BTC/USD <span id="mkt-btc" class="text-brand-mint">$67,420.00 ▲ +2.1%</span></span>
-      <span>ETH/USD <span id="mkt-eth" class="text-brand-alert">$2,640.50 ▼ -0.8%</span></span>
+      <span id="mkt-live-quotes" class="flex items-center space-x-4"></span>
     </div>
     <div class="flex items-center space-x-4 text-slate-400 hidden md:flex">
-      <span>AMD/USD <span id="mkt-amd" class="text-brand-mint">388.50 ▲</span></span>
-      <span>GEL/USD <span class="text-brand-mint">2.72 ▲</span></span>
       <span class="text-brand-accent font-semibold">Location: <span id="geo-location-label">Yerevan</span></span>
     </div>
   </div>
@@ -942,6 +937,7 @@
     "firebase/analytics": "https://www.gstatic.com/firebasejs/13.2.0/firebase-analytics.js",
     "firebase/auth": "https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js",
     "firebase/firestore": "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js",
+    "firebase/storage": "https://www.gstatic.com/firebasejs/13.2.0/firebase-storage.js",
     "react": "https://esm.sh/react@19.3.1"
   }
 }
@@ -958,8 +954,9 @@
   };
 </script>
 <script type="module" src="../firebase.js"></script>
+<script type="module" src="../auth/dimdrive.js?v=dimdrive-cloud"></script>
 <script type="module" src="../auth/aurinko-status.js?v=aurinko-disconnect"></script>
 <script type="module" src="../auth/email.js?v=mail-nav-case"></script>
-<script src="../script.js?v=aurinko-provider"></script>
+<script src="../script.js?v=market-live"></script>
 </body>
 </html>

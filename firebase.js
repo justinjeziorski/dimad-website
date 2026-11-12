@@ -2,6 +2,7 @@ import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
 import { browserLocalPersistence, getAuth, setPersistence } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBullSLn4jN1Q26-AatuBmuP_yIv9ugEkc",
@@ -19,6 +20,7 @@ setPersistence(auth, browserLocalPersistence).catch((err) => {
   console.warn("Firebase local persistence unavailable", err);
 });
 const db = getFirestore(app);
+const storage = getStorage(app);
 let analytics = null;
 try {
   analytics = getAnalytics(app);
@@ -26,6 +28,6 @@ try {
   console.warn("Firebase Analytics unavailable", err);
 }
 
-window.DIMAD_FIREBASE = { app, analytics, auth, db };
+window.DIMAD_FIREBASE = { app, analytics, auth, db, storage };
 
-export { app, analytics, auth, db };
+export { app, analytics, auth, db, storage };

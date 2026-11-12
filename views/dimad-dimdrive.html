@@ -29,11 +29,11 @@
         <i class="fa-solid fa-cloud text-amber-500 text-[10px]"></i>
         <div>
           <div class="flex items-center justify-between gap-2 text-[9px] text-slate-400">
-            <span id="dimdrive-storage-copy">4.2 GB of 15 GB</span>
-            <span id="dimdrive-storage-pct" class="text-amber-500 font-bold">28%</span>
+            <span id="dimdrive-storage-copy">0 B of 15 GB</span>
+            <span id="dimdrive-storage-pct" class="text-amber-500 font-bold">0%</span>
           </div>
           <div class="w-20 bg-slate-800 h-1 rounded-full mt-0.5 overflow-hidden">
-            <div id="dimdrive-storage-bar" class="bg-amber-500 h-full w-[28%] rounded-full"></div>
+            <div id="dimdrive-storage-bar" class="bg-amber-500 h-full w-0 rounded-full"></div>
           </div>
         </div>
       </div>
@@ -124,5 +124,22 @@
   <div id="dimdrive-folder-ctx" onclick="event.stopPropagation()" class="hidden fixed z-[410] min-w-[150px] bg-slate-950 border border-slate-700 rounded-lg overflow-hidden shadow-2xl font-mono text-[10px]">
     <button type="button" onclick="DIMDRIVE.folderCtxAction('rename')" class="w-full text-left px-3 py-1.5 text-slate-200 hover:bg-slate-900">Rename</button>
     <button type="button" onclick="DIMDRIVE.folderCtxAction('delete')" class="w-full text-left px-3 py-1.5 text-rose-400 hover:bg-slate-900">Delete</button>
+  </div>
+  <div id="dimdrive-note-modal" class="hidden fixed inset-0 z-[460] items-center justify-center bg-slate-950/80 p-4" onclick="if(event.target===this) DIMDRIVE.closeNotePreview()">
+    <div class="w-full max-w-lg bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl flex flex-col max-h-[80vh]" onclick="event.stopPropagation()">
+      <div class="flex items-start justify-between gap-3 px-4 py-3 border-b border-slate-800">
+        <div class="min-w-0">
+          <p class="text-[9px] font-bold uppercase tracking-wider text-amber-400">Note</p>
+          <h3 id="dimdrive-note-title" class="text-sm font-bold text-white truncate">Untitled</h3>
+        </div>
+        <button type="button" onclick="DIMDRIVE.closeNotePreview()" class="w-7 h-7 shrink-0 rounded-lg border border-slate-700 text-slate-300 hover:text-white hover:border-slate-500" title="Close">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div id="dimdrive-note-body" class="flex-1 overflow-y-auto px-4 py-3 text-[13px] leading-relaxed text-slate-200 whitespace-pre-wrap font-sans"></div>
+      <div class="px-4 py-3 border-t border-slate-800 flex justify-end">
+        <button type="button" id="dimdrive-note-open" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[11px] px-3 py-1.5 rounded-lg">Open in DIMAD Notepad</button>
+      </div>
+    </div>
   </div>
 </div>
