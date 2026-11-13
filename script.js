@@ -5724,14 +5724,38 @@ const DIMDRIVE = {
     return String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   },
 
+  ensureDocumentsFolder() {
+    const ws = this.workspace();
+    if (ws.folders.some((folder) => folder.id === 'f-documents')) return 'f-documents';
+    const style = this.folderStyles[0];
+    this.persistFolders(ws.folders.concat([{
+      id: 'f-documents',
+      name: 'Documents',
+      color: style.color,
+      border: style.border
+    }]));
+    return 'f-documents';
+  },
+
+  writeSpaceFolders() {
+    this.ensureDocumentsFolder();
+    const folders = this.visibleFolders().slice();
+    if (!folders.some((folder) => folder.id === 'f-documents')) {
+      folders.unshift({ id: 'f-documents', name: 'Documents', color: 'from-amber-500/20 to-amber-500/5', border: 'border-amber-500/30' });
+    }
+    return folders;
+  },
+
   upsertWriteSpace(draft) {
     const rows = this.load();
     const now = Date.now();
     const name = (draft.name || draft.title || 'Untitled draft').trim();
+    const folder = draft.folder || this.ensureDocumentsFolder();
     const payload = {
       title: draft.title || '',
       subtitle: draft.subtitle || '',
       bodyText: draft.bodyText || '',
+      bodyHtml: draft.bodyHtml || '',
       layoutStyle: draft.layoutStyle || 'substack',
       fontFamily: draft.fontFamily || 'Georgia',
       fontSize: draft.fontSize || '18',
@@ -5745,9 +5769,19 @@ const DIMDRIVE = {
     if (draft.id) {
       const idx = rows.findIndex((f) => String(f.id) === String(draft.id));
       if (idx >= 0) {
-        rows[idx] = { ...rows[idx], name, payload, previewText, updatedAt: now, type: 'writespace', folder: rows[idx].folder || 'user', category: 'Documents' };
+        rows[idx] = {
+          ...rows[idx],
+          name,
+          payload,
+          previewText,
+          updatedAt: now,
+          type: 'writespace',
+          folder: draft.folder || rows[idx].folder || folder,
+          category: 'Documents',
+          starred: draft.starred != null ? !!draft.starred : !!rows[idx].starred
+        };
         this.persist(rows);
-        this.scheduleMirror(rows[idx].id, rows[idx].folder || 'user', () => new File([String(payload.bodyText || '')], name, { type: 'text/markdown' }), now);
+        this.scheduleMirror(rows[idx].id, rows[idx].folder || folder, () => new File([String(payload.bodyText || '')], name, { type: 'text/markdown' }), now);
         return rows[idx];
       }
     }
@@ -5759,10 +5793,10 @@ const DIMDRIVE = {
       createdAt: now,
       updatedAt: now,
       payload,
-      folder: 'user',
+      folder,
       category: 'Documents',
       owner: 'You',
-      starred: false,
+      starred: !!draft.starred,
       sharedWith: 'Private',
       permission: 'Private',
       previewText,
@@ -5771,7 +5805,7 @@ const DIMDRIVE = {
     };
     rows.unshift(file);
     this.persist(rows);
-    this.scheduleMirror(file.id, 'user', () => new File([String(payload.bodyText || '')], name, { type: 'text/markdown' }), now);
+    this.scheduleMirror(file.id, folder, () => new File([String(payload.bodyText || '')], name, { type: 'text/markdown' }), now);
     return file;
   },
 
@@ -6789,8 +6823,27 @@ const WRITESPACE = {
     tab: 'ai-editor',
     sidebarCollapsed: false,
     fullscreen: false,
-    currentFileId: ''
+    currentFileId: '',
+    fileName: '',
+    currentFolderId: 'f-documents',
+    pageOrientation: 'portrait',
+    margins: 'normal',
+    lineSpacing: 1.15,
+    headerTopIn: 0.5,
+    headerBottomIn: 0.5,
+    headerSkipFirst: false,
+    pageNumPos: 'bottom',
+    pageNumAlign: 'center',
+    pageNumStart: 1,
+    pageNumShowFirst: true
   },
+
+  _pendingExport: false,
+  _saveFolderId: 'f-documents',
+  _openFolderId: 'f-documents',
+  _wordPageHeight: 1056,
+  _wordPageWidth: 816,
+  PAGE_CONTENT_HEIGHT: 900,
 
   load() {
     try {
@@ -6811,6 +6864,87 @@ const WRITESPACE = {
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;');
+  },
+
+  bodyEl() {
+    return document.getElementById('ws-body');
+  },
+
+  isRichBody() {
+    const el = this.bodyEl();
+    return !!(el && el.isContentEditable);
+  },
+
+  getBodyText() {
+    const el = this.bodyEl();
+    if (!el) return '';
+    if (this.isRichBody()) return String(el.innerText || '').replace(/\u00a0/g, ' ');
+    return el.value || '';
+  },
+
+  getBodyHtml() {
+    const el = this.bodyEl();
+    if (!el) return '';
+    if (this.isRichBody()) return el.innerHTML || '';
+    return this.escape(el.value || '').replace(/\n/g, '<br>');
+  },
+
+  setBodyText(text) {
+    const el = this.bodyEl();
+    if (!el) return;
+    const value = text == null ? '' : String(text);
+    if (this.isRichBody()) {
+      if (/<[a-z][\s\S]*>/i.test(value)) el.innerHTML = value;
+      else el.innerText = value;
+      this.syncRichEmpty();
+      return;
+    }
+    el.value = value;
+  },
+
+  syncRichEmpty() {
+    const el = this.bodyEl();
+    if (!el || !this.isRichBody()) return;
+    const empty = !String(el.innerText || '').trim();
+    el.classList.toggle('ws-empty', empty);
+  },
+
+  setBodyPlaceholder(text) {
+    const el = this.bodyEl();
+    if (!el) return;
+    if (this.isRichBody()) el.setAttribute('data-placeholder', text);
+    else el.placeholder = text;
+  },
+
+  applyRich(cmd) {
+    const el = this.bodyEl();
+    if (!el) return;
+    if (!this.isRichBody()) {
+      el.focus();
+      return;
+    }
+    el.focus();
+    if (cmd === 'h2') document.execCommand('formatBlock', false, 'h2');
+    else if (cmd === 'ul') document.execCommand('insertUnorderedList');
+    else if (cmd === 'ol') document.execCommand('insertOrderedList');
+    else if (cmd === 'blockquote') document.execCommand('formatBlock', false, 'blockquote');
+    else if (cmd === 'hr') document.execCommand('insertHorizontalRule');
+    else if (cmd === 'code') {
+      const sel = window.getSelection();
+      if (!sel || sel.rangeCount === 0) return;
+      const range = sel.getRangeAt(0);
+      const code = document.createElement('code');
+      code.appendChild(range.extractContents());
+      range.insertNode(code);
+      sel.collapse(code, 1);
+    } else if (cmd === 'link') {
+      const href = window.prompt('Link URL', 'https://');
+      if (!href) return;
+      document.execCommand('createLink', false, href);
+    } else if (cmd === 'strikeThrough') document.execCommand('strikeThrough');
+    else document.execCommand(cmd);
+    this.saveFromDom();
+    this.syncRichEmpty();
   },
 
   previewBodyHtml(text) {
@@ -6844,7 +6978,9 @@ const WRITESPACE = {
       body = entry.body || '';
       dateLabel = this.formatJournalDate(entry.date || this.todayStamp());
     }
-    const bodyHtml = this.previewBodyHtml(body);
+    const bodyHtml = (layout !== 'journal' && s.bodyHtml)
+      ? s.bodyHtml
+      : this.previewBodyHtml(body);
     if (kind) {
       kind.textContent = layout === 'word' ? '· Microsoft Word' : layout === 'journal' ? '· Journal' : '· Substack';
     }
@@ -7006,26 +7142,29 @@ const WRITESPACE = {
   applyJournalToDom() {
     const j = this.ensureJournalEntry();
     const entry = j.entries.find((e) => e.id === j.currentId) || j.entries[0];
-    const body = document.getElementById('ws-body');
     const title = document.getElementById('ws-journal-title');
     const dateEl = document.getElementById('ws-journal-date');
-    if (body) {
-      body.value = entry.body || '';
-      body.placeholder = 'Write freely. No outline. No audience. Just the page.';
-    }
+    this.setBodyText(entry.body || '');
+    this.setBodyPlaceholder('Write freely. No outline. No audience. Just the page.');
     if (title) title.value = entry.title || '';
     if (dateEl) dateEl.textContent = this.formatJournalDate(entry.date);
+    this.syncDocTitleDisplay();
   },
 
   saveCurrentJournalEntry() {
     const j = this.ensureJournalEntry();
     const entry = j.entries.find((e) => e.id === j.currentId);
     if (!entry) return;
-    entry.body = document.getElementById('ws-body')?.value || '';
-    entry.title = document.getElementById('ws-journal-title')?.value || '';
+    entry.body = this.getBodyText();
+    const headerTitle = document.getElementById('ws-doc-title-input');
+    const journalTitle = document.getElementById('ws-journal-title');
+    const fromHeader = headerTitle && !headerTitle.classList.contains('hidden') ? headerTitle.value : '';
+    entry.title = (fromHeader || journalTitle?.value || entry.title || '').trim();
+    if (journalTitle) journalTitle.value = entry.title;
     entry.updatedAt = Date.now();
     this.persistJournal(j);
     this.renderJournalList();
+    this.syncDocTitleDisplay();
   },
 
   openJournalEntry(id) {
@@ -7037,6 +7176,7 @@ const WRITESPACE = {
     this.applyJournalToDom();
     this.renderJournalNav();
     this.syncMetrics();
+    this.syncDocTitleDisplay();
   },
 
   newJournalEntry() {
@@ -7467,7 +7607,8 @@ const WRITESPACE = {
     }
     s.title = document.getElementById('ws-title')?.value || '';
     s.subtitle = document.getElementById('ws-subtitle')?.value || '';
-    s.bodyText = document.getElementById('ws-body')?.value || '';
+    s.bodyText = this.getBodyText();
+    s.bodyHtml = this.isRichBody() ? this.getBodyHtml() : '';
     this.persist(s);
     this.syncMetrics();
     this.syncLayout();
@@ -7498,9 +7639,10 @@ const WRITESPACE = {
     if (!body) return;
     if (title) title.value = s.title;
     if (titleWord) titleWord.value = s.title;
+    this.syncDocTitleDisplay();
     if (sub) sub.value = s.subtitle;
     if (s.layoutStyle === 'journal') this.applyJournalToDom();
-    else body.value = s.bodyText;
+    else this.setBodyText(s.bodyHtml || s.bodyText);
     const font = document.getElementById('ws-font');
     const size = document.getElementById('ws-size');
     const layout = document.getElementById('ws-layout');
@@ -7538,21 +7680,29 @@ const WRITESPACE = {
     this.syncGrammar();
     this.syncMetrics();
     if (!this.bound) {
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest || !e.target.closest('#view-creator-writespace .ws-menu')) this.closeAllMenus();
+      });
       ['ws-title', 'ws-subtitle', 'ws-body', 'ws-font', 'ws-size', 'ws-layout', 'ws-keyword', 'ws-meta-title', 'ws-meta-desc', 'ws-slug', 'ws-ai-prompt', 'ws-journal-title'].forEach((id) => {
         const el = document.getElementById(id);
         if (el) el.addEventListener('input', () => {
           if (id === 'ws-title' && titleWord) titleWord.value = title.value;
           if (id === 'ws-title-word' && title) title.value = titleWord.value;
+          if (id === 'ws-journal-title') this.syncDocTitleDisplay();
+          if (id === 'ws-body') {
+            this.syncRichEmpty();
+            this.paginateWord();
+          }
           this.saveFromDom();
         });
+        if (el && id === 'ws-body') el.addEventListener('keydown', (event) => this.handleBodyKeydown(event));
         if (el && el.tagName === 'SELECT') el.addEventListener('change', () => {
           const prevLayout = this.state().layoutStyle;
           if (id === 'ws-layout' && prevLayout === 'journal' && el.value !== 'journal') {
             this.saveCurrentJournalEntry();
             this._inJournal = false;
             this.state().layoutStyle = el.value;
-            const bodyEl = document.getElementById('ws-body');
-            if (bodyEl) bodyEl.value = this.state().bodyText || '';
+            this.setBodyText(this.state().bodyHtml || this.state().bodyText || '');
             const titleEl = document.getElementById('ws-title');
             if (titleEl) titleEl.value = this.state().title || '';
           }
@@ -7995,12 +8145,7 @@ const WRITESPACE = {
   },
 
   toggleTheme() {
-    const s = this.state();
-    s.themeMode = s.themeMode === 'light' ? 'dark' : 'light';
-    this.persist(s);
-    this.syncTheme();
-    this.syncChrome();
-    this.syncLayout();
+    this.setThemeMode(this.state().themeMode === 'light' ? 'dark' : 'light');
   },
 
   toggleFullscreen() {
@@ -8057,10 +8202,127 @@ const WRITESPACE = {
     if (fullBtn) {
       fullBtn.innerHTML = s.fullscreen
         ? '<i class="fa-solid fa-compress"></i><span class="hidden sm:inline">Exit</span>'
-        : '<i class="fa-solid fa-expand"></i><span class="hidden sm:inline">Expand</span>';
-      fullBtn.title = s.fullscreen ? 'Exit full screen' : 'Expand WriteSpace';
+        : '<i class="fa-solid fa-expand"></i><span class="hidden sm:inline">Full Screen</span>';
+      fullBtn.title = s.fullscreen ? 'Exit full screen' : 'Full Screen';
     }
     this.syncJournalButton();
+    this.syncDocTitleDisplay();
+    this.syncModeButton();
+    this.syncStarButton();
+  },
+
+  syncModeButton() {
+    const btn = document.getElementById('ws-theme-btn');
+    if (!btn) return;
+    const light = this.state().themeMode === 'light';
+    btn.className = 'ws-chrome-btn p-1.5 rounded-md border bg-[#1e1b26] border-amber-900/40 text-amber-300 text-xs font-medium flex items-center gap-1.5';
+    btn.innerHTML = `<i class="fa-solid ${light ? 'fa-sun text-blue-400' : 'fa-moon text-amber-300'}"></i><span class="hidden sm:inline">Mode</span><i class="fa-solid fa-chevron-down text-[9px] opacity-70"></i>`;
+  },
+
+  syncStarButton() {
+    const btn = document.getElementById('ws-star-btn');
+    if (!btn) return;
+    const file = this.state().currentFileId ? DIMDRIVE.get(this.state().currentFileId) : null;
+    const on = !!(file && file.starred);
+    btn.title = on ? 'Starred in dimDrive — click to refresh save' : 'Save to Starred in dimDrive';
+    btn.className = on
+      ? 'p-1.5 rounded-md border border-amber-500/50 bg-amber-500/15 text-amber-400 text-xs shrink-0'
+      : 'p-1.5 rounded-md border border-amber-900/40 bg-[#1e1b26] text-amber-300/70 text-xs shrink-0 hover:text-amber-300 hover:border-amber-500/40';
+    btn.innerHTML = `<i class="fa-${on ? 'solid' : 'regular'} fa-star"></i>`;
+  },
+
+  setThemeMode(mode) {
+    this.closeAllMenus();
+    const s = this.state();
+    s.themeMode = mode === 'light' ? 'light' : 'dark';
+    this.persist(s);
+    this.syncTheme();
+    this.syncChrome();
+    this.syncLayout();
+  },
+
+  fileDisplayName() {
+    const s = this.state();
+    const fromState = (s.fileName || '').trim();
+    if (fromState) return fromState;
+    if (s.currentFileId) {
+      const file = DIMDRIVE.get(s.currentFileId);
+      if (file && (file.name || '').trim()) return file.name.trim();
+    }
+    return 'Untitled draft';
+  },
+
+  syncDocTitleDisplay() {
+    const display = document.getElementById('ws-doc-title-display');
+    const input = document.getElementById('ws-doc-title-input');
+    if (!display || (input && !input.classList.contains('hidden'))) return;
+    if (this.state().layoutStyle === 'journal' || this._inJournal) {
+      const j = this.ensureJournalEntry();
+      const entry = j.entries.find((e) => e.id === j.currentId) || j.entries[0] || {};
+      const journalTitle = document.getElementById('ws-journal-title');
+      const title = (journalTitle?.value || entry.title || '').trim() || 'Untitled journal entry';
+      display.textContent = title;
+      return;
+    }
+    display.textContent = this.fileDisplayName();
+  },
+
+  beginTitleEdit() {
+    const display = document.getElementById('ws-doc-title-display');
+    const input = document.getElementById('ws-doc-title-input');
+    if (!display || !input) return;
+    let current = '';
+    if (this.state().layoutStyle === 'journal' || this._inJournal) {
+      const j = this.ensureJournalEntry();
+      const entry = j.entries.find((e) => e.id === j.currentId) || {};
+      current = (document.getElementById('ws-journal-title')?.value || entry.title || '').trim();
+    } else {
+      current = this.fileDisplayName();
+      if (current === 'Untitled draft') current = '';
+    }
+    input.value = current;
+    display.classList.add('hidden');
+    input.classList.remove('hidden');
+    input.focus();
+    input.select();
+  },
+
+  titleEditKey(event) {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      this.commitTitleEdit();
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      const display = document.getElementById('ws-doc-title-display');
+      const input = document.getElementById('ws-doc-title-input');
+      if (input) input.classList.add('hidden');
+      if (display) display.classList.remove('hidden');
+      this.syncDocTitleDisplay();
+    }
+  },
+
+  commitTitleEdit() {
+    const display = document.getElementById('ws-doc-title-display');
+    const input = document.getElementById('ws-doc-title-input');
+    if (!input || input.classList.contains('hidden')) return;
+    const next = (input.value || '').trim();
+    if (this.state().layoutStyle === 'journal' || this._inJournal) {
+      const journalTitle = document.getElementById('ws-journal-title');
+      if (journalTitle) journalTitle.value = next;
+      this.saveCurrentJournalEntry();
+    } else {
+      const s = this.state();
+      s.fileName = next || 'Untitled draft';
+      this.persist(s);
+      if (s.currentFileId) {
+        const draft = this.draftSnapshot();
+        draft.name = s.fileName;
+        DIMDRIVE.upsertWriteSpace(draft);
+      }
+    }
+    input.classList.add('hidden');
+    if (display) display.classList.remove('hidden');
+    this.syncDocTitleDisplay();
   },
 
   syncJournalButton() {
@@ -8074,21 +8336,22 @@ const WRITESPACE = {
       btn.className = on
         ? 'p-1.5 rounded-md border border-amber-500/50 bg-amber-500/15 text-amber-400 text-xs font-medium flex items-center gap-1.5'
         : 'p-1.5 rounded-md border bg-[#1e1b26] border-amber-900/40 text-amber-300 text-xs font-medium flex items-center gap-1.5';
-      btn.title = on ? 'Back' : 'Journal';
+      btn.title = on ? 'Back to WriteSpace' : 'WriteSpace Journal';
       btn.innerHTML = on
         ? '<i class="fa-solid fa-arrow-left"></i><span class="hidden sm:inline">Back</span>'
-        : '<i class="fa-solid fa-book"></i><span class="hidden sm:inline">Journal</span>';
+        : '<i class="fa-solid fa-book"></i><span class="hidden sm:inline">WriteSpace Journal</span>';
     }
     if (brand) brand.textContent = 'WriteSpace';
     if (brandJournal) brandJournal.classList.toggle('hidden', !on);
     if (layoutWrap) {
-      layoutWrap.classList.add('hidden');
+      layoutWrap.classList.toggle('hidden', on);
       layoutWrap.classList.toggle('sm:flex', !on);
     }
     if (layoutRule) {
       layoutRule.classList.add('hidden');
       layoutRule.classList.toggle('sm:block', !on);
     }
+    this.syncDocTitleDisplay();
   },
 
   toggleJournalMode() {
@@ -8100,21 +8363,27 @@ const WRITESPACE = {
       s.layoutStyle = s.prevLayout && s.prevLayout !== 'journal' ? s.prevLayout : 'substack';
       if (layoutEl) layoutEl.value = s.layoutStyle;
       this.persist(s);
-      const bodyEl = document.getElementById('ws-body');
-      if (bodyEl && s.bodyText) bodyEl.value = s.bodyText;
       const titleEl = document.getElementById('ws-title');
-      if (titleEl && s.title) titleEl.value = s.title;
+      const titleWord = document.getElementById('ws-title-word');
+      if (titleEl) titleEl.value = s.title || '';
+      if (titleWord) titleWord.value = s.title || '';
+      this.setBodyText(s.bodyHtml || s.bodyText || '');
       this.syncLayout();
       this.syncTheme();
       this.syncChrome();
       this.syncMetrics();
+      this.syncDocTitleDisplay();
       return;
     }
-    s.prevLayout = layoutEl ? layoutEl.value : s.layoutStyle;
+    this._inJournal = false;
+    this.saveFromDom();
+    s.prevLayout = layoutEl ? layoutEl.value : (s.layoutStyle || 'substack');
+    if (s.prevLayout === 'journal') s.prevLayout = 'substack';
     s.layoutStyle = 'journal';
     this.persist(s);
     this.enterJournal();
     this.syncJournalButton();
+    this.syncDocTitleDisplay();
   },
 
   syncTheme() {
@@ -8135,11 +8404,7 @@ const WRITESPACE = {
       root.classList.toggle('bg-brand-black', !light);
       root.classList.toggle('text-amber-50', !light);
     }
-    if (btn) {
-      btn.innerHTML = light
-        ? '<i class="fa-solid fa-moon text-amber-500"></i><span class="hidden sm:inline">Night Mode</span>'
-        : '<i class="fa-solid fa-sun text-blue-400"></i><span class="hidden sm:inline">Day Mode</span>';
-    }
+    if (btn) this.syncModeButton();
     const wordDoc = s.layoutStyle === 'word';
     if (canvas && !wordDoc) {
       canvas.style.backgroundColor = light ? '#ffffff' : '';
@@ -8264,27 +8529,34 @@ const WRITESPACE = {
         this.persist(s);
       }
       if (stage) stage.style.backgroundColor = s.themeMode === 'light' ? '#e6e6e6' : '#2d2d2d';
+      const landscape = s.pageOrientation === 'landscape';
+      const pageW = landscape ? 1056 : 816;
+      const pageH = landscape ? 816 : 1056;
+      const pad = s.margins === 'narrow' ? '36px 48px' : s.margins === 'wide' ? '96px 144px' : '64px 96px';
       if (canvas) {
         canvas.style.backgroundColor = '#ffffff';
         canvas.style.color = '#000000';
-        canvas.style.width = '816px';
-        canvas.style.maxWidth = '100%';
-        canvas.style.minHeight = '1056px';
-        canvas.style.padding = '64px 96px 56px';
+        canvas.style.width = `${pageW}px`;
+        canvas.style.maxWidth = `${pageW}px`;
+        canvas.style.minHeight = `${pageH}px`;
+        canvas.style.padding = pad;
         canvas.style.borderRadius = '0';
         canvas.style.border = '1px solid #c6c6c6';
         canvas.style.boxShadow = '0 0 0 1px rgba(0,0,0,.06), 0 6px 24px rgba(0,0,0,.18)';
+        canvas.style.overflow = 'visible';
         canvas.classList.remove('rounded-xl', 'bg-brand-panel', 'text-amber-50');
       }
       const face = `'${s.fontFamily}', Calibri, 'Segoe UI', sans-serif`;
       if (body) {
         body.style.fontFamily = face;
         body.style.fontSize = this.sizePx(s.fontSize);
-        body.style.lineHeight = '1.15';
+        body.style.lineHeight = String(s.lineSpacing || 1.15);
         body.style.color = '#000000';
-        body.style.backgroundColor = '#ffffff';
-        body.style.minHeight = '760px';
-        body.placeholder = 'Start typing...';
+        body.style.backgroundColor = 'transparent';
+        body.style.minHeight = `${Math.max(600, pageH - 156)}px`;
+        body.style.overflow = 'visible';
+        body.style.maxHeight = 'none';
+        this.setBodyPlaceholder('Start typing...');
       }
       if (wordT) {
         wordT.style.fontFamily = face;
@@ -8319,7 +8591,7 @@ const WRITESPACE = {
         body.style.fontSize = this.sizePx(s.fontSize);
         body.style.lineHeight = '';
         body.style.minHeight = '';
-        body.placeholder = 'Start typing your post or story...';
+        this.setBodyPlaceholder('Start typing your post or story...');
       }
       if (grammar) grammar.classList.remove('hidden');
       if (grammarBtn) grammarBtn.classList.remove('hidden');
@@ -8330,9 +8602,19 @@ const WRITESPACE = {
       body.classList.toggle('underline', !!s.underline);
     }
     if (!isJournal) this.syncChrome();
+    this.paginateWord();
   },
 
   toggleFormat(key) {
+    if (this.isRichBody()) {
+      const map = { bold: 'bold', italic: 'italic', underline: 'underline' };
+      this.applyRich(map[key] || key);
+      const s = this.state();
+      s[key] = !!(document.queryCommandState && document.queryCommandState(map[key] || key));
+      this.persist(s);
+      this.syncFormats();
+      return;
+    }
     const s = this.state();
     s[key] = !s[key];
     this.persist(s);
@@ -8391,8 +8673,7 @@ const WRITESPACE = {
     s.bodyText = (s.bodyText || '').replace(issue.word, issue.fix);
     s.grammarIssues = s.grammarIssues.filter((i) => i.id !== id);
     this.persist(s);
-    const body = document.getElementById('ws-body');
-    if (body) body.value = s.bodyText;
+    this.setBodyText(s.bodyText);
     this.syncGrammar();
     this.syncMetrics();
   },
@@ -8495,8 +8776,7 @@ const WRITESPACE = {
     if (!s.lastAi) return;
     s.bodyText = s.lastAi;
     this.persist(s);
-    const body = document.getElementById('ws-body');
-    if (body) body.value = s.bodyText;
+    this.setBodyText(s.bodyText);
     this.syncMetrics();
   },
 
@@ -8574,10 +8854,11 @@ const WRITESPACE = {
     const s = this.state();
     return {
       id: s.currentFileId || '',
-      name: s.title || 'Untitled draft',
+      name: (s.fileName || '').trim() || 'Untitled draft',
       title: s.title,
       subtitle: s.subtitle,
       bodyText: s.bodyText,
+      bodyHtml: s.bodyHtml || '',
       layoutStyle: s.layoutStyle,
       fontFamily: s.fontFamily,
       fontSize: s.fontSize,
@@ -8585,17 +8866,206 @@ const WRITESPACE = {
       focusKeyword: s.focusKeyword,
       metaTitle: s.metaTitle,
       metaDescription: s.metaDescription,
-      slug: s.slug
+      slug: s.slug,
+      folder: s.currentFolderId || this._saveFolderId || DIMDRIVE.ensureDocumentsFolder()
     };
+  },
+
+  flashBanner(message) {
+    const banner = document.getElementById('ws-publish-banner');
+    if (!banner) return;
+    banner.textContent = message;
+    banner.classList.remove('hidden');
+    clearTimeout(this._bannerTimer);
+    this._bannerTimer = setTimeout(() => banner.classList.add('hidden'), 3500);
+  },
+
+  folderLabel(folderId) {
+    const id = folderId || DIMDRIVE.ensureDocumentsFolder();
+    const folder = DIMDRIVE.writeSpaceFolders().find((row) => row.id === id);
+    return (folder && folder.name) || (id === 'f-documents' || id === 'user' ? 'Documents' : id);
+  },
+
+  filesInFolder(folderId) {
+    const id = folderId || DIMDRIVE.ensureDocumentsFolder();
+    return DIMDRIVE.load()
+      .filter((f) => {
+        if (f.trashed || f.type !== 'writespace') return false;
+        const folder = f.folder || 'f-documents';
+        if (id === 'f-documents') return folder === 'f-documents' || folder === 'user';
+        return folder === id;
+      })
+      .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+  },
+
+  renderDriveFolders(targetId, selectedId, onPick) {
+    const root = document.getElementById(targetId);
+    if (!root) return;
+    const folders = DIMDRIVE.writeSpaceFolders();
+    const selected = selectedId || DIMDRIVE.ensureDocumentsFolder();
+    root.innerHTML = folders.map((folder) => {
+      const on = folder.id === selected;
+      return `<button type="button" onclick="WRITESPACE.${onPick}('${folder.id}')" class="w-full text-left px-2 py-1.5 rounded-md text-[11px] flex items-center gap-2 ${on ? 'bg-amber-500/15 text-brand-gold border border-amber-500/40' : 'text-amber-200/80 hover:bg-amber-500/10 border border-transparent'}">
+        <i class="fa-solid fa-folder text-amber-500 text-[10px]"></i>
+        <span class="truncate">${DIMDRIVE.escape(folder.name)}</span>
+      </button>`;
+    }).join('');
+  },
+
+  newDocument() {
+    const s = this.state();
+    const dirty = !!(s.currentFileId || (s.title || '').trim() || (s.bodyText || '').trim() || (s.subtitle || '').trim());
+    if (dirty && !window.confirm('Start a new document? Unsaved changes stay only if you Save first.')) return;
+    const keep = {
+      themeMode: s.themeMode,
+      layoutStyle: s.layoutStyle === 'journal' ? 'substack' : s.layoutStyle,
+      fontFamily: s.fontFamily,
+      fontSize: s.fontSize,
+      sidebarCollapsed: s.sidebarCollapsed,
+      fullscreen: s.fullscreen,
+      grammarEnabled: s.grammarEnabled,
+      selectedTone: s.selectedTone,
+      customTones: s.customTones,
+      selectedCustomToneId: s.selectedCustomToneId
+    };
+    Object.assign(s, this.defaults, keep, {
+      title: '',
+      subtitle: '',
+      bodyText: '',
+      bodyHtml: '',
+      coverImage: '',
+      focusKeyword: '',
+      metaTitle: '',
+      metaDescription: '',
+      slug: '',
+      grammarIssues: [],
+      writeAiMessages: [],
+      tab: 'ai-editor',
+      currentFileId: '',
+      fileName: '',
+      currentFolderId: DIMDRIVE.ensureDocumentsFolder(),
+      lastAi: '',
+      lastSeoFeedback: ''
+    });
+    this._inJournal = false;
+    this.persist(s);
+    this.mount();
+    this.flashBanner('New document ready.');
+  },
+
+  requestSave(options) {
+    const opts = options || {};
+    if (opts.thenExport) this._pendingExport = true;
+    this.saveFromDom();
+    const s = this.state();
+    if (s.currentFileId && !opts.forcePicker) {
+      this.saveNow();
+      if (this._pendingExport) this.goToExport();
+      return;
+    }
+    this.openSaveModal();
+  },
+
+  saveNow() {
+    const draft = this.draftSnapshot();
+    if (!draft.id) {
+      this.openSaveModal();
+      return null;
+    }
+    const existing = DIMDRIVE.get(draft.id);
+    draft.folder = (existing && existing.folder) || draft.folder || DIMDRIVE.ensureDocumentsFolder();
+    draft.name = (this.state().fileName || '').trim() || (existing && existing.name) || 'Untitled draft';
+    const file = DIMDRIVE.upsertWriteSpace(draft);
+    const s = this.state();
+    s.currentFileId = file.id;
+    s.currentFolderId = file.folder || draft.folder;
+    s.fileName = file.name;
+    this.persist(s);
+    this.syncStarButton();
+    this.syncDocTitleDisplay();
+    this.flashBanner(`Saved “${file.name}” to dimDrive.`);
+    return file;
+  },
+
+  saveToStarred() {
+    this.saveFromDom();
+    const s = this.state();
+    let draft;
+    if (s.layoutStyle === 'journal' || this._inJournal) {
+      this.saveCurrentJournalEntry();
+      const j = this.ensureJournalEntry();
+      const entry = j.entries.find((e) => e.id === j.currentId) || {};
+      const title = (entry.title || document.getElementById('ws-journal-title')?.value || '').trim() || 'Untitled journal entry';
+      draft = {
+        id: s.currentFileId || '',
+        name: title,
+        title,
+        subtitle: '',
+        bodyText: entry.body || this.getBodyText() || '',
+        bodyHtml: this.isRichBody() ? this.getBodyHtml() : '',
+        layoutStyle: 'substack',
+        fontFamily: s.fontFamily,
+        fontSize: s.fontSize,
+        folder: s.currentFolderId || this._saveFolderId || DIMDRIVE.ensureDocumentsFolder(),
+        starred: true
+      };
+    } else {
+      draft = this.draftSnapshot();
+      draft.starred = true;
+    }
+    const existing = draft.id ? DIMDRIVE.get(draft.id) : null;
+    if (existing) {
+      draft.folder = existing.folder || draft.folder;
+      draft.name = (s.fileName || draft.name || existing.name || 'Untitled draft').trim();
+    } else {
+      draft.id = '';
+      draft.folder = draft.folder || DIMDRIVE.ensureDocumentsFolder();
+      draft.name = (s.fileName || draft.name || 'Untitled draft').trim();
+    }
+    const file = DIMDRIVE.upsertWriteSpace(draft);
+    s.currentFileId = file.id;
+    s.currentFolderId = file.folder || draft.folder;
+    if (!(s.layoutStyle === 'journal' || this._inJournal)) s.fileName = file.name;
+    this.persist(s);
+    this.syncStarButton();
+    this.syncDocTitleDisplay();
+    if (typeof DIMDRIVE !== 'undefined' && DIMDRIVE.render) {
+      try { DIMDRIVE.render(); } catch (_) { /* ignore */ }
+    }
+    this.flashBanner(`Saved “${file.name}” to Starred in dimDrive.`);
+    return file;
   },
 
   openSaveModal() {
     const modal = document.getElementById('ws-save-modal');
     const name = document.getElementById('ws-save-name');
-    if (name) name.value = this.state().title || 'Untitled draft';
+    const s = this.state();
+    this._saveFolderId = s.currentFolderId || DIMDRIVE.ensureDocumentsFolder();
+    if (name) name.value = (s.fileName || '').trim() || 'Untitled draft';
+    this.renderSaveExplorer();
     if (!modal) return;
     modal.classList.remove('hidden');
     modal.classList.add('flex');
+    setTimeout(() => name && name.focus(), 30);
+  },
+
+  renderSaveExplorer() {
+    const folderId = this._saveFolderId || DIMDRIVE.ensureDocumentsFolder();
+    const label = document.getElementById('ws-save-folder-label');
+    const filesBox = document.getElementById('ws-save-folder-files');
+    if (label) label.textContent = this.folderLabel(folderId);
+    this.renderDriveFolders('ws-save-folders', folderId, 'selectSaveFolder');
+    if (filesBox) {
+      const files = this.filesInFolder(folderId);
+      filesBox.innerHTML = files.length
+        ? files.slice(0, 8).map((file) => `<div class="truncate text-amber-200/70">• ${DIMDRIVE.escape(file.name)}</div>`).join('')
+        : '<div class="text-amber-200/50 italic">Folder is empty — perfect for a first save.</div>';
+    }
+  },
+
+  selectSaveFolder(folderId) {
+    this._saveFolderId = folderId || DIMDRIVE.ensureDocumentsFolder();
+    this.renderSaveExplorer();
   },
 
   closeSaveModal() {
@@ -8603,19 +9073,25 @@ const WRITESPACE = {
     if (!modal) return;
     modal.classList.add('hidden');
     modal.classList.remove('flex');
+    if (this._pendingExport && !this.state().currentFileId) this._pendingExport = false;
   },
 
   saveToDrive() {
     const name = (document.getElementById('ws-save-name')?.value || '').trim();
     const draft = this.draftSnapshot();
-    draft.name = name || draft.title || 'Untitled draft';
+    draft.name = name || draft.name || 'Untitled draft';
+    draft.folder = this._saveFolderId || DIMDRIVE.ensureDocumentsFolder();
     const file = DIMDRIVE.upsertWriteSpace(draft);
-    this.state().currentFileId = file.id;
-    this.persist(this.state());
+    const s = this.state();
+    s.currentFileId = file.id;
+    s.currentFolderId = file.folder || draft.folder;
+    s.fileName = file.name;
+    this.persist(s);
     this.closeSaveModal();
-    this.publish('dimDrive');
-    const banner = document.getElementById('ws-publish-banner');
-    if (banner) banner.textContent = `Saved to dimDrive as “${file.name}”.`;
+    this.syncStarButton();
+    this.syncDocTitleDisplay();
+    this.flashBanner(`Saved “${file.name}” to ${this.folderLabel(file.folder)}.`);
+    if (this._pendingExport) this.goToExport();
   },
 
   saveLocally() {
@@ -8627,27 +9103,39 @@ const WRITESPACE = {
     a.href = URL.createObjectURL(blob);
     a.download = `${name.replace(/[^\w\-]+/g, '-') || 'writespace-draft'}.md`;
     a.click();
-    this.closeSaveModal();
-    this.publish('this device');
+    this.flashBanner('Downloaded markdown copy.');
   },
 
   openOpenModal() {
     const modal = document.getElementById('ws-open-modal');
-    const list = document.getElementById('ws-open-list');
-    if (list) {
-      const files = DIMDRIVE.load().filter((f) => f.type === 'writespace');
-      if (!files.length) {
-        list.innerHTML = '<p class="text-[12px] text-slate-400">No WriteSpace files in dimDrive yet. Save a draft first.</p>';
-      } else {
-        list.innerHTML = files.map((file) => `<button type="button" onclick="DIMDRIVE.openInWriteSpace('${file.id}')" class="w-full text-left border border-amber-900/40 hover:border-amber-500/50 rounded-xl px-3 py-2.5">
-          <div class="text-[12px] font-semibold text-amber-100 truncate">${DIMDRIVE.escape(file.name)}</div>
-          <div class="text-[10px] font-mono text-amber-400/70">${new Date(file.updatedAt || file.createdAt).toLocaleString()}</div>
-        </button>`).join('');
-      }
-    }
+    this._openFolderId = this.state().currentFolderId || DIMDRIVE.ensureDocumentsFolder();
+    this.renderOpenExplorer();
     if (!modal) return;
     modal.classList.remove('hidden');
     modal.classList.add('flex');
+  },
+
+  renderOpenExplorer() {
+    const folderId = this._openFolderId || DIMDRIVE.ensureDocumentsFolder();
+    const label = document.getElementById('ws-open-folder-label');
+    const list = document.getElementById('ws-open-list');
+    if (label) label.textContent = this.folderLabel(folderId);
+    this.renderDriveFolders('ws-open-folders', folderId, 'selectOpenFolder');
+    if (!list) return;
+    const files = this.filesInFolder(folderId);
+    if (!files.length) {
+      list.innerHTML = '<p class="text-[12px] text-slate-400 px-1">No WriteSpace documents in this folder yet.</p>';
+      return;
+    }
+    list.innerHTML = files.map((file) => `<button type="button" onclick="DIMDRIVE.openInWriteSpace('${file.id}')" class="w-full text-left border border-amber-900/40 hover:border-amber-500/50 rounded-xl px-3 py-2.5">
+      <div class="text-[12px] font-semibold text-amber-100 truncate">${DIMDRIVE.escape(file.name)}</div>
+      <div class="text-[10px] font-mono text-amber-400/70">${new Date(file.updatedAt || file.createdAt).toLocaleString()}</div>
+    </button>`).join('');
+  },
+
+  selectOpenFolder(folderId) {
+    this._openFolderId = folderId || DIMDRIVE.ensureDocumentsFolder();
+    this.renderOpenExplorer();
   },
 
   closeOpenModal() {
@@ -8660,18 +9148,38 @@ const WRITESPACE = {
   loadDriveFile(file) {
     if (!file || !file.payload) return;
     const s = this.state();
-    Object.assign(s, file.payload, { currentFileId: file.id });
+    Object.assign(s, file.payload, {
+      currentFileId: file.id,
+      fileName: file.name || '',
+      currentFolderId: file.folder || s.currentFolderId || DIMDRIVE.ensureDocumentsFolder(),
+      layoutStyle: file.payload.layoutStyle === 'journal' ? 'substack' : (file.payload.layoutStyle || s.layoutStyle || 'substack')
+    });
+    this._inJournal = false;
     this.persist(s);
     this.closeOpenModal();
     this.mount();
+    this.flashBanner(`Opened “${file.name}”.`);
+  },
+
+  goToExport() {
+    this._pendingExport = false;
+    this.closeVictory();
+    this.openPublishModal();
+  },
+
+  finishAndExport() {
+    this.saveFromDom();
+    if (this.state().currentFileId) {
+      this.saveNow();
+      this.goToExport();
+      return;
+    }
+    this._pendingExport = true;
+    this.openSaveModal();
   },
 
   openVictory() {
-    this.syncMetrics();
-    const modal = document.getElementById('ws-victory');
-    if (!modal) return;
-    modal.classList.remove('hidden');
-    modal.classList.add('flex');
+    this.finishAndExport();
   },
 
   closeVictory() {
@@ -8679,6 +9187,731 @@ const WRITESPACE = {
     if (!modal) return;
     modal.classList.add('hidden');
     modal.classList.remove('flex');
+  },
+
+  openPublishModal() {
+    const modal = document.getElementById('ws-publish-modal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  },
+
+  closePublishModal() {
+    const modal = document.getElementById('ws-publish-modal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  },
+
+  closeAllMenus() {
+    document.querySelectorAll('#view-creator-writespace .ws-menu.open').forEach((el) => el.classList.remove('open'));
+  },
+
+  toggleMenu(event, name) {
+    if (event) event.stopPropagation();
+    const menus = document.querySelectorAll('#view-creator-writespace .ws-menu');
+    menus.forEach((menu) => {
+      if (menu.getAttribute('data-ws-menu') === name) menu.classList.toggle('open');
+      else menu.classList.remove('open');
+    });
+  },
+
+  focusBody() {
+    const body = this.bodyEl();
+    if (body) body.focus();
+  },
+
+  insertHtml(html) {
+    this.focusBody();
+    try {
+      document.execCommand('insertHTML', false, html);
+    } catch (err) {
+      const body = this.bodyEl();
+      if (body) body.insertAdjacentHTML('beforeend', html);
+    }
+    this.saveFromDom();
+    this.syncRichEmpty();
+    this.paginateWord();
+  },
+
+  activeTable() {
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return null;
+    let node = sel.anchorNode;
+    if (node && node.nodeType === 3) node = node.parentElement;
+    return node && node.closest ? node.closest('table.ws-table') : null;
+  },
+
+  activeCell() {
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return null;
+    let node = sel.anchorNode;
+    if (node && node.nodeType === 3) node = node.parentElement;
+    return node && node.closest ? node.closest('td,th') : null;
+  },
+
+  menuAction(action) {
+    this.closeAllMenus();
+    const map = {
+      new: () => this.newDocument(),
+      open: () => this.openOpenModal(),
+      save: () => this.requestSave(),
+      'copy-doc': () => this.makeCopy(),
+      email: () => this.emailDocument(),
+      'dl-doc': () => this.downloadAs('doc'),
+      'dl-pdf': () => this.downloadAs('pdf'),
+      'dl-txt': () => this.downloadAs('txt'),
+      'dl-htmlzip': () => this.downloadAs('htmlzip'),
+      undo: () => { this.focusBody(); document.execCommand('undo'); },
+      redo: () => { this.focusBody(); document.execCommand('redo'); },
+      cut: () => { this.focusBody(); document.execCommand('cut'); },
+      copy: () => { this.focusBody(); document.execCommand('copy'); },
+      paste: () => this.pasteRich(),
+      'paste-plain': () => this.pastePlain(),
+      'select-all': () => { this.focusBody(); document.execCommand('selectAll'); },
+      find: () => this.openFindModal(),
+      'img-computer': () => document.getElementById('ws-image-file')?.click(),
+      'img-dimdrive': () => this.openDimDriveImages(),
+      link: () => this.applyRich('link'),
+      'chart-bar': () => this.insertChart('bar'),
+      'chart-column': () => this.insertChart('column'),
+      'chart-line': () => this.insertChart('line'),
+      'chart-pie': () => this.insertChart('pie'),
+      'table-insert': () => this.insertTable(),
+      'table-title': () => this.tableTitleRow(),
+      'table-row-above': () => this.tableInsertRow('above'),
+      'table-row-below': () => this.tableInsertRow('below'),
+      'table-col-left': () => this.tableInsertCol('left'),
+      'table-col-right': () => this.tableInsertCol('right'),
+      'table-del-row': () => this.tableDeleteRow(),
+      'table-del-col': () => this.tableDeleteCol(),
+      'table-del': () => this.tableDelete(),
+      headers: () => this.openHeaderModal(),
+      'space-1': () => this.setLineSpacing(1),
+      'space-15': () => this.setLineSpacing(1.5),
+      'space-2': () => this.setLineSpacing(2),
+      'space-custom': () => this.setCustomSpacing(),
+      'margin-normal': () => this.setMargins('normal'),
+      'margin-narrow': () => this.setMargins('narrow'),
+      'margin-wide': () => this.setMargins('wide'),
+      'list-bullet': () => this.applyRich('ul'),
+      'list-number': () => this.applyRich('ol'),
+      'list-check': () => this.insertChecklist(),
+      'page-numbers': () => this.openPageNumModal(),
+      'orient-portrait': () => this.setOrientation('portrait'),
+      'orient-landscape': () => this.setOrientation('landscape'),
+      'help-docs': () => this.openHelpModal('help'),
+      'help-training': () => this.openHelpModal('training'),
+      'help-shortcuts': () => this.openHelpModal('shortcuts'),
+      'help-improve': () => this.openHelpModal('improve')
+    };
+    if (map[action]) map[action]();
+  },
+
+  openHelpModal(kind) {
+    const modal = document.getElementById('ws-help-modal');
+    const title = document.getElementById('ws-help-title');
+    const body = document.getElementById('ws-help-body');
+    const improve = document.getElementById('ws-help-improve');
+    const feedback = document.getElementById('ws-help-feedback');
+    if (!modal || !title || !body) return;
+    const panels = {
+      help: {
+        icon: 'fa-circle-question',
+        heading: 'Help',
+        html: `
+          <p>WriteSpace is your drafting studio for Substack posts, Word-style documents, and private journal entries.</p>
+          <ul class="list-disc pl-4 space-y-1.5 text-amber-200/85">
+            <li><span class="text-brand-gold font-semibold">Save</span> stores the file name in dimDrive without changing the title inside your document.</li>
+            <li><span class="text-brand-gold font-semibold">Star</span> saves the current draft into Starred in dimDrive.</li>
+            <li>Use <span class="text-brand-gold font-semibold">File / Edit / Insert / Format</span> for document commands, and the layout control for Word vs Substack.</li>
+            <li><span class="text-brand-gold font-semibold">WriteSpace Journal</span> opens a separate writing window with its own entry titles.</li>
+          </ul>`
+      },
+      training: {
+        icon: 'fa-graduation-cap',
+        heading: 'Training',
+        html: `
+          <p class="font-semibold text-brand-gold">Quick start</p>
+          <ol class="list-decimal pl-4 space-y-1.5 text-amber-200/85">
+            <li>Pick Substack or Microsoft Word layout from the top bar.</li>
+            <li>Write in the canvas, then use the AI sidebar to revise tone, flow, or SEO.</li>
+            <li>Double-click the header file name to rename the dimDrive file.</li>
+            <li>Save to dimDrive, Preview your post, then publish when ready.</li>
+          </ol>
+          <p class="pt-1">Tip: Journal mode is for private daily writing — use Back to return to your document without carrying the journal title over.</p>`
+      },
+      shortcuts: {
+        icon: 'fa-keyboard',
+        heading: 'Shortcut Keys',
+        html: `
+          <div class="rounded-xl border border-amber-900/40 bg-slate-950/50 overflow-hidden">
+            <div class="grid grid-cols-[1fr_auto] gap-x-3 text-[11px]">
+              <div class="px-3 py-2 border-b border-amber-900/30 text-amber-200/70">Bold</div><div class="px-3 py-2 border-b border-amber-900/30 font-mono text-brand-gold">Ctrl + B</div>
+              <div class="px-3 py-2 border-b border-amber-900/30 text-amber-200/70">Italic</div><div class="px-3 py-2 border-b border-amber-900/30 font-mono text-brand-gold">Ctrl + I</div>
+              <div class="px-3 py-2 border-b border-amber-900/30 text-amber-200/70">Underline</div><div class="px-3 py-2 border-b border-amber-900/30 font-mono text-brand-gold">Ctrl + U</div>
+              <div class="px-3 py-2 border-b border-amber-900/30 text-amber-200/70">Undo / Redo</div><div class="px-3 py-2 border-b border-amber-900/30 font-mono text-brand-gold">Ctrl + Z / Ctrl + Y</div>
+              <div class="px-3 py-2 border-b border-amber-900/30 text-amber-200/70">Select all</div><div class="px-3 py-2 border-b border-amber-900/30 font-mono text-brand-gold">Ctrl + A</div>
+              <div class="px-3 py-2 border-b border-amber-900/30 text-amber-200/70">Find and replace</div><div class="px-3 py-2 border-b border-amber-900/30 font-mono text-brand-gold">Edit → Find</div>
+              <div class="px-3 py-2 border-b border-amber-900/30 text-amber-200/70">Save</div><div class="px-3 py-2 border-b border-amber-900/30 font-mono text-brand-gold">File → Save</div>
+              <div class="px-3 py-2 text-amber-200/70">Tab indent (Word)</div><div class="px-3 py-2 font-mono text-brand-gold">Tab</div>
+            </div>
+          </div>`
+      },
+      improve: {
+        icon: 'fa-lightbulb',
+        heading: 'Help Us Improve',
+        html: `<p>Tell us what broke, what felt confusing, or what you wish WriteSpace did next. Feedback stays on this device for now and shows a confirmation when you send it.</p>`
+      }
+    };
+    const panel = panels[kind] || panels.help;
+    title.innerHTML = `<i class="fa-solid ${panel.icon}"></i> ${panel.heading}`;
+    body.innerHTML = panel.html;
+    if (improve) improve.classList.toggle('hidden', kind !== 'improve');
+    if (feedback && kind === 'improve') feedback.value = '';
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  },
+
+  closeHelpModal() {
+    const modal = document.getElementById('ws-help-modal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  },
+
+  submitHelpFeedback() {
+    const feedback = document.getElementById('ws-help-feedback');
+    const text = (feedback?.value || '').trim();
+    if (!text) {
+      this.flashBanner('Add a short note before sending feedback.');
+      return;
+    }
+    try {
+      const key = 'dimad_writespace_feedback';
+      const prev = JSON.parse(localStorage.getItem(key) || '[]');
+      prev.unshift({ at: Date.now(), text });
+      localStorage.setItem(key, JSON.stringify(prev.slice(0, 50)));
+    } catch (_) { /* ignore */ }
+    if (feedback) feedback.value = '';
+    this.closeHelpModal();
+    this.flashBanner('Thanks — feedback saved.');
+  },
+
+  makeCopy() {
+    const s = this.state();
+    const draft = this.draftSnapshot();
+    draft.id = '';
+    draft.name = `${draft.name || 'Untitled draft'} Copy`;
+    const file = DIMDRIVE.upsertWriteSpace(draft);
+    s.currentFileId = file.id;
+    s.fileName = file.name;
+    this.persist(s);
+    this.mount();
+    this.flashBanner(`Made a copy: “${file.name}”.`);
+  },
+
+  emailDocument() {
+    this.saveFromDom();
+    const s = this.state();
+    const subject = encodeURIComponent(s.title || 'WriteSpace document');
+    const body = encodeURIComponent(`${s.title || ''}\n\n${s.subtitle || ''}\n\n${s.bodyText || ''}`);
+    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+  },
+
+  downloadAs(kind) {
+    this.saveFromDom();
+    const s = this.state();
+    const base = (s.title || 'writespace').replace(/[^\w\-]+/g, '-').toLowerCase() || 'writespace';
+    if (kind === 'txt') {
+      const blob = new Blob([`${s.title || ''}\n\n${s.subtitle || ''}\n\n${s.bodyText || ''}`], { type: 'text/plain' });
+      this.triggerDownload(blob, `${base}.txt`);
+      return;
+    }
+    if (kind === 'doc') {
+      const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><title>${this.escape(s.title || 'Document')}</title></head><body><h1>${this.escape(s.title || '')}</h1><h2>${this.escape(s.subtitle || '')}</h2>${s.bodyHtml || this.previewBodyHtml(s.bodyText || '')}</body></html>`;
+      this.triggerDownload(new Blob(['\ufeff', html], { type: 'application/msword' }), `${base}.doc`);
+      return;
+    }
+    if (kind === 'pdf') {
+      const win = window.open('', '_blank');
+      if (!win) {
+        this.flashBanner('Allow popups to export PDF.');
+        return;
+      }
+      win.document.write(`<!doctype html><html><head><title>${this.escape(s.title || 'Document')}</title><style>body{font-family:Georgia,serif;padding:24px;line-height:1.5} @media print{body{padding:0}}</style></head><body><h1>${this.escape(s.title || '')}</h1><p><em>${this.escape(s.subtitle || '')}</em></p>${s.bodyHtml || this.previewBodyHtml(s.bodyText || '')}<script>window.onload=()=>window.print()<\/script></body></html>`);
+      win.document.close();
+      return;
+    }
+    if (kind === 'htmlzip') {
+      const html = `<!doctype html><html><head><meta charset="utf-8"><title>${this.escape(s.title || 'Document')}</title></head><body><article><h1>${this.escape(s.title || '')}</h1>${s.subtitle ? `<p><em>${this.escape(s.subtitle)}</em></p>` : ''}${s.bodyHtml || this.previewBodyHtml(s.bodyText || '')}</article></body></html>`;
+      this.downloadHtmlZip(`${base}.html`, html, `${base}.zip`);
+    }
+  },
+
+  triggerDownload(blob, filename) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  },
+
+  downloadHtmlZip(innerName, html, zipName) {
+    const data = new TextEncoder().encode(html);
+    const nameBytes = new TextEncoder().encode(innerName);
+    const crc = this.crc32(data);
+    const local = new Uint8Array(30 + nameBytes.length + data.length);
+    const view = new DataView(local.buffer);
+    view.setUint32(0, 0x04034b50, true);
+    view.setUint16(8, 0, true);
+    view.setUint32(14, crc, true);
+    view.setUint32(18, data.length, true);
+    view.setUint32(22, data.length, true);
+    view.setUint16(26, nameBytes.length, true);
+    local.set(nameBytes, 30);
+    local.set(data, 30 + nameBytes.length);
+    const central = new Uint8Array(46 + nameBytes.length);
+    const cview = new DataView(central.buffer);
+    cview.setUint32(0, 0x02014b50, true);
+    cview.setUint32(16, crc, true);
+    cview.setUint32(20, data.length, true);
+    cview.setUint32(24, data.length, true);
+    cview.setUint16(28, nameBytes.length, true);
+    central.set(nameBytes, 46);
+    const end = new Uint8Array(22);
+    const eview = new DataView(end.buffer);
+    eview.setUint32(0, 0x06054b50, true);
+    eview.setUint16(8, 1, true);
+    eview.setUint16(10, 1, true);
+    eview.setUint32(12, central.length, true);
+    eview.setUint32(16, local.length, true);
+    const zip = new Uint8Array(local.length + central.length + end.length);
+    zip.set(local, 0);
+    zip.set(central, local.length);
+    zip.set(end, local.length + central.length);
+    this.triggerDownload(new Blob([zip], { type: 'application/zip' }), zipName);
+  },
+
+  crc32(buf) {
+    let crc = ~0;
+    for (let i = 0; i < buf.length; i += 1) {
+      crc ^= buf[i];
+      for (let j = 0; j < 8; j += 1) crc = (crc >>> 1) ^ (0xedb88320 & -(crc & 1));
+    }
+    return ~crc >>> 0;
+  },
+
+  async pasteRich() {
+    this.focusBody();
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text) document.execCommand('insertHTML', false, text.replace(/\n/g, '<br>'));
+      else document.execCommand('paste');
+    } catch (err) {
+      document.execCommand('paste');
+    }
+    this.saveFromDom();
+  },
+
+  async pastePlain() {
+    this.focusBody();
+    try {
+      const text = await navigator.clipboard.readText();
+      document.execCommand('insertText', false, text || '');
+    } catch (err) {
+      document.execCommand('paste');
+    }
+    this.saveFromDom();
+  },
+
+  openFindModal() {
+    const modal = document.getElementById('ws-find-modal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    document.getElementById('ws-find-input')?.focus();
+  },
+
+  closeFindModal() {
+    const modal = document.getElementById('ws-find-modal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  },
+
+  findNext() {
+    const q = document.getElementById('ws-find-input')?.value || '';
+    if (!q) return;
+    if (window.find) window.find(q, false, false, true);
+  },
+
+  replaceOne() {
+    const q = document.getElementById('ws-find-input')?.value || '';
+    const r = document.getElementById('ws-replace-input')?.value || '';
+    if (!q) return;
+    const body = this.bodyEl();
+    if (!body) return;
+    const html = body.innerHTML;
+    const idx = html.indexOf(q);
+    if (idx < 0) return this.flashBanner('No match found.');
+    body.innerHTML = html.slice(0, idx) + r + html.slice(idx + q.length);
+    this.saveFromDom();
+  },
+
+  replaceAll() {
+    const q = document.getElementById('ws-find-input')?.value || '';
+    const r = document.getElementById('ws-replace-input')?.value || '';
+    if (!q) return;
+    const body = this.bodyEl();
+    if (!body) return;
+    body.innerHTML = body.innerHTML.split(q).join(r);
+    this.saveFromDom();
+    this.flashBanner('Replaced all matches.');
+  },
+
+  onComputerImage(event) {
+    const file = event.target.files && event.target.files[0];
+    event.target.value = '';
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      this.insertHtml(`<figure class="ws-figure"><img src="${reader.result}" alt="${this.escape(file.name)}" style="max-width:100%"><figcaption>Image</figcaption></figure>`);
+    };
+    reader.readAsDataURL(file);
+  },
+
+  openDimDriveImages() {
+    const modal = document.getElementById('ws-dimdrive-image-modal');
+    const list = document.getElementById('ws-dimdrive-image-list');
+    if (!list) return;
+    const files = DIMDRIVE.load().filter((f) => !f.trashed && (String(f.type || '').match(/png|jpe?g|gif|webp|svg|image/i) || String(f.category || '').includes('Photo') || (f.downloadURL && /\.(png|jpe?g|gif|webp|svg)$/i.test(f.name || ''))));
+    list.innerHTML = files.length
+      ? files.map((file) => {
+        const src = file.downloadURL || (file.payload && file.payload.dataUrl) || '';
+        return `<button type="button" onclick="WRITESPACE.insertDimDriveImage('${file.id}')" class="w-full text-left border border-amber-900/40 hover:border-amber-500/50 rounded-xl px-3 py-2 flex items-center gap-3">
+          ${src ? `<img src="${src}" alt="" class="w-12 h-12 object-cover rounded">` : '<div class="w-12 h-12 rounded bg-slate-800 flex items-center justify-center"><i class="fa-solid fa-image"></i></div>'}
+          <span class="text-[12px] truncate">${DIMDRIVE.escape(file.name)}</span>
+        </button>`;
+      }).join('')
+      : '<p class="text-[12px] text-slate-400">No images in dimDrive yet. Upload photos to dimDrive first.</p>';
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  },
+
+  closeDimDriveImages() {
+    const modal = document.getElementById('ws-dimdrive-image-modal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  },
+
+  insertDimDriveImage(id) {
+    const file = DIMDRIVE.get(id);
+    if (!file) return;
+    const src = file.downloadURL || (file.payload && file.payload.dataUrl) || '';
+    if (!src) {
+      this.flashBanner('That file has no preview URL yet.');
+      return;
+    }
+    this.insertHtml(`<figure class="ws-figure"><img src="${src}" alt="${this.escape(file.name)}" style="max-width:100%"><figcaption>${this.escape(file.name)}</figcaption></figure>`);
+    this.closeDimDriveImages();
+  },
+
+  insertChart(type) {
+    const values = [4, 7, 3, 9, 6];
+    const max = Math.max(...values);
+    let svg = '';
+    if (type === 'pie') {
+      let angle = 0;
+      const colors = ['#F59E0B', '#38BDF8', '#34D399', '#F472B6', '#A78BFA'];
+      const paths = values.map((v, i) => {
+        const slice = (v / values.reduce((a, b) => a + b, 0)) * Math.PI * 2;
+        const x1 = 80 + 60 * Math.cos(angle);
+        const y1 = 80 + 60 * Math.sin(angle);
+        angle += slice;
+        const x2 = 80 + 60 * Math.cos(angle);
+        const y2 = 80 + 60 * Math.sin(angle);
+        const large = slice > Math.PI ? 1 : 0;
+        return `<path d="M80,80 L${x1},${y1} A60,60 0 ${large} 1 ${x2},${y2} Z" fill="${colors[i % colors.length]}"></path>`;
+      }).join('');
+      svg = `<svg width="160" height="160" viewBox="0 0 160 160">${paths}</svg>`;
+    } else if (type === 'line') {
+      const pts = values.map((v, i) => `${20 + i * 30},${110 - (v / max) * 80}`).join(' ');
+      svg = `<svg width="180" height="120" viewBox="0 0 180 120"><polyline fill="none" stroke="#F59E0B" stroke-width="3" points="${pts}"></polyline></svg>`;
+    } else {
+      const bars = values.map((v, i) => {
+        const h = (v / max) * 80;
+        const x = type === 'bar' ? 10 : 20 + i * 30;
+        const y = type === 'bar' ? 20 + i * 18 : 110 - h;
+        const w = type === 'bar' ? (v / max) * 140 : 20;
+        const hh = type === 'bar' ? 12 : h;
+        return `<rect x="${x}" y="${y}" width="${w}" height="${hh}" fill="#F59E0B"></rect>`;
+      }).join('');
+      svg = `<svg width="180" height="120" viewBox="0 0 180 120">${bars}</svg>`;
+    }
+    this.insertHtml(`<div class="ws-chart" contenteditable="false" data-chart="${type}"><div style="font-size:11px;color:#666;margin-bottom:4px">${type[0].toUpperCase()}${type.slice(1)} chart</div>${svg}</div><p></p>`);
+  },
+
+  insertTable() {
+    this.insertHtml(`<table class="ws-table"><thead><tr><th>Column 1</th><th>Column 2</th><th>Column 3</th></tr></thead><tbody><tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr><tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr></tbody></table><p></p>`);
+  },
+
+  tableTitleRow() {
+    const table = this.activeTable();
+    if (!table) return this.insertTable();
+    if (table.tHead) return;
+    const head = table.createTHead();
+    const row = head.insertRow(0);
+    const cols = table.rows[0] ? table.rows[0].cells.length : 2;
+    for (let i = 0; i < cols; i += 1) {
+      const th = document.createElement('th');
+      th.textContent = `Title ${i + 1}`;
+      row.appendChild(th);
+    }
+    this.saveFromDom();
+  },
+
+  tableInsertRow(where) {
+    const cell = this.activeCell();
+    const table = this.activeTable();
+    if (!cell || !table) return this.flashBanner('Click inside a table first.');
+    const row = cell.parentElement;
+    const idx = row.rowIndex + (where === 'below' ? 1 : 0);
+    const neu = table.insertRow(idx);
+    for (let i = 0; i < row.cells.length; i += 1) {
+      const td = neu.insertCell(i);
+      td.innerHTML = '&nbsp;';
+    }
+    this.saveFromDom();
+  },
+
+  tableInsertCol(where) {
+    const cell = this.activeCell();
+    const table = this.activeTable();
+    if (!cell || !table) return this.flashBanner('Click inside a table first.');
+    const col = cell.cellIndex + (where === 'right' ? 1 : 0);
+    Array.from(table.rows).forEach((row) => {
+      const isHead = row.parentElement && row.parentElement.tagName === 'THEAD';
+      const neu = document.createElement(isHead ? 'th' : 'td');
+      neu.innerHTML = isHead ? 'Title' : '&nbsp;';
+      if (col >= row.cells.length) row.appendChild(neu);
+      else row.insertBefore(neu, row.cells[col]);
+    });
+    this.saveFromDom();
+  },
+
+  tableDeleteRow() {
+    const cell = this.activeCell();
+    const table = this.activeTable();
+    if (!cell || !table) return;
+    table.deleteRow(cell.parentElement.rowIndex);
+    this.saveFromDom();
+  },
+
+  tableDeleteCol() {
+    const cell = this.activeCell();
+    const table = this.activeTable();
+    if (!cell || !table) return;
+    const col = cell.cellIndex;
+    Array.from(table.rows).forEach((row) => {
+      if (row.cells[col]) row.deleteCell(col);
+    });
+    this.saveFromDom();
+  },
+
+  tableDelete() {
+    const table = this.activeTable();
+    if (!table) return;
+    table.remove();
+    this.saveFromDom();
+  },
+
+  insertChecklist() {
+    this.insertHtml('<ul class="ws-checklist"><li><input type="checkbox"> Checklist item</li><li><input type="checkbox"> Checklist item</li></ul><p></p>');
+  },
+
+  openHeaderModal() {
+    const s = this.state();
+    const top = document.getElementById('ws-header-top');
+    const bottom = document.getElementById('ws-header-bottom');
+    const skip = document.getElementById('ws-header-skip-first');
+    if (top) top.value = s.headerTopIn ?? 0.5;
+    if (bottom) bottom.value = s.headerBottomIn ?? 0.5;
+    if (skip) skip.checked = !!s.headerSkipFirst;
+    const modal = document.getElementById('ws-header-modal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  },
+
+  closeHeaderModal() {
+    const modal = document.getElementById('ws-header-modal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  },
+
+  applyHeadersFooters() {
+    const s = this.state();
+    s.headerTopIn = Number(document.getElementById('ws-header-top')?.value || 0.5);
+    s.headerBottomIn = Number(document.getElementById('ws-header-bottom')?.value || 0.5);
+    s.headerSkipFirst = !!document.getElementById('ws-header-skip-first')?.checked;
+    this.persist(s);
+    this.syncHeaderFooterChrome();
+    this.closeHeaderModal();
+    this.flashBanner('Headers and footers updated.');
+  },
+
+  syncHeaderFooterChrome() {
+    const s = this.state();
+    const isWord = s.layoutStyle === 'word';
+    const header = document.getElementById('ws-doc-header');
+    const footer = document.getElementById('ws-doc-footer');
+    if (header) {
+      header.classList.toggle('hidden', !isWord);
+      header.style.marginTop = `${(s.headerTopIn || 0.5) * 16}px`;
+      header.style.display = (isWord && s.headerSkipFirst && this.currentWordPage() === 1) ? 'none' : '';
+    }
+    if (footer) {
+      footer.classList.toggle('hidden', !isWord);
+      footer.style.marginBottom = `${(s.headerBottomIn || 0.5) * 16}px`;
+    }
+  },
+
+  currentWordPage() {
+    const stage = document.getElementById('ws-stage');
+    if (!stage) return 1;
+    return Math.max(1, Math.floor(stage.scrollTop / this.PAGE_CONTENT_HEIGHT) + 1);
+  },
+
+  openPageNumModal() {
+    const s = this.state();
+    const pos = document.getElementById('ws-pn-pos');
+    const align = document.getElementById('ws-pn-align');
+    const start = document.getElementById('ws-pn-start');
+    const first = document.getElementById('ws-pn-first');
+    if (pos) pos.value = s.pageNumPos || 'bottom';
+    if (align) align.value = s.pageNumAlign || 'center';
+    if (start) start.value = s.pageNumStart || 1;
+    if (first) first.checked = s.pageNumShowFirst !== false;
+    const modal = document.getElementById('ws-pagenum-modal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  },
+
+  closePageNumModal() {
+    const modal = document.getElementById('ws-pagenum-modal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  },
+
+  applyPageNumbers() {
+    const s = this.state();
+    s.pageNumPos = document.getElementById('ws-pn-pos')?.value || 'bottom';
+    s.pageNumAlign = document.getElementById('ws-pn-align')?.value || 'center';
+    s.pageNumStart = Number(document.getElementById('ws-pn-start')?.value || 1);
+    s.pageNumShowFirst = !!document.getElementById('ws-pn-first')?.checked;
+    this.persist(s);
+    this.paginateWord();
+    this.closePageNumModal();
+    this.flashBanner('Page numbers updated.');
+  },
+
+  setLineSpacing(value) {
+    const s = this.state();
+    s.lineSpacing = value;
+    this.persist(s);
+    const body = this.bodyEl();
+    if (body) body.style.lineHeight = String(value);
+    this.flashBanner(`Line spacing set to ${value}.`);
+  },
+
+  setCustomSpacing() {
+    const raw = window.prompt('Custom line spacing (e.g. 1.25)', String(this.state().lineSpacing || 1.15));
+    if (raw == null) return;
+    const value = Number(raw);
+    if (!value || value <= 0) return;
+    this.setLineSpacing(value);
+  },
+
+  setMargins(kind) {
+    const s = this.state();
+    s.margins = kind;
+    this.persist(s);
+    this.syncLayout();
+    this.flashBanner(`Margins: ${kind}.`);
+  },
+
+  setOrientation(kind) {
+    const s = this.state();
+    s.pageOrientation = kind;
+    this.persist(s);
+    this.syncLayout();
+    this.paginateWord();
+    this.flashBanner(`Orientation: ${kind}.`);
+  },
+
+  handleBodyKeydown(event) {
+    if (event.key === 'Tab') {
+      event.preventDefault();
+      document.execCommand('insertHTML', false, '&emsp;&emsp;');
+      this.saveFromDom();
+      return;
+    }
+  },
+
+  paginateWord() {
+    const s = this.state();
+    const canvas = document.getElementById('ws-canvas');
+    const body = this.bodyEl();
+    const guides = document.getElementById('ws-word-page-guides');
+    const pageOf = document.getElementById('ws-page-of');
+    const pageNum = document.getElementById('ws-word-page-num');
+    if (!canvas || !body) return;
+    if (s.layoutStyle !== 'word') {
+      if (guides) {
+        guides.classList.add('hidden');
+        guides.innerHTML = '';
+      }
+      body.classList.remove('ws-word-body');
+      canvas.classList.remove('ws-word-mode');
+      return;
+    }
+    body.classList.add('ws-word-body');
+    canvas.classList.add('ws-word-mode');
+    body.style.overflow = 'visible';
+    body.style.maxHeight = 'none';
+    const landscape = s.pageOrientation === 'landscape';
+    const pageH = landscape ? 816 : 1056;
+    const pageW = landscape ? 1056 : 816;
+    this._wordPageHeight = pageH;
+    this._wordPageWidth = pageW;
+    this.PAGE_CONTENT_HEIGHT = Math.max(600, pageH - 156);
+    canvas.style.width = `${pageW}px`;
+    canvas.style.maxWidth = `${pageW}px`;
+    const contentH = Math.max(body.scrollHeight, this.PAGE_CONTENT_HEIGHT);
+    const pages = Math.max(1, Math.ceil(contentH / this.PAGE_CONTENT_HEIGHT));
+    canvas.style.minHeight = `${pages * pageH}px`;
+    if (guides) {
+      guides.classList.remove('hidden');
+      guides.innerHTML = Array.from({ length: pages }, (_, i) => {
+        const n = (s.pageNumStart || 1) + i;
+        const show = s.pageNumShowFirst !== false || i > 0;
+        const align = s.pageNumAlign === 'left' ? 'flex-start' : s.pageNumAlign === 'right' ? 'flex-end' : 'center';
+        const pos = s.pageNumPos === 'top' ? 'top:10px' : 'bottom:10px';
+        return `<div class="ws-word-page-guide" style="height:${pageH}px;position:relative;border-bottom:14px solid #d4d4d4">
+          ${show ? `<div style="position:absolute;left:24px;right:24px;${pos};display:flex;justify-content:${align};color:#666;font-size:11px;font-family:Calibri,sans-serif">${n}</div>` : ''}
+        </div>`;
+      }).join('');
+    }
+    if (pageOf) pageOf.textContent = `Page 1 of ${pages}`;
+    if (pageNum) pageNum.textContent = String(pages);
+    this.syncHeaderFooterChrome();
+    this.syncMetrics();
   }
 };
 
@@ -11825,8 +13058,8 @@ const TRAVEL_GUIDES = {
               <i class="fa-solid fa-compass"></i>
             </div>
             <div>
-              <h1 class="font-extrabold text-base tracking-tight text-white leading-none">Autonomous by Dimad</h1>
-              <p class="text-[10px] text-slate-400 font-medium">Travel &amp; Destination Guides for the Curious Traveler.</p>
+              <h1 class="font-extrabold text-base tracking-tight text-white leading-none">autonomous by dimad</h1>
+              <p class="text-[10px] text-slate-400 font-medium">life design is the highest form of intelligence</p>
             </div>
           </div>
           <div class="relative w-full md:w-96">
@@ -14393,28 +15626,85 @@ const CALENDAR_NAV = {
 
 const MARKET_STRIP = {
   timer: null,
+  bound: false,
+  listsKey: 'dimad_market_lists',
+  activeKey: 'dimad_market_active_list',
+  defaultListId: 'watchlist',
+  defaultSymbols: ['AAPL', 'MSFT', 'NVDA', 'TSLA', 'SPY', 'AMZN'],
+
+  bareSymbol(value) {
+    const raw = String(value || '').trim().toUpperCase();
+    if (!raw) return '';
+    const parts = raw.split(':');
+    return (parts[parts.length - 1] || raw).replace(/[^A-Z0-9.]/g, '');
+  },
+
+  watchSymbols() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(this.listsKey) || 'null');
+      const lists = Array.isArray(parsed) ? parsed : [];
+      const activeId = localStorage.getItem(this.activeKey) || this.defaultListId;
+      const active = lists.find((list) => list && list.id === activeId)
+        || lists.find((list) => list && list.id === this.defaultListId)
+        || lists[0];
+      const symbols = Array.isArray(active?.symbols)
+        ? active.symbols.map((sym) => this.bareSymbol(sym)).filter(Boolean)
+        : [];
+      if (symbols.length) return [...new Set(symbols)].slice(0, 24);
+    } catch (err) { /* use defaults */ }
+    return [...this.defaultSymbols];
+  },
+
+  quoteHtml(symbols, bySymbol) {
+    return symbols.map((symbol) => {
+      const quote = bySymbol.get(symbol) || { symbol };
+      const pct = Number(quote.percent);
+      const px = Number(quote.price);
+      const up = Number.isFinite(pct) ? pct >= 0 : true;
+      const pctText = Number.isFinite(pct) ? (up && pct > 0 ? '+' : '') + pct.toFixed(2) + '%' : '—';
+      const pxText = Number.isFinite(px) ? px.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—';
+      const tone = up ? 'text-brand-mint' : 'text-brand-alert';
+      const arrow = up ? '▲' : '▼';
+      const safe = String(symbol).replace(/[<>&]/g, '');
+      return '<span class="inline-flex items-center gap-1 shrink-0">' + safe + ' <span class="' + tone + '">' + pxText + ' ' + arrow + ' ' + pctText + '</span></span>';
+    }).join('');
+  },
+
+  paintTrack(root, html, animate) {
+    if (!animate) {
+      root.classList.add('is-static');
+      root.style.removeProperty('--mkt-ticker-duration');
+      root.innerHTML = html;
+      return;
+    }
+    root.classList.remove('is-static');
+    root.innerHTML = html + html;
+    requestAnimationFrame(() => {
+      const half = root.scrollWidth / 2;
+      const seconds = Math.max(18, Math.round(half / 28));
+      root.style.setProperty('--mkt-ticker-duration', seconds + 's');
+    });
+  },
 
   async refresh() {
     const root = document.getElementById('mkt-live-quotes');
     if (!root) return;
+    const symbols = this.watchSymbols();
+    if (!symbols.length) {
+      this.paintTrack(root, '<span class="text-slate-500">Add symbols in Stocks &amp; Finance</span>', false);
+      return;
+    }
     try {
-      const res = await fetch('/api/market', { cache: 'no-store' });
+      const res = await fetch('/api/market?symbols=' + encodeURIComponent(symbols.join(',')), { cache: 'no-store' });
       if (!res.ok) throw new Error('market');
       const data = await res.json();
-      const quotes = Array.isArray(data.quotes) ? data.quotes : [];
-      root.innerHTML = quotes.map((quote) => {
-        const pct = Number(quote.percent);
-        const px = Number(quote.price);
-        const up = Number.isFinite(pct) ? pct >= 0 : true;
-        const pctText = Number.isFinite(pct) ? (up && pct > 0 ? '+' : '') + pct.toFixed(2) + '%' : '—';
-        const pxText = Number.isFinite(px) ? px.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—';
-        const tone = up ? 'text-brand-mint' : 'text-brand-alert';
-        const arrow = up ? '▲' : '▼';
-        const symbol = String(quote.symbol || '').replace(/[<>&]/g, '');
-        return '<span>' + symbol + ' <span class="' + tone + '">' + pxText + ' ' + arrow + ' ' + pctText + '</span></span>';
-      }).join('');
+      const bySymbol = new Map();
+      (Array.isArray(data.quotes) ? data.quotes : []).forEach((quote) => {
+        if (quote && quote.symbol) bySymbol.set(String(quote.symbol).toUpperCase(), quote);
+      });
+      this.paintTrack(root, this.quoteHtml(symbols, bySymbol), true);
     } catch (err) {
-      if (!root.childElementCount) root.innerHTML = '<span class="text-slate-500">Quotes unavailable</span>';
+      if (!root.childElementCount) this.paintTrack(root, '<span class="text-slate-500">Quotes unavailable</span>', false);
     }
   },
 
@@ -14422,6 +15712,19 @@ const MARKET_STRIP = {
     this.refresh();
     if (this.timer) clearInterval(this.timer);
     this.timer = setInterval(() => this.refresh(), 60000);
+    if (this.bound) return;
+    this.bound = true;
+    window.addEventListener('storage', (event) => {
+      if (event.key === this.listsKey || event.key === this.activeKey || event.key === null) this.refresh();
+    });
+    window.addEventListener('message', (event) => {
+      if (event.origin !== window.location.origin) return;
+      if (event.data && event.data.type === 'dimad-market-lists-changed') this.refresh();
+    });
+    window.addEventListener('focus', () => this.refresh());
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) this.refresh();
+    });
   }
 };
 
