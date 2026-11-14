@@ -53,22 +53,8 @@
 
   <!-- STACKED INTEGRATION MODULES -->
   <div id="cc-integrations" class="flex flex-col items-start gap-2 w-full">
-    <div data-cc-module="stripe" id="module-stripe" onclick="openSalesRevenue()" class="cc-rail-card bg-slate-900 border border-slate-800 p-3 rounded-2xl cursor-pointer hover:border-brand-accent/40 transition-all duration-300 flex items-center gap-3 min-w-0 max-w-full">
-      <div class="shrink-0 min-w-[132px] space-y-1">
-        <div class="flex items-center justify-between gap-2">
-          <span class="text-[9px] font-mono bg-brand-accent/10 border border-brand-accent/20 text-brand-accent px-1.5 py-0.5 rounded">PAYMENTS</span>
-          <div class="flex items-center gap-1.5">
-            <span class="w-2 h-2 rounded-full bg-slate-600" id="stripe-indicator"></span>
-          </div>
-        </div>
-        <h4 class="text-xs font-bold text-white">Stripe</h4>
-      </div>
-      <div data-cc-body class="flex-1 min-w-0 space-y-1.5">
-        <p class="text-[10px] text-slate-400">Track MRR, subscriptions, and cash flow.</p>
-        <div id="stripe-content">
-          <button type="button" onclick="event.stopPropagation(); CONNECT_MODULARS.connectStripe()" class="w-full bg-slate-950 hover:bg-slate-800 border border-slate-700 text-[10px] font-semibold text-brand-accent py-1.5 rounded-xl transition">Connect Stripe</button>
-        </div>
-      </div>
+    <div data-cc-module="stripe" id="module-stripe" class="cc-rail-card min-w-0 max-w-full w-full">
+      <iframe data-stripe-connect-frame title="Stripe Connect" src="/integrations/stripe-card" class="block w-full bg-zinc-950 rounded-2xl" style="height:240px;border:0;background:#09090b"></iframe>
     </div>
 
     <div data-cc-module="store" id="module-store" onclick="openSalesRevenue()" class="cc-rail-card bg-slate-900 border border-slate-800 p-3 rounded-2xl cursor-pointer hover:border-amber-500/40 transition-all duration-300 flex items-center gap-3 min-w-0">

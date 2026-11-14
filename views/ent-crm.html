@@ -21,18 +21,22 @@
     <p class="text-[10px] text-slate-500 font-mono hidden sm:block">Saved workbooks live in dimDrive → Sales Workbooks.</p>
   </div>
 
+  <div id="sales-stripe-connect" class="px-4 pb-2 shrink-0">
+    <iframe data-stripe-connect-frame title="Stripe Connect" src="/integrations/stripe-card" class="block w-full bg-zinc-950 rounded-2xl" style="height:240px;border:0;background:#09090b"></iframe>
+  </div>
+
   <div class="px-4 pb-2 grid grid-cols-3 gap-2 shrink-0">
     <div class="border border-brand-accent/20 bg-brand-accent/5 rounded-xl px-3 py-2">
       <div class="text-[9px] font-mono text-brand-accent">STRIPE MRR</div>
-      <div class="text-sm font-black text-white">$14,250</div>
+      <div class="text-sm font-black text-white" id="sales-stripe-mrr">—</div>
     </div>
     <div class="border border-amber-500/20 bg-amber-500/5 rounded-xl px-3 py-2">
       <div class="text-[9px] font-mono text-brand-gold">SHOPIFY ORDERS</div>
       <div class="text-sm font-black text-white">38 today</div>
     </div>
     <div class="border border-brand-mint/20 bg-brand-mint/5 rounded-xl px-3 py-2">
-      <div class="text-[9px] font-mono text-brand-mint">NET CASH</div>
-      <div class="text-sm font-black text-white">$9,410</div>
+      <div class="text-[9px] font-mono text-brand-mint">STRIPE AVAILABLE</div>
+      <div class="text-sm font-black text-white" id="sales-net-cash">—</div>
     </div>
   </div>
 

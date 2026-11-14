@@ -4045,9 +4045,41 @@ const FOCUS_LOG = {
   }
 };
 
+window.addEventListener('message', (event) => {
+  if (event.origin !== window.location.origin || !event.data || typeof event.data !== 'object') return;
+  if (event.data.type === 'dimad-stripe-resize' && event.source) {
+    document.querySelectorAll('iframe[data-stripe-connect-frame]').forEach((frame) => {
+      if (frame.contentWindow === event.source) {
+        const height = Math.min(740, Math.max(188, Number(event.data.height) || 188));
+        frame.style.height = height + 'px';
+      }
+    });
+  }
+  if (event.data.type === 'dimad-stripe-status') {
+    const mrr = document.getElementById('sales-stripe-mrr');
+    const cash = document.getElementById('sales-net-cash');
+    const display = event.data.display || {};
+    if (!event.data.connected) {
+      if (mrr) mrr.textContent = '—';
+      if (cash) cash.textContent = '—';
+      return;
+    }
+    if (mrr) mrr.textContent = display.mrr || '—';
+    if (cash) cash.textContent = display.available || '—';
+    if (typeof COMMAND_CENTER !== 'undefined') COMMAND_CENTER.markConnected('stripe');
+  }
+});
+
 const CONNECT_MODULARS = {
   connectStripe() {
-    openSalesRevenue();
+    const frame = document.querySelector('iframe[data-stripe-connect-frame]');
+    if (frame && frame.contentWindow) {
+      frame.contentWindow.postMessage({ type: 'dimad-stripe-connect' }, window.location.origin);
+      const card = document.getElementById('module-stripe');
+      if (card && card.scrollIntoView) card.scrollIntoView({ block: 'nearest' });
+      return;
+    }
+    window.location.assign('/api/integrations/stripe/connect');
   },
 
   connectStore(platform) {
@@ -19987,7 +20019,7 @@ window.CREATOR_AI = CREATOR_AI;
 
 const COMMAND_CENTER = {
   storageKey: 'dimad_cc_modules',
-  layoutVersion: 2,
+  layoutVersion: 3,
   catalog: [
     { id: 'ticker', label: 'Stock Ticker', group: 'core' },
     { id: 'quote', label: 'Quote of the Day', group: 'core' },
@@ -20009,7 +20041,7 @@ const COMMAND_CENTER = {
   },
 
   defaultState() {
-    return { hidden: this.apiIds(), collapsed: [], layoutVersion: this.layoutVersion };
+    return { hidden: this.apiIds().filter((id) => id !== 'stripe'), collapsed: [], layoutVersion: this.layoutVersion };
   },
 
   state() {
@@ -20017,8 +20049,11 @@ const COMMAND_CENTER = {
       const raw = JSON.parse(localStorage.getItem(this.storageKey) || '');
       if (raw && Array.isArray(raw.hidden) && Array.isArray(raw.collapsed)) {
         if (raw.layoutVersion === this.layoutVersion) return raw;
+        const hidden = raw.layoutVersion === 2
+          ? raw.hidden.filter((id) => id !== 'stripe')
+          : Array.from(new Set(raw.hidden.concat(this.apiIds()))).filter((id) => id !== 'stripe');
         const next = {
-          hidden: Array.from(new Set(raw.hidden.concat(this.apiIds()))),
+          hidden,
           collapsed: raw.collapsed,
           layoutVersion: this.layoutVersion
         };
@@ -20302,6 +20337,21 @@ const DIMAD_STUDIO = {
 };
 
 window.onload = async function() {
+  const bootParams = new URLSearchParams(window.location.search);
+  const stripeStatus = bootParams.get('stripe');
+  if (stripeStatus) {
+    try {
+      sessionStorage.setItem('dimad_stripe_flash', JSON.stringify({
+        status: stripeStatus,
+        reason: bootParams.get('reason') || '',
+        at: Date.now()
+      }));
+    } catch (err) { /* ignore */ }
+    bootParams.delete('stripe');
+    bootParams.delete('reason');
+    const nextQuery = bootParams.toString();
+    history.replaceState({}, '', window.location.pathname + (nextQuery ? '?' + nextQuery : '') + window.location.hash);
+  }
   loadAiChats();
   await loadViews();
   if (typeof WORLD_CLOCKS !== 'undefined') WORLD_CLOCKS.render();
@@ -20315,13 +20365,17 @@ window.onload = async function() {
   DIM_ENGINE.updateUI();
   FOCUS_TIMER.init();
   if (typeof DIMAD_GOALS !== 'undefined') DIMAD_GOALS.checkReminders();
-  const bootParams = new URLSearchParams(window.location.search);
   if (bootParams.get('aurinko') === 'success') switchTab('ent-email');
   else switchTab('ent-dashboard');
   if (typeof window.DIMAD_AURINKO?.boot === 'function') void window.DIMAD_AURINKO.boot();
   if (typeof CALENDAR_NAV !== 'undefined' && CALENDAR_NAV.render) CALENDAR_NAV.render();
   if (typeof MARKET_STRIP !== 'undefined') MARKET_STRIP.init();
   if (typeof COMMAND_CENTER !== 'undefined') COMMAND_CENTER.apply();
+  if (stripeStatus && typeof COMMAND_CENTER !== 'undefined') {
+    COMMAND_CENTER.toggleVisible('stripe', true);
+    const stripeCard = document.getElementById('module-stripe');
+    if (stripeCard && stripeCard.scrollIntoView) stripeCard.scrollIntoView({ block: 'nearest' });
+  }
   if (typeof DIMAD_CAL !== 'undefined') {
     DIMAD_CAL.bindUi();
     DIMAD_CAL.fillTimeSelect();
