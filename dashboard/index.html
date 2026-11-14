@@ -90,6 +90,33 @@
     .dimad-app-root ::-webkit-scrollbar-thumb { background: #1E293B; border-radius: 2px; }
     .dimad-app-root ::-webkit-scrollbar-thumb:hover { background: #38BDF8; }
 
+    @keyframes mkt-ticker-scroll {
+      from { transform: translateX(0); }
+      to { transform: translateX(-50%); }
+    }
+    .mkt-ticker-viewport {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      mask-image: linear-gradient(90deg, transparent, #000 12px, #000 calc(100% - 12px), transparent);
+      -webkit-mask-image: linear-gradient(90deg, transparent, #000 12px, #000 calc(100% - 12px), transparent);
+    }
+    .mkt-ticker-track {
+      display: inline-flex;
+      align-items: center;
+      gap: 1.5rem;
+      width: max-content;
+      will-change: transform;
+      animation: mkt-ticker-scroll var(--mkt-ticker-duration, 36s) linear infinite;
+    }
+    .mkt-ticker-viewport:hover .mkt-ticker-track {
+      animation-play-state: paused;
+    }
+    .mkt-ticker-track.is-static {
+      animation: none;
+      transform: none;
+    }
+
     /* COLLAPSED SIDEBAR STATES */
     .sidebar-collapsed { width: 3.5rem !important; }
     .sidebar-collapsed .nav-text-label { display: none !important; }
@@ -196,14 +223,14 @@
   </header>
 
   <!-- FINANCIAL & CURRENCY TICKER STRIP -->
-  <div data-cc-module="ticker" class="h-6 bg-brand-black border-b border-brand-border/60 flex items-center justify-between px-3 text-[9px] font-mono overflow-x-auto whitespace-nowrap">
-    <div class="flex items-center space-x-4">
-      <button type="button" onclick="openStocksFromTicker()" title="Open Stocks & Finance" class="text-slate-400 hover:text-brand-gold font-bold flex items-center gap-1 transition">
-        <i class="fa-solid fa-chart-simple text-brand-gold"></i> STOCK TICKER
-      </button>
-      <span id="mkt-live-quotes" class="flex items-center space-x-4"></span>
+  <div data-cc-module="ticker" class="h-6 bg-brand-black border-b border-brand-border/60 flex items-center gap-3 px-3 text-[9px] font-mono whitespace-nowrap">
+    <button type="button" onclick="openStocksFromTicker()" title="Open Stocks & Finance" class="shrink-0 text-slate-400 hover:text-brand-gold font-bold flex items-center gap-1 transition">
+      <i class="fa-solid fa-chart-simple text-brand-gold"></i> STOCK TICKER
+    </button>
+    <div class="mkt-ticker-viewport" aria-label="Live watchlist ticker">
+      <div id="mkt-live-quotes" class="mkt-ticker-track is-static"></div>
     </div>
-    <div class="flex items-center space-x-4 text-slate-400 hidden md:flex">
+    <div class="shrink-0 text-slate-400 hidden md:block">
       <span class="text-brand-accent font-semibold">Location: <span id="geo-location-label">Yerevan</span></span>
     </div>
   </div>
@@ -957,6 +984,6 @@
 <script type="module" src="../auth/dimdrive.js?v=dimdrive-cloud"></script>
 <script type="module" src="../auth/aurinko-status.js?v=aurinko-disconnect"></script>
 <script type="module" src="../auth/email.js?v=mail-nav-case"></script>
-<script src="../script.js?v=shopify-oauth"></script>
+<script src="../script.js?v=shopify-metrics"></script>
 </body>
 </html>

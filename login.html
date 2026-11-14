@@ -82,21 +82,17 @@
     import { createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndPassword } from "firebase/auth";
     import { syncDimadLocalUser } from "/auth/session.js";
 
-    function hasLocalSession() {
-      try {
-        const user = JSON.parse(localStorage.getItem("dimad_user") || "null");
-        return !!(user && user.uid);
-      } catch {
-        return false;
-      }
-    }
-
-    if (hasLocalSession()) {
-      window.location.replace("/dashboard/index.html");
-    }
-
     onAuthStateChanged(auth, (user) => {
-      if (!user) return;
+      if (!user) {
+        try {
+          const local = JSON.parse(localStorage.getItem("dimad_user") || "null");
+          // Drop stale local-only sessions that cannot authorize Shopify/Stripe APIs.
+          if (local?.uid) localStorage.removeItem("dimad_user");
+        } catch {
+          /* ignore */
+        }
+        return;
+      }
       syncDimadLocalUser(user);
       window.location.replace("/dashboard/index.html");
     });

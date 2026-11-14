@@ -54,26 +54,11 @@
   <!-- STACKED INTEGRATION MODULES -->
   <div id="cc-integrations" class="flex flex-col items-start gap-2 w-full">
     <div data-cc-module="stripe" id="module-stripe" class="cc-rail-card min-w-0 max-w-full w-full">
-      <iframe data-stripe-connect-frame title="Stripe Connect" src="/integrations/stripe-card" class="block w-full bg-zinc-950 rounded-2xl" style="height:240px;border:0;background:#09090b"></iframe>
+      <iframe data-stripe-connect-frame title="Stripe Connect" src="/integrations/stripe-card" class="block w-full bg-brand-panel rounded-2xl border border-brand-border" style="height:240px;border:0;background:#0B0F17"></iframe>
     </div>
 
-    <div data-cc-module="store" id="module-store" class="cc-rail-card bg-slate-900 border border-slate-800 p-3 rounded-2xl transition-all duration-300 flex items-center gap-3 min-w-0 max-w-full w-full">
-      <div class="shrink-0 min-w-[132px] space-y-1">
-        <div class="flex items-center justify-between gap-2">
-          <span class="text-[9px] font-mono bg-amber-500/10 border border-amber-500/20 text-brand-gold px-1.5 py-0.5 rounded">STOREFRONT</span>
-          <div class="flex items-center gap-1.5">
-            <span class="w-2 h-2 rounded-full bg-slate-600" id="store-indicator"></span>
-          </div>
-        </div>
-        <h4 class="text-xs font-bold text-white">E-Commerce</h4>
-      </div>
-      <div data-cc-body class="flex-1 min-w-0 space-y-1.5">
-        <p class="text-[10px] text-slate-400">Stream orders from your store engine.</p>
-        <div id="store-content" class="grid grid-cols-2 gap-1.5">
-          <button type="button" onclick="event.stopPropagation(); CONNECT_MODULARS.connectStore('Shopify')" class="bg-slate-950 hover:bg-slate-800 border border-slate-700 text-[10px] font-semibold text-slate-200 py-1.5 rounded-xl transition">Shopify</button>
-          <button type="button" onclick="event.stopPropagation(); CONNECT_MODULARS.connectStore('Lemon Squeezy')" class="bg-slate-950 hover:bg-slate-800 border border-slate-700 text-[10px] font-semibold text-slate-200 py-1.5 rounded-xl transition">Lemon Squeezy</button>
-        </div>
-      </div>
+    <div data-cc-module="store" id="module-store" class="cc-rail-card min-w-0 max-w-full w-full">
+      <iframe data-shopify-frame title="Shopify Storefront" src="/integrations/shopify-card" class="block w-full bg-brand-panel rounded-2xl border border-brand-border" style="height:240px;border:0;background:#0B0F17"></iframe>
     </div>
 
     <div data-cc-module="gumroad" id="module-gumroad" class="cc-rail-card bg-slate-900 border border-slate-800 p-3 rounded-2xl transition-all duration-300 flex items-center gap-3 min-w-0">

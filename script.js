@@ -1,4 +1,4 @@
-let timerInterval = null, isTimerRunning = false, weeklyLoggedSeconds = 14.5 * 3600;
+﻿let timerInterval = null, isTimerRunning = false, weeklyLoggedSeconds = 14.5 * 3600;
 let currentActiveMode = 'entrepreneur';
 
 const VIEW_FILES = [
@@ -4045,8 +4045,56 @@ const FOCUS_LOG = {
   }
 };
 
+function syncDimadFbTokenCookie(token) {
+  try {
+    if (!token || String(token).length > 3500) return;
+    const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+    document.cookie = 'dimad_fb_token=' + token + '; Path=/; SameSite=Lax; Max-Age=3300' + secure;
+  } catch (err) { /* ignore */ }
+}
+
+function resolveDimadIdToken() {
+  const auth = window.DIMAD_FIREBASE?.auth;
+  if (!auth) return Promise.resolve('');
+  const ready = typeof auth.authStateReady === 'function' ? auth.authStateReady() : Promise.resolve();
+  return ready.then(() => {
+    const user = auth.currentUser;
+    if (!user) {
+      return new Promise((resolve) => {
+        if (!auth.onAuthStateChanged) {
+          resolve('');
+          return;
+        }
+        const timer = setTimeout(() => {
+          unsub?.();
+          resolve('');
+        }, 4000);
+        const unsub = auth.onAuthStateChanged((next) => {
+          clearTimeout(timer);
+          unsub?.();
+          if (!next) {
+            resolve('');
+            return;
+          }
+          next.getIdToken().then((token) => resolve(token || '')).catch(() => resolve(''));
+        });
+      });
+    }
+    return user.getIdToken().then((token) => token || '').catch(() => '');
+  }).catch(() => '');
+}
+
 window.addEventListener('message', (event) => {
   if (event.origin !== window.location.origin || !event.data || typeof event.data !== 'object') return;
+  if (event.data.type === 'dimad-request-id-token' && event.source) {
+    const reply = event.source;
+    const origin = event.origin;
+    resolveDimadIdToken().then((token) => {
+      if (token) syncDimadFbTokenCookie(token);
+      reply.postMessage({ type: 'dimad-id-token', token: token || '' }, origin);
+    });
+    return;
+  }
   if (event.data.type === 'dimad-stripe-resize' && event.source) {
     document.querySelectorAll('iframe[data-stripe-connect-frame]').forEach((frame) => {
       if (frame.contentWindow === event.source) {
@@ -4054,6 +4102,28 @@ window.addEventListener('message', (event) => {
         frame.style.height = height + 'px';
       }
     });
+  }
+  if (event.data.type === 'dimad-shopify-resize' && event.source) {
+    document.querySelectorAll('iframe[data-shopify-frame]').forEach((frame) => {
+      if (frame.contentWindow === event.source) {
+        const height = Math.min(740, Math.max(188, Number(event.data.height) || 188));
+        frame.style.height = height + 'px';
+      }
+    });
+  }
+  if (event.data.type === 'dimad-sales-resize' && event.source) {
+    document.querySelectorAll('iframe[data-sales-board-frame]').forEach((frame) => {
+      if (frame.contentWindow === event.source) {
+        const height = Math.min(1200, Math.max(280, Number(event.data.height) || 280));
+        frame.style.height = height + 'px';
+      }
+    });
+  }
+  if (event.data.type === 'dimad-open-sales') {
+    openSalesRevenue();
+  }
+  if (event.data.type === 'dimad-open-command') {
+    if (typeof switchTab === 'function') switchTab('ent-dashboard');
   }
   if (event.data.type === 'dimad-stripe-status') {
     const mrr = document.getElementById('sales-stripe-mrr');
@@ -4067,6 +4137,22 @@ window.addEventListener('message', (event) => {
     if (mrr) mrr.textContent = display.mrr || '—';
     if (cash) cash.textContent = display.available || '—';
     if (typeof COMMAND_CENTER !== 'undefined') COMMAND_CENTER.markConnected('stripe');
+  }
+  if (event.data.type === 'dimad-shopify-status') {
+    if (event.data.connected && typeof COMMAND_CENTER !== 'undefined') COMMAND_CENTER.markConnected('store');
+    const salesOrders = document.getElementById('sales-shopify-orders');
+    if (salesOrders) {
+      if (!event.data.connected) salesOrders.textContent = '—';
+      else if (typeof event.data.revenue === 'number') {
+        const currency = event.data.currency || 'USD';
+        salesOrders.textContent = Number(event.data.revenue).toFixed(2) + ' ' + currency;
+      } else {
+        salesOrders.textContent = event.data.shop || 'Connected';
+      }
+    }
+  }
+  if (event.data.type === 'dimad-shopify-lemon') {
+    openSalesRevenue();
   }
 });
 
@@ -4095,71 +4181,32 @@ const CONNECT_MODULARS = {
     return (host === '127.0.0.1' || host === 'localhost') ? 'http://localhost:3000' : '';
   },
 
-  showShopifyForm(message) {
-    const content = document.getElementById('store-content');
-    if (!content) return;
-    content.className = 'space-y-1.5';
-    content.innerHTML = `
-      <p class="text-[10px] text-slate-400">${message || 'Enter your Shopify store domain to connect.'}</p>
-      <form id="shopify-connect-form" class="flex flex-col sm:flex-row gap-1.5" onsubmit="event.preventDefault(); CONNECT_MODULARS.submitShopify();">
-        <input id="shopify-shop-input" type="text" autocomplete="off" spellcheck="false" placeholder="mystore.myshopify.com" class="flex-1 min-w-0 bg-zinc-950 border border-zinc-800 text-[10px] text-slate-100 px-2.5 py-1.5 rounded-xl outline-none focus:border-brand-gold" />
-        <button type="submit" class="shrink-0 bg-amber-500 hover:bg-amber-400 text-slate-950 text-[10px] font-bold px-3 py-1.5 rounded-xl transition">Connect Shopify</button>
-      </form>
-      <button type="button" onclick="CONNECT_MODULARS.resetStoreButtons()" class="text-[9px] text-slate-500 hover:text-slate-300">Cancel</button>
-    `;
-    const input = document.getElementById('shopify-shop-input');
-    if (input) input.focus();
-  },
-
-  resetStoreButtons() {
-    const content = document.getElementById('store-content');
-    if (!content) return;
-    content.className = 'grid grid-cols-2 gap-1.5';
-    content.innerHTML = `
-      <button type="button" onclick="event.stopPropagation(); CONNECT_MODULARS.connectStore('Shopify')" class="bg-slate-950 hover:bg-slate-800 border border-slate-700 text-[10px] font-semibold text-slate-200 py-1.5 rounded-xl transition">Shopify</button>
-      <button type="button" onclick="event.stopPropagation(); CONNECT_MODULARS.connectStore('Lemon Squeezy')" class="bg-slate-950 hover:bg-slate-800 border border-slate-700 text-[10px] font-semibold text-slate-200 py-1.5 rounded-xl transition">Lemon Squeezy</button>
-    `;
+  showShopifyForm() {
+    const frame = document.querySelector('iframe[data-shopify-frame]');
+    if (frame && frame.contentWindow) {
+      frame.contentWindow.postMessage({ type: 'dimad-shopify-connect' }, window.location.origin);
+    }
+    const card = document.getElementById('module-store');
+    if (card && card.scrollIntoView) card.scrollIntoView({ block: 'nearest' });
   },
 
   paintShopifyConnected(shop) {
-    const content = document.getElementById('store-content');
-    if (content) {
-      content.className = 'space-y-1';
-      content.innerHTML = `
-        <p class="text-[10px] text-emerald-400 font-semibold">Shopify connected</p>
-        <p class="text-[10px] text-slate-400 font-mono truncate">${shop || 'Store linked'}</p>
-      `;
-    }
-    if (typeof COMMAND_CENTER !== 'undefined') COMMAND_CENTER.markConnected('store');
-  },
-
-  async submitShopify() {
-    const input = document.getElementById('shopify-shop-input');
-    const shop = this.normalizeShopifyShop(input && input.value);
-    if (!shop) {
-      this.showShopifyForm('Use a valid domain like <span class="text-brand-gold font-mono">mystore.myshopify.com</span>.');
-      return;
-    }
-    const content = document.getElementById('store-content');
-    if (content) {
-      content.innerHTML = `<p class="text-[10px] text-slate-400">Opening Shopify…</p>`;
-    }
-    try {
-      const user = window.DIMAD_FIREBASE?.auth?.currentUser;
-      const idToken = user ? await user.getIdToken() : '';
-      const path = `/api/auth/shopify?shop=${encodeURIComponent(shop)}${idToken ? `&id_token=${encodeURIComponent(idToken)}` : ''}`;
-      window.location.assign(`${this.apiBase()}${path}`);
-    } catch (err) {
-      console.error('Shopify connect failed', err);
-      this.showShopifyForm('Could not start Shopify connect. Sign in and try again.');
-    }
+    const reloadFrames = () => {
+      const frame = document.querySelector('iframe[data-shopify-frame]');
+      if (frame) frame.src = '/integrations/shopify-card?connected=1&t=' + Date.now();
+      const sales = document.querySelector('iframe[data-sales-board-frame]');
+      if (sales) sales.src = '/integrations/sales-board?t=' + Date.now();
+    };
+    resolveDimadIdToken().then((token) => {
+      if (token) syncDimadFbTokenCookie(token);
+      reloadFrames();
+    }).catch(reloadFrames);
+    if (shop) console.log('Shopify connected', shop);
   },
 
   connectStore(platform) {
     if (platform === 'Shopify') {
-      const card = document.getElementById('module-store');
-      if (card && card.scrollIntoView) card.scrollIntoView({ block: 'nearest' });
-      this.showShopifyForm('Enter your Shopify store domain to connect.');
+      this.showShopifyForm();
       return;
     }
     openSalesRevenue();
@@ -20466,6 +20513,18 @@ window.onload = async function() {
   if (typeof CALENDAR_NAV !== 'undefined' && CALENDAR_NAV.render) CALENDAR_NAV.render();
   if (typeof MARKET_STRIP !== 'undefined') MARKET_STRIP.init();
   if (typeof COMMAND_CENTER !== 'undefined') COMMAND_CENTER.apply();
+  resolveDimadIdToken().then((token) => {
+    if (token) syncDimadFbTokenCookie(token);
+  });
+  const auth = window.DIMAD_FIREBASE?.auth;
+  if (auth?.onAuthStateChanged) {
+    auth.onAuthStateChanged((user) => {
+      if (!user) return;
+      user.getIdToken().then((token) => {
+        if (token) syncDimadFbTokenCookie(token);
+      }).catch(() => {});
+    });
+  }
   if (stripeStatus && typeof COMMAND_CENTER !== 'undefined') {
     COMMAND_CENTER.toggleVisible('stripe', true);
     const stripeCard = document.getElementById('module-stripe');
@@ -20478,10 +20537,7 @@ window.onload = async function() {
     if (shopifyStatus === 'connected') {
       CONNECT_MODULARS.paintShopifyConnected('Shopify store linked');
     } else {
-      const reason = (() => {
-        try { return JSON.parse(sessionStorage.getItem('dimad_shopify_flash') || '{}').reason || ''; } catch (e) { return ''; }
-      })();
-      CONNECT_MODULARS.showShopifyForm(reason ? `Shopify connect failed (${reason}). Try again.` : 'Shopify connect failed. Try again.');
+      CONNECT_MODULARS.showShopifyForm();
     }
   }
   if (typeof DIMAD_CAL !== 'undefined') {

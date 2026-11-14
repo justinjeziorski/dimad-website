@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 function finish(query: string) {
-  const dest = new URL("/dashboard", shopifyAppBase());
+  const dest = new URL("/dashboard/index.html", shopifyAppBase());
   const params = new URLSearchParams(query);
   params.forEach((value, key) => dest.searchParams.set(key, value));
   return clearShopifyOauthCookies(NextResponse.redirect(dest));
@@ -63,7 +63,17 @@ export async function GET(req: NextRequest) {
       },
       idToken || undefined
     );
-    return finish("shopify=connected");
+    const res = finish("shopify=connected");
+    if (idToken) {
+      res.cookies.set("dimad_fb_token", idToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: 3300
+      });
+    }
+    return res;
   } catch (err) {
     const reason = err instanceof Error ? err.message : "token_exchange_failed";
     console.error("Shopify callback failed", reason);
