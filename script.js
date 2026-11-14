@@ -4082,7 +4082,86 @@ const CONNECT_MODULARS = {
     window.location.assign('/api/integrations/stripe/connect');
   },
 
+  normalizeShopifyShop(raw) {
+    let shop = String(raw || '').trim().toLowerCase();
+    shop = shop.replace(/^https?:\/\//, '').replace(/\/.*$/, '').replace(/:\d+$/, '');
+    if (!shop) return '';
+    if (!shop.includes('.')) shop = `${shop}.myshopify.com`;
+    return /^[a-z0-9][a-z0-9-]*\.myshopify\.com$/.test(shop) ? shop : '';
+  },
+
+  apiBase() {
+    const host = window.location.hostname;
+    return (host === '127.0.0.1' || host === 'localhost') ? 'http://localhost:3000' : '';
+  },
+
+  showShopifyForm(message) {
+    const content = document.getElementById('store-content');
+    if (!content) return;
+    content.className = 'space-y-1.5';
+    content.innerHTML = `
+      <p class="text-[10px] text-slate-400">${message || 'Enter your Shopify store domain to connect.'}</p>
+      <form id="shopify-connect-form" class="flex flex-col sm:flex-row gap-1.5" onsubmit="event.preventDefault(); CONNECT_MODULARS.submitShopify();">
+        <input id="shopify-shop-input" type="text" autocomplete="off" spellcheck="false" placeholder="mystore.myshopify.com" class="flex-1 min-w-0 bg-zinc-950 border border-zinc-800 text-[10px] text-slate-100 px-2.5 py-1.5 rounded-xl outline-none focus:border-brand-gold" />
+        <button type="submit" class="shrink-0 bg-amber-500 hover:bg-amber-400 text-slate-950 text-[10px] font-bold px-3 py-1.5 rounded-xl transition">Connect Shopify</button>
+      </form>
+      <button type="button" onclick="CONNECT_MODULARS.resetStoreButtons()" class="text-[9px] text-slate-500 hover:text-slate-300">Cancel</button>
+    `;
+    const input = document.getElementById('shopify-shop-input');
+    if (input) input.focus();
+  },
+
+  resetStoreButtons() {
+    const content = document.getElementById('store-content');
+    if (!content) return;
+    content.className = 'grid grid-cols-2 gap-1.5';
+    content.innerHTML = `
+      <button type="button" onclick="event.stopPropagation(); CONNECT_MODULARS.connectStore('Shopify')" class="bg-slate-950 hover:bg-slate-800 border border-slate-700 text-[10px] font-semibold text-slate-200 py-1.5 rounded-xl transition">Shopify</button>
+      <button type="button" onclick="event.stopPropagation(); CONNECT_MODULARS.connectStore('Lemon Squeezy')" class="bg-slate-950 hover:bg-slate-800 border border-slate-700 text-[10px] font-semibold text-slate-200 py-1.5 rounded-xl transition">Lemon Squeezy</button>
+    `;
+  },
+
+  paintShopifyConnected(shop) {
+    const content = document.getElementById('store-content');
+    if (content) {
+      content.className = 'space-y-1';
+      content.innerHTML = `
+        <p class="text-[10px] text-emerald-400 font-semibold">Shopify connected</p>
+        <p class="text-[10px] text-slate-400 font-mono truncate">${shop || 'Store linked'}</p>
+      `;
+    }
+    if (typeof COMMAND_CENTER !== 'undefined') COMMAND_CENTER.markConnected('store');
+  },
+
+  async submitShopify() {
+    const input = document.getElementById('shopify-shop-input');
+    const shop = this.normalizeShopifyShop(input && input.value);
+    if (!shop) {
+      this.showShopifyForm('Use a valid domain like <span class="text-brand-gold font-mono">mystore.myshopify.com</span>.');
+      return;
+    }
+    const content = document.getElementById('store-content');
+    if (content) {
+      content.innerHTML = `<p class="text-[10px] text-slate-400">Opening Shopify…</p>`;
+    }
+    try {
+      const user = window.DIMAD_FIREBASE?.auth?.currentUser;
+      const idToken = user ? await user.getIdToken() : '';
+      const path = `/api/auth/shopify?shop=${encodeURIComponent(shop)}${idToken ? `&id_token=${encodeURIComponent(idToken)}` : ''}`;
+      window.location.assign(`${this.apiBase()}${path}`);
+    } catch (err) {
+      console.error('Shopify connect failed', err);
+      this.showShopifyForm('Could not start Shopify connect. Sign in and try again.');
+    }
+  },
+
   connectStore(platform) {
+    if (platform === 'Shopify') {
+      const card = document.getElementById('module-store');
+      if (card && card.scrollIntoView) card.scrollIntoView({ block: 'nearest' });
+      this.showShopifyForm('Enter your Shopify store domain to connect.');
+      return;
+    }
     openSalesRevenue();
   },
 
@@ -20019,7 +20098,7 @@ window.CREATOR_AI = CREATOR_AI;
 
 const COMMAND_CENTER = {
   storageKey: 'dimad_cc_modules',
-  layoutVersion: 3,
+  layoutVersion: 4,
   catalog: [
     { id: 'ticker', label: 'Stock Ticker', group: 'core' },
     { id: 'quote', label: 'Quote of the Day', group: 'core' },
@@ -20041,7 +20120,7 @@ const COMMAND_CENTER = {
   },
 
   defaultState() {
-    return { hidden: this.apiIds().filter((id) => id !== 'stripe'), collapsed: [], layoutVersion: this.layoutVersion };
+    return { hidden: this.apiIds().filter((id) => id !== 'stripe' && id !== 'store'), collapsed: [], layoutVersion: this.layoutVersion };
   },
 
   state() {
@@ -20049,9 +20128,12 @@ const COMMAND_CENTER = {
       const raw = JSON.parse(localStorage.getItem(this.storageKey) || '');
       if (raw && Array.isArray(raw.hidden) && Array.isArray(raw.collapsed)) {
         if (raw.layoutVersion === this.layoutVersion) return raw;
-        const hidden = raw.layoutVersion === 2
-          ? raw.hidden.filter((id) => id !== 'stripe')
-          : Array.from(new Set(raw.hidden.concat(this.apiIds()))).filter((id) => id !== 'stripe');
+        let hidden;
+        if (raw.layoutVersion === 3 || raw.layoutVersion === 2) {
+          hidden = raw.hidden.filter((id) => id !== 'stripe' && id !== 'store');
+        } else {
+          hidden = Array.from(new Set(raw.hidden.concat(this.apiIds()))).filter((id) => id !== 'stripe' && id !== 'store');
+        }
         const next = {
           hidden,
           collapsed: raw.collapsed,
@@ -20339,6 +20421,7 @@ const DIMAD_STUDIO = {
 window.onload = async function() {
   const bootParams = new URLSearchParams(window.location.search);
   const stripeStatus = bootParams.get('stripe');
+  const shopifyStatus = bootParams.get('shopify');
   if (stripeStatus) {
     try {
       sessionStorage.setItem('dimad_stripe_flash', JSON.stringify({
@@ -20347,7 +20430,19 @@ window.onload = async function() {
         at: Date.now()
       }));
     } catch (err) { /* ignore */ }
+  }
+  if (shopifyStatus) {
+    try {
+      sessionStorage.setItem('dimad_shopify_flash', JSON.stringify({
+        status: shopifyStatus,
+        reason: bootParams.get('reason') || '',
+        at: Date.now()
+      }));
+    } catch (err) { /* ignore */ }
+  }
+  if (stripeStatus || shopifyStatus) {
     bootParams.delete('stripe');
+    bootParams.delete('shopify');
     bootParams.delete('reason');
     const nextQuery = bootParams.toString();
     history.replaceState({}, '', window.location.pathname + (nextQuery ? '?' + nextQuery : '') + window.location.hash);
@@ -20375,6 +20470,19 @@ window.onload = async function() {
     COMMAND_CENTER.toggleVisible('stripe', true);
     const stripeCard = document.getElementById('module-stripe');
     if (stripeCard && stripeCard.scrollIntoView) stripeCard.scrollIntoView({ block: 'nearest' });
+  }
+  if (shopifyStatus && typeof COMMAND_CENTER !== 'undefined') {
+    COMMAND_CENTER.toggleVisible('store', true);
+    const storeCard = document.getElementById('module-store');
+    if (storeCard && storeCard.scrollIntoView) storeCard.scrollIntoView({ block: 'nearest' });
+    if (shopifyStatus === 'connected') {
+      CONNECT_MODULARS.paintShopifyConnected('Shopify store linked');
+    } else {
+      const reason = (() => {
+        try { return JSON.parse(sessionStorage.getItem('dimad_shopify_flash') || '{}').reason || ''; } catch (e) { return ''; }
+      })();
+      CONNECT_MODULARS.showShopifyForm(reason ? `Shopify connect failed (${reason}). Try again.` : 'Shopify connect failed. Try again.');
+    }
   }
   if (typeof DIMAD_CAL !== 'undefined') {
     DIMAD_CAL.bindUi();
