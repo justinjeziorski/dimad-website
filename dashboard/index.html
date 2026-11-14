@@ -117,6 +117,198 @@
       transform: none;
     }
 
+    #dimad-welcome-gate {
+      position: fixed;
+      inset: 0;
+      z-index: 5000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.25rem;
+      background:
+        radial-gradient(ellipse at 50% 28%, rgba(245, 158, 11, 0.12), transparent 48%),
+        #070A0F;
+      font-family: 'JetBrains Mono', monospace;
+      color: #f8fafc;
+      transition: opacity 0.45s ease, visibility 0.45s ease;
+    }
+    #dimad-welcome-gate.is-leaving {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+    #dimad-welcome-gate .welcome-shell {
+      width: min(28rem, 100%);
+      display: grid;
+      gap: 1.25rem;
+      justify-items: center;
+      text-align: center;
+    }
+    #dimad-welcome-gate .welcome-logo {
+      width: min(11rem, 56vw);
+      height: auto;
+      filter: drop-shadow(0 0 28px rgba(245, 158, 11, 0.22));
+      animation: welcome-logo-pulse 2.4s ease-in-out infinite;
+    }
+    #dimad-welcome-gate.is-ready .welcome-logo {
+      animation: none;
+      width: min(8.5rem, 42vw);
+    }
+    @keyframes welcome-logo-pulse {
+      0%, 100% { transform: scale(1); filter: drop-shadow(0 0 18px rgba(245, 158, 11, 0.16)); }
+      50% { transform: scale(1.035); filter: drop-shadow(0 0 34px rgba(245, 158, 11, 0.34)); }
+    }
+    #dimad-welcome-gate .welcome-kicker {
+      margin: 0;
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #F59E0B;
+      font-weight: 700;
+    }
+    #dimad-welcome-gate .welcome-status {
+      margin: 0.35rem 0 0;
+      font-size: 12px;
+      color: #94a3b8;
+    }
+    #dimad-welcome-gate .welcome-bar {
+      width: min(14rem, 70vw);
+      height: 3px;
+      border-radius: 999px;
+      background: #1E293B;
+      overflow: hidden;
+      margin-top: 0.85rem;
+    }
+    #dimad-welcome-gate .welcome-bar > span {
+      display: block;
+      height: 100%;
+      width: 35%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #F59E0B, #fbbf24, #F59E0B);
+      background-size: 200% 100%;
+      animation: welcome-bar-slide 1.2s linear infinite;
+    }
+    @keyframes welcome-bar-slide {
+      from { transform: translateX(-120%); }
+      to { transform: translateX(320%); }
+    }
+    #dimad-welcome-gate .welcome-card {
+      width: 100%;
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      background: #0B0F17;
+      border-radius: 1.1rem;
+      padding: 1.15rem 1.2rem 1.25rem;
+      text-align: left;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+    }
+    #dimad-welcome-gate .welcome-card h2 {
+      margin: 0.15rem 0 0;
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: #fff;
+    }
+    #dimad-welcome-gate .welcome-copy {
+      margin: 0.45rem 0 0;
+      font-size: 11px;
+      color: #94a3b8;
+      line-height: 1.5;
+    }
+    #dimad-welcome-gate .welcome-quote {
+      margin-top: 0.9rem;
+      border: 1px solid rgba(245, 158, 11, 0.28);
+      background: rgba(7, 10, 15, 0.75);
+      border-radius: 0.85rem;
+      padding: 0.8rem 0.9rem;
+    }
+    #dimad-welcome-gate .welcome-quote .label {
+      display: block;
+      font-size: 8px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #F59E0B;
+      font-weight: 700;
+      margin-bottom: 0.35rem;
+    }
+    #dimad-welcome-gate .welcome-quote p {
+      margin: 0;
+      font-size: 12px;
+      color: #e2e8f0;
+      font-style: italic;
+      line-height: 1.55;
+    }
+    #dimad-welcome-gate .welcome-goals {
+      margin-top: 0.9rem;
+      display: grid;
+      gap: 0.55rem;
+      max-height: 12rem;
+      overflow: auto;
+    }
+    #dimad-welcome-gate .welcome-goal-block {
+      border: 1px solid #1E293B;
+      background: #070A0F;
+      border-radius: 0.8rem;
+      padding: 0.7rem 0.8rem;
+    }
+    #dimad-welcome-gate .welcome-goal-block .label {
+      font-size: 9px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #F59E0B;
+      font-weight: 700;
+      margin-bottom: 0.35rem;
+    }
+    #dimad-welcome-gate .welcome-goal-block ul {
+      margin: 0;
+      padding-left: 1rem;
+      display: grid;
+      gap: 0.2rem;
+    }
+    #dimad-welcome-gate .welcome-goal-block li {
+      font-size: 11px;
+      color: #cbd5e1;
+    }
+    #dimad-welcome-gate .welcome-empty {
+      margin: 0;
+      font-size: 11px;
+      color: #64748b;
+      font-style: italic;
+    }
+    #dimad-welcome-gate .welcome-actions {
+      display: grid;
+      gap: 0.55rem;
+      margin-top: 1rem;
+    }
+    #dimad-welcome-gate .welcome-primary {
+      width: 100%;
+      border: 0;
+      border-radius: 0.85rem;
+      background: #F59E0B;
+      color: #070A0F;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 800;
+      padding: 0.8rem 1rem;
+      cursor: pointer;
+    }
+    #dimad-welcome-gate .welcome-primary:hover { background: #fbbf24; }
+    #dimad-welcome-gate .welcome-ghost {
+      width: 100%;
+      border: 1px solid #1E293B;
+      border-radius: 0.85rem;
+      background: transparent;
+      color: #94a3b8;
+      font: inherit;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 0.65rem 1rem;
+      cursor: pointer;
+    }
+    #dimad-welcome-gate .welcome-ghost:hover { color: #F59E0B; border-color: #F59E0B; }
+    body.welcome-locked .dimad-app-root {
+      visibility: hidden;
+      pointer-events: none;
+    }
+
     /* COLLAPSED SIDEBAR STATES */
     .sidebar-collapsed { width: 3.5rem !important; }
     .sidebar-collapsed .nav-text-label { display: none !important; }
@@ -156,7 +348,33 @@
     }
   </style>
 </head>
-<body>
+<body class="welcome-locked">
+<div id="dimad-welcome-gate" aria-live="polite" aria-busy="true">
+  <div class="welcome-shell">
+    <img class="welcome-logo" src="../assets/dimad-logo.jpg" alt="dimad" />
+    <div data-welcome-phase="loading">
+      <p class="welcome-kicker">DIMADOS</p>
+      <p class="welcome-status" id="welcome-loading-status">Generating Command Center…</p>
+      <div class="welcome-bar" aria-hidden="true"><span></span></div>
+    </div>
+    <div data-welcome-phase="ready" class="hidden" style="width:100%">
+      <div class="welcome-card">
+        <p class="welcome-kicker">Welcome</p>
+        <h2 id="welcome-greeting">Have a good day.</h2>
+        <p class="welcome-copy" id="welcome-subcopy">Clock in and review today’s targets before you enter Command Center.</p>
+        <div class="welcome-quote">
+          <span class="label">Quote of the day</span>
+          <p id="welcome-quote"></p>
+        </div>
+        <div id="welcome-goals" class="welcome-goals"></div>
+        <div class="welcome-actions">
+          <button type="button" id="welcome-enter-btn" class="welcome-primary" onclick="DIMAD_WELCOME.enter()">Clock In &amp; Enter</button>
+          <button type="button" class="welcome-ghost" onclick="DIMAD_WELCOME.openGoals()">Review goals first</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 <!-- APP CONTAINER -->
 <div class="dimad-app-root">
 
@@ -984,6 +1202,6 @@
 <script type="module" src="../auth/dimdrive.js?v=dimdrive-cloud"></script>
 <script type="module" src="../auth/aurinko-status.js?v=aurinko-disconnect"></script>
 <script type="module" src="../auth/email.js?v=mail-nav-case"></script>
-<script src="../script.js?v=shopify-metrics"></script>
+<script src="../script.js?v=welcome-gate"></script>
 </body>
 </html>

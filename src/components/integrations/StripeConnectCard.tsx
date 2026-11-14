@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import AccountBadge from "@/components/integrations/AccountBadge";
 import { authFetch } from "@/lib/dimad-auth-client";
 import { INTEGRATION_CARD_CSS } from "@/lib/integration-card.css";
 import type { StripeConnectedMetrics } from "@/lib/stripe-types";
@@ -184,16 +185,20 @@ export default function StripeConnectCard() {
             )}
           </div>
         </div>
-        {connected ? (
+        {connected && metrics ? (
           <div className="dimad-int-actions">
-            <span className={metrics?.livemode ? "dimad-int-badge" : "dimad-int-badge muted"}>
-              {metrics?.livemode ? "Live" : "Test"}
+            <span className={metrics.livemode ? "dimad-int-badge" : "dimad-int-badge muted"}>
+              {metrics.livemode ? "Live" : "Test"}
             </span>
+            <AccountBadge
+              tone="stripe"
+              label={metrics.accountLabel}
+              hint={metrics.livemode ? "Live account" : "Test account"}
+              monogram="$"
+              onLogout={() => void disconnect()}
+            />
             <button type="button" className="dimad-int-ghost" disabled={loading} onClick={() => void loadMetrics()}>
               Refresh
-            </button>
-            <button type="button" className="dimad-int-ghost" disabled={loading} onClick={() => void disconnect()}>
-              Disconnect
             </button>
           </div>
         ) : null}

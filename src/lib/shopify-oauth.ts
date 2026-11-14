@@ -3,12 +3,12 @@ import { NextResponse } from "next/server";
 import { getAdminDb } from "./firebase-admin";
 import { writeUserFields } from "./firebase-server";
 import { FIREBASE_WEB, getUserDocument, readString } from "./firestore-rest";
-import type { ShopifyStorePayload } from "./shopify-types";
+import type { ShopifyOrderNode, ShopifyProductNode, ShopifyRangeKey, ShopifyStorePayload } from "./shopify-types";
 import { fetchWithTimeout } from "./with-timeout";
 
-export type { ShopifyStorePayload } from "./shopify-types";
+export type { ShopifyStorePayload, ShopifyRangeKey } from "./shopify-types";
 
-export const SHOPIFY_SCOPES = "read_products,read_orders,read_analytics";
+export const SHOPIFY_SCOPES = "read_products,read_orders,read_customers,read_analytics";
 
 const OAUTH_COOKIES = ["shopify_oauth_state", "shopify_oauth_uid", "shopify_oauth_shop", "shopify_fb_token"] as const;
 
@@ -325,6 +325,40 @@ export async function readShopifyIntegration(uid: string, idToken?: string) {
   return null;
 }
 
+export async function deleteShopifyIntegration(uid: string, idToken?: string) {
+  const clearFields = {
+    shopifyShop: "",
+    shopifyToken: "",
+    shopify_scope: "",
+    shopify_connected_at: ""
+  };
+  try {
+    const db = getAdminDb();
+    await db.collection("users").doc(uid).collection("integrations").doc("shopify").delete();
+    await db.collection("users").doc(uid).set(clearFields, { merge: true });
+    console.log("Deleted Shopify integration via admin", uid);
+    return;
+  } catch (err) {
+    console.warn("Shopify admin delete failed", err instanceof Error ? err.message : err);
+    if (!idToken) throw new Error("firestore_write_failed");
+  }
+
+  const headers = {
+    Authorization: `Bearer ${idToken}`,
+    "Content-Type": "application/json"
+  };
+  const del = await fetchWithTimeout(integrationDocUrl(uid), { method: "DELETE", headers }, 10000);
+  if (!del.ok && del.status !== 404) {
+    console.warn("Shopify integrations REST delete failed", del.status);
+  }
+  try {
+    await writeUserFields(uid, idToken, clearFields);
+  } catch (err) {
+    console.warn("Shopify user-doc clear failed", err instanceof Error ? err.message : err);
+  }
+  console.log("Deleted Shopify integration via REST", uid);
+}
+
 async function shopifyGraphql<T>(shop: string, accessToken: string, query: string): Promise<{ data?: T; errors?: Array<{ message?: string }> }> {
   const res = await fetchWithTimeout(
     `https://${shop}/admin/api/2024-10/graphql.json`,
@@ -337,7 +371,7 @@ async function shopifyGraphql<T>(shop: string, accessToken: string, query: strin
       },
       body: JSON.stringify({ query })
     },
-    15000
+    20000
   );
   const payload = (await res.json().catch(() => ({}))) as {
     data?: T;
@@ -350,44 +384,177 @@ async function shopifyGraphql<T>(shop: string, accessToken: string, query: strin
   return payload;
 }
 
-export async function fetchShopifyStoreData(record: ShopifyIntegrationRecord): Promise<ShopifyStorePayload> {
-  const shopQuery = `
-    {
-      shop {
-        name
-        currencyCode
-        email
-        primaryDomain { host }
-        myshopifyDomain
-      }
+function startOfDay(d: Date) {
+  const next = new Date(d);
+  next.setHours(0, 0, 0, 0);
+  return next;
+}
+
+function isoDate(d: Date) {
+  return d.toISOString().slice(0, 10);
+}
+
+export function resolveShopifyRange(
+  range: ShopifyRangeKey = "month",
+  fromRaw?: string | null,
+  toRaw?: string | null
+) {
+  const now = new Date();
+  const to = toRaw ? new Date(toRaw) : now;
+  let from = fromRaw ? new Date(fromRaw) : startOfDay(now);
+  let label = "This month";
+  const key: ShopifyRangeKey = range;
+
+  if (!fromRaw && !toRaw) {
+    if (range === "today") {
+      from = startOfDay(now);
+      label = "Today";
+    } else if (range === "week") {
+      from = startOfDay(new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000));
+      label = "This week";
+    } else if (range === "year") {
+      from = new Date(now.getFullYear(), 0, 1);
+      label = "This year";
+    } else {
+      from = new Date(now.getFullYear(), now.getMonth(), 1);
+      label = "This month";
     }
-  `;
-  const productsQuery = `
-    {
-      products(first: 5) {
-        edges {
-          node {
-            id
-            title
-            status
-            totalInventory
-          }
-        }
-      }
+  } else {
+    label = "Custom range";
+  }
+
+  const durationMs = Math.max(24 * 60 * 60 * 1000, to.getTime() - from.getTime());
+  const prevTo = new Date(from.getTime() - 1);
+  const prevFrom = new Date(prevTo.getTime() - durationMs);
+
+  return {
+    range: key,
+    label,
+    from,
+    to,
+    fromIso: isoDate(from),
+    toIso: isoDate(to),
+    prevFromIso: isoDate(prevFrom),
+    prevToIso: isoDate(prevTo)
+  };
+}
+
+function money(amount: number, currencyCode: string) {
+  return {
+    amount,
+    currencyCode,
+    display: `${amount.toFixed(2)} ${currencyCode}`
+  };
+}
+
+function change(current: number, previous: number) {
+  const amount = current - previous;
+  const percent = previous === 0 ? (current === 0 ? 0 : null) : (amount / previous) * 100;
+  return { amount, percent };
+}
+
+function orderAmount(node: ShopifyOrderNode, field: "totalPriceSet" | "totalDiscountsSet" | "totalRefundedSet" = "totalPriceSet") {
+  return Number(node[field]?.shopMoney?.amount || 0);
+}
+
+function summarizeOrders(orders: ShopifyOrderNode[], currencyCode: string) {
+  let gross = 0;
+  let discounts = 0;
+  let refunds = 0;
+  let fulfilled = 0;
+  let unfulfilled = 0;
+  let processing = 0;
+  let newCount = 0;
+  let returningCount = 0;
+  const productMap = new Map<string, { title: string; units: number; gross: number }>();
+
+  for (const node of orders) {
+    gross += orderAmount(node, "totalPriceSet");
+    discounts += orderAmount(node, "totalDiscountsSet");
+    refunds += orderAmount(node, "totalRefundedSet");
+    const fulfill = String(node.displayFulfillmentStatus || "").toUpperCase();
+    if (fulfill.includes("FULFILL") && !fulfill.includes("UNFULFILL") && !fulfill.includes("PARTIAL")) fulfilled += 1;
+    else if (fulfill.includes("UNFULFILL") || !fulfill) unfulfilled += 1;
+    else processing += 1;
+
+    const ordersForCustomer = Number(node.customer?.numberOfOrders || 0);
+    if (ordersForCustomer <= 1) newCount += 1;
+    else returningCount += 1;
+
+    for (const edge of node.lineItems?.edges || []) {
+      const title = edge.node.title || "Product";
+      const qty = Number(edge.node.quantity || 0);
+      const lineGross = Number(edge.node.originalTotalSet?.shopMoney?.amount || 0);
+      const prev = productMap.get(title) || { title, units: 0, gross: 0 };
+      prev.units += qty;
+      prev.gross += lineGross;
+      productMap.set(title, prev);
     }
-  `;
-  const ordersQuery = `
+  }
+
+  const net = Math.max(0, gross - discounts - refunds);
+  const orderCount = orders.length;
+  const aov = orderCount ? net / orderCount : 0;
+  const topProducts = Array.from(productMap.values())
+    .sort((a, b) => b.gross - a.gross)
+    .slice(0, 8)
+    .map((row, index) => ({
+      id: `top-${index}-${row.title}`,
+      title: row.title,
+      status: "ACTIVE",
+      totalInventory: null as number | null,
+      unitsSold: row.units,
+      grossSales: row.gross
+    }));
+
+  return {
+    gross,
+    discounts,
+    refunds,
+    net,
+    orderCount,
+    aov,
+    fulfilled,
+    unfulfilled,
+    processing,
+    newCount,
+    returningCount,
+    topProducts,
+    moneyGross: money(gross, currencyCode),
+    moneyNet: money(net, currencyCode),
+    moneyDiscounts: money(discounts, currencyCode),
+    moneyRefunds: money(refunds, currencyCode),
+    moneyAov: money(aov, currencyCode),
+    moneyRevenue: money(net, currencyCode)
+  };
+}
+
+async function fetchOrdersWindow(
+  record: ShopifyIntegrationRecord,
+  fromIso: string,
+  toIso: string
+): Promise<ShopifyOrderNode[]> {
+  const query = `
     {
-      orders(first: 5, sortKey: CREATED_AT, reverse: true) {
+      orders(first: 100, sortKey: CREATED_AT, reverse: true, query: "created_at:>=${fromIso} created_at:<=${toIso}") {
         edges {
           node {
             id
             name
+            createdAt
             displayFinancialStatus
-            totalPriceSet {
-              shopMoney {
-                amount
-                currencyCode
+            displayFulfillmentStatus
+            totalPriceSet { shopMoney { amount currencyCode } }
+            totalDiscountsSet { shopMoney { amount currencyCode } }
+            totalRefundedSet { shopMoney { amount currencyCode } }
+            customer { id numberOfOrders }
+            lineItems(first: 20) {
+              edges {
+                node {
+                  title
+                  quantity
+                  originalTotalSet { shopMoney { amount currencyCode } }
+                }
               }
             }
           }
@@ -395,6 +562,28 @@ export async function fetchShopifyStoreData(record: ShopifyIntegrationRecord): P
       }
     }
   `;
+  try {
+    const payload = await shopifyGraphql<{ orders?: { edges: Array<{ node: ShopifyOrderNode }> } }>(
+      record.shop,
+      record.accessToken,
+      query
+    );
+    if (payload.errors?.length) {
+      console.warn("Shopify orders window skipped", payload.errors[0]?.message);
+      return [];
+    }
+    return (payload.data?.orders?.edges || []).map((edge) => edge.node);
+  } catch (err) {
+    console.warn("Shopify orders window failed", err instanceof Error ? err.message : err);
+    return [];
+  }
+}
+
+export async function fetchShopifyStoreData(
+  record: ShopifyIntegrationRecord,
+  options?: { range?: ShopifyRangeKey; from?: string | null; to?: string | null }
+): Promise<ShopifyStorePayload> {
+  const window = resolveShopifyRange(options?.range || "month", options?.from, options?.to);
 
   const shopPayload = await shopifyGraphql<{
     shop?: {
@@ -404,7 +593,11 @@ export async function fetchShopifyStoreData(record: ShopifyIntegrationRecord): P
       primaryDomain?: { host?: string } | null;
       myshopifyDomain?: string;
     };
-  }>(record.shop, record.accessToken, shopQuery);
+  }>(
+    record.shop,
+    record.accessToken,
+    `{ shop { name currencyCode email primaryDomain { host } myshopifyDomain } }`
+  );
 
   if (shopPayload.errors?.length) {
     console.error("Shopify shop query errors", shopPayload.errors[0]?.message);
@@ -412,15 +605,16 @@ export async function fetchShopifyStoreData(record: ShopifyIntegrationRecord): P
   }
   const shop = shopPayload.data?.shop;
   if (!shop?.name) throw new Error("shopify_empty_response");
+  const currencyCode = String(shop.currencyCode || "USD");
 
   let products: ShopifyStorePayload["products"] = { edges: [] };
-  let orders: ShopifyStorePayload["orders"] = { edges: [] };
-
   try {
-    const productsPayload = await shopifyGraphql<{ products?: ShopifyStorePayload["products"] }>(
+    const productsPayload = await shopifyGraphql<{
+      products?: { edges: Array<{ node: ShopifyProductNode }> };
+    }>(
       record.shop,
       record.accessToken,
-      productsQuery
+      `{ products(first: 50) { edges { node { id title status totalInventory } } } }`
     );
     if (!productsPayload.errors?.length && productsPayload.data?.products) {
       products = productsPayload.data.products;
@@ -431,30 +625,102 @@ export async function fetchShopifyStoreData(record: ShopifyIntegrationRecord): P
     console.warn("Shopify products fetch skipped", err instanceof Error ? err.message : err);
   }
 
+  const [currentOrders, previousOrders] = await Promise.all([
+    fetchOrdersWindow(record, window.fromIso, window.toIso),
+    fetchOrdersWindow(record, window.prevFromIso, window.prevToIso)
+  ]);
+
+  const current = summarizeOrders(currentOrders, currencyCode);
+  const previous = summarizeOrders(previousOrders, currencyCode);
+
+  const inventoryByTitle = new Map(
+    products.edges.map(({ node }) => [node.title.toLowerCase(), node.totalInventory])
+  );
+  const topProducts = current.topProducts.map((row) => ({
+    ...row,
+    totalInventory: inventoryByTitle.get(row.title.toLowerCase()) ?? null
+  }));
+
+  const activeProductCount = products.edges.filter(({ node }) => String(node.status).toUpperCase() === "ACTIVE").length;
+  const lowStockCount = products.edges.filter(({ node }) => {
+    const stock = node.totalInventory;
+    return typeof stock === "number" && stock >= 0 && stock <= 5;
+  }).length;
+
+  let sessions: number | null = null;
+  let conversionRate: number | null = null;
+  const topReferrers: Array<{ source: string; sessions: number }> = [];
   try {
-    const ordersPayload = await shopifyGraphql<{ orders?: ShopifyStorePayload["orders"] }>(
+    const ql = `FROM sessions SHOW sessions, conversion_rate SINCE ${window.fromIso} UNTIL ${window.toIso}`;
+    const analytics = await shopifyGraphql<{
+      shopifyqlQuery?: {
+        tableData?: { rowData?: Array<{ values?: string[] }> };
+      };
+    }>(
       record.shop,
       record.accessToken,
-      ordersQuery
+      `{ shopifyqlQuery(query: ${JSON.stringify(ql)}) { tableData { rowData { values } } } }`
     );
-    if (!ordersPayload.errors?.length && ordersPayload.data?.orders) {
-      orders = ordersPayload.data.orders;
-    } else if (ordersPayload.errors?.length) {
-      console.warn("Shopify orders query skipped", ordersPayload.errors[0]?.message);
-    }
+    const values = analytics.data?.shopifyqlQuery?.tableData?.rowData?.[0]?.values || [];
+    if (values[0] != null) sessions = Number(values[0]) || 0;
+    if (values[1] != null) conversionRate = Number(values[1]) || 0;
   } catch (err) {
-    console.warn("Shopify orders fetch skipped", err instanceof Error ? err.message : err);
+    console.warn("Shopify analytics skipped", err instanceof Error ? err.message : err);
   }
+
+  const customerTotal = current.newCount + current.returningCount;
+  const recentOrders = currentOrders.slice(0, 8);
 
   return {
     shop: {
       name: String(shop.name),
-      currencyCode: String(shop.currencyCode || "USD"),
+      currencyCode,
       email: String(shop.email || ""),
       domain: String(shop.primaryDomain?.host || shop.myshopifyDomain || record.shop)
     },
-    products,
-    orders,
+    products: {
+      edges: products.edges.slice(0, 12)
+    },
+    orders: { edges: recentOrders.map((node) => ({ node })) },
+    topProducts,
+    lowStockCount,
+    activeProductCount,
+    period: {
+      range: window.range,
+      from: window.from.toISOString(),
+      to: window.to.toISOString(),
+      label: window.label,
+      grossSales: current.moneyGross,
+      netSales: current.moneyNet,
+      discounts: current.moneyDiscounts,
+      refunds: current.moneyRefunds,
+      revenue: current.moneyRevenue,
+      orderCount: current.orderCount,
+      aov: current.moneyAov,
+      changes: {
+        grossSales: change(current.gross, previous.gross),
+        netSales: change(current.net, previous.net),
+        refunds: change(current.refunds, previous.refunds),
+        orderCount: change(current.orderCount, previous.orderCount),
+        aov: change(current.aov, previous.aov)
+      },
+      fulfillment: {
+        fulfilled: current.fulfilled,
+        unfulfilled: current.unfulfilled,
+        processing: current.processing
+      },
+      customers: {
+        newCount: current.newCount,
+        returningCount: current.returningCount,
+        newShare: customerTotal ? current.newCount / customerTotal : 0,
+        returningShare: customerTotal ? current.returningCount / customerTotal : 0
+      },
+      traffic: {
+        sessions,
+        conversionRate,
+        topReferrers
+      }
+    },
     connectedAt: record.connectedAt
   };
 }

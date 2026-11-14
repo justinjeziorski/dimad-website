@@ -2803,6 +2803,7 @@ const DIMAD_GOALS = {
   },
 
   checkReminders() {
+    if (typeof DIMAD_WELCOME !== 'undefined' && DIMAD_WELCOME.active) return;
     const due = this.dueReminders();
     if (!due.length) return;
     this._nudgeDue = due;
@@ -3627,6 +3628,123 @@ const DAILY_INSPO = {
   }
 };
 
+const DIMAD_WELCOME = {
+  active: true,
+  ready: false,
+  needsClockIn: true,
+  dueGoals: [],
+
+  setStatus(text) {
+    const el = document.getElementById('welcome-loading-status');
+    if (el) el.textContent = text;
+  },
+
+  needsDailyClockIn() {
+    if (isTimerRunning) return false;
+    const today = FOCUS_TIMER.dayKey();
+    try {
+      if (sessionStorage.getItem(CLOCK_IN.sessionKey) === today && FOCUS_TIMER.clockInDay === today) return false;
+    } catch (err) { /* continue */ }
+    return FOCUS_TIMER.clockInDay !== today;
+  },
+
+  paintGoals() {
+    const root = document.getElementById('welcome-goals');
+    if (!root) return;
+    const due = this.dueGoals || [];
+    if (!due.length || typeof DIMAD_GOALS === 'undefined') {
+      root.innerHTML = '<p class="welcome-empty">No goal reminders due right now. You can still set targets anytime in Goals.</p>';
+      return;
+    }
+    root.innerHTML = due.map((id) => {
+      const h = DIMAD_GOALS.horizons.find((x) => x.id === id);
+      const open = DIMAD_GOALS.itemsFor(id, new Date()).filter((g) => !DIMAD_GOALS.isDone(g, DIMAD_GOALS.periodStart(id, new Date())));
+      const rows = open.slice(0, 4).map((g) => `<li>${DIMAD_GOALS.escape(g.text || 'Untitled target')}</li>`).join('')
+        || '<li>All targets in this horizon are complete.</li>';
+      return `<div class="welcome-goal-block"><div class="label">${DIMAD_GOALS.escape(h ? h.label : id)}</div><ul>${rows}</ul></div>`;
+    }).join('');
+  },
+
+  showReady() {
+    const gate = document.getElementById('dimad-welcome-gate');
+    if (!gate) {
+      this.finish();
+      return;
+    }
+    this.needsClockIn = this.needsDailyClockIn();
+    this.dueGoals = (typeof DIMAD_GOALS !== 'undefined' && DIMAD_GOALS.dueReminders)
+      ? DIMAD_GOALS.dueReminders()
+      : [];
+    if (!this.needsClockIn && !this.dueGoals.length) {
+      this.finish();
+      return;
+    }
+    this.ready = true;
+    gate.classList.add('is-ready');
+    gate.setAttribute('aria-busy', 'false');
+    const loading = gate.querySelector('[data-welcome-phase="loading"]');
+    const ready = gate.querySelector('[data-welcome-phase="ready"]');
+    if (loading) loading.classList.add('hidden');
+    if (ready) ready.classList.remove('hidden');
+
+    const greet = document.getElementById('welcome-greeting');
+    const quote = document.getElementById('welcome-quote');
+    const sub = document.getElementById('welcome-subcopy');
+    const btn = document.getElementById('welcome-enter-btn');
+    if (greet) greet.textContent = CLOCK_IN.greeting();
+    if (quote) quote.innerHTML = (typeof DAILY_QUOTE !== 'undefined' && DAILY_QUOTE.html) ? DAILY_QUOTE.html() : '';
+    this.paintGoals();
+
+    if (this.needsClockIn) {
+      if (sub) sub.textContent = 'Clock in and review today\'s targets before you enter Command Center.';
+      if (btn) btn.textContent = this.dueGoals.length ? 'Clock In & Enter' : 'Clock In & Enter Command Center';
+    } else {
+      if (sub) {
+        sub.textContent = this.dueGoals.length
+          ? 'You are already clocked in. Review today\'s targets, then enter Command Center.'
+          : 'Command Center is ready.';
+      }
+      if (btn) btn.textContent = 'Enter Command Center';
+    }
+  },
+
+  enter() {
+    if (this.needsClockIn) {
+      const today = FOCUS_TIMER.dayKey();
+      CLOCK_IN.registerDay(today);
+      try { sessionStorage.setItem(CLOCK_IN.sessionKey, today); } catch (err) { /* skip */ }
+      if (!isTimerRunning) startFocusTimer();
+    }
+    if (typeof DIMAD_GOALS !== 'undefined' && this.dueGoals.length) {
+      DIMAD_GOALS._nudgeDue = this.dueGoals.slice();
+      DIMAD_GOALS.dismissNudge();
+    }
+    this.finish();
+  },
+
+  openGoals() {
+    this.enter();
+    if (typeof switchTab === 'function') switchTab('ent-goals');
+    const first = (this.dueGoals || [])[0];
+    if (first && typeof DIMAD_GOALS !== 'undefined') DIMAD_GOALS.setHorizon(first);
+  },
+
+  finish() {
+    this.active = false;
+    this.ready = false;
+    document.body.classList.remove('welcome-locked');
+    const gate = document.getElementById('dimad-welcome-gate');
+    if (!gate) return;
+    gate.classList.add('is-leaving');
+    gate.setAttribute('aria-busy', 'false');
+    setTimeout(() => {
+      if (gate.parentNode) gate.parentNode.removeChild(gate);
+    }, 480);
+  }
+};
+
+window.DIMAD_WELCOME = DIMAD_WELCOME;
+
 const CLOCK_IN = {
   sessionKey: 'dimad_clockin_session',
 
@@ -3656,6 +3774,10 @@ const CLOCK_IN = {
   },
 
   show() {
+    if (typeof DIMAD_WELCOME !== 'undefined' && DIMAD_WELCOME.active) {
+      DIMAD_WELCOME.showReady();
+      return;
+    }
     const modal = document.getElementById('clock-in-modal');
     if (!modal) return;
     const greet = document.getElementById('clock-in-greeting');
@@ -3674,6 +3796,7 @@ const CLOCK_IN = {
   },
 
   prompt() {
+    if (typeof DIMAD_WELCOME !== 'undefined' && DIMAD_WELCOME.active) return;
     if (isTimerRunning) return;
     const today = FOCUS_TIMER.dayKey();
     try {
@@ -20469,6 +20592,17 @@ window.onload = async function() {
   const bootParams = new URLSearchParams(window.location.search);
   const stripeStatus = bootParams.get('stripe');
   const shopifyStatus = bootParams.get('shopify');
+  const skipWelcome = !!(stripeStatus || shopifyStatus || bootParams.get('aurinko') === 'success');
+  if (typeof DIMAD_WELCOME !== 'undefined') {
+    if (skipWelcome) {
+      DIMAD_WELCOME.active = false;
+      document.body.classList.remove('welcome-locked');
+      const gate = document.getElementById('dimad-welcome-gate');
+      if (gate) gate.remove();
+    } else {
+      DIMAD_WELCOME.setStatus('Generating Command Center…');
+    }
+  }
   if (stripeStatus) {
     try {
       sessionStorage.setItem('dimad_stripe_flash', JSON.stringify({
@@ -20495,7 +20629,9 @@ window.onload = async function() {
     history.replaceState({}, '', window.location.pathname + (nextQuery ? '?' + nextQuery : '') + window.location.hash);
   }
   loadAiChats();
+  if (typeof DIMAD_WELCOME !== 'undefined' && DIMAD_WELCOME.active) DIMAD_WELCOME.setStatus('Loading workspace views…');
   await loadViews();
+  if (typeof DIMAD_WELCOME !== 'undefined' && DIMAD_WELCOME.active) DIMAD_WELCOME.setStatus('Preparing clocks, goals, and modules…');
   if (typeof WORLD_CLOCKS !== 'undefined') WORLD_CLOCKS.render();
   if (typeof DIMAD_GEO !== 'undefined') DIMAD_GEO.init();
   if (typeof DIMAD_AI_USAGE !== 'undefined') DIMAD_AI_USAGE.paint();
@@ -20539,6 +20675,11 @@ window.onload = async function() {
     } else {
       CONNECT_MODULARS.showShopifyForm();
     }
+  }
+  if (typeof DIMAD_WELCOME !== 'undefined' && DIMAD_WELCOME.active) {
+    DIMAD_WELCOME.setStatus('Almost ready…');
+    await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 280)));
+    DIMAD_WELCOME.showReady();
   }
   if (typeof DIMAD_CAL !== 'undefined') {
     DIMAD_CAL.bindUi();

@@ -93,7 +93,56 @@ export const INTEGRATION_CARD_CSS = `
   .dimad-int-table td.right, .dimad-int-table th.right { text-align: right; }
   .dimad-int-table .strong { color: #fff; font-weight: 650; }
   .dimad-int-table .mint { color: #34d399; }
+  .dimad-int-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+  .dimad-int-pill {
+    font: inherit; cursor: pointer; border-radius: 999px; padding: 5px 10px; font-size: 10px;
+    background: #070A0F; color: #94a3b8; border: 1px solid #1E293B;
+  }
+  .dimad-int-pill.active {
+    color: #070A0F; background: #F59E0B; border-color: #F59E0B; font-weight: 700;
+  }
+  .dimad-int-pill.stripe.active { background: #38BDF8; border-color: #38BDF8; }
+  .dimad-int-change { font-size: 10px; margin-top: 3px; }
+  .dimad-int-change.up { color: #34d399; }
+  .dimad-int-change.down { color: #fca5a5; }
+  .dimad-int-change.flat { color: #64748b; }
+  .dimad-int-account { position: relative; flex: none; }
+  .dimad-int-account-badge {
+    max-width: 15rem; display: inline-flex; align-items: center; gap: 8px;
+    padding: 4px 10px 4px 4px; border-radius: 999px; border: 1px solid #1E293B;
+    background: #070A0F; color: #e2e8f0; cursor: pointer; font: inherit; text-align: left;
+  }
+  .dimad-int-account-badge:hover { border-color: #F59E0B; }
+  .dimad-int-account.stripe .dimad-int-account-badge:hover { border-color: #38BDF8; }
+  .dimad-int-account-avatar {
+    width: 22px; height: 22px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center;
+    background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.35); color: #F59E0B;
+    font-size: 9px; font-weight: 700; flex: none;
+  }
+  .dimad-int-account.stripe .dimad-int-account-avatar {
+    background: rgba(56,189,248,0.15); border-color: rgba(56,189,248,0.35); color: #38BDF8;
+  }
+  .dimad-int-account-copy { min-width: 0; display: grid; gap: 1px; }
+  .dimad-int-account-copy .k { font-size: 8px; letter-spacing: 0.12em; text-transform: uppercase; color: #64748b; line-height: 1; }
+  .dimad-int-account-copy .v { font-size: 10px; color: #e2e8f0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 11rem; }
+  .dimad-int-account-menu {
+    position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; min-width: 8rem;
+    border: 1px solid #1E293B; background: #070A0F; border-radius: 10px; overflow: hidden;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.35);
+  }
+  .dimad-int-account-menu button {
+    width: 100%; text-align: left; background: transparent; border: 0; color: #e2e8f0;
+    font: inherit; font-size: 11px; padding: 10px 12px; cursor: pointer;
+  }
+  .dimad-int-account-menu button:hover { background: #0B0F17; color: #F59E0B; }
+  .dimad-int-metrics.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .dimad-int-dates { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; align-items: end; }
+  .dimad-int-dates label { display: grid; gap: 4px; font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: #64748b; }
+  .dimad-int-dates input {
+    background: #070A0F; border: 1px solid #1E293B; border-radius: 10px; color: #f8fafc;
+    padding: 8px 10px; font: inherit; font-size: 11px;
+  }
   @media (max-width: 720px) {
-    .dimad-int-metrics, .dimad-int-grid { grid-template-columns: 1fr; }
+    .dimad-int-metrics, .dimad-int-metrics.four, .dimad-int-grid { grid-template-columns: 1fr; }
   }
 `;
