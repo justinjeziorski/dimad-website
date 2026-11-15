@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import AccountBadge from "@/components/integrations/AccountBadge";
+import IntegrationLoadingBar from "@/components/integrations/IntegrationLoadingBar";
 import { authFetch, waitForFirebaseToken } from "@/lib/dimad-auth-client";
 import { INTEGRATION_CARD_CSS } from "@/lib/integration-card.css";
 import type { ShopifyRangeKey, ShopifyStorePayload } from "@/lib/shopify-types";
@@ -282,7 +283,7 @@ export default function SalesRevenueBoard() {
           </div>
         </div>
 
-        {loading && !stripe ? <p className="dimad-int-note">Loading Stripe…</p> : null}
+        {loading && !stripe ? <IntegrationLoadingBar tone="stripe" /> : null}
 
         {!loading && !stripe ? (
           <>
@@ -334,7 +335,7 @@ export default function SalesRevenueBoard() {
           ) : null}
         </div>
 
-        {loading && !shopify ? <p className="dimad-int-note">Loading store analytics…</p> : null}
+        {loading && !shopify ? <IntegrationLoadingBar tone="amber" /> : null}
 
         {!loading && !shopify ? (
           <>

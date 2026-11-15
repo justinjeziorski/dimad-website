@@ -15,7 +15,7 @@ service cloud.firestore {
       match /integrations/{integrationId} {
         allow read, write: if request.auth != null
           && request.auth.uid == userId
-          && (integrationId == "stripe" || integrationId == "shopify");
+          && (integrationId == "stripe" || integrationId == "shopify" || integrationId == "lemon" || integrationId == "gumroad");
       }
     }
   }

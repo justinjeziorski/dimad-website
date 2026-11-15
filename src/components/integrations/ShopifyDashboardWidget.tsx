@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import AccountBadge from "@/components/integrations/AccountBadge";
+import IntegrationLoadingBar from "@/components/integrations/IntegrationLoadingBar";
 import { authFetch, waitForFirebaseToken } from "@/lib/dimad-auth-client";
 import { INTEGRATION_CARD_CSS } from "@/lib/integration-card.css";
 import type { ShopifyRangeKey, ShopifyStorePayload } from "@/lib/shopify-types";
@@ -230,7 +231,7 @@ export default function ShopifyDashboardWidget() {
         ) : null}
       </div>
 
-      {loading && !connected ? <p className="dimad-int-note">Syncing Shopify metrics…</p> : null}
+      {loading && !connected ? <IntegrationLoadingBar tone="amber" /> : null}
 
       {!loading && !connected ? (
         <>

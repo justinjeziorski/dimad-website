@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import AccountBadge from "@/components/integrations/AccountBadge";
+import IntegrationLoadingBar from "@/components/integrations/IntegrationLoadingBar";
 import { authFetch } from "@/lib/dimad-auth-client";
 import { INTEGRATION_CARD_CSS } from "@/lib/integration-card.css";
 import type { StripeConnectedMetrics } from "@/lib/stripe-types";
@@ -204,7 +205,7 @@ export default function StripeConnectCard() {
         ) : null}
       </div>
 
-      {loading && !connected ? <p className="dimad-int-note">Checking your Stripe connection…</p> : null}
+      {loading && !connected ? <IntegrationLoadingBar tone="stripe" /> : null}
 
       {!loading && !connected ? (
         <>
