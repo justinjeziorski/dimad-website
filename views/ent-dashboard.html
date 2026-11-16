@@ -69,36 +69,16 @@
       <iframe data-gumroad-frame title="Gumroad" src="/integrations/gumroad-card" class="block w-full bg-brand-panel rounded-2xl border border-brand-border" style="height:240px;border:0;background:#0B0F17"></iframe>
     </div>
 
-    <div data-cc-module="patreon" id="module-patreon" class="cc-rail-card bg-slate-900 border border-slate-800 p-3 rounded-2xl transition-all duration-300 flex items-center gap-3 min-w-0">
-      <div class="shrink-0 min-w-[132px] space-y-1">
-        <div class="flex items-center justify-between gap-2">
-          <span class="text-[9px] font-mono bg-orange-500/10 border border-orange-500/20 text-orange-400 px-1.5 py-0.5 rounded">MEMBERSHIP</span>
-          <div class="flex items-center gap-1.5">
-            <span class="w-2 h-2 rounded-full bg-slate-600" id="patreon-indicator"></span>
-          </div>
-        </div>
-        <h4 class="text-xs font-bold text-white">Patreon</h4>
-      </div>
-      <div data-cc-body class="flex-1 min-w-0 space-y-1.5">
-        <p class="text-[10px] text-slate-400">Tiers, pledges, and retention.</p>
-        <button type="button" onclick="COMMAND_CENTER.markConnected('patreon')" class="w-full bg-slate-950 hover:bg-slate-800 border border-slate-700 text-[10px] font-semibold text-orange-400 py-1.5 rounded-xl transition">Connect Patreon</button>
-      </div>
+    <div data-cc-module="patreon" id="module-patreon" class="cc-rail-card min-w-0 max-w-full w-full">
+      <iframe data-patreon-frame title="Patreon" src="/integrations/patreon-card" class="block w-full bg-brand-panel rounded-2xl border border-brand-border" style="height:240px;border:0;background:#0B0F17"></iframe>
     </div>
 
-    <div data-cc-module="mailerlite" id="module-mailerlite" class="cc-rail-card bg-slate-900 border border-slate-800 p-3 rounded-2xl transition-all duration-300 flex items-center gap-3 min-w-0">
-      <div class="shrink-0 min-w-[132px] space-y-1">
-        <div class="flex items-center justify-between gap-2">
-          <span class="text-[9px] font-mono bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded">EMAIL</span>
-          <div class="flex items-center gap-1.5">
-            <span class="w-2 h-2 rounded-full bg-slate-600" id="mailerlite-indicator"></span>
-          </div>
-        </div>
-        <h4 class="text-xs font-bold text-white">MailerLite</h4>
-      </div>
-      <div data-cc-body class="flex-1 min-w-0 space-y-1.5">
-        <p class="text-[10px] text-slate-400">Waitlist, campaigns, and list growth.</p>
-        <button type="button" onclick="COMMAND_CENTER.markConnected('mailerlite')" class="w-full bg-slate-950 hover:bg-slate-800 border border-slate-700 text-[10px] font-semibold text-emerald-400 py-1.5 rounded-xl transition">Connect MailerLite</button>
-      </div>
+    <div data-cc-module="mailerlite" id="module-mailerlite" class="cc-rail-card min-w-0 max-w-full w-full">
+      <iframe data-mailerlite-frame title="MailerLite" src="/integrations/mailerlite-card" class="block w-full bg-brand-panel rounded-2xl border border-brand-border" style="height:240px;border:0;background:#0B0F17"></iframe>
+    </div>
+
+    <div data-cc-module="plaid" id="module-plaid" class="cc-rail-card min-w-0 max-w-full w-full">
+      <iframe data-plaid-frame title="Plaid" src="/integrations/plaid-card" class="block w-full bg-brand-panel rounded-2xl border border-brand-border" style="height:240px;border:0;background:#0B0F17"></iframe>
     </div>
   </div>
 

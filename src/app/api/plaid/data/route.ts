@@ -1,0 +1,80 @@
+import { NextRequest, NextResponse } from "next/server";
+import {
+  deletePlaidIntegration,
+  fetchPlaidDashboardData,
+  readPlaidIntegration
+} from "@/lib/plaid";
+import { requireFirebaseUser } from "@/lib/session";
+
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
+const noStore = { "Cache-Control": "no-store" };
+
+export async function GET(req: NextRequest) {
+  const session = await requireFirebaseUser(req);
+  if ("error" in session) return session.error;
+
+  try {
+    const record = await readPlaidIntegration(session.uid, session.idToken);
+    if (!record) {
+      return NextResponse.json({ ok: true, connected: false }, { headers: noStore });
+    }
+    const data = await fetchPlaidDashboardData(session.uid, record, session.idToken);
+    return NextResponse.json({ ok: true, connected: true, ...data }, { headers: noStore });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "plaid_request_failed";
+    console.error("Plaid data route failed", session.uid, message);
+    let institutionName = "";
+    let itemId = "";
+    try {
+      const record = await readPlaidIntegration(session.uid, session.idToken);
+      institutionName = record?.institutionName || "";
+      itemId = record?.itemId || "";
+    } catch {
+      /* ignore */
+    }
+    return NextResponse.json(
+      {
+        ok: false,
+        connected: !!(itemId || institutionName),
+        error: message === "invalid_plaid_credentials" ? message : "plaid_request_failed",
+        ...(itemId || institutionName
+          ? {
+              itemId,
+              institutionName: institutionName || "Linked bank",
+              accounts: [],
+              recentTransactions: [],
+              metrics: {
+                cashAvailable: 0,
+                cashAvailableDisplay: "—",
+                creditBalance: 0,
+                creditBalanceDisplay: "—",
+                netLiquidity: 0,
+                netLiquidityDisplay: "—",
+                accountCount: 0
+              }
+            }
+          : {})
+      },
+      { status: itemId || institutionName ? 200 : 502, headers: noStore }
+    );
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  const session = await requireFirebaseUser(req);
+  if ("error" in session) return session.error;
+
+  try {
+    await deletePlaidIntegration(session.uid, session.idToken);
+    return NextResponse.json({ ok: true, connected: false }, { headers: noStore });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "firestore_write_failed";
+    console.error("Plaid disconnect failed", session.uid, message);
+    return NextResponse.json(
+      { ok: false, error: message === "firestore_permission_denied" ? message : "firestore_write_failed" },
+      { status: 500, headers: noStore }
+    );
+  }
+}

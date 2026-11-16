@@ -5,6 +5,7 @@ const VIEW_FILES = [
   'ent-dashboard',
   'ent-ai-business',
   'ent-crm',
+  'ent-growth',
   'ent-stocks',
   'ent-invoices',
   'ent-email',
@@ -42,10 +43,11 @@ const MODE_NAV = {
     items: [
       { id: 'ent-dashboard', label: 'Command Center', highlight: true },
       { id: 'ent-ai-business', label: '⚡ Business AI' },
-      { id: 'ent-crm', label: 'Sales & Revenue' },
-      { id: 'ent-stocks', label: 'Stocks & Finance' },
-      { id: 'ent-invoices', label: 'Invoices & Proposals' },
-      { id: 'ent-goals', label: 'Goals & Achievements' },
+      { id: 'ent-crm', label: 'Revenue' },
+      { id: 'ent-growth', label: 'Growth' },
+      { id: 'ent-invoices', label: 'Billing' },
+      { id: 'ent-stocks', label: 'Financial Markets' },
+      { id: 'ent-goals', label: 'Accountability' },
       { id: 'ent-tasks', label: 'Task Manager' }
     ]
   },
@@ -794,6 +796,10 @@ function switchTab(tabId) {
   }
   if (tabId === 'creator-studio' && typeof DIMAD_STUDIO !== 'undefined') {
     DIMAD_STUDIO.apply();
+  }
+  if (typeof GROWTH_HUB !== 'undefined') {
+    if (tabId === 'ent-growth') GROWTH_HUB.apply();
+    else GROWTH_HUB.closeFilter();
   }
   if (tabId === 'dimad-calendar' && typeof DIMAD_CAL !== 'undefined') {
     if (typeof CALENDAR_NAV !== 'undefined') {
@@ -3633,10 +3639,66 @@ const DIMAD_WELCOME = {
   ready: false,
   needsClockIn: true,
   dueGoals: [],
+  _preloadStarted: false,
+  _preloadListenerBound: false,
 
   setStatus(text) {
     const el = document.getElementById('welcome-loading-status');
     if (el) el.textContent = text;
+  },
+
+  setSyncStatus(status, detail) {
+    const el = document.getElementById('welcome-sync-status');
+    if (!el) return;
+    el.classList.remove('is-ready', 'is-partial');
+    if (status === 'ready') el.classList.add('is-ready');
+    else if (status === 'partial') el.classList.add('is-partial');
+    el.textContent = detail
+      || (status === 'ready'
+        ? 'All systems synced'
+        : status === 'partial'
+          ? 'Metrics partially synced'
+          : 'Syncing live metrics…');
+  },
+
+  onPreloadMessage(event) {
+    if (event.origin !== window.location.origin) return;
+    const data = event.data;
+    if (!data || data.type !== 'dimad-workspace-preload') return;
+    DIMAD_WELCOME.setSyncStatus(data.status, data.detail || '');
+  },
+
+  startWorkspacePreload() {
+    if (this._preloadStarted) return;
+    this._preloadStarted = true;
+    this.setSyncStatus('syncing', 'Syncing live metrics…');
+
+    if (!this._preloadListenerBound) {
+      this._preloadListenerBound = true;
+      window.addEventListener('message', this.onPreloadMessage);
+    }
+
+    try {
+      const dashLink = document.createElement('link');
+      dashLink.rel = 'prefetch';
+      dashLink.href = '/dashboard';
+      dashLink.as = 'document';
+      document.head.appendChild(dashLink);
+    } catch (err) { /* ignore */ }
+
+    let iframe = document.getElementById('dimad-workspace-boot');
+    if (!iframe) {
+      iframe = document.createElement('iframe');
+      iframe.id = 'dimad-workspace-boot';
+      iframe.title = 'Workspace preload';
+      iframe.src = '/workspace-boot';
+      iframe.setAttribute('aria-hidden', 'true');
+      iframe.tabIndex = -1;
+      iframe.style.cssText = 'position:absolute;width:0;height:0;border:0;visibility:hidden;pointer-events:none;';
+      document.body.appendChild(iframe);
+    } else if (!iframe.getAttribute('src')) {
+      iframe.src = '/workspace-boot';
+    }
   },
 
   needsDailyClockIn() {
@@ -3676,6 +3738,7 @@ const DIMAD_WELCOME = {
       ? DIMAD_GOALS.dueReminders()
       : [];
     if (!this.needsClockIn && !this.dueGoals.length) {
+      this.startWorkspacePreload();
       this.finish();
       return;
     }
@@ -3694,6 +3757,7 @@ const DIMAD_WELCOME = {
     if (greet) greet.textContent = CLOCK_IN.greeting();
     if (quote) quote.innerHTML = (typeof DAILY_QUOTE !== 'undefined' && DAILY_QUOTE.html) ? DAILY_QUOTE.html() : '';
     this.paintGoals();
+    this.startWorkspacePreload();
 
     if (this.needsClockIn) {
       if (sub) sub.textContent = 'Clock in and review today\'s targets before you enter Command Center.';
@@ -4250,6 +4314,79 @@ window.addEventListener('message', (event) => {
       }
     });
   }
+  if (event.data.type === 'dimad-patreon-resize' && event.source) {
+    document.querySelectorAll('iframe[data-patreon-frame]').forEach((frame) => {
+      if (frame.contentWindow === event.source) {
+        const height = Math.min(740, Math.max(188, Number(event.data.height) || 188));
+        frame.style.height = height + 'px';
+      }
+    });
+  }
+  if (event.data.type === 'dimad-mailerlite-resize' && event.source) {
+    document.querySelectorAll('iframe[data-mailerlite-frame]').forEach((frame) => {
+      if (frame.contentWindow === event.source) {
+        const height = Math.min(740, Math.max(188, Number(event.data.height) || 188));
+        frame.style.height = height + 'px';
+      }
+    });
+  }
+  if (event.data.type === 'dimad-youtube-resize' && event.source) {
+    document.querySelectorAll('iframe[data-youtube-frame]').forEach((frame) => {
+      if (frame.contentWindow === event.source) {
+        const height = Math.min(740, Math.max(188, Number(event.data.height) || 188));
+        frame.style.height = height + 'px';
+      }
+    });
+  }
+  if (event.data.type === 'dimad-plaid-link' && event.source) {
+    document.querySelectorAll('iframe[data-plaid-frame]').forEach((frame) => {
+      if (frame.contentWindow !== event.source) return;
+      if (event.data.active) {
+        if (!frame.dataset.plaidHosted) {
+          const placeholder = document.createElement('div');
+          placeholder.id = 'dimad-plaid-placeholder';
+          placeholder.setAttribute('aria-hidden', 'true');
+          placeholder.style.cssText = 'height:' + (frame.offsetHeight || 240) + 'px;width:100%';
+          if (frame.parentNode) frame.parentNode.insertBefore(placeholder, frame);
+          frame.dataset.plaidHosted = '1';
+          frame.dataset.plaidPrevStyle = frame.getAttribute('style') || '';
+          document.body.appendChild(frame);
+        }
+        frame.classList.add('plaid-link-overlay');
+        frame.style.cssText = 'position:fixed;inset:0;z-index:99999;width:100vw;height:100vh;max-width:none;border:0;border-radius:0;background:#070A0F';
+        document.body.classList.add('plaid-link-open');
+      } else {
+        frame.classList.remove('plaid-link-overlay');
+        const prev = frame.dataset.plaidPrevStyle || 'height:240px;border:0;background:#0B0F17';
+        frame.style.cssText = prev;
+        delete frame.dataset.plaidPrevStyle;
+        const placeholder = document.getElementById('dimad-plaid-placeholder');
+        if (placeholder && placeholder.parentNode) {
+          placeholder.parentNode.insertBefore(frame, placeholder);
+          placeholder.remove();
+        }
+        delete frame.dataset.plaidHosted;
+        document.body.classList.remove('plaid-link-open');
+      }
+    });
+  }
+  if (event.data.type === 'dimad-plaid-resize' && event.source) {
+    document.querySelectorAll('iframe[data-plaid-frame]').forEach((frame) => {
+      if (frame.contentWindow === event.source) {
+        if (frame.classList.contains('plaid-link-overlay')) return;
+        const height = Math.min(740, Math.max(188, Number(event.data.height) || 188));
+        frame.style.height = height + 'px';
+      }
+    });
+  }
+  if (event.data.type === 'dimad-x-resize' && event.source) {
+    document.querySelectorAll('iframe[data-x-frame]').forEach((frame) => {
+      if (frame.contentWindow === event.source) {
+        const height = Math.min(740, Math.max(188, Number(event.data.height) || 188));
+        frame.style.height = height + 'px';
+      }
+    });
+  }
   if (event.data.type === 'dimad-sales-resize' && event.source) {
     document.querySelectorAll('iframe[data-sales-board-frame]').forEach((frame) => {
       if (frame.contentWindow === event.source) {
@@ -4295,6 +4432,31 @@ window.addEventListener('message', (event) => {
   }
   if (event.data.type === 'dimad-gumroad-status') {
     if (event.data.connected && typeof COMMAND_CENTER !== 'undefined') COMMAND_CENTER.markConnected('gumroad');
+  }
+  if (event.data.type === 'dimad-patreon-status') {
+    if (event.data.connected && typeof COMMAND_CENTER !== 'undefined') COMMAND_CENTER.markConnected('patreon');
+  }
+  if (event.data.type === 'dimad-mailerlite-status') {
+    if (event.data.connected && typeof COMMAND_CENTER !== 'undefined') COMMAND_CENTER.markConnected('mailerlite');
+    if (event.data.connected && typeof GROWTH_HUB !== 'undefined') GROWTH_HUB.markConnected('mailerlite');
+  }
+  if (event.data.type === 'dimad-youtube-status') {
+    if (event.data.connected && typeof GROWTH_HUB !== 'undefined') GROWTH_HUB.markConnected('youtube');
+  }
+  if (event.data.type === 'dimad-plaid-status') {
+    if (event.data.connected && typeof COMMAND_CENTER !== 'undefined') COMMAND_CENTER.markConnected('plaid');
+  }
+  if (event.data.type === 'dimad-x-status') {
+    if (event.data.connected && typeof GROWTH_HUB !== 'undefined') GROWTH_HUB.markConnected('x');
+  }
+  if (event.data.type === 'dimad-patreon-oauth-done') {
+    const frame = document.querySelector('iframe[data-patreon-frame]');
+    if (frame && frame.contentWindow) {
+      frame.contentWindow.postMessage(event.data, window.location.origin);
+    }
+    if (event.data.status === 'connected' && typeof COMMAND_CENTER !== 'undefined') {
+      COMMAND_CENTER.markConnected('patreon');
+    }
   }
   if (event.data.type === 'dimad-shopify-lemon') {
     if (typeof CONNECT_MODULARS !== 'undefined') CONNECT_MODULARS.connectLemon();
@@ -4385,6 +4547,43 @@ const CONNECT_MODULARS = {
     }).catch(reloadFrames);
   },
 
+  connectPatreon() {
+    if (typeof COMMAND_CENTER !== 'undefined') COMMAND_CENTER.toggleVisible('patreon', true);
+    const frame = document.querySelector('iframe[data-patreon-frame]');
+    if (frame && frame.contentWindow) {
+      frame.contentWindow.postMessage({ type: 'dimad-patreon-connect' }, window.location.origin);
+    }
+    const card = document.getElementById('module-patreon');
+    if (card && card.scrollIntoView) card.scrollIntoView({ block: 'nearest' });
+  },
+
+  paintPatreonConnected() {
+    if (typeof COMMAND_CENTER !== 'undefined') COMMAND_CENTER.markConnected('patreon');
+    const reloadFrames = () => {
+      const frame = document.querySelector('iframe[data-patreon-frame]');
+      if (frame) frame.src = '/integrations/patreon-card?connected=1&t=' + Date.now();
+      const sales = document.querySelector('iframe[data-sales-board-frame]');
+      if (sales) sales.src = '/integrations/sales-board?t=' + Date.now();
+    };
+    resolveDimadIdToken().then((token) => {
+      if (token) syncDimadFbTokenCookie(token);
+      reloadFrames();
+    }).catch(reloadFrames);
+  },
+
+  connectMailerLite() {
+    if (typeof COMMAND_CENTER !== 'undefined') COMMAND_CENTER.toggleVisible('mailerlite', true);
+    if (typeof GROWTH_HUB !== 'undefined') GROWTH_HUB.toggleVisible('mailerlite', true);
+    document.querySelectorAll('iframe[data-mailerlite-frame]').forEach((frame) => {
+      if (frame.contentWindow) {
+        frame.contentWindow.postMessage({ type: 'dimad-mailerlite-connect' }, window.location.origin);
+      }
+    });
+    const growthOpen = document.getElementById('view-ent-growth') && !document.getElementById('view-ent-growth').classList.contains('hidden');
+    const card = document.getElementById(growthOpen ? 'growth-module-mailerlite' : 'module-mailerlite');
+    if (card && card.scrollIntoView) card.scrollIntoView({ block: 'nearest' });
+  },
+
   connectStore(platform) {
     if (platform === 'Shopify') {
       this.showShopifyForm();
@@ -4396,6 +4595,14 @@ const CONNECT_MODULARS = {
     }
     if (platform === 'Gumroad') {
       this.connectGumroad();
+      return;
+    }
+    if (platform === 'Patreon') {
+      this.connectPatreon();
+      return;
+    }
+    if (platform === 'MailerLite') {
+      this.connectMailerLite();
       return;
     }
     openSalesRevenue();
@@ -7028,7 +7235,7 @@ const DIMDRIVE = {
     }
     panel.classList.remove('hidden');
     const canOpen = selected.type === 'writespace' || selected.type === 'sheet' || selected.type === 'notepad';
-    const openLabel = selected.type === 'sheet' ? 'Open in Sales & Revenue' : selected.type === 'notepad' ? 'Open in DIMAD Notepad' : 'Open in WriteSpace';
+    const openLabel = selected.type === 'sheet' ? 'Open in Revenue' : selected.type === 'notepad' ? 'Open in DIMAD Notepad' : 'Open in WriteSpace';
     const openFn = selected.type === 'sheet'
       ? `DIMDRIVE.openInSheet('${selected.id}')`
       : selected.type === 'notepad'
@@ -16911,7 +17118,7 @@ const DIMAD_SHEET = {
 
   seedSales() {
     this.sheets.Sales = {
-      A1: { raw: 'DIMAD — Sales & Revenue Runway', style: { bold: true, color: '#F59E0B' } },
+      A1: { raw: 'DIMAD — Revenue Runway', style: { bold: true, color: '#F59E0B' } },
       A3: { raw: 'Revenue Stream', style: { bold: true, bgColor: '#1E293B' } },
       B3: { raw: 'Monthly Amount ($)', style: { bold: true, bgColor: '#1E293B', align: 'right' } },
       A4: { raw: 'Stripe SaaS Subscriptions', style: {} },
@@ -20334,7 +20541,7 @@ window.CREATOR_AI = CREATOR_AI;
 
 const COMMAND_CENTER = {
   storageKey: 'dimad_cc_modules',
-  layoutVersion: 6,
+  layoutVersion: 9,
   catalog: [
     { id: 'ticker', label: 'Stock Ticker', group: 'core' },
     { id: 'quote', label: 'Quote of the Day', group: 'core' },
@@ -20349,7 +20556,8 @@ const COMMAND_CENTER = {
     { id: 'lemon', label: 'Lemon Squeezy', group: 'api' },
     { id: 'gumroad', label: 'Gumroad', group: 'api' },
     { id: 'patreon', label: 'Patreon', group: 'api' },
-    { id: 'mailerlite', label: 'MailerLite', group: 'api' }
+    { id: 'mailerlite', label: 'MailerLite', group: 'api' },
+    { id: 'plaid', label: 'Plaid', group: 'api' }
   ],
 
   apiIds() {
@@ -20377,6 +20585,9 @@ const COMMAND_CENTER = {
         else if (!hidden.includes('shopify')) hidden.push('shopify');
         if (!hidden.includes('lemon')) hidden.push('lemon');
         if (!hidden.includes('gumroad')) hidden.push('gumroad');
+        if (!hidden.includes('patreon')) hidden.push('patreon');
+        if (!hidden.includes('mailerlite')) hidden.push('mailerlite');
+        if (!hidden.includes('plaid')) hidden.push('plaid');
         const next = {
           hidden: Array.from(new Set(hidden)),
           collapsed: raw.collapsed.filter((id) => id !== 'store'),
@@ -20393,7 +20604,7 @@ const COMMAND_CENTER = {
     localStorage.setItem(this.storageKey, JSON.stringify(next));
   },
 
-  railIds: ['stripe', 'shopify', 'lemon', 'gumroad', 'patreon', 'mailerlite'],
+  railIds: ['stripe', 'shopify', 'lemon', 'gumroad', 'patreon', 'mailerlite', 'plaid'],
   lockedOpen: ['copilot', 'notepad'],
 
   apply() {
@@ -20496,22 +20707,15 @@ const COMMAND_CENTER = {
   }
 };
 
-const DIMAD_STUDIO = {
-  storageKey: 'dimad_cs_modules',
+const GROWTH_HUB = {
+  storageKey: 'dimad_growth_modules',
   layoutVersion: 1,
   catalog: [
-    { id: 'inspo', label: 'Daily Inspo', group: 'core' },
-    { id: 'creator-ai', label: 'Creator AI Chat', group: 'core' },
-    { id: 'notepad', label: 'DIMAD Notepad', group: 'core' },
-    { id: 'journal', label: 'Daily Journal', group: 'core' },
-    { id: 'scheduler', label: 'Content Scheduler', group: 'core' },
-    { id: 'pipeline', label: 'Creator Pipeline', group: 'core' },
     { id: 'youtube', label: 'YouTube', group: 'api' },
     { id: 'substack', label: 'Substack', group: 'api' },
-    { id: 'instagram', label: 'Instagram', group: 'api' },
-    { id: 'tiktok', label: 'TikTok', group: 'api' }
+    { id: 'mailerlite', label: 'MailerLite', group: 'api' },
+    { id: 'x', label: 'X', group: 'api' }
   ],
-  railIds: ['youtube', 'substack', 'instagram', 'tiktok'],
 
   apiIds() {
     return this.catalog.filter((item) => item.group === 'api').map((item) => item.id);
@@ -20544,18 +20748,168 @@ const DIMAD_STUDIO = {
 
   apply() {
     const { hidden } = this.state();
+    const root = document.getElementById('view-ent-growth') || document;
+    root.querySelectorAll('[data-growth-module]').forEach((el) => {
+      const id = el.getAttribute('data-growth-module');
+      el.classList.toggle('hidden', hidden.includes(id));
+    });
+    const rail = document.getElementById('growth-integrations');
+    if (rail) {
+      const visible = rail.querySelectorAll('[data-growth-module]:not(.hidden)').length;
+      rail.classList.toggle('hidden', visible === 0);
+    }
+    this.renderApiFilter();
+  },
+
+  toggleVisible(id, show) {
+    const next = this.state();
+    if (show) next.hidden = next.hidden.filter((item) => item !== id);
+    else if (!next.hidden.includes(id)) next.hidden.push(id);
+    this.persist(next);
+    this.apply();
+  },
+
+  ensurePanel() {
+    let panel = document.getElementById('growth-api-filter');
+    if (panel && panel.parentElement !== document.body) {
+      panel.remove();
+      panel = null;
+    }
+    if (!panel) {
+      panel = document.createElement('div');
+      panel.id = 'growth-api-filter';
+      panel.className = 'hidden fixed z-[500] w-60 bg-slate-950 border border-slate-700 rounded-xl p-2 shadow-2xl';
+      document.body.appendChild(panel);
+    }
+    return panel;
+  },
+
+  positionPanel() {
+    const panel = this.ensurePanel();
+    const btn = document.getElementById('growth-api-filter-btn');
+    if (!btn || panel.classList.contains('hidden')) return;
+    const rect = btn.getBoundingClientRect();
+    const width = 240;
+    const left = Math.max(8, Math.min(rect.right - width, window.innerWidth - width - 8));
+    const top = Math.min(rect.bottom + 6, window.innerHeight - 8);
+    panel.style.left = `${left}px`;
+    panel.style.top = `${top}px`;
+    panel.style.right = 'auto';
+  },
+
+  closeFilter() {
+    const panel = document.getElementById('growth-api-filter');
+    if (panel) panel.classList.add('hidden');
+    if (this._onDocClose) {
+      document.removeEventListener('mousedown', this._onDocClose, true);
+      this._onDocClose = null;
+    }
+    if (this._onReposition) {
+      window.removeEventListener('resize', this._onReposition);
+      window.removeEventListener('scroll', this._onReposition, true);
+      this._onReposition = null;
+    }
+  },
+
+  toggleFilter(kind) {
+    if (kind !== 'api') return;
+    const panel = this.ensurePanel();
+    const opening = panel.classList.contains('hidden');
+    if (!opening) {
+      this.closeFilter();
+      return;
+    }
+    this.renderApiFilter();
+    panel.classList.remove('hidden');
+    this.positionPanel();
+    this._onReposition = () => this.positionPanel();
+    window.addEventListener('resize', this._onReposition);
+    window.addEventListener('scroll', this._onReposition, true);
+    this._onDocClose = (event) => {
+      const btn = document.getElementById('growth-api-filter-btn');
+      if (panel.contains(event.target) || (btn && btn.contains(event.target))) return;
+      this.closeFilter();
+    };
+    setTimeout(() => document.addEventListener('mousedown', this._onDocClose, true), 0);
+  },
+
+  filterChecks(items, hidden) {
+    return items.map((item) => `
+      <label class="flex items-center gap-2 px-1 py-1 rounded hover:bg-slate-900 cursor-pointer">
+        <input type="checkbox" ${hidden.includes(item.id) ? '' : 'checked'} onchange="GROWTH_HUB.toggleVisible('${item.id}', this.checked)" class="accent-amber-400">
+        <span class="text-[11px] text-slate-200">${item.label}</span>
+      </label>
+    `).join('');
+  },
+
+  renderApiFilter() {
+    const panel = this.ensurePanel();
+    const { hidden } = this.state();
+    const items = this.catalog.filter((item) => item.group === 'api');
+    panel.innerHTML = `
+      <div class="text-[9px] font-mono text-slate-500 uppercase px-1 pb-1">API Widgets</div>
+      <p class="text-[9px] text-slate-500 px-1 pb-1.5">Check to add to Growth.</p>
+      ${this.filterChecks(items, hidden)}
+    `;
+    if (!panel.classList.contains('hidden')) this.positionPanel();
+  },
+
+  markConnected(id) {
+    const indicator = document.getElementById(`growth-${id}-indicator`);
+    if (indicator) indicator.className = 'w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]';
+  }
+};
+
+const DIMAD_STUDIO = {
+  storageKey: 'dimad_cs_modules',
+  layoutVersion: 2,
+  catalog: [
+    { id: 'inspo', label: 'Daily Inspo', group: 'core' },
+    { id: 'creator-ai', label: 'Creator AI Chat', group: 'core' },
+    { id: 'notepad', label: 'DIMAD Notepad', group: 'core' },
+    { id: 'journal', label: 'Daily Journal', group: 'core' },
+    { id: 'scheduler', label: 'Content Scheduler', group: 'core' },
+    { id: 'pipeline', label: 'Creator Pipeline', group: 'core' }
+  ],
+  railIds: [],
+
+  apiIds() {
+    return this.catalog.filter((item) => item.group === 'api').map((item) => item.id);
+  },
+
+  defaultState() {
+    return { hidden: [], collapsed: [], layoutVersion: this.layoutVersion };
+  },
+
+  state() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(this.storageKey) || '');
+      if (raw && Array.isArray(raw.hidden) && Array.isArray(raw.collapsed)) {
+        if (raw.layoutVersion === this.layoutVersion) return raw;
+        const next = {
+          hidden: raw.hidden.filter((id) => this.catalog.some((item) => item.id === id)),
+          collapsed: raw.collapsed,
+          layoutVersion: this.layoutVersion
+        };
+        this.persist(next);
+        return next;
+      }
+    } catch (err) { /* defaults */ }
+    return this.defaultState();
+  },
+
+  persist(next) {
+    localStorage.setItem(this.storageKey, JSON.stringify(next));
+  },
+
+  apply() {
+    const { hidden } = this.state();
     const root = document.getElementById('view-creator-studio') || document;
     root.querySelectorAll('[data-cs-module]').forEach((el) => {
       const id = el.getAttribute('data-cs-module');
       el.classList.toggle('hidden', hidden.includes(id));
     });
-    const rail = document.getElementById('cs-integrations');
-    if (rail) {
-      const visible = rail.querySelectorAll('[data-cs-module]:not(.hidden)').length;
-      rail.classList.toggle('hidden', visible === 0);
-    }
     this.renderFilter();
-    this.renderApiFilter();
     if (typeof DIMAD_NOTEPAD !== 'undefined' && DIMAD_NOTEPAD.renderDash) DIMAD_NOTEPAD.renderDash();
     if (typeof CREATOR_AI !== 'undefined' && CREATOR_AI.renderStudio) CREATOR_AI.renderStudio();
     if (typeof SCHEDULER !== 'undefined' && SCHEDULER.renderStudio) SCHEDULER.renderStudio();
@@ -20575,16 +20929,10 @@ const DIMAD_STUDIO = {
 
   toggleFilter(kind) {
     const core = document.getElementById('cs-module-filter');
-    const api = document.getElementById('cs-api-filter');
     if (core) {
       const show = kind === 'core' && core.classList.contains('hidden');
       core.classList.toggle('hidden', !show);
       if (show) this.renderFilter();
-    }
-    if (api) {
-      const show = kind === 'api' && api.classList.contains('hidden');
-      api.classList.toggle('hidden', !show);
-      if (show) this.renderApiFilter();
     }
   },
 
@@ -20604,18 +20952,6 @@ const DIMAD_STUDIO = {
     const items = this.catalog.filter((item) => item.group === 'core');
     panel.innerHTML = `
       <div class="text-[9px] font-mono text-slate-500 uppercase px-1 pb-1">Show on dashboard</div>
-      ${this.filterChecks(items, hidden)}
-    `;
-  },
-
-  renderApiFilter() {
-    const panel = document.getElementById('cs-api-filter');
-    if (!panel) return;
-    const { hidden } = this.state();
-    const items = this.catalog.filter((item) => item.group === 'api');
-    panel.innerHTML = `
-      <div class="text-[9px] font-mono text-slate-500 uppercase px-1 pb-1">API Widgets</div>
-      <p class="text-[9px] text-slate-500 px-1 pb-1.5">Check to add to Dimad Studio.</p>
       ${this.filterChecks(items, hidden)}
     `;
   },
@@ -20661,20 +20997,34 @@ const DIMAD_STUDIO = {
   }
 };
 
+function oauthProviderStatus(params, name) {
+  const legacy = params.get(name);
+  if (legacy) return legacy;
+  if (params.get('connected') !== name) return null;
+  if (params.get('oauth') === 'error' || params.get('error')) return 'error';
+  return 'connected';
+}
+
 window.onload = async function() {
   const bootParams = new URLSearchParams(window.location.search);
-  const stripeStatus = bootParams.get('stripe');
-  const shopifyStatus = bootParams.get('shopify');
-  const gumroadStatus = bootParams.get('gumroad');
-  const skipWelcome = !!(stripeStatus || shopifyStatus || gumroadStatus || bootParams.get('aurinko') === 'success');
+  const stripeStatus = oauthProviderStatus(bootParams, 'stripe');
+  const shopifyStatus = oauthProviderStatus(bootParams, 'shopify');
+  const gumroadStatus = oauthProviderStatus(bootParams, 'gumroad');
+  const patreonStatus = oauthProviderStatus(bootParams, 'patreon');
+  const youtubeStatus = oauthProviderStatus(bootParams, 'youtube');
+  const xStatus = oauthProviderStatus(bootParams, 'x');
+  const plaidStatus = oauthProviderStatus(bootParams, 'plaid');
+  const skipWelcome = !!(stripeStatus || shopifyStatus || gumroadStatus || patreonStatus || youtubeStatus || xStatus || plaidStatus || bootParams.get('aurinko') === 'success');
   if (typeof DIMAD_WELCOME !== 'undefined') {
     if (skipWelcome) {
       DIMAD_WELCOME.active = false;
       document.body.classList.remove('welcome-locked');
       const gate = document.getElementById('dimad-welcome-gate');
       if (gate) gate.remove();
+      DIMAD_WELCOME.startWorkspacePreload();
     } else {
       DIMAD_WELCOME.setStatus('Generating Command Center…');
+      DIMAD_WELCOME.startWorkspacePreload();
     }
   }
   if (stripeStatus) {
@@ -20704,10 +21054,51 @@ window.onload = async function() {
       }));
     } catch (err) { /* ignore */ }
   }
-  if (stripeStatus || shopifyStatus || gumroadStatus) {
+  if (patreonStatus) {
+    try {
+      sessionStorage.setItem('dimad_patreon_flash', JSON.stringify({
+        status: patreonStatus,
+        reason: bootParams.get('reason') || '',
+        at: Date.now()
+      }));
+    } catch (err) { /* ignore */ }
+  }
+  if (youtubeStatus) {
+    try {
+      sessionStorage.setItem('dimad_youtube_flash', JSON.stringify({
+        status: youtubeStatus,
+        reason: bootParams.get('reason') || '',
+        at: Date.now()
+      }));
+    } catch (err) { /* ignore */ }
+  }
+  if (xStatus) {
+    try {
+      sessionStorage.setItem('dimad_x_flash', JSON.stringify({
+        status: xStatus,
+        reason: bootParams.get('reason') || '',
+        at: Date.now()
+      }));
+    } catch (err) { /* ignore */ }
+  }
+  if (plaidStatus) {
+    try {
+      sessionStorage.setItem('dimad_plaid_flash', JSON.stringify({
+        status: plaidStatus,
+        reason: bootParams.get('reason') || '',
+        at: Date.now()
+      }));
+    } catch (err) { /* ignore */ }
+  }
+  if (stripeStatus || shopifyStatus || gumroadStatus || patreonStatus || youtubeStatus || xStatus || plaidStatus) {
     bootParams.delete('stripe');
     bootParams.delete('shopify');
     bootParams.delete('gumroad');
+    bootParams.delete('patreon');
+    bootParams.delete('youtube');
+    bootParams.delete('x');
+    bootParams.delete('connected');
+    bootParams.delete('oauth');
     bootParams.delete('reason');
     const nextQuery = bootParams.toString();
     history.replaceState({}, '', window.location.pathname + (nextQuery ? '?' + nextQuery : '') + window.location.hash);
@@ -20728,6 +21119,7 @@ window.onload = async function() {
   FOCUS_TIMER.init();
   if (typeof DIMAD_GOALS !== 'undefined') DIMAD_GOALS.checkReminders();
   if (bootParams.get('aurinko') === 'success') switchTab('ent-email');
+  else if (youtubeStatus || xStatus) switchTab('ent-growth');
   else switchTab('ent-dashboard');
   if (typeof window.DIMAD_AURINKO?.boot === 'function') void window.DIMAD_AURINKO.boot();
   if (typeof CALENDAR_NAV !== 'undefined' && CALENDAR_NAV.render) CALENDAR_NAV.render();
@@ -20769,6 +21161,31 @@ window.onload = async function() {
     } else {
       CONNECT_MODULARS.connectGumroad();
     }
+  }
+  if (patreonStatus && typeof COMMAND_CENTER !== 'undefined') {
+    COMMAND_CENTER.toggleVisible('patreon', true);
+    const patreonCard = document.getElementById('module-patreon');
+    if (patreonCard && patreonCard.scrollIntoView) patreonCard.scrollIntoView({ block: 'nearest' });
+    if (patreonStatus === 'connected') {
+      CONNECT_MODULARS.paintPatreonConnected();
+    } else {
+      CONNECT_MODULARS.connectPatreon();
+    }
+  }
+  if (youtubeStatus && typeof GROWTH_HUB !== 'undefined') {
+    GROWTH_HUB.toggleVisible('youtube', true);
+    const youtubeCard = document.getElementById('growth-module-youtube');
+    if (youtubeCard && youtubeCard.scrollIntoView) youtubeCard.scrollIntoView({ block: 'nearest' });
+  }
+  if (xStatus && typeof GROWTH_HUB !== 'undefined') {
+    GROWTH_HUB.toggleVisible('x', true);
+    const xCard = document.getElementById('growth-module-x');
+    if (xCard && xCard.scrollIntoView) xCard.scrollIntoView({ block: 'nearest' });
+  }
+  if (plaidStatus && typeof COMMAND_CENTER !== 'undefined') {
+    COMMAND_CENTER.toggleVisible('plaid', true);
+    const plaidCard = document.getElementById('module-plaid');
+    if (plaidCard && plaidCard.scrollIntoView) plaidCard.scrollIntoView({ block: 'nearest' });
   }
   if (typeof DIMAD_WELCOME !== 'undefined' && DIMAD_WELCOME.active) {
     DIMAD_WELCOME.setStatus('Almost ready…');

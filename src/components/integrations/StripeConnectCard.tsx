@@ -3,8 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import AccountBadge from "@/components/integrations/AccountBadge";
 import IntegrationLoadingBar from "@/components/integrations/IntegrationLoadingBar";
+import { takeWorkspaceHydration } from "@/components/workspace/WorkspaceDataProvider";
 import { authFetch } from "@/lib/dimad-auth-client";
 import { INTEGRATION_CARD_CSS } from "@/lib/integration-card.css";
+import { startStripeOAuth } from "@/lib/oauth-client";
+import { cacheWorkspaceResponse } from "@/lib/use-workspace-hydration";
 import type { StripeConnectedMetrics } from "@/lib/stripe-types";
 
 type Flash = { tone: "ok" | "bad"; text: string };
@@ -61,9 +64,33 @@ export default function StripeConnectCard() {
   const [error, setError] = useState("");
   const [flash, setFlash] = useState<Flash | null>(null);
 
-  async function loadMetrics() {
-    setLoading(true);
+  function applyPayload(data: Record<string, unknown>, fromCache = false) {
+    setSignedOut(false);
+    if (!data.ok) {
+      setMetrics(null);
+      if (!fromCache) setError(explain(data.error));
+      return;
+    }
+    if (!data.connected) {
+      setMetrics(null);
+      postToDashboard({ type: "dimad-stripe-status", connected: false, display: null });
+      return;
+    }
+    setMetrics(data as unknown as StripeConnectedMetrics);
+    postToDashboard({ type: "dimad-stripe-status", connected: true, display: data.display });
+  }
+
+  async function loadMetrics(force = false) {
     setError("");
+    if (!force) {
+      const cached = takeWorkspaceHydration("stripe");
+      if (cached) {
+        applyPayload(cached, true);
+        setLoading(false);
+        return;
+      }
+    }
+    setLoading(true);
     try {
       const { res, data, token } = await authFetch("/api/integrations/stripe/metrics");
       if (!token || res.status === 401) {
@@ -72,19 +99,8 @@ export default function StripeConnectCard() {
         postToDashboard({ type: "dimad-stripe-status", connected: false, display: null });
         return;
       }
-      setSignedOut(false);
-      if (!data.ok) {
-        setMetrics(null);
-        setError(explain(data.error));
-        return;
-      }
-      if (!data.connected) {
-        setMetrics(null);
-        postToDashboard({ type: "dimad-stripe-status", connected: false, display: null });
-        return;
-      }
-      setMetrics(data as StripeConnectedMetrics);
-      postToDashboard({ type: "dimad-stripe-status", connected: true, display: data.display });
+      cacheWorkspaceResponse("stripe", data as Record<string, unknown>, res.ok, res.status);
+      applyPayload(data as Record<string, unknown>);
     } catch {
       setError("Could not load Stripe revenue.");
     } finally {
@@ -96,17 +112,15 @@ export default function StripeConnectCard() {
     setConnecting(true);
     setError("");
     try {
-      const { res, data, token } = await authFetch("/api/integrations/stripe/connect?format=json");
-      if (!token || res.status === 401 || data.error === "missing_id_token" || data.error === "invalid_session") {
-        (window.top || window).location.assign("/login.html");
-        return;
-      }
-      if (!res.ok || !data.url) {
-        setError(explain(data.error, "Could not start Stripe Connect."));
+      const result = await startStripeOAuth();
+      if (!result.ok) {
+        if (result.error === "login_required") {
+          (window.top || window).location.assign("/login.html");
+          return;
+        }
+        setError(explain(result.error, "Could not start Stripe Connect."));
         setConnecting(false);
-        return;
       }
-      (window.top || window).location.assign(String(data.url));
     } catch {
       setError("Could not start Stripe Connect.");
       setConnecting(false);
@@ -142,7 +156,7 @@ export default function StripeConnectCard() {
     const onMessage = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
       if (event.data?.type === "dimad-stripe-connect") void startConnect();
-      if (event.data?.type === "dimad-stripe-refresh") void loadMetrics();
+      if (event.data?.type === "dimad-stripe-refresh") void loadMetrics(true);
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
@@ -198,7 +212,7 @@ export default function StripeConnectCard() {
               monogram="$"
               onLogout={() => void disconnect()}
             />
-            <button type="button" className="dimad-int-ghost" disabled={loading} onClick={() => void loadMetrics()}>
+            <button type="button" className="dimad-int-ghost" disabled={loading} onClick={() => void loadMetrics(true)}>
               Refresh
             </button>
           </div>
@@ -268,7 +282,7 @@ export default function StripeConnectCard() {
               Synced via Stripe Connect
             </span>
             <button type="button" className="dimad-int-link" onClick={() => postToDashboard({ type: "dimad-open-sales" })}>
-              View in Sales & Revenue →
+              View in Revenue →
             </button>
           </div>
         </>

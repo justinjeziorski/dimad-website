@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   clearGumroadOauthCookies,
   exchangeGumroadCode,
-  fetchGumroadUser,
   gumroadAppBase,
   gumroadStatesMatch,
   writeGumroadIntegration
@@ -27,42 +26,41 @@ export async function GET(req: NextRequest) {
 
   if (!uid || !cookieState || !/^[A-Za-z0-9_-]{16,128}$/.test(uid)) {
     console.error("Gumroad callback missing oauth session");
-    return finish("gumroad=error&reason=login_required");
+    return finish("connected=gumroad&oauth=error&reason=login_required");
   }
   if (!gumroadStatesMatch(cookieState, returnedState)) {
     console.error("Gumroad callback state mismatch");
-    return finish("gumroad=error&reason=csrf");
+    return finish("connected=gumroad&oauth=error&reason=csrf");
   }
 
   const oauthError = req.nextUrl.searchParams.get("error");
   if (oauthError) {
     console.error("Gumroad OAuth denied", oauthError);
-    return finish("gumroad=error&reason=denied");
+    return finish("connected=gumroad&oauth=error&reason=denied");
   }
 
   if (!code || code.length > 512) {
     console.error("Gumroad callback missing code");
-    return finish("gumroad=error&reason=missing_code");
+    return finish("connected=gumroad&oauth=error&reason=missing_code");
   }
 
   try {
     const token = await exchangeGumroadCode(code);
-    const profile = await fetchGumroadUser(token.accessToken);
     await writeGumroadIntegration(
       uid,
       {
         accessToken: token.accessToken,
         refreshToken: token.refreshToken,
         scope: token.scope,
-        userId: profile.userId,
-        name: profile.name,
-        email: profile.email,
-        profileUrl: profile.profileUrl,
+        userId: "",
+        name: "",
+        email: "",
+        profileUrl: "",
         connectedAt: new Date().toISOString()
       },
       idToken || undefined
     );
-    const res = finish("gumroad=connected");
+    const res = finish("connected=gumroad");
     if (idToken) {
       res.cookies.set("dimad_fb_token", idToken, {
         httpOnly: true,
@@ -80,11 +78,11 @@ export async function GET(req: NextRequest) {
       "token_exchange_failed",
       "missing_client_id",
       "missing_client_secret",
-      "invalid_gumroad_credentials",
-      "gumroad_request_failed",
       "firestore_permission_denied",
       "firestore_write_failed"
     ].includes(reason);
-    return finish(`gumroad=error&reason=${encodeURIComponent(known ? reason : "token_exchange_failed")}`);
+    return finish(
+      `connected=gumroad&oauth=error&reason=${encodeURIComponent(known ? reason : "token_exchange_failed")}`
+    );
   }
 }

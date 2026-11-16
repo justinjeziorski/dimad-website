@@ -174,65 +174,6 @@ export default function LemonSqueezyWidget() {
 
   const connected = Boolean(storeData?.storeId);
 
-  const helpGuide = (
-    <div className="dimad-int-help">
-      <button
-        type="button"
-        className="dimad-int-help-trigger"
-        aria-expanded={helpOpen}
-        aria-controls="lemon-help-body"
-        onClick={() => setHelpOpen((open) => !open)}
-      >
-        <span className="dimad-int-help-mark" aria-hidden>
-          ?
-        </span>
-        <span className="dimad-int-help-title">Where do I find my Store ID and API Key?</span>
-        <span className="dimad-int-help-chevron" aria-hidden>
-          ▾
-        </span>
-      </button>
-      {helpOpen ? (
-        <div id="lemon-help-body" className="dimad-int-help-body" role="region" aria-label="Lemon Squeezy credentials guide">
-          <div className="dimad-int-help-step">
-            <span className="n">1</span>
-            <div>
-              <p className="t">Log into Lemon Squeezy</p>
-              <p className="d">Go to the Lemon Squeezy Dashboard and sign in to your merchant account.</p>
-            </div>
-          </div>
-          <div className="dimad-int-help-step">
-            <span className="n">2</span>
-            <div>
-              <p className="t">Find your Store ID</p>
-              <p className="d">
-                On your main dashboard, look at the browser URL. The numeric string right after{" "}
-                <code>/dashboard/</code> is your Store ID (e.g.{" "}
-                <code>app.lemonsqueezy.com/dashboard/12345</code>).
-              </p>
-            </div>
-          </div>
-          <div className="dimad-int-help-step">
-            <span className="n">3</span>
-            <div>
-              <p className="t">Generate an API key</p>
-              <p className="d">
-                Open Settings → API → Create API Key. Label it something like{" "}
-                <code>Dimad Integration</code>, then copy the generated token.
-              </p>
-            </div>
-          </div>
-          <div className="dimad-int-help-step">
-            <span className="n">4</span>
-            <div>
-              <p className="t">Complete the connection</p>
-              <p className="d">Paste both your Store ID and API Key into this widget and click Connect.</p>
-            </div>
-          </div>
-        </div>
-      ) : null}
-    </div>
-  );
-
   return (
     <section ref={rootRef} className="dimad-int-card">
       <style>{INTEGRATION_CARD_CSS}</style>
@@ -268,15 +209,6 @@ export default function LemonSqueezyWidget() {
               onLogout={() => void disconnect()}
               logoutLabel="Log out store"
             />
-            <button
-              type="button"
-              className="dimad-int-ghost"
-              aria-label="Credentials help"
-              title="Where do I find my Store ID and API Key?"
-              onClick={() => setHelpOpen((open) => !open)}
-            >
-              ?
-            </button>
             <button type="button" className="dimad-int-ghost" disabled={loading} onClick={() => void loadData()}>
               Refresh
             </button>
@@ -314,11 +246,65 @@ export default function LemonSqueezyWidget() {
               {connecting ? "Connecting…" : "Connect Lemon Squeezy"}
             </button>
           </form>
-          {helpGuide}
+
+          <div className="dimad-int-help">
+            <button
+              type="button"
+              className="dimad-int-help-trigger"
+              aria-expanded={helpOpen}
+              aria-controls="lemon-help-body"
+              onClick={() => setHelpOpen((open) => !open)}
+            >
+              <span className="dimad-int-help-mark" aria-hidden>
+                ?
+              </span>
+              <span className="dimad-int-help-title">Where do I find my Store ID and API Key?</span>
+              <span className="dimad-int-help-chevron" aria-hidden>
+                ▾
+              </span>
+            </button>
+            {helpOpen ? (
+              <div id="lemon-help-body" className="dimad-int-help-body" role="region" aria-label="Lemon Squeezy credentials guide">
+                <div className="dimad-int-help-step">
+                  <span className="n">1</span>
+                  <div>
+                    <p className="t">Log into Lemon Squeezy</p>
+                    <p className="d">Go to the Lemon Squeezy Dashboard and sign in to your merchant account.</p>
+                  </div>
+                </div>
+                <div className="dimad-int-help-step">
+                  <span className="n">2</span>
+                  <div>
+                    <p className="t">Find your Store ID</p>
+                    <p className="d">
+                      On your main dashboard, look at the browser URL. The numeric string right after{" "}
+                      <code>/dashboard/</code> is your Store ID (e.g.{" "}
+                      <code>app.lemonsqueezy.com/dashboard/12345</code>).
+                    </p>
+                  </div>
+                </div>
+                <div className="dimad-int-help-step">
+                  <span className="n">3</span>
+                  <div>
+                    <p className="t">Generate an API key</p>
+                    <p className="d">
+                      Open Settings → API → Create API Key. Label it something like{" "}
+                      <code>Dimad Integration</code>, then copy the generated token.
+                    </p>
+                  </div>
+                </div>
+                <div className="dimad-int-help-step">
+                  <span className="n">4</span>
+                  <div>
+                    <p className="t">Complete the connection</p>
+                    <p className="d">Paste both your Store ID and API Key into this widget and click Connect.</p>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+          </div>
         </>
       ) : null}
-
-      {connected && helpOpen ? helpGuide : null}
 
       {connected && storeData ? (
         <>
@@ -380,7 +366,7 @@ export default function LemonSqueezyWidget() {
               Synced via Lemon Squeezy API v1
             </span>
             <button type="button" className="dimad-int-link" onClick={() => postToDashboard({ type: "dimad-open-sales" })}>
-              View in Sales & Revenue →
+              View in Revenue →
             </button>
           </div>
         </>

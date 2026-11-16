@@ -29,26 +29,26 @@ export async function GET(req: NextRequest) {
 
   if (!uid || !cookieState || !/^[A-Za-z0-9_-]{16,128}$/.test(uid)) {
     console.error("Shopify callback missing oauth session");
-    return finish("shopify=error&reason=login_required");
+    return finish("connected=shopify&oauth=error&reason=login_required");
   }
   if (!shopifyStatesMatch(cookieState, returnedState)) {
     console.error("Shopify callback state mismatch");
-    return finish("shopify=error&reason=csrf");
+    return finish("connected=shopify&oauth=error&reason=csrf");
   }
   if (!shop || !cookieShop || shop !== cookieShop) {
     console.error("Shopify callback shop mismatch", shop, cookieShop);
-    return finish("shopify=error&reason=shop_mismatch");
+    return finish("connected=shopify&oauth=error&reason=shop_mismatch");
   }
 
   const oauthError = req.nextUrl.searchParams.get("error");
   if (oauthError) {
     console.error("Shopify OAuth denied", oauthError);
-    return finish("shopify=error&reason=denied");
+    return finish("connected=shopify&oauth=error&reason=denied");
   }
 
   if (!code || code.length > 512) {
     console.error("Shopify callback missing code");
-    return finish("shopify=error&reason=missing_code");
+    return finish("connected=shopify&oauth=error&reason=missing_code");
   }
 
   try {
@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
       },
       idToken || undefined
     );
-    const res = finish("shopify=connected");
+    const res = finish("connected=shopify");
     if (idToken) {
       res.cookies.set("dimad_fb_token", idToken, {
         httpOnly: true,
@@ -84,6 +84,8 @@ export async function GET(req: NextRequest) {
       "firestore_permission_denied",
       "firestore_write_failed"
     ].includes(reason);
-    return finish(`shopify=error&reason=${encodeURIComponent(known ? reason : "token_exchange_failed")}`);
+    return finish(
+      `connected=shopify&oauth=error&reason=${encodeURIComponent(known ? reason : "token_exchange_failed")}`
+    );
   }
 }

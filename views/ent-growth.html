@@ -1,0 +1,39 @@
+<div id="view-ent-growth" class="tab-view hidden space-y-3 w-full">
+  <div class="flex items-center justify-between gap-2 px-1">
+    <div>
+      <p class="text-[9px] font-mono uppercase tracking-[0.18em] text-brand-gold">Growth</p>
+      <h2 class="text-sm font-black text-white tracking-wide uppercase mt-0.5">Acquisition & channels</h2>
+    </div>
+    <button type="button" id="growth-api-filter-btn" onclick="GROWTH_HUB.toggleFilter('api')" class="text-[10px] font-semibold text-slate-300 hover:text-brand-gold border border-slate-700 bg-slate-950 px-2.5 py-1 rounded-lg transition">
+      API Widgets
+    </button>
+  </div>
+
+  <div id="growth-integrations" class="flex flex-col items-start gap-2 w-full">
+    <div data-growth-module="youtube" id="growth-module-youtube" class="cc-rail-card min-w-0 max-w-full w-full">
+      <iframe data-youtube-frame title="YouTube" src="/integrations/youtube-card" class="block w-full bg-brand-panel rounded-2xl border border-brand-border" style="height:240px;border:0;background:#0B0F17"></iframe>
+    </div>
+
+    <div data-growth-module="substack" class="cc-rail-card bg-slate-900 border border-slate-800 p-3 rounded-2xl transition-all duration-300 flex items-center gap-3 min-w-0 w-full">
+      <div class="shrink-0 min-w-[132px] space-y-1">
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-[9px] font-mono bg-orange-500/10 border border-orange-500/20 text-orange-400 px-1.5 py-0.5 rounded">NEWSLETTER</span>
+          <span class="w-2 h-2 rounded-full bg-slate-600" id="growth-substack-indicator"></span>
+        </div>
+        <h4 class="text-xs font-bold text-white">Substack</h4>
+      </div>
+      <div data-growth-body class="flex-1 min-w-0 space-y-1.5">
+        <p class="text-[10px] text-slate-400">Drafts, list growth, and publish rhythm.</p>
+        <button type="button" onclick="GROWTH_HUB.markConnected('substack')" class="w-full bg-slate-950 hover:bg-slate-800 border border-slate-700 text-[10px] font-semibold text-orange-400 py-1.5 rounded-xl transition">Connect Substack</button>
+      </div>
+    </div>
+
+    <div data-growth-module="mailerlite" id="growth-module-mailerlite" class="cc-rail-card min-w-0 max-w-full w-full">
+      <iframe data-mailerlite-frame title="MailerLite" src="/integrations/mailerlite-card" class="block w-full bg-brand-panel rounded-2xl border border-brand-border" style="height:240px;border:0;background:#0B0F17"></iframe>
+    </div>
+
+    <div data-growth-module="x" id="growth-module-x" class="cc-rail-card min-w-0 max-w-full w-full">
+      <iframe data-x-frame title="X" src="/integrations/x-card" class="block w-full bg-brand-panel rounded-2xl border border-brand-border" style="height:240px;border:0;background:#0B0F17"></iframe>
+    </div>
+  </div>
+</div>

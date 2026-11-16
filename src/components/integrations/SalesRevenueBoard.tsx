@@ -3,8 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import AccountBadge from "@/components/integrations/AccountBadge";
 import IntegrationLoadingBar from "@/components/integrations/IntegrationLoadingBar";
-import { authFetch, waitForFirebaseToken } from "@/lib/dimad-auth-client";
+import { authFetch } from "@/lib/dimad-auth-client";
 import { INTEGRATION_CARD_CSS } from "@/lib/integration-card.css";
+import { startShopifyOAuth, startStripeOAuth } from "@/lib/oauth-client";
 import type { ShopifyRangeKey, ShopifyStorePayload } from "@/lib/shopify-types";
 import type { StripeConnectedMetrics } from "@/lib/stripe-types";
 
@@ -112,17 +113,15 @@ export default function SalesRevenueBoard() {
     setStripeConnecting(true);
     setError("");
     try {
-      const { res, data, token } = await authFetch("/api/integrations/stripe/connect?format=json");
-      if (!token || res.status === 401) {
-        (window.top || window).location.assign("/login.html");
-        return;
-      }
-      if (!res.ok || !data.url) {
-        setError(String(data.error || "Could not start Stripe Connect."));
+      const result = await startStripeOAuth();
+      if (!result.ok) {
+        if (result.error === "login_required") {
+          (window.top || window).location.assign("/login.html");
+          return;
+        }
+        setError(String(result.error || "Could not start Stripe Connect."));
         setStripeConnecting(false);
-        return;
       }
-      (window.top || window).location.assign(String(data.url));
     } catch {
       setError("Could not start Stripe Connect.");
       setStripeConnecting(false);
@@ -139,14 +138,15 @@ export default function SalesRevenueBoard() {
     setShopifyConnecting(true);
     setError("");
     try {
-      const token = await waitForFirebaseToken(4000);
-      if (!token) {
-        (window.top || window).location.assign("/login.html");
-        return;
+      const result = await startShopifyOAuth(shop);
+      if (!result.ok) {
+        if (result.error === "login_required") {
+          (window.top || window).location.assign("/login.html");
+          return;
+        }
+        setError(result.error === "missing_shop" ? "Use a valid domain like mystore.myshopify.com." : String(result.error || "Could not start Shopify connect."));
+        setShopifyConnecting(false);
       }
-      (window.top || window).location.assign(
-        `/api/auth/shopify?shop=${encodeURIComponent(shop)}&id_token=${encodeURIComponent(token)}`
-      );
     } catch {
       setError("Could not start Shopify connect.");
       setShopifyConnecting(false);
@@ -339,7 +339,7 @@ export default function SalesRevenueBoard() {
 
         {!loading && !shopify ? (
           <>
-            <p className="dimad-int-note">Connect Shopify here — no need to leave Sales & Revenue.</p>
+            <p className="dimad-int-note">Connect Shopify here — no need to leave Revenue.</p>
             <form className="dimad-int-form" onSubmit={(event) => void connectShopify(event)}>
               <input
                 value={shopInput}

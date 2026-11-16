@@ -304,6 +304,16 @@
       cursor: pointer;
     }
     #dimad-welcome-gate .welcome-ghost:hover { color: #F59E0B; border-color: #F59E0B; }
+    #dimad-welcome-gate .welcome-sync {
+      margin: 10px 0 0;
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #64748b;
+      min-height: 1.2em;
+    }
+    #dimad-welcome-gate .welcome-sync.is-ready { color: #34d399; }
+    #dimad-welcome-gate .welcome-sync.is-partial { color: #fbbf24; }
     body.welcome-locked .dimad-app-root {
       visibility: hidden;
       pointer-events: none;
@@ -367,6 +377,7 @@
           <p id="welcome-quote"></p>
         </div>
         <div id="welcome-goals" class="welcome-goals"></div>
+        <p class="welcome-sync" id="welcome-sync-status" aria-live="polite">Syncing live metrics…</p>
         <div class="welcome-actions">
           <button type="button" id="welcome-enter-btn" class="welcome-primary" onclick="DIMAD_WELCOME.enter()">Clock In &amp; Enter</button>
           <button type="button" class="welcome-ghost" onclick="DIMAD_WELCOME.openGoals()">Review goals first</button>
@@ -442,7 +453,7 @@
 
   <!-- FINANCIAL & CURRENCY TICKER STRIP -->
   <div data-cc-module="ticker" class="h-6 bg-brand-black border-b border-brand-border/60 flex items-center gap-3 px-3 text-[9px] font-mono whitespace-nowrap">
-    <button type="button" onclick="openStocksFromTicker()" title="Open Stocks & Finance" class="shrink-0 text-slate-400 hover:text-brand-gold font-bold flex items-center gap-1 transition">
+    <button type="button" onclick="openStocksFromTicker()" title="Open Financial Markets" class="shrink-0 text-slate-400 hover:text-brand-gold font-bold flex items-center gap-1 transition">
       <i class="fa-solid fa-chart-simple text-brand-gold"></i> STOCK TICKER
     </button>
     <div class="mkt-ticker-viewport" aria-label="Live watchlist ticker">
@@ -1202,6 +1213,6 @@
 <script type="module" src="../auth/dimdrive.js?v=dimdrive-cloud"></script>
 <script type="module" src="../auth/aurinko-status.js?v=aurinko-disconnect"></script>
 <script type="module" src="../auth/email.js?v=mail-nav-case"></script>
-<script src="../script.js?v=gumroad-widget"></script>
+<script src="../script.js?v=ent-nav-billing-order"></script>
 </body>
 </html>

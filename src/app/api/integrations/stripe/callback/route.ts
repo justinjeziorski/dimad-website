@@ -20,23 +20,23 @@ export async function GET(req: NextRequest) {
 
   if (!uid || !cookieState || !/^[A-Za-z0-9_-]{16,128}$/.test(uid)) {
     console.error("Stripe callback missing oauth session");
-    return finish("stripe=error&reason=login_required");
+    return finish("connected=stripe&oauth=error&reason=login_required");
   }
   if (!stripeStatesMatch(cookieState, returnedState)) {
     console.error("Stripe callback state mismatch");
-    return finish("stripe=error&reason=csrf");
+    return finish("connected=stripe&oauth=error&reason=csrf");
   }
 
   const oauthError = req.nextUrl.searchParams.get("error");
   if (oauthError) {
     console.error("Stripe OAuth denied", oauthError);
-    return finish("stripe=error&reason=denied");
+    return finish("connected=stripe&oauth=error&reason=denied");
   }
 
   const code = req.nextUrl.searchParams.get("code") || "";
   if (!code || code.length > 512) {
     console.error("Stripe callback missing code");
-    return finish("stripe=error&reason=missing_code");
+    return finish("connected=stripe&oauth=error&reason=missing_code");
   }
 
   try {
@@ -47,11 +47,13 @@ export async function GET(req: NextRequest) {
       livemode: linked.livemode,
       account_mac: signStripeAccount(uid, linked.stripeUserId)
     }, idToken || undefined);
-    return finish("stripe=connected");
+    return finish("connected=stripe");
   } catch (err) {
     const reason = safeStripeError(err);
     console.error("Stripe callback failed", reason);
     const known = reason === "invalid_stripe_account" || reason === "firestore_permission_denied" || reason === "firestore_write_failed" || reason === "missing_stripe_secret";
-    return finish(`stripe=error&reason=${encodeURIComponent(known ? reason : "token_exchange_failed")}`);
+    return finish(
+      `connected=stripe&oauth=error&reason=${encodeURIComponent(known ? reason : "token_exchange_failed")}`
+    );
   }
 }

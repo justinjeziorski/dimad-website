@@ -3,8 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import AccountBadge from "@/components/integrations/AccountBadge";
 import IntegrationLoadingBar from "@/components/integrations/IntegrationLoadingBar";
+import { takeWorkspaceHydration } from "@/components/workspace/WorkspaceDataProvider";
 import { authFetch } from "@/lib/dimad-auth-client";
 import { INTEGRATION_CARD_CSS } from "@/lib/integration-card.css";
+import { startGumroadOAuth } from "@/lib/oauth-client";
+import { cacheWorkspaceResponse } from "@/lib/use-workspace-hydration";
 import type { GumroadStorePayload } from "@/lib/gumroad-types";
 
 type GumroadData = GumroadStorePayload & { ok?: boolean; connected?: boolean; error?: string };
@@ -62,9 +65,39 @@ export default function GumroadWidget() {
   const [error, setError] = useState("");
   const [flash, setFlash] = useState<Flash | null>(null);
 
-  async function loadData() {
-    setLoading(true);
+  function applyPayload(data: Record<string, unknown>, fromCache = false) {
+    setSignedOut(false);
+    if (!data.connected) {
+      setStoreData(null);
+      postToDashboard({ type: "dimad-gumroad-status", connected: false });
+      if (data.error && !fromCache) setError(explain(String(data.error)));
+      return;
+    }
+    if (data.error && !fromCache) setError(explain(String(data.error)));
+    const payload = data as GumroadData;
+    setStoreData(payload);
+    postToDashboard({
+      type: "dimad-gumroad-status",
+      connected: true,
+      name: payload.name,
+      email: payload.email,
+      saleCount: payload.metrics?.saleCount || 0,
+      productCount: payload.metrics?.productCount || 0,
+      revenue: payload.metrics?.grossVolume || 0
+    });
+  }
+
+  async function loadData(force = false) {
     setError("");
+    if (!force) {
+      const cached = takeWorkspaceHydration("gumroad");
+      if (cached) {
+        applyPayload(cached, true);
+        setLoading(false);
+        return;
+      }
+    }
+    setLoading(true);
     try {
       let last: { res: Response; data: Record<string, unknown>; token: string } | null = null;
       for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -80,25 +113,8 @@ export default function GumroadWidget() {
         setError("Sign in to DIMAD, then connect Gumroad.");
         return;
       }
-      setSignedOut(false);
-      if (!data.connected) {
-        setStoreData(null);
-        postToDashboard({ type: "dimad-gumroad-status", connected: false });
-        if (data.error) setError(explain(String(data.error)));
-        return;
-      }
-      if (data.error) setError(explain(String(data.error)));
-      const payload = data as GumroadData;
-      setStoreData(payload);
-      postToDashboard({
-        type: "dimad-gumroad-status",
-        connected: true,
-        name: payload.name,
-        email: payload.email,
-        saleCount: payload.metrics?.saleCount || 0,
-        productCount: payload.metrics?.productCount || 0,
-        revenue: payload.metrics?.grossVolume || 0
-      });
+      cacheWorkspaceResponse("gumroad", data as Record<string, unknown>, res.ok, res.status);
+      applyPayload(data as Record<string, unknown>);
     } catch {
       setError("Failed to fetch from Gumroad.");
     } finally {
@@ -110,17 +126,15 @@ export default function GumroadWidget() {
     setConnecting(true);
     setError("");
     try {
-      const { res, data, token } = await authFetch("/api/auth/gumroad?format=json");
-      if (!token || res.status === 401 || data.error === "missing_id_token" || data.error === "invalid_session") {
-        (window.top || window).location.assign("/login.html");
-        return;
-      }
-      if (!res.ok || !data.url) {
-        setError(explain(String(data.error || ""), "Could not start Gumroad OAuth."));
+      const result = await startGumroadOAuth();
+      if (!result.ok) {
+        if (result.error === "login_required") {
+          (window.top || window).location.assign("/login.html");
+          return;
+        }
+        setError(explain(result.error, "Could not start Gumroad OAuth."));
         setConnecting(false);
-        return;
       }
-      (window.top || window).location.assign(String(data.url));
     } catch {
       setError("Could not start Gumroad OAuth.");
       setConnecting(false);
@@ -156,7 +170,7 @@ export default function GumroadWidget() {
     const onMessage = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
       if (event.data?.type === "dimad-gumroad-connect") void startConnect();
-      if (event.data?.type === "dimad-gumroad-refresh") void loadData();
+      if (event.data?.type === "dimad-gumroad-refresh") void loadData(true);
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
@@ -211,7 +225,7 @@ export default function GumroadWidget() {
               onLogout={() => void disconnect()}
               logoutLabel="Log out Gumroad"
             />
-            <button type="button" className="dimad-int-ghost" disabled={loading} onClick={() => void loadData()}>
+            <button type="button" className="dimad-int-ghost" disabled={loading} onClick={() => void loadData(true)}>
               Refresh
             </button>
           </div>
@@ -293,7 +307,7 @@ export default function GumroadWidget() {
               Synced via Gumroad API v2
             </span>
             <button type="button" className="dimad-int-link" onClick={() => postToDashboard({ type: "dimad-open-sales" })}>
-              View in Sales & Revenue →
+              View in Revenue →
             </button>
           </div>
         </>

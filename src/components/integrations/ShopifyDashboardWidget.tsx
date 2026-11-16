@@ -3,8 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import AccountBadge from "@/components/integrations/AccountBadge";
 import IntegrationLoadingBar from "@/components/integrations/IntegrationLoadingBar";
-import { authFetch, waitForFirebaseToken } from "@/lib/dimad-auth-client";
+import { takeWorkspaceHydration } from "@/components/workspace/WorkspaceDataProvider";
+import { authFetch } from "@/lib/dimad-auth-client";
 import { INTEGRATION_CARD_CSS } from "@/lib/integration-card.css";
+import { startShopifyOAuth } from "@/lib/oauth-client";
+import { cacheWorkspaceResponse } from "@/lib/use-workspace-hydration";
 import type { ShopifyRangeKey, ShopifyStorePayload } from "@/lib/shopify-types";
 
 type StoreData = ShopifyStorePayload & { ok?: boolean; connected?: boolean; error?: string };
@@ -69,9 +72,42 @@ export default function ShopifyDashboardWidget() {
   const [error, setError] = useState("");
   const [flash, setFlash] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
 
-  async function loadData(nextRange = range) {
-    setLoading(true);
+  function applyPayload(data: Record<string, unknown>, fromCache = false) {
+    setSignedOut(false);
+    if (!data.connected || !data.shop) {
+      setStoreData(null);
+      postToDashboard({ type: "dimad-shopify-status", connected: false });
+      if (data.error && !fromCache) setError(String(data.error));
+      else if (!fromCache && new URLSearchParams(window.location.search).get("connected") === "1") {
+        setError("Shopify authorized, but store credentials were not saved. Connect again.");
+      }
+      return;
+    }
+    if (data.error && !fromCache) setError(String(data.error));
+    const payload = data as StoreData;
+    setStoreData(payload);
+    postToDashboard({
+      type: "dimad-shopify-status",
+      connected: true,
+      shop: payload.shop.domain || payload.shop.name,
+      orderCount: payload.period?.orderCount || payload.orders?.edges?.length || 0,
+      productCount: payload.activeProductCount || payload.products?.edges?.length || 0,
+      revenue: payload.period?.revenue?.amount || 0,
+      currency: payload.shop.currencyCode || "USD"
+    });
+  }
+
+  async function loadData(nextRange = range, force = false) {
     setError("");
+    if (!force && nextRange === "week") {
+      const cached = takeWorkspaceHydration("shopify");
+      if (cached) {
+        applyPayload(cached, true);
+        setLoading(false);
+        return;
+      }
+    }
+    setLoading(true);
     try {
       let last: { res: Response; data: Record<string, unknown>; token: string } | null = null;
       for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -87,28 +123,10 @@ export default function ShopifyDashboardWidget() {
         setError("Sign in to DIMAD, then refresh Shopify metrics.");
         return;
       }
-      setSignedOut(false);
-      if (!data.connected || !data.shop) {
-        setStoreData(null);
-        postToDashboard({ type: "dimad-shopify-status", connected: false });
-        if (data.error) setError(String(data.error));
-        else if (new URLSearchParams(window.location.search).get("connected") === "1") {
-          setError("Shopify authorized, but store credentials were not saved. Connect again.");
-        }
-        return;
+      if (nextRange === "week") {
+        cacheWorkspaceResponse("shopify", data as Record<string, unknown>, res.ok, res.status);
       }
-      if (data.error) setError(String(data.error));
-      const payload = data as StoreData;
-      setStoreData(payload);
-      postToDashboard({
-        type: "dimad-shopify-status",
-        connected: true,
-        shop: payload.shop.domain || payload.shop.name,
-        orderCount: payload.period?.orderCount || payload.orders?.edges?.length || 0,
-        productCount: payload.activeProductCount || payload.products?.edges?.length || 0,
-        revenue: payload.period?.revenue?.amount || 0,
-        currency: payload.shop.currencyCode || "USD"
-      });
+      applyPayload(data as Record<string, unknown>);
     } catch {
       setError("Failed to fetch from Shopify.");
     } finally {
@@ -126,14 +144,15 @@ export default function ShopifyDashboardWidget() {
     setConnecting(true);
     setError("");
     try {
-      const token = await waitForFirebaseToken(4000);
-      if (!token) {
-        (window.top || window).location.assign("/login.html");
-        return;
+      const result = await startShopifyOAuth(shop);
+      if (!result.ok) {
+        if (result.error === "login_required") {
+          (window.top || window).location.assign("/login.html");
+          return;
+        }
+        setError(result.error === "missing_shop" ? "Use a valid domain like mystore.myshopify.com." : String(result.error || "Could not start Shopify connect."));
+        setConnecting(false);
       }
-      (window.top || window).location.assign(
-        `/api/auth/shopify?shop=${encodeURIComponent(shop)}&id_token=${encodeURIComponent(token)}`
-      );
     } catch {
       setError("Could not start Shopify connect.");
       setConnecting(false);
@@ -171,7 +190,7 @@ export default function ShopifyDashboardWidget() {
       if (event.data?.type === "dimad-shopify-connect") {
         document.getElementById("shopify-widget-shop")?.focus();
       }
-      if (event.data?.type === "dimad-shopify-refresh") void loadData(range);
+      if (event.data?.type === "dimad-shopify-refresh") void loadData(range, true);
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
@@ -306,7 +325,7 @@ export default function ShopifyDashboardWidget() {
               Synced via Shopify Admin API
             </span>
             <button type="button" className="dimad-int-link" onClick={() => postToDashboard({ type: "dimad-open-sales" })}>
-              View in Sales & Revenue →
+              View in Revenue →
             </button>
           </div>
         </>
