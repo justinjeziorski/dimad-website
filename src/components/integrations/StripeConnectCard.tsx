@@ -68,7 +68,7 @@ export default function StripeConnectCard() {
     setSignedOut(false);
     if (!data.ok) {
       setMetrics(null);
-      if (!fromCache) setError(explain(data.error));
+      if (!fromCache) setError(explain(typeof data.error === "string" ? data.error : undefined));
       return;
     }
     if (!data.connected) {
@@ -134,7 +134,7 @@ export default function StripeConnectCard() {
     try {
       const { res, data } = await authFetch("/api/integrations/stripe/metrics", { method: "DELETE" });
       if (!res.ok || data.ok === false) {
-        setError(explain(data.error, "Could not disconnect Stripe."));
+        setError(explain(typeof data.error === "string" ? data.error : undefined, "Could not disconnect Stripe."));
         setLoading(false);
         return;
       }
