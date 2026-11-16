@@ -1,75 +1,83 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { usePlaidLink } from "react-plaid-link";
-import { authFetch } from "@/lib/dimad-auth-client";
-
-const LINK_TOKEN_KEY = "dimad_plaid_link_token";
-
-function productionOrigin() {
-  return String(process.env.NEXT_PUBLIC_PLAID_APP_ORIGIN || "https://dimad.co").replace(/\/$/, "");
-}
-
-function isLocalHost(hostname: string) {
-  return hostname === "localhost" || hostname === "127.0.0.1";
-}
+import { authFetch, waitForFirebaseToken } from "@/lib/dimad-auth-client";
+import {
+  finishPlaidConnect,
+  isLocalHost,
+  plaidAppOrigin,
+  writePlaidBearer,
+  writePlaidLinkToken
+} from "@/lib/plaid-client";
 
 export default function PlaidConnectPage() {
   const [linkToken, setLinkToken] = useState<string | null>(null);
   const [status, setStatus] = useState("Preparing secure bank connection…");
   const [error, setError] = useState("");
-  const [readyToOpen, setReadyToOpen] = useState(false);
-
-  const queryToken = useMemo(() => {
-    if (typeof window === "undefined") return "";
-    return new URLSearchParams(window.location.search).get("link_token") || "";
-  }, []);
+  const [opened, setOpened] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const fromQuery = queryToken;
+      const params = new URLSearchParams(window.location.search);
+      const fromQuery = String(params.get("link_token") || "").trim();
+      const idToken = String(params.get("id_token") || "").trim();
+
+      if (idToken) {
+        writePlaidBearer(idToken);
+      }
+
+      if (fromQuery || idToken) {
+        const cleaned = new URL(window.location.href);
+        cleaned.searchParams.delete("id_token");
+        if (fromQuery) cleaned.searchParams.set("link_token", fromQuery);
+        window.history.replaceState({}, "", cleaned.pathname + cleaned.search);
+      }
+
       if (fromQuery) {
-        try {
-          localStorage.setItem(LINK_TOKEN_KEY, fromQuery);
-        } catch {
-          /* ignore */
-        }
+        writePlaidLinkToken(fromQuery);
         if (!cancelled) {
           setLinkToken(fromQuery);
-          setStatus("Ready — continue in a supported browser to link Chase.");
-          setReadyToOpen(true);
+          setStatus("Opening secure bank connection…");
         }
         return;
       }
 
-      // Production Chase OAuth requires the allowlisted HTTPS origin (not localhost).
-      if (typeof window !== "undefined" && isLocalHost(window.location.hostname)) {
-        const dest = productionOrigin();
-        try {
-          const existing = localStorage.getItem(LINK_TOKEN_KEY) || "";
-          if (existing) {
-            window.location.replace(`${dest}/integrations/plaid-connect?link_token=${encodeURIComponent(existing)}`);
-            return;
-          }
-        } catch {
-          /* fall through and create token */
+      // Production OAuth redirect_uri is on the allowlisted HTTPS origin.
+      if (isLocalHost(window.location.hostname)) {
+        const existing = String(
+          (() => {
+            try {
+              return localStorage.getItem("dimad_plaid_link_token") || "";
+            } catch {
+              return "";
+            }
+          })()
+        );
+        const bearer = idToken || (await waitForFirebaseToken(8000));
+        if (existing && bearer) {
+          const dest = `${plaidAppOrigin()}/integrations/plaid-connect?link_token=${encodeURIComponent(existing)}&id_token=${encodeURIComponent(bearer)}`;
+          window.location.replace(dest);
+          return;
         }
       }
 
       try {
-        const existing = localStorage.getItem(LINK_TOKEN_KEY);
+        const existing = localStorage.getItem("dimad_plaid_link_token");
         if (existing) {
-          if (typeof window !== "undefined" && isLocalHost(window.location.hostname)) {
-            window.location.replace(
-              `${productionOrigin()}/integrations/plaid-connect?link_token=${encodeURIComponent(existing)}`
-            );
-            return;
+          if (isLocalHost(window.location.hostname)) {
+            const bearer = idToken || (await waitForFirebaseToken(8000));
+            if (bearer) {
+              window.location.replace(
+                `${plaidAppOrigin()}/integrations/plaid-connect?link_token=${encodeURIComponent(existing)}&id_token=${encodeURIComponent(bearer)}`
+              );
+              return;
+            }
           }
           if (!cancelled) {
             setLinkToken(existing);
-            setStatus("Ready to open Plaid Link.");
-            setReadyToOpen(true);
+            setStatus("Opening secure bank connection…");
           }
           return;
         }
@@ -87,26 +95,22 @@ export default function PlaidConnectPage() {
           if (!cancelled) setError("Sign in to DIMAD, then connect a bank account.");
           return;
         }
+        writePlaidBearer(token);
         const next = String(data.link_token || "");
         if (!res.ok || !next) {
           if (!cancelled) setError(String(data.error || "Could not start Plaid Link."));
           return;
         }
-        try {
-          localStorage.setItem(LINK_TOKEN_KEY, next);
-        } catch {
-          /* ignore */
-        }
-        if (typeof window !== "undefined" && isLocalHost(window.location.hostname)) {
+        writePlaidLinkToken(next);
+        if (isLocalHost(window.location.hostname)) {
           window.location.replace(
-            `${productionOrigin()}/integrations/plaid-connect?link_token=${encodeURIComponent(next)}`
+            `${plaidAppOrigin()}/integrations/plaid-connect?link_token=${encodeURIComponent(next)}&id_token=${encodeURIComponent(token)}`
           );
           return;
         }
         if (!cancelled) {
           setLinkToken(next);
-          setStatus("Ready to open Plaid Link.");
-          setReadyToOpen(true);
+          setStatus("Opening secure bank connection…");
         }
       } catch {
         if (!cancelled) setError("Could not start Plaid Link.");
@@ -115,7 +119,7 @@ export default function PlaidConnectPage() {
     return () => {
       cancelled = true;
     };
-  }, [queryToken]);
+  }, []);
 
   const onSuccess = useCallback(
     async (publicToken: string | null, metadata: { institution?: { name?: string } | null }) => {
@@ -134,12 +138,7 @@ export default function PlaidConnectPage() {
           setError(String(data.error || "Could not finish linking the bank account."));
           return;
         }
-        try {
-          localStorage.removeItem(LINK_TOKEN_KEY);
-        } catch {
-          /* ignore */
-        }
-        window.location.assign("/dashboard/index.html?connected=plaid");
+        finishPlaidConnect(true);
       } catch {
         setError("Could not finish linking the bank account.");
       }
@@ -153,25 +152,16 @@ export default function PlaidConnectPage() {
       void onSuccess(publicToken, metadata);
     },
     onExit: () => {
-      window.location.assign("/dashboard/index.html?connected=plaid&oauth=error&reason=denied");
-    },
-    onEvent: (eventName, metadata) => {
-      if (eventName === "ERROR" || eventName === "EXIT") {
-        const code = String((metadata as { error_code?: string })?.error_code || "");
-        if (code.toLowerCase().includes("institution") || code.toLowerCase().includes("oauth")) {
-          setError(
-            "Chase blocked this browser. Finish linking in Chrome, Edge, or Firefox (not an embedded preview)."
-          );
-        }
-      }
+      finishPlaidConnect(false, "denied");
     }
   });
 
-  function continueLink() {
-    if (!ready || !linkToken) return;
+  useEffect(() => {
+    if (!linkToken || !ready || opened) return;
+    setOpened(true);
     setStatus("Select your bank…");
     open();
-  }
+  }, [linkToken, ready, open, opened]);
 
   return (
     <main
@@ -192,8 +182,7 @@ export default function PlaidConnectPage() {
         {error ? <p style={{ color: "#fca5a5", fontSize: 12, lineHeight: 1.5 }}>{error}</p> : null}
         {!error ? (
           <p style={{ color: "#64748b", fontSize: 11, lineHeight: 1.55, marginBottom: 16 }}>
-            Chase requires a supported browser (Chrome, Edge, or Firefox). If you land on Chase “System Requirements”,
-            close that tab and continue here from a normal browser window — not an embedded preview.
+            Connect your bank securely through Plaid. Keep this window open until you return to DIMAD.
           </p>
         ) : null}
         {error ? (
@@ -203,8 +192,12 @@ export default function PlaidConnectPage() {
         ) : (
           <button
             type="button"
-            disabled={!readyToOpen || !ready || !linkToken}
-            onClick={continueLink}
+            disabled={!ready || !linkToken}
+            onClick={() => {
+              if (!ready || !linkToken) return;
+              setStatus("Select your bank…");
+              open();
+            }}
             style={{
               background: "#0EA5E9",
               color: "#070A0F",
@@ -213,8 +206,8 @@ export default function PlaidConnectPage() {
               padding: "12px 18px",
               fontWeight: 700,
               fontSize: 13,
-              cursor: !readyToOpen || !ready || !linkToken ? "default" : "pointer",
-              opacity: !readyToOpen || !ready || !linkToken ? 0.55 : 1
+              cursor: !ready || !linkToken ? "default" : "pointer",
+              opacity: !ready || !linkToken ? 0.55 : 1
             }}
           >
             {!linkToken || !ready ? "Preparing…" : "Continue to bank login"}

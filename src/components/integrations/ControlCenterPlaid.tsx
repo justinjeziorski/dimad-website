@@ -4,14 +4,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import AccountBadge from "@/components/integrations/AccountBadge";
 import IntegrationLoadingBar from "@/components/integrations/IntegrationLoadingBar";
 import { takeWorkspaceHydration } from "@/components/workspace/WorkspaceDataProvider";
-import { authFetch } from "@/lib/dimad-auth-client";
+import { authFetch, waitForFirebaseToken } from "@/lib/dimad-auth-client";
 import { INTEGRATION_CARD_CSS } from "@/lib/integration-card.css";
+import { isLocalHost, plaidAppOrigin, writePlaidLinkToken } from "@/lib/plaid-client";
 import { cacheWorkspaceResponse } from "@/lib/use-workspace-hydration";
 import type { PlaidPayload } from "@/lib/plaid-types";
 
 type PlaidData = PlaidPayload & { ok?: boolean; connected?: boolean; error?: string };
-
-const LINK_TOKEN_KEY = "dimad_plaid_link_token";
 
 const REASONS: Record<string, string> = {
   missing_plaid_client_id: "Plaid is not configured on this server.",
@@ -70,11 +69,7 @@ export default function ControlCenterPlaid() {
         return "";
       }
       setLinkToken(next);
-      try {
-        localStorage.setItem(LINK_TOKEN_KEY, next);
-      } catch {
-        /* ignore */
-      }
+      writePlaidLinkToken(next);
       return next;
     } catch {
       setError("Could not prepare Plaid Link.");
@@ -149,10 +144,17 @@ export default function ControlCenterPlaid() {
       setConnecting(false);
       return;
     }
-    // Chase OAuth must run in a real browser window on the allowlisted HTTPS origin.
-    const appOrigin = String(process.env.NEXT_PUBLIC_PLAID_APP_ORIGIN || "https://dimad.co").replace(/\/$/, "");
-    const local = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
-    const connectUrl = `${local ? appOrigin : window.location.origin}/integrations/plaid-connect?link_token=${encodeURIComponent(token)}`;
+    // Pass a short-lived Firebase ID token so the Link popup can save the bank after OAuth.
+    const idToken = await waitForFirebaseToken(8000);
+    if (!idToken) {
+      setError("Sign in to DIMAD, then connect a bank account.");
+      setConnecting(false);
+      return;
+    }
+    const origin = isLocalHost(window.location.hostname) ? plaidAppOrigin() : window.location.origin;
+    const connectUrl =
+      `${origin}/integrations/plaid-connect` +
+      `?link_token=${encodeURIComponent(token)}&id_token=${encodeURIComponent(idToken)}`;
     const topWin = window.top || window;
     const popup = topWin.open(connectUrl, "dimad_plaid_link", "popup=yes,width=520,height=780");
     if (!popup) {

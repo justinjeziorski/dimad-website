@@ -3,20 +3,28 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePlaidLink } from "react-plaid-link";
 import { authFetch } from "@/lib/dimad-auth-client";
-
-const LINK_TOKEN_KEY = "dimad_plaid_link_token";
+import {
+  finishPlaidConnect,
+  readPlaidLinkToken,
+  writePlaidBearer
+} from "@/lib/plaid-client";
 
 export default function PlaidOAuthRedirectPage() {
   const [linkToken, setLinkToken] = useState<string | null>(null);
   const [status, setStatus] = useState("Resuming bank connection…");
   const [error, setError] = useState("");
+  const [opened, setOpened] = useState(false);
 
   useEffect(() => {
-    try {
-      setLinkToken(localStorage.getItem(LINK_TOKEN_KEY));
-    } catch {
-      setLinkToken(null);
+    const params = new URLSearchParams(window.location.search);
+    const idToken = String(params.get("id_token") || "").trim();
+    if (idToken) {
+      writePlaidBearer(idToken);
+      const cleaned = new URL(window.location.href);
+      cleaned.searchParams.delete("id_token");
+      window.history.replaceState({}, "", cleaned.pathname + cleaned.search + cleaned.hash);
     }
+    setLinkToken(readPlaidLinkToken() || null);
   }, []);
 
   const receivedRedirectUri = useMemo(() => {
@@ -40,12 +48,7 @@ export default function PlaidOAuthRedirectPage() {
         setError(String(data.error || "Could not finish linking the bank account."));
         return;
       }
-      try {
-        localStorage.removeItem(LINK_TOKEN_KEY);
-      } catch {
-        /* ignore */
-      }
-      window.location.assign("/dashboard/index.html?connected=plaid");
+      finishPlaidConnect(true);
     } catch {
       setError("Could not finish linking the bank account.");
     }
@@ -58,7 +61,7 @@ export default function PlaidOAuthRedirectPage() {
       void onSuccess(publicToken, metadata);
     },
     onExit: () => {
-      window.location.assign("/dashboard/index.html?connected=plaid&oauth=error&reason=denied");
+      finishPlaidConnect(false, "denied");
     }
   });
 
@@ -67,8 +70,10 @@ export default function PlaidOAuthRedirectPage() {
       setError("Missing Plaid link session. Return to Command Center and connect again.");
       return;
     }
-    if (ready) open();
-  }, [linkToken, ready, open]);
+    if (!ready || opened) return;
+    setOpened(true);
+    open();
+  }, [linkToken, ready, open, opened]);
 
   return (
     <main
@@ -91,7 +96,11 @@ export default function PlaidOAuthRedirectPage() {
           <a href="/dashboard/index.html" style={{ color: "#F59E0B", fontSize: 12 }}>
             Return to dashboard →
           </a>
-        ) : null}
+        ) : (
+          <p style={{ color: "#64748b", fontSize: 11, lineHeight: 1.5 }}>
+            Finishing your bank connection and returning you to DIMAD…
+          </p>
+        )}
       </div>
     </main>
   );

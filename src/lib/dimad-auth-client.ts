@@ -1,5 +1,7 @@
 "use client";
 
+import { readPlaidBearer } from "@/lib/plaid-client";
+
 type DimadUser = { getIdToken: (forceRefresh?: boolean) => Promise<string>; uid?: string };
 type DimadAuth = {
   currentUser?: DimadUser | null;
@@ -44,6 +46,9 @@ function requestTokenFromParent(timeoutMs: number) {
 }
 
 export async function waitForFirebaseToken(maxMs = 15000) {
+  const handedOff = readPlaidBearer();
+  if (handedOff) return handedOff;
+
   const deadline = Date.now() + maxMs;
 
   const fromAuth = async () => {
