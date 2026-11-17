@@ -3,199 +3,248 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import DashboardShell from "@/components/dashboard/DashboardShell";
 import { authFetch } from "@/lib/dimad-auth-client";
-import {
-  compactNumber,
-  downloadCsv,
-  extractGrowthSources,
-  extractRevenueSources,
-  money,
-  type GrowthSourceId
-} from "@/lib/snapshot-aggregate";
+import { compactNumber, generateMockGrowthEvents, summarizeGrowth } from "@/lib/growth/growthEngine";
+import type { GrowthSource, UnifiedGrowthEvent } from "@/lib/growth/types";
+import { formatDelta } from "@/lib/revenue/ledgerEngine";
 import { SNAPSHOT_THEME } from "@/lib/snapshot-theme";
 
+const SOURCES: { id: GrowthSource; label: string }[] = [
+  { id: "youtube", label: "YouTube" },
+  { id: "x", label: "X" },
+  { id: "mailerlite", label: "MailerLite" },
+  { id: "instagram", label: "Instagram" },
+  { id: "tiktok", label: "TikTok" },
+  { id: "manual", label: "Manual" }
+];
+
 export default function GrowthWorkspacePage() {
-  const [growth, setGrowth] = useState<Partial<Record<GrowthSourceId, Record<string, unknown>>>>({});
-  const [revenueTotal, setRevenueTotal] = useState(0);
+  const [events, setEvents] = useState<UnifiedGrowthEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [usingMock, setUsingMock] = useState(false);
+  const [sources, setSources] = useState<Set<GrowthSource>>(new Set(["youtube", "x", "mailerlite"]));
 
   const load = useCallback(async () => {
     setLoading(true);
-    const gKeys: GrowthSourceId[] = ["youtube", "x", "mailerlite"];
-    const gEndpoints: Record<GrowthSourceId, string> = {
-      youtube: "/api/youtube/data",
-      x: "/api/x/data",
-      mailerlite: "/api/mailerlite/data"
-    };
-    const nextG: Partial<Record<GrowthSourceId, Record<string, unknown>>> = {};
-    await Promise.all(
-      gKeys.map(async (key) => {
-        try {
-          const { data } = await authFetch(gEndpoints[key]);
-          nextG[key] = data as Record<string, unknown>;
-        } catch {
-          nextG[key] = { connected: false };
-        }
-      })
-    );
-    setGrowth(nextG);
-
     try {
-      const [stripe, lemon, gumroad, patreon, shopify] = await Promise.all([
-        authFetch("/api/integrations/stripe/metrics"),
-        authFetch("/api/lemonsqueezy/data"),
-        authFetch("/api/gumroad/data"),
-        authFetch("/api/patreon/data"),
-        authFetch("/api/shopify/data?range=month")
+      const [youtube, x, mailerlite] = await Promise.all([
+        authFetch("/api/youtube/data"),
+        authFetch("/api/x/data"),
+        authFetch("/api/mailerlite/data")
       ]);
-      const sources = extractRevenueSources(
-        {
-          stripe: stripe.data as Record<string, unknown>,
-          lemon: lemon.data as Record<string, unknown>,
-          gumroad: gumroad.data as Record<string, unknown>,
-          patreon: patreon.data as Record<string, unknown>,
-          shopify: shopify.data as Record<string, unknown>
-        },
-        "1M"
-      );
-      setRevenueTotal(sources.reduce((sum, s) => sum + (s.connected ? s.amount : 0), 0));
+      const live: UnifiedGrowthEvent[] = [];
+      const yt = youtube.data as Record<string, unknown>;
+      const xp = x.data as Record<string, unknown>;
+      const ml = mailerlite.data as Record<string, unknown>;
+      const now = new Date().toISOString();
+
+      if (yt.connected) {
+        live.push(
+          {
+            id: "live_yt_aud",
+            userId: "user",
+            source: "youtube",
+            platformLabel: "YouTube Channel",
+            metricType: "audience_reach",
+            value: Number(yt.viewCount || 0),
+            date: now,
+            metadata: { contentType: "video" }
+          },
+          {
+            id: "live_yt_fol",
+            userId: "user",
+            source: "youtube",
+            platformLabel: "YouTube Channel",
+            metricType: "follower_growth",
+            value: Number(yt.subscriberCount || 0),
+            date: now
+          },
+          {
+            id: "live_yt_out",
+            userId: "user",
+            source: "youtube",
+            platformLabel: "YouTube Channel",
+            metricType: "content_output",
+            value: Number(yt.videoCount || 0),
+            date: now,
+            metadata: { contentType: "video" }
+          }
+        );
+      }
+      if (xp.connected) {
+        const impressions = ((xp.recentTweets as { impressionCount?: number }[] | undefined) || []).reduce(
+          (sum, t) => sum + Number(t.impressionCount || 0),
+          0
+        );
+        live.push(
+          {
+            id: "live_x_aud",
+            userId: "user",
+            source: "x",
+            platformLabel: "X",
+            metricType: "audience_reach",
+            value: impressions || Number(xp.followersCount || 0),
+            date: now,
+            metadata: { contentType: "post" }
+          },
+          {
+            id: "live_x_fol",
+            userId: "user",
+            source: "x",
+            platformLabel: "X",
+            metricType: "follower_growth",
+            value: Number(xp.followersCount || 0),
+            date: now
+          }
+        );
+      }
+      if (ml.connected) {
+        const metrics = (ml.metrics || {}) as { subscriberCount?: number; avgOpenRate?: number };
+        live.push(
+          {
+            id: "live_ml_fol",
+            userId: "user",
+            source: "mailerlite",
+            platformLabel: "MailerLite Newsletter",
+            metricType: "follower_growth",
+            value: Number(metrics.subscriberCount || 0),
+            date: now
+          },
+          {
+            id: "live_ml_eng",
+            userId: "user",
+            source: "mailerlite",
+            platformLabel: "MailerLite Newsletter",
+            metricType: "engagement_rate",
+            value: Number(metrics.avgOpenRate || 0),
+            date: now,
+            metadata: { contentType: "newsletter" }
+          }
+        );
+      }
+
+      if (live.length) {
+        setEvents(live);
+        setUsingMock(false);
+      } else {
+        setEvents(generateMockGrowthEvents("demo"));
+        setUsingMock(true);
+      }
     } catch {
-      setRevenueTotal(0);
+      setEvents(generateMockGrowthEvents("demo"));
+      setUsingMock(true);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  const sources = useMemo(() => extractGrowthSources(growth), [growth]);
-  const audience = sources.reduce((sum, s) => sum + (s.connected ? s.amount : 0), 0);
-  const yt = growth.youtube;
-  const x = growth.x;
-  const ml = growth.mailerlite;
+  const summary = useMemo(() => summarizeGrowth(events, sources), [events, sources]);
+  const visible = useMemo(
+    () => events.filter((e) => sources.has(e.source)).sort((a, b) => Date.parse(b.date) - Date.parse(a.date)),
+    [events, sources]
+  );
 
-  function exportLeads() {
-    downloadCsv("dimad-growth-leads.csv", [
-      ["Platform", "Metric", "Value"],
-      ["YouTube", "Subscribers", String(yt?.subscriberCount || 0)],
-      ["YouTube", "Views", String(yt?.viewCount || 0)],
-      ["X", "Followers", String(x?.followersCount || 0)],
-      ["MailerLite", "Subscribers", String((ml?.metrics as { subscriberCount?: number } | undefined)?.subscriberCount || 0)],
-      ["MailerLite", "Avg open rate", String((ml?.metrics as { avgOpenDisplay?: string } | undefined)?.avgOpenDisplay || "")],
-      ["Funnel", "Audience total", String(audience)],
-      ["Funnel", "Revenue (1M commerce)", String(revenueTotal)]
-    ]);
+  function toggle(id: GrowthSource) {
+    setSources((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }
 
   return (
     <DashboardShell
       kicker="Acquisition"
-      title="Growth workspace"
-      subtitle="Audience analytics across YouTube, X, and MailerLite — correlated with commerce volume for funnel context."
-      actions={
-        <button type="button" onClick={exportLeads} style={btnStyle}>
-          Export lead report
-        </button>
-      }
+      title="Growth Command Center"
+      subtitle="Unified audience events across YouTube, X, MailerLite, and future channels — same metric model for every platform."
     >
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
-        <Metric label="Total audience" value={loading ? "…" : compactNumber(audience)} />
-        <Metric label="Commerce volume (1M)" value={loading ? "…" : money(revenueTotal)} hint="Excludes Plaid" />
-        <Metric
-          label="Mail open rate"
-          value={String((ml?.metrics as { avgOpenDisplay?: string } | undefined)?.avgOpenDisplay || "—")}
+      {usingMock ? (
+        <p style={{ margin: "0 0 12px", color: SNAPSHOT_THEME.mute, fontSize: 11 }}>
+          Demo growth events active — connect YouTube, X, or MailerLite to replace mock series.
+        </p>
+      ) : null}
+
+      <section style={panelStyle}>
+        <p style={labelStyle}>Sources</p>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {SOURCES.map((s) => (
+            <button key={s.id} type="button" onClick={() => toggle(s.id)} style={pill(sources.has(s.id))}>
+              {s.label}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <div style={grid4}>
+        <Kpi
+          label="Total Audience Reach"
+          value={loading ? "…" : compactNumber(summary.totalAudienceReach)}
+          delta={summary.reachDeltaPct}
+        />
+        <Kpi
+          label="Net Follower Velocity"
+          value={loading ? "…" : compactNumber(summary.netFollowerVelocity)}
+          delta={summary.followerVelocityDeltaPct}
+        />
+        <Kpi
+          label="Content Output Cadence"
+          value={loading ? "…" : compactNumber(summary.contentOutputCadence)}
+          delta={summary.outputCadenceDeltaPct}
+        />
+        <Kpi
+          label="Avg Engagement Rate"
+          value={loading ? "…" : `${summary.averageEngagementRate.toFixed(1)}%`}
+          delta={summary.engagementDeltaPct}
         />
       </div>
 
       <section style={{ ...panelStyle, marginTop: 14 }}>
-        <p style={labelStyle}>Platform analytics</p>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
-          <PlatformCard
-            title="YouTube"
-            rows={[
-              ["Subscribers", compactNumber(Number(yt?.subscriberCount || 0))],
-              ["Views", compactNumber(Number(yt?.viewCount || 0))],
-              ["Videos", compactNumber(Number(yt?.videoCount || 0))]
-            ]}
-            connected={Boolean(yt?.connected)}
-          />
-          <PlatformCard
-            title="X"
-            rows={[
-              ["Followers", compactNumber(Number(x?.followersCount || 0))],
-              ["Following", compactNumber(Number(x?.followingCount || 0))],
-              [
-                "Recent impressions",
-                compactNumber(
-                  ((x?.recentTweets as { impressionCount?: number }[] | undefined) || []).reduce(
-                    (sum, t) => sum + Number(t.impressionCount || 0),
-                    0
-                  )
-                )
-              ]
-            ]}
-            connected={Boolean(x?.connected)}
-          />
-          <PlatformCard
-            title="MailerLite"
-            rows={[
-              [
-                "Subscribers",
-                compactNumber(Number((ml?.metrics as { subscriberCount?: number } | undefined)?.subscriberCount || 0))
-              ],
-              ["Avg open", String((ml?.metrics as { avgOpenDisplay?: string } | undefined)?.avgOpenDisplay || "—")],
-              ["Avg click", String((ml?.metrics as { avgClickDisplay?: string } | undefined)?.avgClickDisplay || "—")]
-            ]}
-            connected={Boolean(ml?.connected)}
-          />
+        <p style={labelStyle}>Unified growth events</p>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+            <thead>
+              <tr style={{ color: SNAPSHOT_THEME.mute, textAlign: "left" }}>
+                {["Date", "Platform", "Metric", "Value", "Campaign / Type"].map((h) => (
+                  <th key={h} style={thStyle}>
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {visible.slice(0, 80).map((e) => (
+                <tr key={e.id} style={{ borderTop: `1px solid ${SNAPSHOT_THEME.navyLine}` }}>
+                  <td style={tdStyle}>{e.date.slice(0, 10)}</td>
+                  <td style={tdStyle}>{e.platformLabel}</td>
+                  <td style={tdStyle}>{e.metricType.replace(/_/g, " ")}</td>
+                  <td style={tdStyle}>
+                    {e.metricType === "engagement_rate" ? `${e.value.toFixed(1)}%` : compactNumber(e.value)}
+                  </td>
+                  <td style={tdStyle}>
+                    {e.metadata?.campaignName || e.metadata?.contentType || "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-      </section>
-
-      <section style={{ ...panelStyle, marginTop: 14 }}>
-        <p style={labelStyle}>Funnel correlation</p>
-        <p style={{ margin: 0, color: SNAPSHOT_THEME.mute, fontSize: 12, lineHeight: 1.55 }}>
-          Audience reach <b style={{ color: SNAPSHOT_THEME.ink }}>{compactNumber(audience)}</b> alongside period
-          commerce volume <b style={{ color: SNAPSHOT_THEME.ink }}>{money(revenueTotal)}</b>. Use exports for lead-gen
-          reporting; revenue detail lives in the Revenue workspace.
-        </p>
       </section>
     </DashboardShell>
   );
 }
 
-function Metric({ label, value, hint }: { label: string; value: string; hint?: string }) {
+function Kpi({ label, value, delta }: { label: string; value: string; delta: number }) {
   return (
     <div style={panelStyle}>
       <p style={labelStyle}>{label}</p>
-      <div style={{ fontSize: 26, fontWeight: 700 }}>{value}</div>
-      {hint ? <p style={{ margin: "6px 0 0", fontSize: 10, color: SNAPSHOT_THEME.mute }}>{hint}</p> : null}
-    </div>
-  );
-}
-
-function PlatformCard({
-  title,
-  rows,
-  connected
-}: {
-  title: string;
-  rows: [string, string][];
-  connected: boolean;
-}) {
-  return (
-    <div style={{ border: `1px solid ${SNAPSHOT_THEME.navyLine}`, borderRadius: 12, padding: 14 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
-        <strong>{title}</strong>
-        <span style={{ color: connected ? SNAPSHOT_THEME.ok : SNAPSHOT_THEME.mute, fontSize: 10 }}>
-          {connected ? "Connected" : "Offline"}
-        </span>
-      </div>
-      {rows.map(([k, v]) => (
-        <div key={k} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "5px 0" }}>
-          <span style={{ color: SNAPSHOT_THEME.mute }}>{k}</span>
-          <b>{v}</b>
-        </div>
-      ))}
+      <div style={{ fontSize: 22, fontWeight: 700 }}>{value}</div>
+      <p style={{ margin: "4px 0 0", fontSize: 11, color: delta >= 0 ? SNAPSHOT_THEME.ok : SNAPSHOT_THEME.danger }}>
+        {formatDelta(delta)}
+      </p>
     </div>
   );
 }
@@ -204,7 +253,7 @@ const panelStyle: CSSProperties = {
   background: "rgba(17, 34, 64, 0.72)",
   border: `1px solid ${SNAPSHOT_THEME.navyLine}`,
   borderRadius: 16,
-  padding: 18
+  padding: 16
 };
 
 const labelStyle: CSSProperties = {
@@ -212,16 +261,29 @@ const labelStyle: CSSProperties = {
   fontSize: 10,
   letterSpacing: "0.14em",
   textTransform: "uppercase",
-  color: SNAPSHOT_THEME.gold
+  color: SNAPSHOT_THEME.gold,
+  fontWeight: 700
 };
 
-const btnStyle: CSSProperties = {
-  border: `1px solid ${SNAPSHOT_THEME.gold}`,
-  borderRadius: 999,
-  padding: "8px 12px",
-  fontSize: 11,
-  fontWeight: 700,
-  cursor: "pointer",
-  background: "transparent",
-  color: SNAPSHOT_THEME.gold
+const grid4: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+  gap: 12,
+  marginTop: 14
 };
+
+const thStyle: CSSProperties = { padding: "8px 6px", fontWeight: 600 };
+const tdStyle: CSSProperties = { padding: "10px 6px", color: SNAPSHOT_THEME.ink };
+
+function pill(active: boolean): CSSProperties {
+  return {
+    border: `1px solid ${active ? SNAPSHOT_THEME.gold : SNAPSHOT_THEME.navyLine}`,
+    background: active ? SNAPSHOT_THEME.goldSoft : "transparent",
+    color: active ? SNAPSHOT_THEME.gold : SNAPSHOT_THEME.mute,
+    borderRadius: 999,
+    padding: "6px 10px",
+    fontSize: 11,
+    fontWeight: 700,
+    cursor: "pointer"
+  };
+}

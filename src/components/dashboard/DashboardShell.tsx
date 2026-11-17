@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { SNAPSHOT_THEME } from "@/lib/snapshot-theme";
 
 export default function DashboardShell({
@@ -16,15 +16,20 @@ export default function DashboardShell({
   actions?: ReactNode;
   children: ReactNode;
 }) {
+  const [embedded, setEmbedded] = useState(false);
+  useEffect(() => {
+    setEmbedded(window.parent !== window);
+  }, []);
+
   return (
     <main
       style={{
-        minHeight: "100vh",
+        minHeight: embedded ? undefined : "100vh",
         margin: 0,
         background: `linear-gradient(180deg, ${SNAPSHOT_THEME.navySoft} 0%, ${SNAPSHOT_THEME.navy} 40%, #060d18 100%)`,
         color: SNAPSHOT_THEME.ink,
         fontFamily: '"JetBrains Mono", ui-monospace, monospace',
-        padding: "28px 20px 48px"
+        padding: embedded ? "18px 16px 28px" : "28px 20px 48px"
       }}
     >
       <div style={{ maxWidth: 1100, margin: "0 auto" }}>

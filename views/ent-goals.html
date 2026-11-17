@@ -66,14 +66,14 @@
             <i class="fa-solid fa-gear text-[11px]"></i>
           </button>
         </div>
-        <p class="text-[11px] text-slate-400 mt-0.5">Week, month, quarter, and year boards. Ten slots per period.</p>
+        <p class="text-[11px] text-slate-400 mt-0.5">Daily through yearly boards, plus one-time deadline goals. Ten slots per period.</p>
         <div id="dimad-goals-toggles" class="flex flex-wrap gap-1.5 mt-2.5"></div>
       </div>
       <button type="button" onclick="DIMAD_GOALS.openComposer()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs px-4 py-2.5 rounded-xl transition shadow-lg shadow-amber-500/10 whitespace-nowrap shrink-0">
         + New Goal
       </button>
     </div>
-    <div id="dimad-goals-score" class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2"></div>
+    <div id="dimad-goals-score" class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-7 gap-2"></div>
     <div id="dimad-goals-board" class="rounded-xl border border-slate-800 bg-slate-950 p-2 space-y-2"></div>
     <div id="dimad-goals-list" class="hidden"></div>
     <p id="dimad-goals-cap" class="text-[10px] font-mono text-slate-500 pt-1"></p>
@@ -234,9 +234,9 @@
       <p class="text-[11px] text-slate-500 mb-2">Set it on today or pick a future period.</p>
       <div id="gn-when"></div>
     </div>
-    <label class="flex items-start gap-2 text-[12px] text-slate-200 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5">
+    <label id="gn-recurring-wrap" class="flex items-start gap-2 text-[12px] text-slate-200 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5">
       <input id="gn-recurring" type="checkbox" class="mt-0.5 accent-amber-500" onchange="DIMAD_GOALS.syncWeekdaysPanel()">
-      <span><span class="font-semibold text-white">Recurring</span> — repeats every <span id="gn-recurring-hint">day</span> from this date forward.</span>
+      <span><span class="font-semibold text-white">Recurring</span> — repeats every <span id="gn-recurring-hint">day</span> from this date forward. Turn off for a one-time target, or use the One-time horizon for deadline goals.</span>
     </label>
     <div id="gn-weekdays-wrap" class="hidden space-y-1.5">
       <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Repeat on</div>

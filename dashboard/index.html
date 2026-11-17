@@ -1006,8 +1006,15 @@
       <h2 class="text-xl font-bold text-white">Executive Support</h2>
     </div>
 
-    <div id="vault-tab-integrations" class="vault-tab-content hidden">
-      <iframe title="Integrations" src="/integrations/settings-integrations" class="block w-full rounded-2xl border border-slate-800" style="min-height:70vh;border:0;background:#0A192F"></iframe>
+    <div id="vault-tab-integrations" class="vault-tab-content">
+      <iframe
+        data-integrations-hub-frame
+        title="Integrations"
+        src="/integrations/settings-integrations"
+        class="block w-full"
+        scrolling="no"
+        style="width:100%;min-height:640px;border:0;overflow:hidden;background:transparent"
+      ></iframe>
     </div>
 
     <div id="vault-tab-settings" class="vault-tab-content hidden">
@@ -1221,6 +1228,6 @@
 <script type="module" src="../auth/dimdrive.js?v=dimdrive-cloud"></script>
 <script type="module" src="../auth/aurinko-status.js?v=aurinko-disconnect"></script>
 <script type="module" src="../auth/email.js?v=mail-nav-case"></script>
-<script src="../script.js?v=ent-nav-billing-order"></script>
+<script src="../script.js?v=rev-unwrap-1"></script>
 </body>
 </html>

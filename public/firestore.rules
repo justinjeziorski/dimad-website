@@ -9,13 +9,22 @@ service cloud.firestore {
       match /writings/{docId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
+      match /manual_ledger/{entryId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+      match /accountability_goals/{goalId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+      match /settings/{docId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
       match /dimad_calendar_events/{eventId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
       match /integrations/{integrationId} {
         allow read, write: if request.auth != null
           && request.auth.uid == userId
-          && (integrationId == "stripe" || integrationId == "shopify" || integrationId == "lemon" || integrationId == "gumroad" || integrationId == "patreon" || integrationId == "mailerlite" || integrationId == "youtube");
+          && (integrationId == "stripe" || integrationId == "shopify" || integrationId == "lemon" || integrationId == "gumroad" || integrationId == "patreon" || integrationId == "mailerlite" || integrationId == "youtube" || integrationId == "x" || integrationId == "plaid");
       }
     }
   }

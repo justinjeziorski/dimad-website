@@ -92,7 +92,7 @@ async function loadViews() {
   const container = document.getElementById('view-container');
   try {
     const fragments = await Promise.all(VIEW_FILES.map(async (id) => {
-      const res = await fetch(new URL(`../views/${id}.html`, window.location.href), { cache: 'no-store' });
+      const res = await fetch(new URL(`../views/${id}.html?v=rev-unwrap-1`, window.location.href), { cache: 'no-store' });
       if (!res.ok) throw new Error(`Failed to load views/${id}.html (${res.status})`);
       return res.text();
     }));
@@ -950,8 +950,24 @@ function switchTab(tabId) {
   if (tabId === 'ent-tasks' && typeof TASK_MANAGER !== 'undefined') {
     TASK_MANAGER.mount();
   }
-  if (tabId === 'ent-crm' && typeof DIMAD_SHEET !== 'undefined') {
-    DIMAD_SHEET.mount();
+  if (tabId === 'ent-crm') {
+    const crm = document.getElementById('view-ent-crm');
+    if (crm) {
+      crm.classList.remove('h-full', 'min-h-0', 'overflow-y-auto', 'overflow-hidden', 'flex', 'flex-col');
+      crm.querySelectorAll(
+        '#sales-live-board, #sales-manual-sheet, #sheet-open-modal, iframe[data-sales-board-frame]'
+      ).forEach((el) => el.remove());
+      crm.querySelectorAll('#sales-stripe-mrr, #sales-shopify-orders, #sales-net-cash').forEach((el) => {
+        const row = el.closest('.grid, .px-4');
+        if (row) row.remove();
+      });
+      crm.querySelectorAll('h3').forEach((h) => {
+        if (/manual spreadsheet/i.test(h.textContent || '')) {
+          const block = h.closest('.px-4, .shrink-0') || h.parentElement;
+          if (block) block.remove();
+        }
+      });
+    }
   }
   if (tabId === 'ent-invoices' && typeof INVOICES !== 'undefined') {
     INVOICES.mount();
@@ -1392,6 +1408,22 @@ function switchVaultTab(tabName) {
   }
   if (tabName === 'subscription' && typeof DIMAD_AI_USAGE !== 'undefined') DIMAD_AI_USAGE.paint();
 }
+
+const DIMAD_INTEGRATIONS = {
+  openWorkspace(kind) {
+    closeSettingsVaultNav();
+    if (kind === 'growth') {
+      if (typeof switchTab === 'function') switchTab('ent-growth');
+      return;
+    }
+    if (kind === 'finance') {
+      if (typeof switchTab === 'function') switchTab('ent-dashboard');
+      return;
+    }
+    if (typeof switchTab === 'function') switchTab('ent-crm');
+  }
+};
+window.DIMAD_INTEGRATIONS = DIMAD_INTEGRATIONS;
 
 const DIMAD_AI_STATE = {
   activeMode: 'business',
@@ -2163,7 +2195,8 @@ const DIMAD_GOALS = {
     { id: 'weekly', label: 'Weekly', sub: 'This week' },
     { id: 'monthly', label: 'Monthly', sub: 'This month' },
     { id: 'quarterly', label: 'Quarterly', sub: 'This quarter' },
-    { id: 'yearly', label: 'Yearly', sub: 'This year' }
+    { id: 'yearly', label: 'Yearly', sub: 'This year' },
+    { id: 'one_time', label: 'One-time', sub: 'Deadline goals' }
   ],
 
   pad(n) {
@@ -2194,7 +2227,7 @@ const DIMAD_GOALS = {
 
   periodStart(horizon, date) {
     const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    if (horizon === 'daily') return this.iso(d);
+    if (horizon === 'daily' || horizon === 'one_time') return this.iso(d);
     if (horizon === 'weekly') return this.iso(this.weekStart(d));
     if (horizon === 'monthly') return `${d.getFullYear()}-${this.pad(d.getMonth() + 1)}-01`;
     if (horizon === 'quarterly') {
@@ -2211,7 +2244,7 @@ const DIMAD_GOALS = {
       return h ? h.sub : startIso;
     }
     const d = this.parseIso(startIso);
-    if (horizon === 'daily') return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+    if (horizon === 'daily' || horizon === 'one_time') return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
     if (horizon === 'weekly') return 'Week of ' + d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
     if (horizon === 'monthly') return d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
     if (horizon === 'quarterly') return 'Q' + (Math.floor(d.getMonth() / 3) + 1) + ' ' + d.getFullYear();
@@ -2258,7 +2291,8 @@ const DIMAD_GOALS = {
           { id: 'y1', text: 'Reach 200 paying Premium operator seats.', done: false },
           { id: 'y2', text: 'Clock in 365 days and claim the 12,000 $DIM year award.', done: false },
           { id: 'y3', text: 'Make DIMAD the default execution OS for independent operators.', done: false }
-        ]
+        ],
+        one_time: []
       }
     };
   },
@@ -2271,9 +2305,12 @@ const DIMAD_GOALS = {
       id: (g && g.id) || `${horizon[0]}-${i}-${Date.now()}`,
       text: String((g && g.text) || ''),
       done: !!(g && g.done),
-      recurring: !!(g && g.recurring),
+      recurring: horizon === 'one_time' ? false : !!(g && g.recurring),
       start: (g && g.start) || this.periodStart(horizon, new Date()),
       until: (g && g.until) || '',
+      targetValue: g && g.targetValue != null && Number.isFinite(Number(g.targetValue)) ? Number(g.targetValue) : null,
+      categoryTitle: g && g.categoryTitle ? String(g.categoryTitle) : '',
+      source: g && g.source ? String(g.source) : '',
       weekdays: weekdays.length ? weekdays : [0, 1, 2, 3, 4, 5, 6],
       donePeriods: (g && g.donePeriods && typeof g.donePeriods === 'object') ? g.donePeriods : {}
     };
@@ -2403,7 +2440,7 @@ const DIMAD_GOALS = {
 
   previousPeriod(horizon, startIso) {
     const d = this.parseIso(startIso);
-    if (horizon === 'daily') d.setDate(d.getDate() - 1);
+    if (horizon === 'daily' || horizon === 'one_time') d.setDate(d.getDate() - 1);
     else if (horizon === 'weekly') d.setDate(d.getDate() - 7);
     else if (horizon === 'monthly') d.setMonth(d.getMonth() - 1);
     else if (horizon === 'quarterly') d.setMonth(d.getMonth() - 3);
@@ -2450,6 +2487,14 @@ const DIMAD_GOALS = {
       })));
     }
     const key = this.periodStart(horizon, now);
+    if (horizon === 'one_time') {
+      return this.list(horizon)
+        .filter((g) => {
+          if (g.until && g.until < key) return false;
+          return true;
+        })
+        .sort((a, b) => String(a.start || key).localeCompare(String(b.start || key)));
+    }
     return this.list(horizon)
       .filter((g) => {
         const start = g.start || key;
@@ -2472,7 +2517,7 @@ const DIMAD_GOALS = {
   },
 
   composerHint(horizon) {
-    return { daily: 'day', weekly: 'week', monthly: 'month', quarterly: 'quarter', yearly: 'year' }[horizon] || 'period';
+    return { daily: 'day', weekly: 'week', monthly: 'month', quarterly: 'quarter', yearly: 'year', one_time: 'deadline' }[horizon] || 'period';
   },
 
   fillComposerChips() {
@@ -2509,6 +2554,8 @@ const DIMAD_GOALS = {
   openComposer() {
     this._editId = null;
     this._editHorizon = null;
+    this._fromForecast = false;
+    this._forecastMeta = null;
     const vis = this.visibleHorizons();
     const active = this.state().activeHorizon;
     this._composerHorizon = active !== 'all' && vis.some((h) => h.id === active) ? active : vis[0].id;
@@ -2519,6 +2566,34 @@ const DIMAD_GOALS = {
     if (rec) rec.checked = false;
     this._composerDate = this.viewDate();
     this._composerWeekdays = [0, 1, 2, 3, 4, 5, 6];
+    this.showComposer(false);
+  },
+
+  openComposerFromForecast(payload) {
+    const data = payload || {};
+    this._editId = null;
+    this._editHorizon = null;
+    this._fromForecast = true;
+    this._forecastMeta = {
+      targetValue: data.targetValue != null ? Number(data.targetValue) : null,
+      categoryTitle: data.categoryTitle || '',
+      categoryType: data.categoryType || '',
+      forecastGrowth: data.forecastGrowth != null ? Number(data.forecastGrowth) : null,
+      forecastMonths: data.forecastMonths != null ? Number(data.forecastMonths) : null,
+      source: 'revenue_forecast'
+    };
+    const s = this.state();
+    s.hiddenHorizons = (s.hiddenHorizons || []).filter((id) => id !== 'one_time');
+    this.persist(s);
+    this.ensureActiveVisible();
+    this._composerHorizon = 'one_time';
+    this._composerDate = data.deadline ? this.parseIso(data.deadline) : new Date();
+    this._composerQuarter = Math.floor(this._composerDate.getMonth() / 3) + 1;
+    this._composerWeekdays = [0, 1, 2, 3, 4, 5, 6];
+    const text = document.getElementById('gn-text');
+    const rec = document.getElementById('gn-recurring');
+    if (text) text.value = String(data.text || '');
+    if (rec) rec.checked = false;
     this.showComposer(false);
   },
 
@@ -2617,9 +2692,12 @@ const DIMAD_GOALS = {
       id: horizon + '-' + Date.now(),
       text: fields.text,
       done: false,
-      recurring: !!fields.recurring,
+      recurring: horizon === 'one_time' ? false : !!fields.recurring,
       start: fields.start,
       until: '',
+      targetValue: fields.targetValue != null ? Number(fields.targetValue) : null,
+      categoryTitle: fields.categoryTitle || '',
+      source: fields.source || '',
       weekdays: Array.isArray(fields.weekdays) ? fields.weekdays : [0, 1, 2, 3, 4, 5, 6],
       donePeriods: {}
     });
@@ -2629,10 +2707,18 @@ const DIMAD_GOALS = {
     const h = this._composerHorizon || 'daily';
     const hint = document.getElementById('gn-recurring-hint');
     if (hint) hint.textContent = this.composerHint(h);
+    const recWrap = document.getElementById('gn-recurring-wrap');
+    if (recWrap) recWrap.classList.toggle('hidden', h === 'one_time');
+    const rec = document.getElementById('gn-recurring');
+    if (h === 'one_time' && rec) rec.checked = false;
     const root = document.getElementById('gn-when');
     if (!root) return;
     const d = this._composerDate || this.viewDate();
     const field = 'w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-[13px] text-amber-100';
+    if (h === 'one_time') {
+      root.innerHTML = `<input id="gn-date" type="date" value="${this.iso(d)}" class="${field}"><p class="text-[11px] text-slate-500 mt-1">Deadline for this one-time goal.</p>`;
+      return;
+    }
     if (h === 'daily' || h === 'weekly') {
       root.innerHTML = `<input id="gn-date" type="date" value="${this.iso(d)}" class="${field}">${h === 'weekly' ? '<p class="text-[11px] text-slate-500 mt-1">Uses the week that contains this date.</p>' : ''}`;
       return;
@@ -2659,7 +2745,7 @@ const DIMAD_GOALS = {
 
   composerStart(horizon) {
     const fallback = this.periodStart(horizon, this._composerDate || this.viewDate());
-    if (horizon === 'daily' || horizon === 'weekly') {
+    if (horizon === 'daily' || horizon === 'weekly' || horizon === 'one_time') {
       const el = document.getElementById('gn-date');
       return el && el.value ? this.periodStart(horizon, this.parseIso(el.value)) : fallback;
     }
@@ -2715,7 +2801,9 @@ const DIMAD_GOALS = {
     const horizon = this._composerHorizon || 'daily';
     const showErr = (msg) => { if (err) { err.textContent = msg; err.classList.remove('hidden'); } };
     if (!text) { showErr('Write a measurable target.'); return; }
-    const rec = !!(document.getElementById('gn-recurring') && document.getElementById('gn-recurring').checked);
+    const rec = horizon === 'one_time'
+      ? false
+      : !!(document.getElementById('gn-recurring') && document.getElementById('gn-recurring').checked);
     const weekdays = rec && horizon === 'daily'
       ? (this._composerWeekdays || []).map(Number).filter((n) => n >= 0 && n <= 6)
       : [0, 1, 2, 3, 4, 5, 6];
@@ -2726,7 +2814,16 @@ const DIMAD_GOALS = {
     const todayKey = this.periodStart(horizon, new Date());
     let start = this.composerStart(horizon);
     if (this._editId && start < todayKey) start = todayKey;
-    const fields = { text, recurring: rec, start, weekdays };
+    const meta = this._forecastMeta || {};
+    const fields = {
+      text,
+      recurring: rec,
+      start,
+      weekdays,
+      targetValue: meta.targetValue != null ? meta.targetValue : null,
+      categoryTitle: meta.categoryTitle || '',
+      source: meta.source || ''
+    };
     if (this._editId) {
       const from = this._editHorizon;
       const item = this.list(from).find((g) => g.id === this._editId);
@@ -2760,6 +2857,9 @@ const DIMAD_GOALS = {
       this.persist(this.state());
       this.closeComposer();
       this.render();
+      if (this._fromForecast && typeof switchTab === 'function') switchTab('ent-goals');
+      this._fromForecast = false;
+      this._forecastMeta = null;
       return;
     }
     const inPeriod = this.itemsFor(horizon, this.parseIso(start));
@@ -2769,6 +2869,14 @@ const DIMAD_GOALS = {
     this.persist(this.state());
     this.closeComposer();
     this.render();
+    if (this._fromForecast && typeof switchTab === 'function') {
+      this._fromForecast = false;
+      this._forecastMeta = null;
+      switchTab('ent-goals');
+    } else {
+      this._fromForecast = false;
+      this._forecastMeta = null;
+    }
   },
 
   setHorizon(id) {
@@ -3004,7 +3112,7 @@ const DIMAD_GOALS = {
   shiftBoard(dir) {
     const d = this.viewDate();
     const live = this.state().activeHorizon || 'daily';
-    if (live === 'daily' || live === 'all') this._calDate = this.addDays(d, dir * 7);
+    if (live === 'daily' || live === 'all' || live === 'one_time') this._calDate = this.addDays(d, dir * 7);
     else if (live === 'weekly') this._calDate = this.addDays(d, dir * 28);
     else if (live === 'yearly') this._calDate = new Date(d.getFullYear() + dir * 5, 0, 1);
     else this._calDate = new Date(d.getFullYear() + dir, d.getMonth(), 1);
@@ -3117,6 +3225,21 @@ const DIMAD_GOALS = {
         return this.periodRow('Q' + q, String(year), this.itemsFor('quarterly', qDate), 'quarterly', qDate, key === nowKey);
       }).join('');
       root.innerHTML = this.boardNav(String(year)) + `<div class="space-y-1">${cols}</div>`;
+      return;
+    }
+    if (live === 'one_time') {
+      const todayKey = this.todayStamp();
+      const items = this.boardItems('one_time');
+      const upcoming = items.filter((g) => String(g.start || '') >= todayKey);
+      const past = items.filter((g) => String(g.start || '') < todayKey);
+      const section = (title, list) => {
+        if (!list.length) return '';
+        return `<div class="space-y-1"><div class="text-[9px] font-black uppercase tracking-wide text-slate-500 px-1">${this.escape(title)}</div>${list.map((g) => {
+          const due = g.start || todayKey;
+          return this.periodRow(this.periodLabel('one_time', due), due, [g], 'one_time', this.parseIso(due), due === todayKey);
+        }).join('')}</div>`;
+      };
+      root.innerHTML = this.boardNav('One-time deadlines') + `<div class="space-y-3">${section('Upcoming', upcoming) || '<p class="text-[11px] text-slate-500 px-1">No upcoming one-time goals.</p>'}${section('Past deadlines', past)}</div>`;
       return;
     }
     const year = d.getFullYear();
@@ -4460,6 +4583,14 @@ window.addEventListener('message', (event) => {
       }
     });
   }
+  if (event.data.type === 'dimad-integrations-hub-resize' && event.source) {
+    document.querySelectorAll('iframe[data-integrations-hub-frame]').forEach((frame) => {
+      if (frame.contentWindow === event.source) {
+        const height = Math.min(2400, Math.max(480, Number(event.data.height) || 640));
+        frame.style.height = height + 'px';
+      }
+    });
+  }
   if (event.data.type === 'dimad-revenue-snapshot-resize' && event.source) {
     document.querySelectorAll('iframe[data-revenue-snapshot-frame]').forEach((frame) => {
       if (frame.contentWindow === event.source) {
@@ -4500,6 +4631,22 @@ window.addEventListener('message', (event) => {
         frame.style.height = height + 'px';
       }
     });
+  }
+  if (event.data.type === 'dimad-revenue-workspace-resize' && event.source) {
+    document.querySelectorAll('iframe[data-revenue-workspace-frame]').forEach((frame) => {
+      if (frame.contentWindow === event.source) {
+        const height = Math.min(6000, Math.max(640, Number(event.data.height) || 900));
+        if (Math.abs((parseInt(frame.style.height, 10) || 0) - height) < 4) return;
+        frame.style.height = height + 'px';
+      }
+    });
+  }
+  if (event.data.type === 'dimad-open-forecast-goal') {
+    const goal = event.data.goal || {};
+    if (typeof DIMAD_GOALS !== 'undefined' && DIMAD_GOALS.openComposerFromForecast) {
+      if (typeof initGoalsRewards === 'function') initGoalsRewards();
+      DIMAD_GOALS.openComposerFromForecast(goal);
+    }
   }
   if (event.data.type === 'dimad-open-sales') {
     openSalesRevenue();

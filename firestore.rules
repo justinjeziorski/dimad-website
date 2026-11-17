@@ -9,6 +9,15 @@ service cloud.firestore {
       match /writings/{docId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
+      match /manual_ledger/{entryId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+      match /accountability_goals/{goalId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+      match /settings/{docId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
       match /dimad_calendar_events/{eventId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
