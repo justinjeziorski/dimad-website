@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   deletePlaidIntegration,
   fetchPlaidDashboardData,
-  readPlaidIntegration
+  readPlaidIntegration,
+  updatePlaidAccountClasses,
+  type PlaidAccountClass
 } from "@/lib/plaid";
 import { requireFirebaseUser } from "@/lib/session";
 
@@ -58,6 +60,37 @@ export async function GET(req: NextRequest) {
           : {})
       },
       { status: itemId || institutionName ? 200 : 502, headers: noStore }
+    );
+  }
+}
+
+export async function PATCH(req: NextRequest) {
+  const session = await requireFirebaseUser(req);
+  if ("error" in session) return session.error;
+
+  try {
+    const body = (await req.json().catch(() => ({}))) as {
+      accountClasses?: Record<string, string>;
+    };
+    const accountClasses: Record<string, PlaidAccountClass> = {};
+    for (const [accountId, value] of Object.entries(body.accountClasses || {})) {
+      if (value === "operating" || value === "tax" || value === "personal") {
+        accountClasses[accountId] = value;
+      }
+    }
+    await updatePlaidAccountClasses(session.uid, accountClasses, session.idToken);
+    const record = await readPlaidIntegration(session.uid, session.idToken);
+    if (!record) {
+      return NextResponse.json({ ok: false, error: "plaid_not_connected" }, { status: 404, headers: noStore });
+    }
+    const data = await fetchPlaidDashboardData(session.uid, record, session.idToken);
+    return NextResponse.json({ ok: true, connected: true, ...data }, { headers: noStore });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "firestore_write_failed";
+    console.error("Plaid account class update failed", session.uid, message);
+    return NextResponse.json(
+      { ok: false, error: message === "plaid_not_connected" ? message : "firestore_write_failed" },
+      { status: message === "plaid_not_connected" ? 404 : 500, headers: noStore }
     );
   }
 }

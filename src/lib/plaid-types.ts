@@ -1,3 +1,5 @@
+export type PlaidAccountClass = "operating" | "tax" | "personal";
+
 export type PlaidAccountBalance = {
   accountId: string;
   name: string;
@@ -8,6 +10,7 @@ export type PlaidAccountBalance = {
   current: number | null;
   available: number | null;
   isoCurrencyCode: string;
+  accountClass?: PlaidAccountClass;
 };
 
 export type PlaidTransactionItem = {
@@ -34,5 +37,11 @@ export type PlaidPayload = {
     netLiquidity: number;
     netLiquidityDisplay: string;
     accountCount: number;
+    operatingCash?: number;
+    operatingCashDisplay?: string;
+    taxReserve?: number;
+    taxReserveDisplay?: string;
+    burnRateEstimate?: number;
+    burnRateDisplay?: string;
   };
 };

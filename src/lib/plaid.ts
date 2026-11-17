@@ -15,15 +15,18 @@ import { fetchWithTimeout } from "./with-timeout";
 
 export type { PlaidPayload } from "./plaid-types";
 
+export type PlaidAccountClass = "operating" | "tax" | "personal";
+
 export type PlaidIntegrationRecord = {
   accessToken: string;
   itemId: string;
   institutionName: string;
   connectedAt: string;
   cursor?: string;
+  accountClasses?: Record<string, PlaidAccountClass>;
 };
 
-type FsFields = Record<string, { stringValue?: string }>;
+type FsFields = Record<string, { stringValue?: string; mapValue?: { fields?: FsFields } }>;
 
 let plaidClient: PlaidApi | null = null;
 
@@ -103,22 +106,34 @@ function recordFromFields(fields: FsFields | undefined): PlaidIntegrationRecord 
     readString(fields, "plaidAccessToken") ||
     readString(fields, "plaid_access_token");
   if (!accessToken) return null;
+  const classMap = fields?.accountClasses?.mapValue?.fields || {};
+  const accountClasses: Record<string, PlaidAccountClass> = {};
+  for (const [key, value] of Object.entries(classMap)) {
+    const raw = String(value?.stringValue || "");
+    if (raw === "operating" || raw === "tax" || raw === "personal") accountClasses[key] = raw;
+  }
   return {
     accessToken,
     itemId: readString(fields, "itemId") || readString(fields, "plaid_item_id") || "",
     institutionName: readString(fields, "institutionName") || readString(fields, "plaid_institution_name") || "",
     connectedAt: readString(fields, "connectedAt") || readString(fields, "plaid_connected_at") || "",
-    cursor: readString(fields, "cursor") || readString(fields, "plaid_cursor") || ""
+    cursor: readString(fields, "cursor") || readString(fields, "plaid_cursor") || "",
+    accountClasses
   };
 }
 
 function integrationFields(record: PlaidIntegrationRecord) {
+  const classFields: FsFields = {};
+  for (const [accountId, value] of Object.entries(record.accountClasses || {})) {
+    classFields[accountId] = { stringValue: value };
+  }
   return {
     accessToken: { stringValue: record.accessToken },
     itemId: { stringValue: record.itemId },
     institutionName: { stringValue: record.institutionName },
     connectedAt: { stringValue: record.connectedAt },
     cursor: { stringValue: record.cursor || "" },
+    accountClasses: { mapValue: { fields: classFields } },
     plaidAccessToken: { stringValue: record.accessToken },
     plaid_item_id: { stringValue: record.itemId },
     plaid_institution_name: { stringValue: record.institutionName },
@@ -206,12 +221,19 @@ export async function readPlaidIntegration(uid: string, idToken?: string) {
       const data = snap.data() || {};
       const accessToken = String(data.accessToken || data.plaidAccessToken || "");
       if (accessToken) {
+        const accountClasses: Record<string, PlaidAccountClass> = {};
+        const rawClasses = (data.accountClasses || {}) as Record<string, unknown>;
+        for (const [key, value] of Object.entries(rawClasses)) {
+          const raw = String(value || "");
+          if (raw === "operating" || raw === "tax" || raw === "personal") accountClasses[key] = raw;
+        }
         return {
           accessToken,
           itemId: String(data.itemId || ""),
           institutionName: String(data.institutionName || ""),
           connectedAt: String(data.connectedAt || ""),
-          cursor: String(data.cursor || "")
+          cursor: String(data.cursor || ""),
+          accountClasses
         } satisfies PlaidIntegrationRecord;
       }
     }
@@ -335,16 +357,26 @@ export async function fetchPlaidDashboardData(
     throw new Error("invalid_plaid_credentials");
   }
 
-  const accounts = (balances.data.accounts || []).map(mapAccount);
+  const classes = record.accountClasses || {};
+  const accounts = (balances.data.accounts || []).map((account) => {
+    const mapped = mapAccount(account);
+    return { ...mapped, accountClass: classes[mapped.accountId] || "operating" };
+  });
   const currency = accounts[0]?.isoCurrencyCode || "USD";
 
   let cashAvailable = 0;
   let creditBalance = 0;
+  let operatingCash = 0;
+  let taxReserve = 0;
   for (const account of accounts) {
+    if (account.accountClass === "personal") continue;
     const type = account.type.toLowerCase();
     const subtype = account.subtype.toLowerCase();
+    const bal = Number(account.available ?? account.current ?? 0);
     if (type === "depository" || subtype === "checking" || subtype === "savings") {
-      cashAvailable += Number(account.available ?? account.current ?? 0);
+      cashAvailable += bal;
+      if (account.accountClass === "tax") taxReserve += bal;
+      else operatingCash += bal;
     } else if (type === "credit" || subtype === "credit card") {
       creditBalance += Number(account.current ?? 0);
     }
@@ -379,6 +411,11 @@ export async function fetchPlaidDashboardData(
     .sort((a, b) => String(b.date).localeCompare(String(a.date)))
     .slice(0, 10);
 
+  const expenseOutflows = recentTransactions.filter((tx) => tx.amount > 0);
+  const burn30Estimate =
+    expenseOutflows.reduce((sum, tx) => sum + Number(tx.amount || 0), 0) *
+    (30 / Math.max(expenseOutflows.length ? 10 : 30, 1));
+
   return {
     itemId: record.itemId,
     institutionName: record.institutionName || "Linked bank",
@@ -392,7 +429,23 @@ export async function fetchPlaidDashboardData(
       creditBalanceDisplay: money(creditBalance, currency),
       netLiquidity,
       netLiquidityDisplay: money(netLiquidity, currency),
-      accountCount: accounts.length
+      accountCount: accounts.length,
+      operatingCash,
+      operatingCashDisplay: money(operatingCash, currency),
+      taxReserve,
+      taxReserveDisplay: money(taxReserve, currency),
+      burnRateEstimate: burn30Estimate,
+      burnRateDisplay: money(burn30Estimate, currency)
     }
   };
+}
+
+export async function updatePlaidAccountClasses(
+  uid: string,
+  accountClasses: Record<string, PlaidAccountClass>,
+  idToken?: string
+) {
+  const existing = await readPlaidIntegration(uid, idToken);
+  if (!existing) throw new Error("plaid_not_connected");
+  await writePlaidIntegration(uid, { ...existing, accountClasses }, idToken);
 }

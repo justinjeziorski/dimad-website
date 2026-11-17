@@ -1,6 +1,7 @@
 export type WorkspaceIntegrationKey =
   | "stripe"
   | "shopify"
+  | "lemon"
   | "gumroad"
   | "patreon"
   | "youtube"
@@ -29,6 +30,7 @@ export const WORKSPACE_CACHE_TTL_MS = 5 * 60 * 1000;
 export const WORKSPACE_ENDPOINTS: Record<WorkspaceIntegrationKey, string> = {
   stripe: "/api/integrations/stripe/metrics",
   shopify: "/api/shopify/data?range=week",
+  lemon: "/api/lemonsqueezy/data",
   gumroad: "/api/gumroad/data",
   patreon: "/api/patreon/data",
   youtube: "/api/youtube/data",

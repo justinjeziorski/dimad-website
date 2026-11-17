@@ -56,8 +56,6 @@ export default function StockChartWidget({ symbol = "NASDAQ:AAPL", toolbar }: St
       {toolbar ? <div style={toolbarRow}>{toolbar}</div> : null}
       <div style={chartFrame}>
         <div ref={host} className="tradingview-widget-container" style={{ flex: 1, minHeight: 0, width: "100%", height: "100%" }} />
-        {/* Covers the TradingView corner badge inside the cross-origin iframe. Attribution remains via the link below. */}
-        <div aria-hidden style={logoCover} />
       </div>
       <a
         href={`https://www.tradingview.com/chart/?symbol=${encodeURIComponent(symbol)}`}
@@ -95,17 +93,6 @@ const chartFrame: CSSProperties = {
   minHeight: 0,
   width: "100%",
   overflow: "hidden"
-};
-
-const logoCover: CSSProperties = {
-  position: "absolute",
-  left: 0,
-  bottom: 0,
-  width: 80,
-  height: 52,
-  background: "#070A0F",
-  pointerEvents: "none",
-  zIndex: 20
 };
 
 const credit: CSSProperties = {

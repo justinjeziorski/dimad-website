@@ -8,9 +8,15 @@ import { authFetch, waitForFirebaseToken } from "@/lib/dimad-auth-client";
 import { INTEGRATION_CARD_CSS } from "@/lib/integration-card.css";
 import { isLocalHost, plaidAppOrigin, writePlaidLinkToken } from "@/lib/plaid-client";
 import { cacheWorkspaceResponse } from "@/lib/use-workspace-hydration";
-import type { PlaidPayload } from "@/lib/plaid-types";
+import type { PlaidAccountClass, PlaidPayload } from "@/lib/plaid-types";
 
 type PlaidData = PlaidPayload & { ok?: boolean; connected?: boolean; error?: string };
+
+const CLASS_LABELS: Record<PlaidAccountClass, string> = {
+  operating: "Business Operating",
+  tax: "Tax Reserve",
+  personal: "Personal / Excluded"
+};
 
 const REASONS: Record<string, string> = {
   missing_plaid_client_id: "Plaid is not configured on this server.",
@@ -50,6 +56,9 @@ export default function ControlCenterPlaid() {
   const [linkToken, setLinkToken] = useState<string | null>(null);
   const [bankData, setBankData] = useState<PlaidData | null>(null);
   const [error, setError] = useState("");
+  const [classifyOpen, setClassifyOpen] = useState(false);
+  const [draftClasses, setDraftClasses] = useState<Record<string, PlaidAccountClass>>({});
+  const [savingClasses, setSavingClasses] = useState(false);
 
   const prefetchLinkToken = useCallback(async () => {
     try {
@@ -144,7 +153,6 @@ export default function ControlCenterPlaid() {
       setConnecting(false);
       return;
     }
-    // Pass a short-lived Firebase ID token so the Link popup can save the bank after OAuth.
     const idToken = await waitForFirebaseToken(8000);
     if (!idToken) {
       setError("Sign in to DIMAD, then connect a bank account.");
@@ -162,6 +170,39 @@ export default function ControlCenterPlaid() {
       return;
     }
     setConnecting(false);
+  }
+
+  function openClassify() {
+    if (!bankData?.accounts?.length) return;
+    const next: Record<string, PlaidAccountClass> = {};
+    for (const account of bankData.accounts) {
+      next[account.accountId] = account.accountClass || "operating";
+    }
+    setDraftClasses(next);
+    setClassifyOpen(true);
+  }
+
+  async function saveClasses() {
+    setSavingClasses(true);
+    setError("");
+    try {
+      const { res, data } = await authFetch("/api/plaid/data", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accountClasses: draftClasses })
+      });
+      if (!res.ok || data.ok === false) {
+        setError(explain(String(data.error || ""), "Could not save account classifications."));
+        setSavingClasses(false);
+        return;
+      }
+      applyPayload(data as Record<string, unknown>);
+      setClassifyOpen(false);
+    } catch {
+      setError("Could not save account classifications.");
+    } finally {
+      setSavingClasses(false);
+    }
   }
 
   async function disconnect() {
@@ -210,7 +251,7 @@ export default function ControlCenterPlaid() {
     const observer = new ResizeObserver(post);
     observer.observe(node);
     return () => observer.disconnect();
-  }, [loading, bankData, error, connecting, signedOut, linkToken]);
+  }, [loading, bankData, error, connecting, signedOut, linkToken, classifyOpen]);
 
   const connected = Boolean(bankData?.itemId || bankData?.institutionName);
 
@@ -228,7 +269,7 @@ export default function ControlCenterPlaid() {
             <p className="dimad-int-kicker">Plaid</p>
             <h2>{connected ? bankData!.institutionName : "Bank accounts"}</h2>
             {connected ? (
-              <p className="dimad-int-meta">Balances and recent expenses</p>
+              <p className="dimad-int-meta">Finance &amp; expenses (excluded from revenue)</p>
             ) : (
               <p className="dimad-int-meta">Secure bank linking for cash and spend tracking</p>
             )}
@@ -274,21 +315,24 @@ export default function ControlCenterPlaid() {
 
       {connected && bankData ? (
         <>
+          <p className="dimad-int-note" style={{ marginTop: 0 }}>
+            Finance &amp; Expenses — excluded from Gross Revenue / MRR snapshots.
+          </p>
           <div className="dimad-int-metrics">
             <div className="dimad-int-metric">
-              <div className="k">Cash available</div>
-              <div className="v">{bankData.metrics.cashAvailableDisplay}</div>
-              <div className="s">Checking / savings</div>
+              <div className="k">Operating cash</div>
+              <div className="v">{bankData.metrics.operatingCashDisplay || bankData.metrics.cashAvailableDisplay}</div>
+              <div className="s">Business accounts</div>
             </div>
             <div className="dimad-int-metric">
-              <div className="k">Credit balance</div>
-              <div className="v">{bankData.metrics.creditBalanceDisplay}</div>
-              <div className="s">Cards</div>
+              <div className="k">Tax reserve</div>
+              <div className="v">{bankData.metrics.taxReserveDisplay || "$0.00"}</div>
+              <div className="s">Designated reserve</div>
             </div>
             <div className="dimad-int-metric">
-              <div className="k">Net liquidity</div>
-              <div className="v">{bankData.metrics.netLiquidityDisplay}</div>
-              <div className="s">{bankData.metrics.accountCount} accounts</div>
+              <div className="k">Burn estimate</div>
+              <div className="v">{bankData.metrics.burnRateDisplay || "—"}</div>
+              <div className="s">Outflows pace</div>
             </div>
           </div>
 
@@ -312,14 +356,91 @@ export default function ControlCenterPlaid() {
           </div>
 
           <div className="dimad-int-foot">
-            <span className="dimad-int-meta" style={{ margin: 0 }}>
-              Synced via Plaid
-            </span>
+            <button type="button" className="dimad-int-ghost" onClick={openClassify}>
+              Classify accounts
+            </button>
             <button type="button" className="dimad-int-link" onClick={() => void disconnect()}>
               Disconnect
             </button>
           </div>
         </>
+      ) : null}
+
+      {classifyOpen && bankData ? (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 40,
+            background: "rgba(7,10,15,0.72)",
+            display: "grid",
+            placeItems: "center",
+            padding: 16
+          }}
+          onClick={() => setClassifyOpen(false)}
+        >
+          <div
+            style={{
+              width: "min(420px, 100%)",
+              background: "#0B0F17",
+              border: "1px solid #1E293B",
+              borderRadius: 16,
+              padding: 16
+            }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <p className="dimad-int-kicker">Account classification</p>
+            <h3 style={{ margin: "4px 0 12px", fontSize: 14 }}>Designate bank accounts</h3>
+            <p className="dimad-int-note">
+              Personal accounts are excluded from operating liquidity. Tax reserve is tracked separately from burn.
+            </p>
+            <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
+              {bankData.accounts.map((account) => (
+                <label key={account.accountId} style={{ display: "grid", gap: 4, fontSize: 11 }}>
+                  <span style={{ color: "#94a3b8" }}>
+                    {account.name}
+                    {account.mask ? ` ···${account.mask}` : ""}
+                  </span>
+                  <select
+                    value={draftClasses[account.accountId] || "operating"}
+                    onChange={(event) =>
+                      setDraftClasses((prev) => ({
+                        ...prev,
+                        [account.accountId]: event.target.value as PlaidAccountClass
+                      }))
+                    }
+                    style={{
+                      background: "#070A0F",
+                      color: "#e2e8f0",
+                      border: "1px solid #1E293B",
+                      borderRadius: 8,
+                      padding: "8px 10px"
+                    }}
+                  >
+                    {Object.entries(CLASS_LABELS).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ))}
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 14 }}>
+              <button type="button" className="dimad-int-ghost" onClick={() => setClassifyOpen(false)}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="dimad-int-primary plaid"
+                disabled={savingClasses}
+                onClick={() => void saveClasses()}
+              >
+                {savingClasses ? "Saving…" : "Save classifications"}
+              </button>
+            </div>
+          </div>
+        </div>
       ) : null}
     </section>
   );

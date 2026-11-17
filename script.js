@@ -4460,6 +4460,22 @@ window.addEventListener('message', (event) => {
       }
     });
   }
+  if (event.data.type === 'dimad-revenue-snapshot-resize' && event.source) {
+    document.querySelectorAll('iframe[data-revenue-snapshot-frame]').forEach((frame) => {
+      if (frame.contentWindow === event.source) {
+        const height = Math.min(240, Math.max(200, Number(event.data.height) || 210));
+        frame.style.height = height + 'px';
+      }
+    });
+  }
+  if (event.data.type === 'dimad-growth-snapshot-resize' && event.source) {
+    document.querySelectorAll('iframe[data-growth-snapshot-frame]').forEach((frame) => {
+      if (frame.contentWindow === event.source) {
+        const height = Math.min(240, Math.max(200, Number(event.data.height) || 210));
+        frame.style.height = height + 'px';
+      }
+    });
+  }
   if (event.data.type === 'dimad-plaid-resize' && event.source) {
     document.querySelectorAll('iframe[data-plaid-frame]').forEach((frame) => {
       if (frame.contentWindow === event.source) {
@@ -4490,6 +4506,20 @@ window.addEventListener('message', (event) => {
   }
   if (event.data.type === 'dimad-open-command') {
     if (typeof switchTab === 'function') switchTab('ent-dashboard');
+  }
+  if (event.data.type === 'dimad-open-tab') {
+    const tabId = String(event.data.tabId || '');
+    if (tabId && typeof switchTab === 'function') switchTab(tabId);
+    const reveal = String(event.data.revealModule || '');
+    if (reveal && typeof COMMAND_CENTER !== 'undefined' && COMMAND_CENTER.toggleVisible) {
+      COMMAND_CENTER.toggleVisible(reveal, true);
+    }
+  }
+  if (event.data.type === 'dimad-open-integrations') {
+    if (typeof openSettingsVaultNav === 'function') openSettingsVaultNav('integrations');
+  }
+  if (event.data.type === 'dimad-close-vault') {
+    if (typeof closeSettingsVaultNav === 'function') closeSettingsVaultNav();
   }
   if (event.data.type === 'dimad-stripe-status') {
     const mrr = document.getElementById('sales-stripe-mrr');
@@ -4554,15 +4584,30 @@ window.addEventListener('message', (event) => {
 });
 
 const CONNECT_MODULARS = {
+  openIntegrations() {
+    if (typeof openSettingsVaultNav === 'function') {
+      openSettingsVaultNav('integrations');
+      return;
+    }
+    window.location.assign('/dashboard/settings/integrations');
+  },
+
+  refreshSnapshots() {
+    document.querySelectorAll('iframe[data-revenue-snapshot-frame], iframe[data-growth-snapshot-frame]').forEach((frame) => {
+      if (!frame.src) return;
+      const url = new URL(frame.src, window.location.origin);
+      url.searchParams.set('t', String(Date.now()));
+      frame.src = url.toString();
+    });
+  },
+
   connectStripe() {
     const frame = document.querySelector('iframe[data-stripe-connect-frame]');
     if (frame && frame.contentWindow) {
       frame.contentWindow.postMessage({ type: 'dimad-stripe-connect' }, window.location.origin);
-      const card = document.getElementById('module-stripe');
-      if (card && card.scrollIntoView) card.scrollIntoView({ block: 'nearest' });
       return;
     }
-    window.location.assign('/api/integrations/stripe/connect');
+    this.openIntegrations();
   },
 
   normalizeShopifyShop(raw) {
@@ -4579,22 +4624,21 @@ const CONNECT_MODULARS = {
   },
 
   showShopifyForm() {
-    if (typeof COMMAND_CENTER !== 'undefined') COMMAND_CENTER.toggleVisible('shopify', true);
     const frame = document.querySelector('iframe[data-shopify-frame]');
     if (frame && frame.contentWindow) {
       frame.contentWindow.postMessage({ type: 'dimad-shopify-connect' }, window.location.origin);
+      return;
     }
-    const card = document.getElementById('module-shopify');
-    if (card && card.scrollIntoView) card.scrollIntoView({ block: 'nearest' });
+    this.openIntegrations();
   },
 
   paintShopifyConnected(shop) {
-    if (typeof COMMAND_CENTER !== 'undefined') COMMAND_CENTER.markConnected('shopify');
     const reloadFrames = () => {
       const frame = document.querySelector('iframe[data-shopify-frame]');
       if (frame) frame.src = '/integrations/shopify-card?connected=1&t=' + Date.now();
       const sales = document.querySelector('iframe[data-sales-board-frame]');
       if (sales) sales.src = '/integrations/sales-board?t=' + Date.now();
+      this.refreshSnapshots();
     };
     resolveDimadIdToken().then((token) => {
       if (token) syncDimadFbTokenCookie(token);
@@ -4604,32 +4648,30 @@ const CONNECT_MODULARS = {
   },
 
   connectLemon() {
-    if (typeof COMMAND_CENTER !== 'undefined') COMMAND_CENTER.toggleVisible('lemon', true);
     const frame = document.querySelector('iframe[data-lemon-frame]');
     if (frame && frame.contentWindow) {
       frame.contentWindow.postMessage({ type: 'dimad-lemon-connect' }, window.location.origin);
+      return;
     }
-    const card = document.getElementById('module-lemon');
-    if (card && card.scrollIntoView) card.scrollIntoView({ block: 'nearest' });
+    this.openIntegrations();
   },
 
   connectGumroad() {
-    if (typeof COMMAND_CENTER !== 'undefined') COMMAND_CENTER.toggleVisible('gumroad', true);
     const frame = document.querySelector('iframe[data-gumroad-frame]');
     if (frame && frame.contentWindow) {
       frame.contentWindow.postMessage({ type: 'dimad-gumroad-connect' }, window.location.origin);
+      return;
     }
-    const card = document.getElementById('module-gumroad');
-    if (card && card.scrollIntoView) card.scrollIntoView({ block: 'nearest' });
+    this.openIntegrations();
   },
 
   paintGumroadConnected() {
-    if (typeof COMMAND_CENTER !== 'undefined') COMMAND_CENTER.markConnected('gumroad');
     const reloadFrames = () => {
       const frame = document.querySelector('iframe[data-gumroad-frame]');
       if (frame) frame.src = '/integrations/gumroad-card?connected=1&t=' + Date.now();
       const sales = document.querySelector('iframe[data-sales-board-frame]');
       if (sales) sales.src = '/integrations/sales-board?t=' + Date.now();
+      this.refreshSnapshots();
     };
     resolveDimadIdToken().then((token) => {
       if (token) syncDimadFbTokenCookie(token);
@@ -4638,22 +4680,21 @@ const CONNECT_MODULARS = {
   },
 
   connectPatreon() {
-    if (typeof COMMAND_CENTER !== 'undefined') COMMAND_CENTER.toggleVisible('patreon', true);
     const frame = document.querySelector('iframe[data-patreon-frame]');
     if (frame && frame.contentWindow) {
       frame.contentWindow.postMessage({ type: 'dimad-patreon-connect' }, window.location.origin);
+      return;
     }
-    const card = document.getElementById('module-patreon');
-    if (card && card.scrollIntoView) card.scrollIntoView({ block: 'nearest' });
+    this.openIntegrations();
   },
 
   paintPatreonConnected() {
-    if (typeof COMMAND_CENTER !== 'undefined') COMMAND_CENTER.markConnected('patreon');
     const reloadFrames = () => {
       const frame = document.querySelector('iframe[data-patreon-frame]');
       if (frame) frame.src = '/integrations/patreon-card?connected=1&t=' + Date.now();
       const sales = document.querySelector('iframe[data-sales-board-frame]');
       if (sales) sales.src = '/integrations/sales-board?t=' + Date.now();
+      this.refreshSnapshots();
     };
     resolveDimadIdToken().then((token) => {
       if (token) syncDimadFbTokenCookie(token);
@@ -4662,16 +4703,19 @@ const CONNECT_MODULARS = {
   },
 
   connectMailerLite() {
-    if (typeof COMMAND_CENTER !== 'undefined') COMMAND_CENTER.toggleVisible('mailerlite', true);
     if (typeof GROWTH_HUB !== 'undefined') GROWTH_HUB.toggleVisible('mailerlite', true);
-    document.querySelectorAll('iframe[data-mailerlite-frame]').forEach((frame) => {
-      if (frame.contentWindow) {
-        frame.contentWindow.postMessage({ type: 'dimad-mailerlite-connect' }, window.location.origin);
-      }
-    });
-    const growthOpen = document.getElementById('view-ent-growth') && !document.getElementById('view-ent-growth').classList.contains('hidden');
-    const card = document.getElementById(growthOpen ? 'growth-module-mailerlite' : 'module-mailerlite');
-    if (card && card.scrollIntoView) card.scrollIntoView({ block: 'nearest' });
+    const frames = document.querySelectorAll('iframe[data-mailerlite-frame]');
+    if (frames.length) {
+      frames.forEach((frame) => {
+        if (frame.contentWindow) {
+          frame.contentWindow.postMessage({ type: 'dimad-mailerlite-connect' }, window.location.origin);
+        }
+      });
+      const card = document.getElementById('growth-module-mailerlite');
+      if (card && card.scrollIntoView) card.scrollIntoView({ block: 'nearest' });
+      return;
+    }
+    this.openIntegrations();
   },
 
   connectStore(platform) {
@@ -20631,7 +20675,8 @@ window.CREATOR_AI = CREATOR_AI;
 
 const COMMAND_CENTER = {
   storageKey: 'dimad_cc_modules',
-  layoutVersion: 9,
+  layoutVersion: 11,
+  retiredApiIds: ['stripe', 'shopify', 'lemon', 'gumroad', 'patreon', 'mailerlite', 'plaid', 'store'],
   catalog: [
     { id: 'ticker', label: 'Stock Ticker', group: 'core' },
     { id: 'quote', label: 'Quote of the Day', group: 'core' },
@@ -20641,26 +20686,12 @@ const COMMAND_CENTER = {
     { id: 'notepad', label: 'DIMAD Notepad', group: 'core' },
     { id: 'goals', label: 'Accountability Log', group: 'core' },
     { id: 'tasks', label: 'Task Manager (To-Do List)', group: 'core' },
-    { id: 'stripe', label: 'Stripe', group: 'api' },
-    { id: 'shopify', label: 'Shopify', group: 'api' },
-    { id: 'lemon', label: 'Lemon Squeezy', group: 'api' },
-    { id: 'gumroad', label: 'Gumroad', group: 'api' },
-    { id: 'patreon', label: 'Patreon', group: 'api' },
-    { id: 'mailerlite', label: 'MailerLite', group: 'api' },
-    { id: 'plaid', label: 'Plaid', group: 'api' }
+    { id: 'revenue-snapshot', label: 'Revenue Snapshot', group: 'core' },
+    { id: 'growth-snapshot', label: 'Growth Snapshot', group: 'core' }
   ],
 
-  apiIds() {
-    return this.catalog.filter((item) => item.group === 'api').map((item) => item.id);
-  },
-
-  defaultVisibleApis() {
-    return ['stripe', 'shopify'];
-  },
-
   defaultState() {
-    const visible = new Set(this.defaultVisibleApis());
-    return { hidden: this.apiIds().filter((id) => !visible.has(id)), collapsed: [], layoutVersion: this.layoutVersion };
+    return { hidden: [], collapsed: [], layoutVersion: this.layoutVersion };
   },
 
   state() {
@@ -20668,19 +20699,13 @@ const COMMAND_CENTER = {
       const raw = JSON.parse(localStorage.getItem(this.storageKey) || '');
       if (raw && Array.isArray(raw.hidden) && Array.isArray(raw.collapsed)) {
         if (raw.layoutVersion === this.layoutVersion) return raw;
-        const storeWasVisible = !raw.hidden.includes('store');
-        let hidden = raw.hidden.filter((id) => id !== 'store');
-        // Split legacy combined storefront widget into separate Shopify + Lemon entries.
-        if (storeWasVisible) hidden = hidden.filter((id) => id !== 'shopify');
-        else if (!hidden.includes('shopify')) hidden.push('shopify');
-        if (!hidden.includes('lemon')) hidden.push('lemon');
-        if (!hidden.includes('gumroad')) hidden.push('gumroad');
-        if (!hidden.includes('patreon')) hidden.push('patreon');
-        if (!hidden.includes('mailerlite')) hidden.push('mailerlite');
-        if (!hidden.includes('plaid')) hidden.push('plaid');
+        const retired = new Set(this.retiredApiIds);
+        let hidden = raw.hidden.filter((id) => !retired.has(id));
+        // Snapshots default visible on layout bump.
+        hidden = hidden.filter((id) => id !== 'revenue-snapshot' && id !== 'growth-snapshot');
         const next = {
           hidden: Array.from(new Set(hidden)),
-          collapsed: raw.collapsed.filter((id) => id !== 'store'),
+          collapsed: raw.collapsed.filter((id) => !retired.has(id)),
           layoutVersion: this.layoutVersion
         };
         this.persist(next);
@@ -20694,7 +20719,6 @@ const COMMAND_CENTER = {
     localStorage.setItem(this.storageKey, JSON.stringify(next));
   },
 
-  railIds: ['stripe', 'shopify', 'lemon', 'gumroad', 'patreon', 'mailerlite', 'plaid'],
   lockedOpen: ['copilot', 'notepad'],
 
   apply() {
@@ -20706,18 +20730,8 @@ const COMMAND_CENTER = {
       if (id === 'ticker') el.style.display = hide ? 'none' : 'flex';
       const body = el.querySelector('[data-cc-body]');
       if (body) body.classList.remove('hidden');
-      if (this.railIds.includes(id)) {
-        el.classList.add('cc-rail-open', 'w-full');
-        el.classList.remove('w-fit', 'flex-1', 'min-w-[280px]', 'flex-none');
-      }
     });
-    const rail = document.getElementById('cc-integrations');
-    if (rail) {
-      const visible = rail.querySelectorAll('[data-cc-module]:not(.hidden)').length;
-      rail.classList.toggle('hidden', visible === 0);
-    }
     this.renderFilter();
-    this.renderApiFilter();
     if (typeof DIMAD_NOTEPAD !== 'undefined' && DIMAD_NOTEPAD.renderDash) DIMAD_NOTEPAD.renderDash();
     if (typeof DIMAD_GOALS !== 'undefined' && DIMAD_GOALS.renderDash) DIMAD_GOALS.renderDash();
     if (typeof DIM_ENGINE !== 'undefined' && DIM_ENGINE.renderStreakTrack) DIM_ENGINE.renderStreakTrack();
@@ -20735,6 +20749,7 @@ const COMMAND_CENTER = {
   },
 
   toggleVisible(id, show) {
+    if (this.retiredApiIds.includes(id)) return;
     const next = this.state();
     if (show) next.hidden = next.hidden.filter((item) => item !== id);
     else if (!next.hidden.includes(id)) next.hidden.push(id);
@@ -20744,19 +20759,10 @@ const COMMAND_CENTER = {
 
   toggleFilter(kind) {
     const core = document.getElementById('cc-module-filter');
-    const api = document.getElementById('cc-api-filter');
-    const openCore = kind === 'core';
-    const openApi = kind === 'api';
-    if (core) {
-      const show = openCore && core.classList.contains('hidden');
-      core.classList.toggle('hidden', !show);
-      if (show) this.renderFilter();
-    }
-    if (api) {
-      const show = openApi && api.classList.contains('hidden');
-      api.classList.toggle('hidden', !show);
-      if (show) this.renderApiFilter();
-    }
+    if (!core) return;
+    const show = kind === 'core' && core.classList.contains('hidden');
+    core.classList.toggle('hidden', !show);
+    if (show) this.renderFilter();
   },
 
   filterChecks(items, hidden) {
@@ -20775,18 +20781,6 @@ const COMMAND_CENTER = {
     const items = this.catalog.filter((item) => item.group === 'core');
     panel.innerHTML = `
       <div class="text-[9px] font-mono text-slate-500 uppercase px-1 pb-1">Show on dashboard</div>
-      ${this.filterChecks(items, hidden)}
-    `;
-  },
-
-  renderApiFilter() {
-    const panel = document.getElementById('cc-api-filter');
-    if (!panel) return;
-    const { hidden } = this.state();
-    const items = this.catalog.filter((item) => item.group === 'api');
-    panel.innerHTML = `
-      <div class="text-[9px] font-mono text-slate-500 uppercase px-1 pb-1">API Widgets</div>
-      <p class="text-[9px] text-slate-500 px-1 pb-1.5">Check to add to Command Center.</p>
       ${this.filterChecks(items, hidden)}
     `;
   },
@@ -21227,39 +21221,18 @@ window.onload = async function() {
       }).catch(() => {});
     });
   }
-  if (stripeStatus && typeof COMMAND_CENTER !== 'undefined') {
-    COMMAND_CENTER.toggleVisible('stripe', true);
-    const stripeCard = document.getElementById('module-stripe');
-    if (stripeCard && stripeCard.scrollIntoView) stripeCard.scrollIntoView({ block: 'nearest' });
-  }
-  if (shopifyStatus && typeof COMMAND_CENTER !== 'undefined') {
-    COMMAND_CENTER.toggleVisible('shopify', true);
-    const storeCard = document.getElementById('module-shopify');
-    if (storeCard && storeCard.scrollIntoView) storeCard.scrollIntoView({ block: 'nearest' });
-    if (shopifyStatus === 'connected') {
+  if (stripeStatus || shopifyStatus || gumroadStatus || patreonStatus || plaidStatus) {
+    if (typeof CONNECT_MODULARS !== 'undefined' && CONNECT_MODULARS.refreshSnapshots) {
+      CONNECT_MODULARS.refreshSnapshots();
+    }
+    if (shopifyStatus === 'connected' && typeof CONNECT_MODULARS !== 'undefined') {
       CONNECT_MODULARS.paintShopifyConnected('Shopify store linked');
-    } else {
-      CONNECT_MODULARS.showShopifyForm();
     }
-  }
-  if (gumroadStatus && typeof COMMAND_CENTER !== 'undefined') {
-    COMMAND_CENTER.toggleVisible('gumroad', true);
-    const gumroadCard = document.getElementById('module-gumroad');
-    if (gumroadCard && gumroadCard.scrollIntoView) gumroadCard.scrollIntoView({ block: 'nearest' });
-    if (gumroadStatus === 'connected') {
+    if (gumroadStatus === 'connected' && typeof CONNECT_MODULARS !== 'undefined') {
       CONNECT_MODULARS.paintGumroadConnected();
-    } else {
-      CONNECT_MODULARS.connectGumroad();
     }
-  }
-  if (patreonStatus && typeof COMMAND_CENTER !== 'undefined') {
-    COMMAND_CENTER.toggleVisible('patreon', true);
-    const patreonCard = document.getElementById('module-patreon');
-    if (patreonCard && patreonCard.scrollIntoView) patreonCard.scrollIntoView({ block: 'nearest' });
-    if (patreonStatus === 'connected') {
+    if (patreonStatus === 'connected' && typeof CONNECT_MODULARS !== 'undefined') {
       CONNECT_MODULARS.paintPatreonConnected();
-    } else {
-      CONNECT_MODULARS.connectPatreon();
     }
   }
   if (youtubeStatus && typeof GROWTH_HUB !== 'undefined') {
@@ -21271,11 +21244,6 @@ window.onload = async function() {
     GROWTH_HUB.toggleVisible('x', true);
     const xCard = document.getElementById('growth-module-x');
     if (xCard && xCard.scrollIntoView) xCard.scrollIntoView({ block: 'nearest' });
-  }
-  if (plaidStatus && typeof COMMAND_CENTER !== 'undefined') {
-    COMMAND_CENTER.toggleVisible('plaid', true);
-    const plaidCard = document.getElementById('module-plaid');
-    if (plaidCard && plaidCard.scrollIntoView) plaidCard.scrollIntoView({ block: 'nearest' });
   }
   if (typeof DIMAD_WELCOME !== 'undefined' && DIMAD_WELCOME.active) {
     DIMAD_WELCOME.setStatus('Almost ready…');

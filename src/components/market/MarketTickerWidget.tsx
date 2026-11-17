@@ -363,6 +363,14 @@ export function useMarketLists() {
     setActiveListId(readActiveListId(next));
   }, []);
 
+  function notifyShell() {
+    try {
+      window.parent?.postMessage({ type: "dimad-market-lists-changed" }, window.location.origin);
+    } catch {
+      /* ignore */
+    }
+  }
+
   function persist(next: MarketList[], nextActive?: string) {
     writeLists(next);
     setLists(next);
@@ -370,11 +378,13 @@ export function useMarketLists() {
       writeActiveListId(nextActive);
       setActiveListId(nextActive);
     }
+    notifyShell();
   }
 
   function setActive(id: string) {
     writeActiveListId(id);
     setActiveListId(id);
+    notifyShell();
   }
 
   function addSymbol(listId: string, symbol: string) {

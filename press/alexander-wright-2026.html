@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="index,follow">
+  <title>Alexander Wright — 2026 Public Media Kit | dimad</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { mono: ['"JetBrains Mono"', 'monospace'] },
+          colors: {
+            brand: { black: '#070A0F', panel: '#0B0F17', border: '#1E293B', gold: '#F59E0B', mint: '#10B981' }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    html, body { font-family: 'JetBrains Mono', monospace; background: #070A0F; color: #f8fafc; }
+    @media print {
+      .no-print { display: none !important; }
+      body { background: #070A0F !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body class="bg-brand-black text-slate-100 min-h-screen">
+  <header class="no-print border-b border-brand-border bg-brand-panel">
+    <div class="max-w-3xl mx-auto px-4 h-14 flex items-center justify-between">
+      <a href="/" class="text-xs font-bold tracking-wider text-slate-100">dimad<span class="text-brand-gold">OS</span></a>
+      <span class="text-[9px] font-mono uppercase tracking-wider text-brand-gold">Public Media Kit</span>
+    </div>
+  </header>
+
+  <main id="kit-print" class="max-w-3xl mx-auto p-6 space-y-4">
+    <div class="flex items-center gap-4 pb-4 border-b border-slate-800">
+      <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80" alt="Alexander Wright" class="w-16 h-16 rounded-2xl object-cover border-2 border-brand-gold/50">
+      <div>
+        <span class="text-[9px] font-mono uppercase tracking-wider text-brand-gold bg-brand-gold/10 px-2 py-0.5 rounded border border-brand-gold/20">Verified Public Media Kit</span>
+        <h1 class="text-lg font-bold text-white mt-1">Alexander Wright</h1>
+        <p class="text-[11px] text-slate-400">Founder &amp; Tech Creator • 180K+ Cross-Platform Audience</p>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-3 gap-3">
+      <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 text-center">
+        <span class="text-[9px] text-slate-500 uppercase block">Substack / Newsletter</span>
+        <span class="text-base font-bold font-mono text-brand-gold">42,500</span>
+        <span class="text-[9px] text-brand-mint block font-semibold">48% Open Rate</span>
+      </div>
+      <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 text-center">
+        <span class="text-[9px] text-slate-500 uppercase block">YouTube Subscribers</span>
+        <span class="text-base font-bold font-mono text-white">98,000</span>
+        <span class="text-[9px] text-slate-400 block">Tech &amp; Remote Work</span>
+      </div>
+      <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 text-center">
+        <span class="text-[9px] text-slate-500 uppercase block">Monthly Impressions</span>
+        <span class="text-base font-bold font-mono text-brand-gold">1.2M</span>
+        <span class="text-[9px] text-brand-mint block font-semibold">+24% YoY</span>
+      </div>
+    </div>
+
+    <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
+      <h2 class="text-[10px] font-bold text-brand-gold uppercase tracking-wider">2026 Sponsorship Package Rates</h2>
+      <div class="flex justify-between items-start gap-3 pb-2 border-b border-slate-800 text-xs">
+        <div>
+          <span class="font-bold text-white block">Dedicated Newsletter Integration</span>
+          <span class="text-[10px] text-slate-400">Primary header banner + 150-word editorial review</span>
+        </div>
+        <span class="font-mono font-bold text-brand-gold shrink-0">$1,800 USD</span>
+      </div>
+      <div class="flex justify-between items-start gap-3 pb-2 border-b border-slate-800 text-xs">
+        <div>
+          <span class="font-bold text-white block">YouTube Main Channel Dedicated Integration</span>
+          <span class="text-[10px] text-slate-400">60-90 second mid-roll integration + link in top description</span>
+        </div>
+        <span class="font-mono font-bold text-brand-gold shrink-0">$3,500 USD</span>
+      </div>
+      <div class="flex justify-between items-start gap-3 text-xs">
+        <div>
+          <span class="font-bold text-white block">Full Creator OS Ecosystem Takeover</span>
+          <span class="text-[10px] text-slate-400">Newsletter + YouTube + Twitter/X Thread + Podcast Stinger</span>
+        </div>
+        <span class="font-mono font-bold text-brand-mint shrink-0">$6,000 USD</span>
+      </div>
+    </div>
+
+    <div class="no-print p-3 rounded-xl bg-slate-950 border border-slate-800 flex flex-wrap items-center justify-between gap-2 text-[10px]">
+      <span id="kit-url" class="font-mono text-slate-400 truncate"></span>
+      <div class="flex items-center gap-2 shrink-0">
+        <button type="button" onclick="copyLink()" class="px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-100 font-bold">Copy Live Link</button>
+        <button type="button" onclick="window.print()" class="px-3 py-1.5 rounded bg-brand-gold hover:bg-amber-400 text-slate-950 font-bold">Export to PDF</button>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const urlEl = document.getElementById('kit-url');
+    if (urlEl) urlEl.textContent = window.location.href.split('?')[0];
+    function copyLink() {
+      const href = window.location.href.split('?')[0];
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(href);
+    }
+    if (new URLSearchParams(window.location.search).has('print')) {
+      window.addEventListener('load', () => setTimeout(() => window.print(), 400));
+    }
+  </script>
+</body>
+</html>

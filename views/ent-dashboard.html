@@ -9,12 +9,6 @@
         </button>
         <div id="cc-module-filter" class="hidden absolute right-0 top-full mt-1 z-30 w-56 bg-slate-950 border border-slate-700 rounded-xl p-2 shadow-xl"></div>
       </div>
-      <div class="relative">
-        <button type="button" onclick="COMMAND_CENTER.toggleFilter('api')" class="text-[10px] font-semibold text-slate-300 hover:text-brand-gold border border-slate-700 bg-slate-950 px-2.5 py-1 rounded-lg transition">
-          API Widgets
-        </button>
-        <div id="cc-api-filter" class="hidden absolute right-0 top-full mt-1 z-30 w-60 bg-slate-950 border border-slate-700 rounded-xl p-2 shadow-xl"></div>
-      </div>
     </div>
   </div>
 
@@ -51,34 +45,13 @@
     </div>
   </div>
 
-  <!-- STACKED INTEGRATION MODULES -->
-  <div id="cc-integrations" class="flex flex-col items-start gap-2 w-full">
-    <div data-cc-module="stripe" id="module-stripe" class="cc-rail-card min-w-0 max-w-full w-full">
-      <iframe data-stripe-connect-frame title="Stripe Connect" src="/integrations/stripe-card" class="block w-full bg-brand-panel rounded-2xl border border-brand-border" style="height:240px;border:0;background:#0B0F17"></iframe>
+  <!-- UNIFIED SNAPSHOTS -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-3 w-full">
+    <div data-cc-module="revenue-snapshot" id="module-revenue-snapshot" class="min-w-0 w-full">
+      <iframe data-revenue-snapshot-frame title="Revenue Snapshot" src="/integrations/revenue-snapshot" class="block w-full rounded-2xl border border-brand-border" style="height:210px;border:0;overflow:hidden;background:#0A192F" scrolling="no"></iframe>
     </div>
-
-    <div data-cc-module="shopify" id="module-shopify" class="cc-rail-card min-w-0 max-w-full w-full">
-      <iframe data-shopify-frame title="Shopify Storefront" src="/integrations/shopify-card" class="block w-full bg-brand-panel rounded-2xl border border-brand-border" style="height:240px;border:0;background:#0B0F17"></iframe>
-    </div>
-
-    <div data-cc-module="lemon" id="module-lemon" class="cc-rail-card min-w-0 max-w-full w-full">
-      <iframe data-lemon-frame title="Lemon Squeezy" src="/integrations/lemon-card" class="block w-full bg-brand-panel rounded-2xl border border-brand-border" style="height:240px;border:0;background:#0B0F17"></iframe>
-    </div>
-
-    <div data-cc-module="gumroad" id="module-gumroad" class="cc-rail-card min-w-0 max-w-full w-full">
-      <iframe data-gumroad-frame title="Gumroad" src="/integrations/gumroad-card" class="block w-full bg-brand-panel rounded-2xl border border-brand-border" style="height:240px;border:0;background:#0B0F17"></iframe>
-    </div>
-
-    <div data-cc-module="patreon" id="module-patreon" class="cc-rail-card min-w-0 max-w-full w-full">
-      <iframe data-patreon-frame title="Patreon" src="/integrations/patreon-card" class="block w-full bg-brand-panel rounded-2xl border border-brand-border" style="height:240px;border:0;background:#0B0F17"></iframe>
-    </div>
-
-    <div data-cc-module="mailerlite" id="module-mailerlite" class="cc-rail-card min-w-0 max-w-full w-full">
-      <iframe data-mailerlite-frame title="MailerLite" src="/integrations/mailerlite-card" class="block w-full bg-brand-panel rounded-2xl border border-brand-border" style="height:240px;border:0;background:#0B0F17"></iframe>
-    </div>
-
-    <div data-cc-module="plaid" id="module-plaid" class="cc-rail-card min-w-0 max-w-full w-full">
-      <iframe data-plaid-frame title="Plaid" src="/integrations/plaid-card" class="block w-full bg-brand-panel rounded-2xl border border-brand-border" style="height:240px;border:0;background:#0B0F17"></iframe>
+    <div data-cc-module="growth-snapshot" id="module-growth-snapshot" class="min-w-0 w-full">
+      <iframe data-growth-snapshot-frame title="Growth Snapshot" src="/integrations/growth-snapshot" class="block w-full rounded-2xl border border-brand-border" style="height:210px;border:0;overflow:hidden;background:#0A192F" scrolling="no"></iframe>
     </div>
   </div>
 
