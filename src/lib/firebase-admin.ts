@@ -12,7 +12,7 @@ const AURINKO_USER_FIELDS = [
   "aurinko_refresh_token"
 ] as const;
 
-const PROJECT_ID = "dimad-b463c";
+const PROJECT_ID = process.env.FIREBASE_PROJECT_ID?.trim() || "dimad-b463c";
 
 function loadCredential() {
   const raw = process.env.FIREBASE_SERVICE_ACCOUNT_JSON || process.env.FIREBASE_SERVICE_ACCOUNT || "";

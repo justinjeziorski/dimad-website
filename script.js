@@ -420,6 +420,9 @@ const DIMAD_GEO = {
 const WORLD_CLOCKS = {
   storageKey: 'dimad_world_clocks',
   query: '',
+  imageCache: {},
+  imageInflight: {},
+  hydrateGen: 0,
   tones: [
     { time: 'text-brand-accent', badge: 'bg-brand-accent/10 text-brand-accent' },
     { time: 'text-brand-gold', badge: 'bg-brand-gold/10 text-brand-gold' },
@@ -487,18 +490,25 @@ const WORLD_CLOCKS = {
         london: '../assets/london-clock-hero.jpg',
         'new-york': '../assets/new-york-clock-hero.jpg'
       };
-      const hero = heroes[city.id];
+      const cached = this.imageCache[String(city.city).trim().toLowerCase()];
+      const remote = cached && cached.imageUrl ? cached.imageUrl : '';
+      const hero = remote || heroes[city.id];
       const shell = hero
         ? 'relative overflow-hidden border border-amber-500/40 bg-cover bg-center p-2.5 rounded'
         : 'border border-brand-border bg-brand-panel p-2.5 rounded';
-      const shellStyle = hero ? ` style="background-image:url('${hero}')"` : '';
-      const overlay = hero ? '<div class="pointer-events-none absolute inset-0 bg-gradient-to-r from-slate-950/80 via-slate-950/50 to-slate-950/25"></div>' : '';
+      const shellStyle = hero ? ` style="background-image:url('${this.escapeHtml(hero)}')"` : '';
+      const overlay = hero ? '<div data-world-clock-overlay class="pointer-events-none absolute inset-0 bg-gradient-to-r from-slate-950/80 via-slate-950/50 to-slate-950/25"></div>' : '';
+      const creditHref = remote && /^https:\/\//i.test(String(cached.photographerUrl || '')) ? cached.photographerUrl : '';
+      const credit = creditHref
+        ? `<a data-world-clock-credit href="${this.escapeHtml(creditHref)}" target="_blank" rel="noopener noreferrer" class="absolute bottom-0.5 right-1.5 z-10 text-[8px] text-amber-100 truncate max-w-[70%]">${this.escapeHtml(cached.photographerName || '')}</a>`
+        : '';
       const timeClass = hero ? 'text-amber-100' : tone.time;
       const nameClass = hero ? 'text-amber-50' : 'text-slate-400';
       const badgeClass = hero ? 'bg-amber-500/20 text-amber-100 border border-amber-200/20' : tone.badge;
       return `
-        <div class="${shell} flex items-center justify-between gap-2"${shellStyle}>
+        <div data-world-clock-card="${city.id}" class="${shell} flex items-center justify-between gap-2"${shellStyle}>
           ${overlay}
+          ${credit}
           <div class="relative z-10 flex items-center gap-2.5 min-w-0 ${timeClass}">
             ${this.analogFace(city.id)}
             <div class="min-w-0">
@@ -510,6 +520,7 @@ const WORLD_CLOCKS = {
         </div>`;
     }).join('');
     this.tick();
+    this.hydrateBackgrounds(selected);
     const panel = document.getElementById('world-clocks-picker');
     if (panel && !panel.classList.contains('hidden')) this.renderPicker(true);
   },
@@ -616,6 +627,85 @@ const WORLD_CLOCKS = {
         </label>`;
     });
     list.innerHTML = html;
+  },
+
+  escapeHtml(value) {
+    return String(value || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  },
+
+  fetchCityImage(city) {
+    const key = String(city || '').trim().toLowerCase();
+    if (!key) return Promise.resolve(null);
+    if (Object.prototype.hasOwnProperty.call(this.imageCache, key)) {
+      return Promise.resolve(this.imageCache[key]);
+    }
+    if (this.imageInflight[key]) return this.imageInflight[key];
+    const promise = fetch('/api/city-image?city=' + encodeURIComponent(city))
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data) this.imageCache[key] = data;
+        return data;
+      })
+      .catch(() => null)
+      .finally(() => {
+        delete this.imageInflight[key];
+      });
+    this.imageInflight[key] = promise;
+    return promise;
+  },
+
+  paintCardBackground(card, data) {
+    if (!card || !data || !data.imageUrl) return;
+    card.className = 'relative overflow-hidden border border-amber-500/40 bg-cover bg-center p-2.5 rounded flex items-center justify-between gap-2';
+    card.style.backgroundImage = 'url("' + String(data.imageUrl).replace(/"/g, '') + '")';
+    card.dataset.imageUrl = data.imageUrl;
+    card.dataset.cityKey = data.cityKey || '';
+    card.dataset.photographerName = data.photographerName || '';
+    card.dataset.photographerUrl = data.photographerUrl || '';
+    if (!card.querySelector('[data-world-clock-overlay]')) {
+      card.insertAdjacentHTML('afterbegin', '<div data-world-clock-overlay class="pointer-events-none absolute inset-0 bg-gradient-to-r from-slate-950/80 via-slate-950/50 to-slate-950/25"></div>');
+    }
+    const face = card.querySelector('.relative.z-10');
+    if (face) {
+      face.classList.remove('text-brand-accent', 'text-brand-gold', 'text-brand-mint');
+      face.classList.add('text-amber-100');
+    }
+    card.querySelectorAll('p').forEach((node, index) => {
+      node.classList.remove('text-slate-400', 'text-brand-accent', 'text-brand-gold', 'text-brand-mint');
+      node.classList.add(index === 0 ? 'text-amber-50' : 'text-amber-100');
+    });
+    const badge = card.querySelector('[data-world-clock-offset]');
+    if (badge) badge.className = 'relative z-10 text-[8px] bg-amber-500/20 text-amber-100 border border-amber-200/20 px-1.5 py-0.5 rounded shrink-0';
+    let credit = card.querySelector('[data-world-clock-credit]');
+    const creditHref = /^https:\/\//i.test(String(data.photographerUrl || '')) ? data.photographerUrl : '';
+    if (data.photographerName && creditHref) {
+      if (!credit) {
+        credit = document.createElement('a');
+        credit.dataset.worldClockCredit = '1';
+        credit.className = 'absolute bottom-0.5 right-1.5 z-10 text-[8px] text-amber-100 truncate max-w-[70%]';
+        credit.target = '_blank';
+        credit.rel = 'noopener noreferrer';
+        card.appendChild(credit);
+      }
+      credit.href = creditHref;
+      credit.textContent = data.photographerName;
+    }
+  },
+
+  hydrateBackgrounds(cities) {
+    const generation = (this.hydrateGen += 1);
+    (cities || []).forEach((city) => {
+      this.fetchCityImage(city.city).then((data) => {
+        if (this.hydrateGen !== generation) return;
+        const card = document.querySelector('[data-world-clock-card="' + city.id + '"]');
+        this.paintCardBackground(card, data);
+      });
+    });
   },
 
   toggleCity(id, on) {
