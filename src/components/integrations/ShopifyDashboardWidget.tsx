@@ -5,6 +5,7 @@ import AccountBadge from "@/components/integrations/AccountBadge";
 import IntegrationLoadingBar from "@/components/integrations/IntegrationLoadingBar";
 import { takeWorkspaceHydration } from "@/components/workspace/WorkspaceDataProvider";
 import { authFetch } from "@/lib/auth/client";
+import { authFetchWithRetry } from "@/lib/auth/authFetchRetry";
 import { INTEGRATION_CARD_CSS } from "@/components/integrations/integration-card.css";
 import { startShopifyOAuth } from "@/lib/auth/oauth-client";
 import { cacheWorkspaceResponse } from "@/hooks/useWorkspaceHydration";
@@ -109,13 +110,9 @@ export default function ShopifyDashboardWidget() {
     }
     setLoading(true);
     try {
-      let last: { res: Response; data: Record<string, unknown>; token: string } | null = null;
-      for (let attempt = 0; attempt < 3; attempt += 1) {
-        last = await authFetch(`/api/shopify/data?range=${encodeURIComponent(nextRange)}`);
-        if (last.token && last.res.status !== 401) break;
-        if (attempt < 2) await new Promise((r) => setTimeout(r, 900));
-      }
-      const { res, data, token } = last || { res: new Response(null, { status: 401 }), data: {}, token: "" };
+      const { res, data, token } = await authFetchWithRetry(
+        `/api/shopify/data?range=${encodeURIComponent(nextRange)}`
+      );
       if (!token || res.status === 401) {
         setSignedOut(true);
         setStoreData(null);

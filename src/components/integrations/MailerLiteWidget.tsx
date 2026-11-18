@@ -5,6 +5,7 @@ import AccountBadge from "@/components/integrations/AccountBadge";
 import IntegrationLoadingBar from "@/components/integrations/IntegrationLoadingBar";
 import { takeWorkspaceHydration } from "@/components/workspace/WorkspaceDataProvider";
 import { authFetch } from "@/lib/auth/client";
+import { authFetchWithRetry } from "@/lib/auth/authFetchRetry";
 import { INTEGRATION_CARD_CSS } from "@/components/integrations/integration-card.css";
 import { cacheWorkspaceResponse } from "@/hooks/useWorkspaceHydration";
 import type { MailerLitePayload } from "@/lib/integrations/mailerlite/types";
@@ -75,13 +76,7 @@ export default function MailerLiteWidget() {
     }
     setLoading(true);
     try {
-      let last: { res: Response; data: Record<string, unknown>; token: string } | null = null;
-      for (let attempt = 0; attempt < 3; attempt += 1) {
-        last = await authFetch("/api/mailerlite/data");
-        if (last.token && last.res.status !== 401) break;
-        if (attempt < 2) await new Promise((r) => setTimeout(r, 900));
-      }
-      const { res, data, token } = last || { res: new Response(null, { status: 401 }), data: {}, token: "" };
+      const { res, data, token } = await authFetchWithRetry("/api/mailerlite/data");
       if (!token || res.status === 401) {
         setSignedOut(true);
         setAccountData(null);

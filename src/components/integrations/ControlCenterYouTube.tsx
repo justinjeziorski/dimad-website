@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import AccountBadge from "@/components/integrations/AccountBadge";
 import IntegrationLoadingBar from "@/components/integrations/IntegrationLoadingBar";
 import { authFetch } from "@/lib/auth/client";
+import { authFetchWithRetry } from "@/lib/auth/authFetchRetry";
 import { INTEGRATION_CARD_CSS } from "@/components/integrations/integration-card.css";
 import { startYoutubeOAuth } from "@/lib/auth/oauth-client";
 import { cacheWorkspaceResponse } from "@/hooks/useWorkspaceHydration";
@@ -101,13 +102,7 @@ export default function ControlCenterYouTube() {
     }
     setLoading(true);
     try {
-      let last: { res: Response; data: Record<string, unknown>; token: string } | null = null;
-      for (let attempt = 0; attempt < 3; attempt += 1) {
-        last = await authFetch("/api/youtube/data");
-        if (last.token && last.res.status !== 401) break;
-        if (attempt < 2) await new Promise((r) => setTimeout(r, 900));
-      }
-      const { res, data, token } = last || { res: new Response(null, { status: 401 }), data: {}, token: "" };
+      const { res, data, token } = await authFetchWithRetry("/api/youtube/data");
       if (!token || res.status === 401) {
         setSignedOut(true);
         setChannelData(null);
