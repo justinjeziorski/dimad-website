@@ -2,15 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import SnapshotChrome from "@/components/snapshots/SnapshotChrome";
-import { authFetch } from "@/lib/dimad-auth-client";
+import { authFetch } from "@/lib/auth/client";
 import {
   extractGrowthMetrics,
   extractGrowthSources,
   type GrowthSourceId
-} from "@/lib/snapshot-aggregate";
-import { openIntegrationsSettings, openShellTab } from "@/lib/snapshot-nav";
-import type { SnapshotRange } from "@/lib/snapshot-theme";
-import { takeWorkspaceHydration } from "@/lib/workspace-data-cache";
+} from "@/lib/snapshots/aggregate";
+import { openIntegrationsSettings, openShellTab } from "@/lib/snapshots/nav";
+import type { SnapshotRange } from "@/lib/snapshots/theme";
+import { takeWorkspaceHydration } from "@/lib/cache/workspace-data-cache";
 
 export default function GrowthSnapshotCard() {
   const rootRef = useRef<HTMLDivElement>(null);

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { fetchMailerLiteData, readMailerLiteIntegration } from "@/lib/mailerlite";
-import { requireFirebaseUser } from "@/lib/session";
+import { fetchMailerLiteData, readMailerLiteIntegration } from "@/lib/integrations/mailerlite/server";
+import { requireFirebaseUser } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";

@@ -2,14 +2,14 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { usePlaidLink } from "react-plaid-link";
-import { authFetch, waitForFirebaseToken } from "@/lib/dimad-auth-client";
+import { authFetch, waitForFirebaseToken } from "@/lib/auth/client";
 import {
   finishPlaidConnect,
   isLocalHost,
   plaidAppOrigin,
   writePlaidBearer,
   writePlaidLinkToken
-} from "@/lib/plaid-client";
+} from "@/lib/integrations/plaid/client";
 
 export default function PlaidConnectPage() {
   const [linkToken, setLinkToken] = useState<string | null>(null);

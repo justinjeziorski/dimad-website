@@ -4,8 +4,8 @@ import {
   ensureYouTubeAccessToken,
   fetchYouTubeChannelData,
   readYouTubeIntegration
-} from "@/lib/youtube-oauth";
-import { requireFirebaseUser } from "@/lib/session";
+} from "@/lib/integrations/youtube/oauth";
+import { requireFirebaseUser } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";

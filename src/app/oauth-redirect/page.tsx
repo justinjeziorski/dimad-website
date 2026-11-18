@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePlaidLink } from "react-plaid-link";
-import { authFetch } from "@/lib/dimad-auth-client";
+import { authFetch } from "@/lib/auth/client";
 import {
   finishPlaidConnect,
   readPlaidLinkToken,
   writePlaidBearer
-} from "@/lib/plaid-client";
+} from "@/lib/integrations/plaid/client";
 
 export default function PlaidOAuthRedirectPage() {
   const [linkToken, setLinkToken] = useState<string | null>(null);

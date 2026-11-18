@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireFirebaseUser } from "@/lib/session";
-import { createCalendarEvent, syncCalendarForUser } from "@/lib/calendar-sync";
+import { requireFirebaseUser } from "@/lib/auth/session";
+import { createCalendarEvent, syncCalendarForUser } from "@/lib/calendar/sync";
 import { withTimeout } from "@/lib/with-timeout";
 
 export const dynamic = "force-dynamic";

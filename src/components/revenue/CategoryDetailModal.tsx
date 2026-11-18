@@ -4,7 +4,7 @@ import { useMemo, useState, type CSSProperties } from "react";
 import { useIframeCenteredOverlay } from "@/hooks/useIframeCenteredOverlay";
 import type { UnifiedTransaction } from "@/lib/revenue/types";
 import { money } from "@/lib/revenue/ledgerEngine";
-import { SNAPSHOT_THEME } from "@/lib/snapshot-theme";
+import { SNAPSHOT_THEME } from "@/lib/snapshots/theme";
 
 export type CategoryDetailSelection = {
   categoryTitle: string;
@@ -42,9 +42,14 @@ export default function CategoryDetailModal({
 }: Props) {
   const overlayStyle = useIframeCenteredOverlay(true);
   const [forecastGrowth, setForecastGrowth] = useState(10);
-  const [forecastMonths, setForecastMonths] = useState(6);
+  const [forecastDays, setForecastDays] = useState(180);
+  const [customHorizonOpen, setCustomHorizonOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState("");
+
+  const horizonLabel = formatHorizonLabel(forecastDays);
+  const forecastMonths = daysToMonths(forecastDays);
+  const isPresetHorizon = PRESET_HORIZONS.some((p) => p.days === forecastDays);
 
   const filteredTx = useMemo(() => {
     const title = categoryTitle.toLowerCase();
@@ -59,10 +64,28 @@ export default function CategoryDetailModal({
       }
       if (match === "kpi") {
         if (title.startsWith("period ")) return true;
-        if (title.includes("expense") || title.includes("burn")) return tx.type === "EXPENSE";
-        if (title.includes("mrr")) return tx.type === "REVENUE" && tx.isRecurring;
-        if (title.includes("one-time") || title.includes("order")) return tx.type === "REVENUE" && !tx.isRecurring;
-        if (title.includes("profit") || title.includes("gross") || title.includes("net revenue")) {
+        if (
+          title.includes("expense") ||
+          title.includes("burn") ||
+          title.includes("opex") ||
+          title.includes("operating")
+        ) {
+          return tx.type === "EXPENSE";
+        }
+        if (title.includes("mrr") || title.includes("recurring revenue")) {
+          return tx.type === "REVENUE" && tx.isRecurring;
+        }
+        if (title.includes("one-time") || title.includes("order")) {
+          return tx.type === "REVENUE" && !tx.isRecurring;
+        }
+        if (
+          title.includes("profit") ||
+          title.includes("gross") ||
+          title.includes("net revenue") ||
+          title.includes("margin") ||
+          title.includes("primary") ||
+          title.includes("runway")
+        ) {
           return tx.type === "REVENUE";
         }
         return true;
@@ -82,12 +105,13 @@ export default function CategoryDetailModal({
     setSaving(true);
     setToast("");
     try {
+      const monthsRounded = Math.max(1, Math.round(forecastMonths * 10) / 10);
       await onConvertToGoal({
-        title: `Reach $${projectedTotal.toLocaleString()} in ${categoryTitle} (${forecastMonths}-Month Forecast · ${forecastGrowth >= 0 ? "+" : ""}${forecastGrowth}% MoM)`,
+        title: `Reach $${projectedTotal.toLocaleString()} in ${categoryTitle} (${horizonLabel} Forecast · ${forecastGrowth >= 0 ? "+" : ""}${forecastGrowth}% MoM)`,
         targetValue: projectedTotal,
-        deadline: new Date(Date.now() + forecastMonths * 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+        deadline: new Date(Date.now() + forecastDays * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
         forecastGrowth,
-        forecastMonths,
+        forecastMonths: monthsRounded,
         categoryTitle,
         categoryType
       });
@@ -149,7 +173,7 @@ export default function CategoryDetailModal({
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12, margin: "18px 0" }}>
           <Metric label="Current Volume" value={money(totalCurrent)} />
           <Metric label="Transactions Logged" value={String(filteredTx.length)} />
-          <Metric label={`Projected (${forecastMonths}M)`} value={money(projectedTotal)} gold />
+          <Metric label={`Projected (${horizonLabel})`} value={money(projectedTotal)} gold />
         </div>
 
         <div
@@ -181,32 +205,93 @@ export default function CategoryDetailModal({
                 <span>+50% Aggr.</span>
               </div>
             </div>
-            <div>
+            <div style={{ position: "relative" }}>
               <label style={{ display: "block", fontSize: 11, color: SNAPSHOT_THEME.mute, marginBottom: 6 }}>
-                Time Horizon: {forecastMonths} Months
+                Time Horizon: {horizonLabel}
               </label>
               <div style={{ display: "flex", gap: 8 }}>
-                {[3, 6, 12].map((m) => (
-                  <button
-                    key={m}
-                    type="button"
-                    onClick={() => setForecastMonths(m)}
+                {PRESET_HORIZONS.map((p) => {
+                  const on = forecastDays === p.days;
+                  return (
+                    <button
+                      key={p.key}
+                      type="button"
+                      onClick={() => {
+                        setForecastDays(p.days);
+                        setCustomHorizonOpen(false);
+                      }}
+                      style={horizonBtn(on)}
+                    >
+                      {p.key}
+                    </button>
+                  );
+                })}
+                <button
+                  type="button"
+                  onClick={() => setCustomHorizonOpen((v) => !v)}
+                  style={horizonBtn(!isPresetHorizon)}
+                  aria-expanded={customHorizonOpen}
+                  aria-haspopup="dialog"
+                >
+                  Custom
+                </button>
+              </div>
+
+              {customHorizonOpen ? (
+                <div
+                  role="dialog"
+                  aria-label="Custom time horizon"
+                  style={{
+                    position: "absolute",
+                    right: 0,
+                    top: "100%",
+                    marginTop: 8,
+                    zIndex: 20,
+                    width: "min(280px, 78vw)",
+                    padding: 12,
+                    borderRadius: 12,
+                    border: `1px solid ${SNAPSHOT_THEME.navyLine}`,
+                    background: "#07101f",
+                    boxShadow: "0 16px 40px rgba(0,0,0,0.45)"
+                  }}
+                >
+                  <div
                     style={{
-                      flex: 1,
-                      borderRadius: 8,
-                      border: `1px solid ${forecastMonths === m ? SNAPSHOT_THEME.gold : SNAPSHOT_THEME.navyLine}`,
-                      background: forecastMonths === m ? SNAPSHOT_THEME.gold : "rgba(255,255,255,0.06)",
-                      color: forecastMonths === m ? "#0A192F" : SNAPSHOT_THEME.ink,
+                      fontSize: 10,
                       fontWeight: 700,
-                      fontSize: 11,
-                      padding: "8px 0",
-                      cursor: "pointer"
+                      letterSpacing: "0.08em",
+                      textTransform: "uppercase",
+                      color: SNAPSHOT_THEME.mute,
+                      marginBottom: 8
                     }}
                   >
-                    {m}M
-                  </button>
-                ))}
-              </div>
+                    Select timeframe
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                    {CUSTOM_HORIZONS.map((opt) => {
+                      const on = forecastDays === opt.days;
+                      return (
+                        <button
+                          key={opt.key}
+                          type="button"
+                          onClick={() => {
+                            setForecastDays(opt.days);
+                            setCustomHorizonOpen(false);
+                          }}
+                          style={{
+                            ...horizonBtn(on),
+                            flex: "unset",
+                            padding: "8px 6px",
+                            fontSize: 11
+                          }}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
             </div>
           </div>
         </div>
@@ -264,6 +349,65 @@ export default function CategoryDetailModal({
       </div>
     </div>
   );
+}
+
+const PRESET_HORIZONS = [
+  { key: "3M", days: 90 },
+  { key: "6M", days: 180 },
+  { key: "12M", days: 365 }
+] as const;
+
+const CUSTOM_HORIZONS = [
+  { key: "1d", days: 1, label: "1 day" },
+  { key: "14d", days: 14, label: "14 days" },
+  { key: "21d", days: 21, label: "21 days" },
+  { key: "1m", days: 30, label: "1 month" },
+  { key: "3m", days: 90, label: "3 months" },
+  { key: "4m", days: 120, label: "4 months" },
+  { key: "6m", days: 180, label: "6 months" },
+  { key: "9m", days: 270, label: "9 months" },
+  { key: "12m", days: 365, label: "12 months" }
+] as const;
+
+function daysToMonths(days: number) {
+  return days / 30.437;
+}
+
+function formatHorizonLabel(days: number) {
+  if (days < 30) return `${days} Day${days === 1 ? "" : "s"}`;
+  const months = Math.round(days / 30.437);
+  if (Math.abs(days - months * 30.437) < 2 || [30, 90, 120, 180, 270, 365].includes(days)) {
+    const m =
+      days === 30
+        ? 1
+        : days === 90
+          ? 3
+          : days === 120
+            ? 4
+            : days === 180
+              ? 6
+              : days === 270
+                ? 9
+                : days === 365
+                  ? 12
+                  : months;
+    return `${m} Month${m === 1 ? "" : "s"}`;
+  }
+  return `${days} Days`;
+}
+
+function horizonBtn(active: boolean): CSSProperties {
+  return {
+    flex: 1,
+    borderRadius: 8,
+    border: `1px solid ${active ? SNAPSHOT_THEME.gold : SNAPSHOT_THEME.navyLine}`,
+    background: active ? SNAPSHOT_THEME.gold : "rgba(255,255,255,0.06)",
+    color: active ? "#0A192F" : SNAPSHOT_THEME.ink,
+    fontWeight: 700,
+    fontSize: 11,
+    padding: "8px 0",
+    cursor: "pointer"
+  };
 }
 
 function Metric({ label, value, gold }: { label: string; value: string; gold?: boolean }) {

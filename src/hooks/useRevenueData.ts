@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
-import { authFetch } from "@/lib/dimad-auth-client";
+import { authFetch } from "@/lib/auth/client";
 import { useInstantDashboardState } from "@/hooks/useInstantDashboardState";
 import { perfMark, perfStart } from "@/lib/perf/timing";
 import { writeLocalLedgerCache } from "@/lib/revenue/ledgerCache";

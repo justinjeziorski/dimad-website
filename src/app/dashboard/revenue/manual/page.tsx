@@ -4,11 +4,11 @@ import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "r
 import DashboardShell from "@/components/dashboard/DashboardShell";
 import ManualEntryModal from "@/components/revenue/ManualEntryModal";
 import RevenueNav from "@/components/revenue/RevenueNav";
-import { authFetch } from "@/lib/dimad-auth-client";
+import { authFetch } from "@/lib/auth/client";
 import { money } from "@/lib/revenue/ledgerEngine";
 import { goRevenue } from "@/lib/revenue/nav";
 import type { ManualLedgerInput, UnifiedTransaction } from "@/lib/revenue/types";
-import { SNAPSHOT_THEME } from "@/lib/snapshot-theme";
+import { SNAPSHOT_THEME } from "@/lib/snapshots/theme";
 
 type SortKey = "date" | "amount" | "type" | "platformLabel" | "merchantOrCustomer";
 

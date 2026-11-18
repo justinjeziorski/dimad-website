@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import type { MarketList } from "@/lib/market-lists";
+import type { MarketList } from "@/lib/market/lists";
 
 type AddToListMenuProps = {
   lists: MarketList[];

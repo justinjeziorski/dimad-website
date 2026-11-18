@@ -12,7 +12,7 @@ import { useRevenueData } from "@/hooks/useRevenueData";
 import { detectRecurringExpenses, money } from "@/lib/revenue/ledgerEngine";
 import { goRevenue } from "@/lib/revenue/nav";
 import type { UnifiedTransaction } from "@/lib/revenue/types";
-import { SNAPSHOT_THEME } from "@/lib/snapshot-theme";
+import { SNAPSHOT_THEME } from "@/lib/snapshots/theme";
 
 export default function RevenueExpensesPage() {
   const { ledger, setLedger, usingMock, loading, syncing, plaid, refresh } = useRevenueData();

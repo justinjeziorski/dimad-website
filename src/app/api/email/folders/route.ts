@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireFirebaseUser } from "@/lib/session";
-import { listEmailFolders } from "@/lib/email-sync";
+import { requireFirebaseUser } from "@/lib/auth/session";
+import { listEmailFolders } from "@/lib/email/sync";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";

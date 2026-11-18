@@ -6,7 +6,7 @@ import {
   patreonAppBase,
   patreonStatesMatch,
   writePatreonIntegration
-} from "@/lib/patreon-oauth";
+} from "@/lib/integrations/patreon/oauth";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";

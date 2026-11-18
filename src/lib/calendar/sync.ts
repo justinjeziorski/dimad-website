@@ -1,4 +1,4 @@
-import { aurinkoFetch, aurinkoRecords, pullAurinkoUpdated, startAurinkoSync } from "@/lib/aurinko";
+import { aurinkoFetch, aurinkoRecords, pullAurinkoUpdated, startAurinkoSync } from "@/lib/integrations/aurinko";
 import { aurinkoTokenForUser } from "@/lib/email/sync";
 import { adminWriteCalendarEvents } from "@/lib/firebase/admin";
 import { boolField, commitWrites, FIREBASE_WEB, strField } from "@/lib/firebase/firestore-rest";

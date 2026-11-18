@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { waitForFirebaseToken } from "@/lib/dimad-auth-client";
+import { waitForFirebaseToken } from "@/lib/auth/client";
 import {
   bindPlatformSessionPersistence,
   hydratePlatformSnapshot,

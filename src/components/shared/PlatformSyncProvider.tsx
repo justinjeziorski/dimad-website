@@ -3,7 +3,7 @@
 import { createContext, useContext, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { usePlatformSync, type UsePlatformSyncResult } from "@/hooks/usePlatformSync";
-import { SNAPSHOT_THEME } from "@/lib/snapshot-theme";
+import { SNAPSHOT_THEME } from "@/lib/snapshots/theme";
 
 const PlatformSyncContext = createContext<UsePlatformSyncResult | null>(null);
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import AddToListMenu from "@/components/market/AddToListMenu";
-import { bareSymbol, type MarketList } from "@/lib/market-lists";
+import { bareSymbol, type MarketList } from "@/lib/market/lists";
 
 type SearchHit = {
   symbol: string;

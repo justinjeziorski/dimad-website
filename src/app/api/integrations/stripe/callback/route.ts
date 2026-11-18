@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { exchangeStripeCode, clearStripeOauthCookies, stripeAppBase, stripeStatesMatch, safeStripeError } from "@/lib/stripe-connect";
-import { signStripeAccount, writeStripeIntegration } from "@/lib/stripe-store";
+import { exchangeStripeCode, clearStripeOauthCookies, stripeAppBase, stripeStatesMatch, safeStripeError } from "@/lib/integrations/stripe/connect";
+import { signStripeAccount, writeStripeIntegration } from "@/lib/integrations/stripe/store";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";

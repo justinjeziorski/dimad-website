@@ -1,14 +1,19 @@
 "use client";
 
-import { SNAPSHOT_THEME } from "@/lib/snapshot-theme";
+import { goFinances } from "@/lib/finances/nav";
 import { goRevenue } from "@/lib/revenue/nav";
+import { SNAPSHOT_THEME } from "@/lib/snapshots/theme";
 
 const TABS = [
-  { href: "/dashboard/revenue", label: "Overview", id: "overview" },
-  { href: "/dashboard/revenue/expenses", label: "Expenses", id: "expenses" }
+  { href: "/dashboard/finances", label: "Command Center", id: "finances", kind: "finances" as const },
+  { href: "/dashboard/revenue/expenses", label: "Expenses", id: "expenses", kind: "revenue" as const }
 ] as const;
 
-export default function RevenueNav({ active }: { active: "overview" | "manual" | "expenses" }) {
+export default function RevenueNav({
+  active
+}: {
+  active: "overview" | "manual" | "expenses" | "finances";
+}) {
   return (
     <nav style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
       {TABS.map((tab) => {
@@ -19,7 +24,8 @@ export default function RevenueNav({ active }: { active: "overview" | "manual" |
             href={tab.href}
             onClick={(event) => {
               event.preventDefault();
-              goRevenue(tab.href);
+              if (tab.kind === "finances") goFinances(tab.href);
+              else goRevenue(tab.href);
             }}
             style={{
               textDecoration: "none",

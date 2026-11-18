@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminDb } from "@/lib/firebase-admin";
+import { getAdminDb } from "@/lib/firebase/admin";
 import { perfStart, perfTime } from "@/lib/perf/timing";
 import type { UnifiedTransaction } from "@/lib/revenue/types";
-import { requireFirebaseUser } from "@/lib/session";
+import { requireFirebaseUser } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";

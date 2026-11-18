@@ -1,6 +1,6 @@
 ---
 description: Fast client-side OAuth for Dimad API integrations (no initiate-route cold start)
-globs: src/components/integrations/**/*.{ts,tsx},src/app/api/auth/**/*.ts,src/lib/auth/**/*.ts,src/lib/*oauth*.ts,src/lib/oauth-client.ts
+globs: src/components/integrations/**/*.{ts,tsx},src/app/api/auth/**/*.ts,src/lib/auth/**/*.ts
 alwaysApply: false
 ---
 
@@ -8,7 +8,7 @@ alwaysApply: false
 
 ## Connect click (client)
 
-- Build the authorize URL in the browser via `src/lib/auth/oauth-client.ts` (`start*OAuth`). Legacy shim: `src/lib/oauth-client.ts`.
+- Build the authorize URL in the browser via `src/lib/auth/oauth-client.ts` (`start*OAuth`).
 - Use `NEXT_PUBLIC_*` client IDs + redirect URIs only. Never expose client secrets.
 - Set short-lived Lax cookies for `state`, `uid`, provider `fb_token`, and PKCE `verifier` (X) before `location.href`.
 - Do **not** call `/api/auth/[provider]` (or Stripe connect) just to generate a URL — that causes serverless cold-start lag.

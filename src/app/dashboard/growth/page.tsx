@@ -3,11 +3,11 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import DashboardShell from "@/components/dashboard/DashboardShell";
 import TimeRangeSelector from "@/components/shared/TimeRangeSelector";
-import { authFetch } from "@/lib/dimad-auth-client";
+import { authFetch } from "@/lib/auth/client";
 import { compactNumber, generateMockGrowthEvents, summarizeGrowth } from "@/lib/growth/growthEngine";
 import type { GrowthSource, UnifiedGrowthEvent } from "@/lib/growth/types";
 import { formatDelta } from "@/lib/revenue/ledgerEngine";
-import { SNAPSHOT_THEME } from "@/lib/snapshot-theme";
+import { SNAPSHOT_THEME } from "@/lib/snapshots/theme";
 import {
   filterDataByTimeframe,
   type CustomDateRange,

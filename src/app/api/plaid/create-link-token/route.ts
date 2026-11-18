@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createPlaidLinkToken } from "@/lib/plaid";
-import { requireFirebaseUser } from "@/lib/session";
+import { createPlaidLinkToken } from "@/lib/integrations/plaid/server";
+import { requireFirebaseUser } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";

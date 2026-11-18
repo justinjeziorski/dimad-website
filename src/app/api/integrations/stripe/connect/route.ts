@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireFirebaseUser } from "@/lib/session";
+import { requireFirebaseUser } from "@/lib/auth/session";
 import {
   clearStripeOauthCookies,
   newStripeOauthState,
   setStripeOauthCookies,
   stripeAppBase,
   stripeAuthorizeUrl
-} from "@/lib/stripe-connect";
+} from "@/lib/integrations/stripe/connect";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";

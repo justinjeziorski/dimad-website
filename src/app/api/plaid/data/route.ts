@@ -5,9 +5,9 @@ import {
   readPlaidIntegration,
   updatePlaidAccountClasses,
   type PlaidAccountClass
-} from "@/lib/plaid";
+} from "@/lib/integrations/plaid/server";
 import { perfStart, perfTime } from "@/lib/perf/timing";
-import { requireFirebaseUser } from "@/lib/session";
+import { requireFirebaseUser } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";

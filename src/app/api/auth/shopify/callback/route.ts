@@ -6,7 +6,7 @@ import {
   shopifyAppBase,
   shopifyStatesMatch,
   writeShopifyIntegration
-} from "@/lib/shopify-oauth";
+} from "@/lib/integrations/shopify/oauth";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";

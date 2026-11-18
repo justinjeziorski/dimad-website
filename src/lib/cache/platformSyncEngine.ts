@@ -12,7 +12,7 @@ import {
   type WorkspaceCacheEntry,
   type WorkspaceCacheSnapshot,
   type WorkspaceIntegrationKey
-} from "@/lib/workspace-data-cache";
+} from "@/lib/cache/workspace-data-cache";
 
 export const PLATFORM_CACHE_LS_KEY = "dimad_platform_snapshot_v1";
 export const PLATFORM_CACHE_IDB_NAME = "dimad_platform_cache";

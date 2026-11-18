@@ -1,7 +1,7 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import { SNAPSHOT_THEME } from "@/lib/snapshot-theme";
+import { SNAPSHOT_THEME } from "@/lib/snapshots/theme";
 import type { PlatformSyncPhaseId } from "@/lib/cache/platformSyncEngine";
 
 type Props = {

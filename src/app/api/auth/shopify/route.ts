@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireFirebaseUser } from "@/lib/session";
+import { requireFirebaseUser } from "@/lib/auth/session";
 import {
   clearShopifyOauthCookies,
   newShopifyOauthState,
@@ -7,7 +7,7 @@ import {
   setShopifyOauthCookies,
   shopifyAppBase,
   shopifyAuthorizeUrl
-} from "@/lib/shopify-oauth";
+} from "@/lib/integrations/shopify/oauth";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";

@@ -5,7 +5,7 @@ import AddToListMenu from "@/components/market/AddToListMenu";
 import MarketTickerWidget, { useMarketLists } from "@/components/market/MarketTickerWidget";
 import StockChartWidget from "@/components/market/StockChartWidget";
 import SymbolSearchBar from "@/components/market/SymbolSearchBar";
-import { bareSymbol, toTradingView } from "@/lib/market-lists";
+import { bareSymbol, toTradingView } from "@/lib/market/lists";
 
 export default function MarketPage() {
   const [selectedSymbol, setSelectedSymbol] = useState("NASDAQ:AAPL");

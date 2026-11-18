@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminDb } from "@/lib/firebase-admin";
-import { normalizeCityKey } from "@/lib/locationResolver";
+import { getAdminDb } from "@/lib/firebase/admin";
+import { normalizeCityKey } from "@/lib/location/locationResolver";
 import { perfStart, perfTime } from "@/lib/perf/timing";
 
 export const dynamic = "force-dynamic";

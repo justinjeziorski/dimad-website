@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readOauthState, readUserId } from "@/lib/oauth-state";
+import { readOauthState, readUserId } from "@/lib/auth/oauth-state";
 import {
   aurinkoAccount,
   aurinkoServiceType,
   exchangeAurinkoCode,
   resolveAurinkoProvider,
   startAurinkoSync
-} from "@/lib/aurinko";
-import { adminWriteUser } from "@/lib/firebase-admin";
-import { syncCalendarForUser } from "@/lib/calendar-sync";
-import { listInboxWithAccessToken } from "@/lib/email-sync";
+} from "@/lib/integrations/aurinko";
+import { adminWriteUser } from "@/lib/firebase/admin";
+import { syncCalendarForUser } from "@/lib/calendar/sync";
+import { listInboxWithAccessToken } from "@/lib/email/sync";
 import { withTimeout } from "@/lib/with-timeout";
 
 export const dynamic = "force-dynamic";

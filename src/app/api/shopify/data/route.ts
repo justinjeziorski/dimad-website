@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { perfStart, perfTime } from "@/lib/perf/timing";
-import { requireFirebaseUser } from "@/lib/session";
+import { requireFirebaseUser } from "@/lib/auth/session";
 import {
   deleteShopifyIntegration,
   fetchShopifyStoreData,
   readShopifyIntegration,
   type ShopifyRangeKey
-} from "@/lib/shopify-oauth";
+} from "@/lib/integrations/shopify/oauth";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";

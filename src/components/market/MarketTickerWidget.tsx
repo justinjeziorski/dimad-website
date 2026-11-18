@@ -12,7 +12,7 @@ import {
   writeActiveListId,
   writeLists,
   type MarketList
-} from "@/lib/market-lists";
+} from "@/lib/market/lists";
 
 type MarketQuote = {
   symbol: string;

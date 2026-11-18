@@ -5,7 +5,7 @@ import {
   gumroadAppBase,
   gumroadStatesMatch,
   writeGumroadIntegration
-} from "@/lib/gumroad-oauth";
+} from "@/lib/integrations/gumroad/oauth";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";

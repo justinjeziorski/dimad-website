@@ -1,4 +1,4 @@
-import { aurinkoFetch, aurinkoFetchBinary, aurinkoRecords, pullAurinkoUpdated, startAurinkoSync } from "@/lib/aurinko";
+import { aurinkoFetch, aurinkoFetchBinary, aurinkoRecords, pullAurinkoUpdated, startAurinkoSync } from "@/lib/integrations/aurinko";
 import { adminReadUser } from "@/lib/firebase/admin";
 import { getUserDocument, readString } from "@/lib/firebase/firestore-rest";
 

@@ -10,7 +10,7 @@ import Placeholder from "@tiptap/extension-placeholder";
 import Underline from "@tiptap/extension-underline";
 import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
 import { common, createLowlight } from "lowlight";
-import { uploadToDimDrive } from "@/lib/dimdrive";
+import { uploadToDimDrive } from "@/lib/dimdrive/store";
 import {
   countWords,
   getWritingsAuth,
@@ -20,7 +20,7 @@ import {
   saveWriting,
   type WriteMode,
   type WritingDoc
-} from "@/lib/writings";
+} from "@/lib/writespace/writings";
 import {
   CaptionedImage,
   CtaButton,

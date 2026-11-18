@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { fetchLemonStoreData, readLemonIntegration } from "@/lib/lemon-squeezy";
-import { requireFirebaseUser } from "@/lib/session";
+import { fetchLemonStoreData, readLemonIntegration } from "@/lib/integrations/lemon/server";
+import { requireFirebaseUser } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";

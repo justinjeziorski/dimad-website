@@ -5,7 +5,7 @@ import {
   writeYouTubeIntegration,
   youtubeAppBase,
   youtubeStatesMatch
-} from "@/lib/youtube-oauth";
+} from "@/lib/integrations/youtube/oauth";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";

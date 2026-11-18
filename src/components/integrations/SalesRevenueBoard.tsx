@@ -3,11 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import AccountBadge from "@/components/integrations/AccountBadge";
 import IntegrationLoadingBar from "@/components/integrations/IntegrationLoadingBar";
-import { authFetch } from "@/lib/dimad-auth-client";
-import { INTEGRATION_CARD_CSS } from "@/lib/integration-card.css";
-import { startShopifyOAuth, startStripeOAuth } from "@/lib/oauth-client";
-import type { ShopifyRangeKey, ShopifyStorePayload } from "@/lib/shopify-types";
-import type { StripeConnectedMetrics } from "@/lib/stripe-types";
+import { authFetch } from "@/lib/auth/client";
+import { INTEGRATION_CARD_CSS } from "@/components/integrations/integration-card.css";
+import { startShopifyOAuth, startStripeOAuth } from "@/lib/auth/oauth-client";
+import type { ShopifyRangeKey, ShopifyStorePayload } from "@/lib/integrations/shopify/types";
+import type { StripeConnectedMetrics } from "@/lib/integrations/stripe/types";
 
 type ShopifyData = ShopifyStorePayload & { ok?: boolean; connected?: boolean; error?: string };
 type StripeData = StripeConnectedMetrics & { ok?: boolean; connected?: boolean; error?: string };

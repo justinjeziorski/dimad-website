@@ -15,7 +15,7 @@ import {
   SyncPill
 } from "@/components/revenue/RevenueSkeletons";
 import TimeRangeSelector from "@/components/shared/TimeRangeSelector";
-import { authFetch } from "@/lib/dimad-auth-client";
+import { authFetch } from "@/lib/auth/client";
 import { useRevenueData } from "@/hooks/useRevenueData";
 import {
   channelBreakdown,
@@ -36,6 +36,7 @@ import {
   calculateTotalExpenses,
   calculatePeriodDelta
 } from "@/lib/revenue/financialMath";
+import { openForecastGoalInAccountability } from "@/lib/finances/forecastGoalBridge";
 import { goRevenue } from "@/lib/revenue/nav";
 import type {
   ComparisonMode,
@@ -44,7 +45,7 @@ import type {
   UnifiedTransaction,
   ViewMode
 } from "@/lib/revenue/types";
-import { SNAPSHOT_THEME } from "@/lib/snapshot-theme";
+import { SNAPSHOT_THEME } from "@/lib/snapshots/theme";
 import type { CustomDateRange, DimadTimeframe } from "@/lib/utils/timeframeFilter";
 
 const SOURCE_PILLS: { id: LedgerSource; label: string }[] = [
@@ -252,32 +253,17 @@ export default function RevenueWorkspacePage() {
     categoryTitle: string;
     categoryType: "REVENUE" | "EXPENSE";
   }) {
-    const payload = {
-      type: "dimad-open-forecast-goal",
-      goal: {
-        text: goalData.title,
-        targetValue: goalData.targetValue,
-        deadline: goalData.deadline,
-        forecastGrowth: goalData.forecastGrowth,
-        forecastMonths: goalData.forecastMonths,
-        categoryTitle: goalData.categoryTitle,
-        categoryType: goalData.categoryType,
-        horizon: "one_time",
-        recurring: false
-      }
-    };
-    if (window.parent && window.parent !== window) {
-      window.parent.postMessage(payload, window.location.origin);
-    } else {
-      const host = window as unknown as {
-        DIMAD_GOALS?: { openComposerFromForecast?: (g: unknown) => void };
-      };
-      if (typeof host.DIMAD_GOALS?.openComposerFromForecast === "function") {
-        host.DIMAD_GOALS.openComposerFromForecast(payload.goal);
-      } else {
-        throw new Error("Open Revenue from the Command Center to create goals.");
-      }
-    }
+    openForecastGoalInAccountability({
+      text: goalData.title,
+      targetValue: goalData.targetValue,
+      deadline: goalData.deadline,
+      forecastGrowth: goalData.forecastGrowth,
+      forecastMonths: goalData.forecastMonths,
+      categoryTitle: goalData.categoryTitle,
+      categoryType: goalData.categoryType,
+      horizon: "one_time",
+      recurring: false
+    });
     setDetail(null);
   }
 

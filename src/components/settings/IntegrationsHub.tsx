@@ -1,16 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useId, useRef, useState, type CSSProperties } from "react";
-import { authFetch, waitForFirebaseToken } from "@/lib/dimad-auth-client";
+import { authFetch, waitForFirebaseToken } from "@/lib/auth/client";
 import {
   startGumroadOAuth,
   startShopifyOAuth,
   startStripeOAuth,
   startXOauth,
   startYoutubeOAuth
-} from "@/lib/oauth-client";
-import { isLocalHost, plaidAppOrigin, writePlaidLinkToken } from "@/lib/plaid-client";
-import { SNAPSHOT_THEME } from "@/lib/snapshot-theme";
+} from "@/lib/auth/oauth-client";
+import { isLocalHost, plaidAppOrigin, writePlaidLinkToken } from "@/lib/integrations/plaid/client";
+import { SNAPSHOT_THEME } from "@/lib/snapshots/theme";
 
 type AuthMode = "oauth" | "shopify" | "api-key" | "plaid";
 

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireFirebaseUser } from "@/lib/session";
-import { adminClearAurinko, adminReadUser } from "@/lib/firebase-admin";
-import { getUserDocument, readString } from "@/lib/firestore-rest";
-import { aurinkoAccount, aurinkoFetch } from "@/lib/aurinko";
+import { requireFirebaseUser } from "@/lib/auth/session";
+import { adminClearAurinko, adminReadUser } from "@/lib/firebase/admin";
+import { getUserDocument, readString } from "@/lib/firebase/firestore-rest";
+import { aurinkoAccount, aurinkoFetch } from "@/lib/integrations/aurinko";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";

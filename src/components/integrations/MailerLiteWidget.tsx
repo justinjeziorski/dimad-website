@@ -4,10 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import AccountBadge from "@/components/integrations/AccountBadge";
 import IntegrationLoadingBar from "@/components/integrations/IntegrationLoadingBar";
 import { takeWorkspaceHydration } from "@/components/workspace/WorkspaceDataProvider";
-import { authFetch } from "@/lib/dimad-auth-client";
-import { INTEGRATION_CARD_CSS } from "@/lib/integration-card.css";
-import { cacheWorkspaceResponse } from "@/lib/use-workspace-hydration";
-import type { MailerLitePayload } from "@/lib/mailerlite-types";
+import { authFetch } from "@/lib/auth/client";
+import { INTEGRATION_CARD_CSS } from "@/components/integrations/integration-card.css";
+import { cacheWorkspaceResponse } from "@/hooks/useWorkspaceHydration";
+import type { MailerLitePayload } from "@/lib/integrations/mailerlite/types";
 
 type MailerLiteData = MailerLitePayload & { ok?: boolean; connected?: boolean; error?: string };
 

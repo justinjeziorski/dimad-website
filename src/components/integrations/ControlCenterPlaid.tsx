@@ -4,11 +4,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import AccountBadge from "@/components/integrations/AccountBadge";
 import IntegrationLoadingBar from "@/components/integrations/IntegrationLoadingBar";
 import { takeWorkspaceHydration } from "@/components/workspace/WorkspaceDataProvider";
-import { authFetch, waitForFirebaseToken } from "@/lib/dimad-auth-client";
-import { INTEGRATION_CARD_CSS } from "@/lib/integration-card.css";
-import { isLocalHost, plaidAppOrigin, writePlaidLinkToken } from "@/lib/plaid-client";
-import { cacheWorkspaceResponse } from "@/lib/use-workspace-hydration";
-import type { PlaidAccountClass, PlaidPayload } from "@/lib/plaid-types";
+import { authFetch, waitForFirebaseToken } from "@/lib/auth/client";
+import { INTEGRATION_CARD_CSS } from "@/components/integrations/integration-card.css";
+import { isLocalHost, plaidAppOrigin, writePlaidLinkToken } from "@/lib/integrations/plaid/client";
+import { cacheWorkspaceResponse } from "@/hooks/useWorkspaceHydration";
+import type { PlaidAccountClass, PlaidPayload } from "@/lib/integrations/plaid/types";
 
 type PlaidData = PlaidPayload & { ok?: boolean; connected?: boolean; error?: string };
 

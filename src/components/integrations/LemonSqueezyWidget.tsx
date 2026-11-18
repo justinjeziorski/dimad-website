@@ -3,9 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import AccountBadge from "@/components/integrations/AccountBadge";
 import IntegrationLoadingBar from "@/components/integrations/IntegrationLoadingBar";
-import { authFetch } from "@/lib/dimad-auth-client";
-import { INTEGRATION_CARD_CSS } from "@/lib/integration-card.css";
-import type { LemonStorePayload } from "@/lib/lemon-types";
+import { authFetch } from "@/lib/auth/client";
+import { INTEGRATION_CARD_CSS } from "@/components/integrations/integration-card.css";
+import type { LemonStorePayload } from "@/lib/integrations/lemon/types";
 
 type LemonData = LemonStorePayload & { ok?: boolean; connected?: boolean; error?: string };
 

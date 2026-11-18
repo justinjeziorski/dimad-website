@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from "react";
-import { authFetch } from "@/lib/dimad-auth-client";
+import { authFetch } from "@/lib/auth/client";
 import { useIframeCenteredOverlay } from "@/hooks/useIframeCenteredOverlay";
 import {
   addLocalSourceTag,
@@ -10,7 +10,7 @@ import {
   writeLocalSourceTags
 } from "@/lib/revenue/source-tags";
 import type { ManualLedgerInput, UnifiedTransaction } from "@/lib/revenue/types";
-import { SNAPSHOT_THEME } from "@/lib/snapshot-theme";
+import { SNAPSHOT_THEME } from "@/lib/snapshots/theme";
 
 const DEFAULT_CATEGORIES = [
   "One-Time Sale",

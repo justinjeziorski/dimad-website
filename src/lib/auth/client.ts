@@ -1,6 +1,6 @@
 "use client";
 
-import { readPlaidBearer } from "@/lib/plaid-client";
+import { readPlaidBearer } from "@/lib/integrations/plaid/client";
 
 type DimadUser = { getIdToken: (forceRefresh?: boolean) => Promise<string>; uid?: string };
 type DimadAuth = {

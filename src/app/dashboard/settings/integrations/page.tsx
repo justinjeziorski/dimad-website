@@ -1,5 +1,5 @@
 import IntegrationsHub from "@/components/settings/IntegrationsHub";
-import { SNAPSHOT_THEME } from "@/lib/snapshot-theme";
+import { SNAPSHOT_THEME } from "@/lib/snapshots/theme";
 
 export const dynamic = "force-dynamic";
 

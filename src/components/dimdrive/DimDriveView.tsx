@@ -8,7 +8,7 @@ import {
   listDimDriveFiles,
   uploadToDimDrive,
   type DimDriveFile
-} from "@/lib/dimdrive";
+} from "@/lib/dimdrive/store";
 
 const FOLDER_KEY = "dimad_dimdrive_folders";
 

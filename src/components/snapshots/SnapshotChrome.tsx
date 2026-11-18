@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import { SNAPSHOT_CSS, SNAPSHOT_RANGES, type SnapshotRange } from "@/lib/snapshot-theme";
-import type { SnapshotMetric, SourceContribution } from "@/lib/snapshot-aggregate";
+import { SNAPSHOT_CSS, SNAPSHOT_RANGES, type SnapshotRange } from "@/lib/snapshots/theme";
+import type { SnapshotMetric, SourceContribution } from "@/lib/snapshots/aggregate";
 
 type Props = {
   kicker: string;

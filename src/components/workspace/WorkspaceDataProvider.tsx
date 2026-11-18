@@ -10,7 +10,7 @@ import {
   useState,
   type ReactNode
 } from "react";
-import { authFetch } from "@/lib/dimad-auth-client";
+import { authFetch } from "@/lib/auth/client";
 import {
   readWorkspaceCache,
   readWorkspaceEntry,
@@ -24,7 +24,7 @@ import {
   type WorkspaceCacheSnapshot,
   type WorkspaceIntegrationKey,
   type WorkspacePreloadStatus
-} from "@/lib/workspace-data-cache";
+} from "@/lib/cache/workspace-data-cache";
 
 export { takeWorkspaceHydration };
 

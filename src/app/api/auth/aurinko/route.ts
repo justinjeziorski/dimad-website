@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { uidFromIdToken } from "@/lib/firebase-server";
+import { uidFromIdToken } from "@/lib/firebase/server";
 import {
   aurinkoAuthorizeUrl,
   aurinkoCallbackUrl,
   aurinkoClientId,
   aurinkoServiceType,
   resolveAurinkoProvider
-} from "@/lib/aurinko";
+} from "@/lib/integrations/aurinko";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";

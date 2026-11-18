@@ -3,7 +3,7 @@ import {
   extractCityFromTimezone,
   normalizeCityKey,
   resolveCurrentLocation
-} from "@/lib/locationResolver";
+} from "@/lib/location/locationResolver";
 
 export interface CityBackgroundData {
   city: string;

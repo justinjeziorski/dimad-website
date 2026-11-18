@@ -5,7 +5,7 @@ import {
   writeXIntegration,
   xAppBase,
   xStatesMatch
-} from "@/lib/x-oauth";
+} from "@/lib/integrations/x/oauth";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";

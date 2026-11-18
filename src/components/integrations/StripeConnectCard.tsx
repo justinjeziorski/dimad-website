@@ -4,11 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import AccountBadge from "@/components/integrations/AccountBadge";
 import IntegrationLoadingBar from "@/components/integrations/IntegrationLoadingBar";
 import { takeWorkspaceHydration } from "@/components/workspace/WorkspaceDataProvider";
-import { authFetch } from "@/lib/dimad-auth-client";
-import { INTEGRATION_CARD_CSS } from "@/lib/integration-card.css";
-import { startStripeOAuth } from "@/lib/oauth-client";
-import { cacheWorkspaceResponse } from "@/lib/use-workspace-hydration";
-import type { StripeConnectedMetrics } from "@/lib/stripe-types";
+import { authFetch } from "@/lib/auth/client";
+import { INTEGRATION_CARD_CSS } from "@/components/integrations/integration-card.css";
+import { startStripeOAuth } from "@/lib/auth/oauth-client";
+import { cacheWorkspaceResponse } from "@/hooks/useWorkspaceHydration";
+import type { StripeConnectedMetrics } from "@/lib/integrations/stripe/types";
 
 type Flash = { tone: "ok" | "bad"; text: string };
 

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { perfStart, perfTime } from "@/lib/perf/timing";
-import { requireFirebaseUser } from "@/lib/session";
-import { deauthorizeStripeAccount, loadStripeMetrics, safeStripeError } from "@/lib/stripe-connect";
-import { deleteStripeIntegration, readStripeIntegration, stripeAccountMacMatches } from "@/lib/stripe-store";
+import { requireFirebaseUser } from "@/lib/auth/session";
+import { deauthorizeStripeAccount, loadStripeMetrics, safeStripeError } from "@/lib/integrations/stripe/connect";
+import { deleteStripeIntegration, readStripeIntegration, stripeAccountMacMatches } from "@/lib/integrations/stripe/store";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
