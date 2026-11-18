@@ -1,0 +1,31 @@
+---
+description: Fast client-side OAuth for Dimad API integrations (no initiate-route cold start)
+globs: src/components/integrations/**/*.{ts,tsx},src/app/api/auth/**/*.ts,src/lib/auth/**/*.ts,src/lib/*oauth*.ts,src/lib/oauth-client.ts
+alwaysApply: false
+---
+
+# Fast OAuth Connect Standard
+
+## Connect click (client)
+
+- Build the authorize URL in the browser via `src/lib/auth/oauth-client.ts` (`start*OAuth`). Legacy shim: `src/lib/oauth-client.ts`.
+- Use `NEXT_PUBLIC_*` client IDs + redirect URIs only. Never expose client secrets.
+- Set short-lived Lax cookies for `state`, `uid`, provider `fb_token`, and PKCE `verifier` (X) before `location.href`.
+- Do **not** call `/api/auth/[provider]` (or Stripe connect) just to generate a URL — that causes serverless cold-start lag.
+
+## Callback (server)
+
+- `/api/auth/[provider]/callback` (or Stripe callback) must only:
+  1. Validate state / PKCE
+  2. Exchange `code` for tokens
+  3. Write tokens to Firestore
+  4. Redirect to dashboard with `?connected=[provider]` (errors: `?connected=[provider]&oauth=error&reason=...`)
+- Do **not** fetch third-party analytics/profile/sales inside the callback. Widgets load data after return.
+
+## New integrations
+
+1. Add `NEXT_PUBLIC_<PROVIDER>_CLIENT_ID` + `NEXT_PUBLIC_<PROVIDER>_REDIRECT_URI` in `.env.local`.
+2. Add `start<Provider>OAuth()` in `src/lib/auth/oauth-client.ts`.
+3. Wire Connect button to that helper.
+4. Keep secrets server-side for token exchange only.
+5. Allow the Firestore `integrations/{id}` doc in `firestore.rules`.
