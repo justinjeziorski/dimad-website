@@ -1,23 +1,2 @@
-export type MailerLiteCampaign = {
-  id: string;
-  name: string;
-  status: string;
-  sent: number;
-  openRate: number;
-  clickRate: number;
-  finishedAt: string;
-};
-
-export type MailerLitePayload = {
-  accountLabel: string;
-  connectedAt: string;
-  campaigns: MailerLiteCampaign[];
-  metrics: {
-    subscriberCount: number;
-    avgOpenRate: number;
-    avgOpenDisplay: string;
-    avgClickRate: number;
-    avgClickDisplay: string;
-    latestCampaignName: string;
-  };
-};
+/** @deprecated Import from `@/lib/integrations/mailerlite/types` instead. */
+export * from "@/lib/integrations/mailerlite/types";
