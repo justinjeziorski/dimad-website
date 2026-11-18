@@ -2582,18 +2582,28 @@ const DIMAD_GOALS = {
       forecastMonths: data.forecastMonths != null ? Number(data.forecastMonths) : null,
       source: 'revenue_forecast'
     };
+    if (typeof switchTab === 'function') switchTab('ent-goals');
+    if (typeof initGoalsRewards === 'function') initGoalsRewards();
     const s = this.state();
-    s.hiddenHorizons = (s.hiddenHorizons || []).filter((id) => id !== 'one_time');
+    const horizon = data.horizon && this.horizons.some((h) => h.id === data.horizon)
+      ? data.horizon
+      : 'one_time';
+    s.hiddenHorizons = (s.hiddenHorizons || []).filter((id) => id !== horizon);
+    s.activeHorizon = horizon;
     this.persist(s);
     this.ensureActiveVisible();
-    this._composerHorizon = 'one_time';
+    this._composerHorizon = horizon;
     this._composerDate = data.deadline ? this.parseIso(data.deadline) : new Date();
+    if (this._composerDate && !Number.isNaN(this._composerDate.getTime())) {
+      this._calDate = new Date(this._composerDate.getTime());
+    }
     this._composerQuarter = Math.floor(this._composerDate.getMonth() / 3) + 1;
     this._composerWeekdays = [0, 1, 2, 3, 4, 5, 6];
     const text = document.getElementById('gn-text');
     const rec = document.getElementById('gn-recurring');
     if (text) text.value = String(data.text || '');
     if (rec) rec.checked = false;
+    this.render();
     this.showComposer(false);
   },
 
@@ -2857,9 +2867,11 @@ const DIMAD_GOALS = {
       this.persist(this.state());
       this.closeComposer();
       this.render();
-      if (this._fromForecast && typeof switchTab === 'function') switchTab('ent-goals');
-      this._fromForecast = false;
-      this._forecastMeta = null;
+      if (this._fromForecast) this.finishForecastRedirect(horizon, start);
+      else {
+        this._fromForecast = false;
+        this._forecastMeta = null;
+      }
       return;
     }
     const inPeriod = this.itemsFor(horizon, this.parseIso(start));
@@ -2869,14 +2881,20 @@ const DIMAD_GOALS = {
     this.persist(this.state());
     this.closeComposer();
     this.render();
-    if (this._fromForecast && typeof switchTab === 'function') {
-      this._fromForecast = false;
-      this._forecastMeta = null;
-      switchTab('ent-goals');
-    } else {
+    if (this._fromForecast) this.finishForecastRedirect(horizon, start);
+    else {
       this._fromForecast = false;
       this._forecastMeta = null;
     }
+  },
+
+  finishForecastRedirect(horizon, startIso) {
+    const start = startIso ? this.parseIso(startIso) : (this._composerDate || new Date());
+    this._fromForecast = false;
+    this._forecastMeta = null;
+    if (start && !Number.isNaN(start.getTime())) this._calDate = start;
+    if (typeof switchTab === 'function') switchTab('ent-goals');
+    this.setHorizon(horizon);
   },
 
   setHorizon(id) {
@@ -4663,8 +4681,9 @@ window.addEventListener('message', (event) => {
   }
   if (event.data.type === 'dimad-open-forecast-goal') {
     const goal = event.data.goal || {};
+    if (typeof switchTab === 'function') switchTab('ent-goals');
+    if (typeof initGoalsRewards === 'function') initGoalsRewards();
     if (typeof DIMAD_GOALS !== 'undefined' && DIMAD_GOALS.openComposerFromForecast) {
-      if (typeof initGoalsRewards === 'function') initGoalsRewards();
       DIMAD_GOALS.openComposerFromForecast(goal);
     }
   }

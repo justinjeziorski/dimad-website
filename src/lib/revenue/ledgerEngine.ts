@@ -63,6 +63,13 @@ export function comparisonWindow(
     prevTo.setFullYear(prevTo.getFullYear() - 1);
     return { from: prevFrom, to: prevTo };
   }
+  if (mode === "prior_month") {
+    const prevFrom = new Date(from);
+    const prevTo = new Date(to);
+    prevFrom.setMonth(prevFrom.getMonth() - 1);
+    prevTo.setMonth(prevTo.getMonth() - 1);
+    return { from: prevFrom, to: prevTo };
+  }
   const prevTo = new Date(from.getTime() - 1);
   const prevFrom = new Date(prevTo.getTime() - span);
   return { from: prevFrom, to: prevTo };

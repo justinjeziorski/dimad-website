@@ -31,7 +31,7 @@ export interface UnifiedTransaction {
 
 export type { DimadTimeframe as RevenueTimeframe } from "@/lib/utils/timeframeFilter";
 export type RevenueTimeframeLegacy = "7D" | "30D" | "MTD" | "QTD" | "YTD" | "1Y" | "CUSTOM";
-export type ComparisonMode = "previous_period" | "prior_year";
+export type ComparisonMode = "previous_period" | "prior_month" | "prior_year";
 export type ViewMode = "consolidated" | "per_channel";
 
 export type RecurringExpense = {

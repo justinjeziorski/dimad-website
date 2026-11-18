@@ -11,6 +11,7 @@ function BootInner() {
   useEffect(() => {
     try {
       router.prefetch("/dashboard");
+      router.prefetch("/dashboard/finances");
       router.prefetch("/dashboard/revenue");
     } catch {
       /* ignore */

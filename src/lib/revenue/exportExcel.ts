@@ -20,10 +20,26 @@ export async function exportRevenueWorkbook(opts: {
   channels: ChannelBreakdownRow[];
   recurring: RecurringExpense[];
   ledger: UnifiedTransaction[];
+  /** Period-level chart series rows (keys become columns). */
+  chartSeries?: Array<Record<string, string | number>>;
   filename?: string;
 }) {
   const XLSX = await loadXlsx();
   const wb = XLSX.utils.book_new();
+
+  if (opts.chartSeries?.length) {
+    const keys = Array.from(
+      opts.chartSeries.reduce((set, row) => {
+        Object.keys(row).forEach((k) => set.add(k));
+        return set;
+      }, new Set<string>())
+    );
+    const chartRows: (string | number)[][] = [keys];
+    opts.chartSeries.forEach((row) => {
+      chartRows.push(keys.map((k) => (row[k] == null ? "" : row[k]!)));
+    });
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(chartRows), "Chart Series");
+  }
 
   // Executive P&L with live Excel formulas in column C
   const pnl: (string | number)[][] = [
