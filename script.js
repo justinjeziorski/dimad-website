@@ -92,7 +92,7 @@ async function loadViews() {
   const container = document.getElementById('view-container');
   try {
     const fragments = await Promise.all(VIEW_FILES.map(async (id) => {
-      const res = await fetch(new URL(`../views/${id}.html?v=rev-unwrap-1`, window.location.href), { cache: 'no-store' });
+      const res = await fetch(new URL(`../views/${id}.html?v=rev-notepad-placeholder-1`, window.location.href), { cache: 'no-store' });
       if (!res.ok) throw new Error(`Failed to load views/${id}.html (${res.status})`);
       return res.text();
     }));
@@ -4938,8 +4938,11 @@ const DIMAD_NOTEPAD = {
   autoTimer: null,
 
   normalize(note) {
+    const staleWelcome = 'Cloud-based notepad that auto-saves to dimDrive. Save your thoughts here.';
+    const body = String(note.body || '') === staleWelcome ? '' : (note.body || '');
     return {
       ...note,
+      body,
       createdAt: note.createdAt || note.updatedAt || Date.now(),
       updatedAt: note.updatedAt || note.createdAt || Date.now(),
       customTitle: !!note.customTitle
@@ -4947,14 +4950,21 @@ const DIMAD_NOTEPAD = {
   },
 
   load() {
+    const staleWelcome = 'Cloud-based notepad that auto-saves to dimDrive. Save your thoughts here.';
     let notes = [];
+    let clearedWelcome = false;
     try {
       const parsed = JSON.parse(localStorage.getItem(this.storageKey) || '[]');
-      if (Array.isArray(parsed)) notes = parsed.map((note) => this.normalize(note));
+      if (Array.isArray(parsed)) {
+        notes = parsed.map((note) => {
+          if (String(note.body || '') === staleWelcome) clearedWelcome = true;
+          return this.normalize(note);
+        });
+      }
     } catch (err) { /* start empty */ }
     notes = this.mergeFromDrive(notes);
     if (notes.length) {
-      if (notes.some((note) => !note.driveFileId) && typeof DIMDRIVE !== 'undefined' && DIMDRIVE.syncNotepad) {
+      if (clearedWelcome || (notes.some((note) => !note.driveFileId) && typeof DIMDRIVE !== 'undefined' && DIMDRIVE.syncNotepad)) {
         this.persist(notes);
         try {
           return JSON.parse(localStorage.getItem(this.storageKey) || '[]');
@@ -4968,7 +4978,7 @@ const DIMAD_NOTEPAD = {
     const welcome = [{
       id: 'note-welcome',
       title: 'Untitled',
-      body: 'Cloud-based notepad that auto-saves to dimDrive. Save your thoughts here.',
+      body: '',
       createdAt: now,
       updatedAt: now,
       customTitle: false
@@ -5046,11 +5056,13 @@ const DIMAD_NOTEPAD = {
     document.addEventListener('click', () => {
       this.closeCtx();
       this.closeRecent();
+      this.closeHelp();
     });
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
         this.closeCtx();
         this.closeRecent();
+        this.closeHelp();
       }
     });
     window.addEventListener('resize', () => {
@@ -5385,6 +5397,26 @@ const DIMAD_NOTEPAD = {
     ['cc-notepad-recent', 'cs-notepad-recent'].forEach((id) => {
       const menu = document.getElementById(id);
       if (menu) menu.classList.add('hidden');
+    });
+  },
+
+  toggleHelp(event, prefix) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    this.bindUi();
+    const panel = document.getElementById(`${prefix === 'cs' ? 'cs' : 'cc'}-notepad-help`);
+    if (!panel) return;
+    const open = panel.classList.contains('hidden');
+    this.closeHelp();
+    if (open) panel.classList.remove('hidden');
+  },
+
+  closeHelp() {
+    ['cc-notepad-help', 'cs-notepad-help'].forEach((id) => {
+      const panel = document.getElementById(id);
+      if (panel) panel.classList.add('hidden');
     });
   },
 

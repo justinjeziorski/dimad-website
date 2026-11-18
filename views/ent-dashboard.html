@@ -132,22 +132,29 @@
 
     <div data-cc-module="notepad" class="border border-amber-500/30 bg-brand-panel p-3.5 rounded space-y-2">
       <h3 class="font-bold text-slate-100 text-xs border-b border-brand-border pb-1.5 flex items-center justify-between gap-2">
-        <span class="shrink-0"><i class="fa-solid fa-note-sticky text-brand-gold"></i> DIMAD Notepad</span>
+        <span class="flex items-center gap-1.5 min-w-0">
+          <button type="button" onclick="DIMAD_NOTEPAD.openTab()" class="inline-flex items-center gap-1.5 shrink-0 hover:text-brand-gold transition">
+            <i class="fa-solid fa-note-sticky text-brand-gold"></i> DIMAD Notepad
+          </button>
+          <span class="relative">
+            <button type="button" onclick="DIMAD_NOTEPAD.toggleHelp(event, 'cc')" aria-label="About DIMAD Notepad" class="w-4 h-4 rounded-full border border-slate-600 text-[9px] leading-none text-slate-400 hover:text-brand-gold hover:border-amber-500/40">?</button>
+            <div id="cc-notepad-help" class="hidden absolute left-0 top-full mt-1 z-30 w-56 rounded-lg border border-slate-700 bg-slate-950 shadow-xl p-2.5 text-[10px] font-normal leading-relaxed text-slate-300">Cloud-based notepad. Autosaves directly to dimDrive. Think it. Jot it. Save it.</div>
+          </span>
+        </span>
         <span class="flex flex-wrap items-center justify-end gap-1.5">
-          <button type="button" onclick="DIMAD_NOTEPAD.openTab()" class="text-[9px] font-semibold text-brand-gold hover:text-amber-300 border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 rounded-lg transition">Expand</button>
           <span class="relative">
             <button type="button" onclick="DIMAD_NOTEPAD.toggleRecent(event)" class="text-[9px] font-semibold text-slate-200 hover:text-brand-gold border border-slate-700 bg-slate-950 px-2 py-0.5 rounded-lg transition">Recent</button>
             <div id="cc-notepad-recent" class="hidden absolute right-0 top-full mt-1 z-30 w-52 rounded-lg border border-slate-700 bg-slate-950 shadow-xl py-1"></div>
           </span>
-          <button type="button" id="cc-notepad-save" onclick="DIMAD_NOTEPAD.saveDash()" class="text-[9px] font-semibold text-slate-200 hover:text-brand-gold border border-slate-700 bg-slate-950 px-2 py-0.5 rounded-lg transition">Save</button>
           <button type="button" onclick="DIMAD_NOTEPAD.createFromDash()" class="text-[9px] font-semibold text-brand-gold hover:text-amber-300 border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 rounded-lg transition">+ New Note</button>
         </span>
       </h3>
       <div data-cc-body class="space-y-2">
-        <button type="button" id="cc-notepad-title" onclick="DIMAD_NOTEPAD.beginTitleEdit(event, 'dash')" title="Click to edit title" class="block w-full text-left text-[11px] font-semibold text-slate-100 truncate hover:text-brand-gold cursor-text">Untitled</button>
-        <input id="cc-notepad-title-input" type="text" class="hidden w-full bg-slate-950 border border-amber-500/40 rounded-lg px-2 py-1 text-[11px] text-slate-100 outline-none" onkeydown="DIMAD_NOTEPAD.titleKey(event)" onblur="DIMAD_NOTEPAD.commitTitleEdit()">
-        <textarea id="cc-notepad-body" rows="5" placeholder="Write a note…" oninput="DIMAD_NOTEPAD.markDirty('dash')" class="w-full min-h-[5rem] bg-brand-black/60 p-2.5 rounded border border-brand-border text-[11px] leading-relaxed text-slate-200 placeholder:text-slate-600 outline-none focus:border-amber-500/40 resize-none font-mono"></textarea>
-        <p id="cc-notepad-status" class="text-[9px] text-slate-500">Autosaves to DIMAD Notepad.</p>
+        <textarea id="cc-notepad-body" rows="5" placeholder="Save your thoughts here..." oninput="DIMAD_NOTEPAD.markDirty('dash')" class="w-full min-h-[5rem] bg-brand-black/60 p-2.5 rounded border border-brand-border text-[11px] leading-relaxed text-slate-200 placeholder:text-slate-600 outline-none focus:border-amber-500/40 resize-none font-mono"></textarea>
+        <div class="flex items-center justify-between gap-2">
+          <p id="cc-notepad-status" class="text-[9px] text-slate-500">Autosaves to DIMAD Notepad.</p>
+          <button type="button" id="cc-notepad-save" onclick="DIMAD_NOTEPAD.saveDash()" class="text-[9px] font-semibold text-slate-200 hover:text-brand-gold border border-slate-700 bg-slate-950 px-2 py-0.5 rounded-lg transition">Save</button>
+        </div>
       </div>
     </div>
 
