@@ -6,6 +6,7 @@ import {
   updatePlaidAccountClasses,
   type PlaidAccountClass
 } from "@/lib/plaid";
+import { perfStart, perfTime } from "@/lib/perf/timing";
 import { requireFirebaseUser } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
@@ -14,19 +15,30 @@ export const runtime = "nodejs";
 const noStore = { "Cache-Control": "no-store" };
 
 export async function GET(req: NextRequest) {
-  const session = await requireFirebaseUser(req);
-  if ("error" in session) return session.error;
+  const total = perfStart("api.plaid.data.total");
+  const session = await perfTime("api.plaid.auth", () => requireFirebaseUser(req));
+  if ("error" in session) {
+    total.end({ ok: false, reason: "auth" });
+    return session.error;
+  }
 
   try {
-    const record = await readPlaidIntegration(session.uid, session.idToken);
+    const record = await perfTime("api.plaid.firestore_read", () =>
+      readPlaidIntegration(session.uid, session.idToken)
+    );
     if (!record) {
+      total.end({ ok: true, connected: false });
       return NextResponse.json({ ok: true, connected: false }, { headers: noStore });
     }
-    const data = await fetchPlaidDashboardData(session.uid, record, session.idToken);
+    const data = await perfTime("api.plaid.sdk_dashboard", () =>
+      fetchPlaidDashboardData(session.uid, record, session.idToken)
+    );
+    total.end({ ok: true, connected: true });
     return NextResponse.json({ ok: true, connected: true, ...data }, { headers: noStore });
   } catch (err) {
     const message = err instanceof Error ? err.message : "plaid_request_failed";
     console.error("Plaid data route failed", session.uid, message);
+    total.end({ ok: false, error: message });
     let institutionName = "";
     let itemId = "";
     try {

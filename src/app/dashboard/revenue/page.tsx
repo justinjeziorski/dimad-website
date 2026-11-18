@@ -1,14 +1,22 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import DashboardShell from "@/components/dashboard/DashboardShell";
 import CategoryDetailModal, {
   type CategoryDetailSelection
 } from "@/components/revenue/CategoryDetailModal";
 import ManualEntryModal from "@/components/revenue/ManualEntryModal";
+import RevenueExpenseChart from "@/components/revenue/RevenueExpenseChart";
 import RevenueNav from "@/components/revenue/RevenueNav";
+import {
+  ChartSkeleton,
+  KpiGridSkeleton,
+  RevenueSkeletonStyles,
+  SyncPill
+} from "@/components/revenue/RevenueSkeletons";
+import TimeRangeSelector from "@/components/shared/TimeRangeSelector";
 import { authFetch } from "@/lib/dimad-auth-client";
-import { adaptLivePayloads } from "@/lib/revenue/adapters";
+import { useRevenueData } from "@/hooks/useRevenueData";
 import {
   channelBreakdown,
   comparisonWindow,
@@ -16,24 +24,29 @@ import {
   detectRecurringExpenses,
   filterLedger,
   formatDelta,
-  generateMockLedger,
   money,
   runLocalAnalyst,
-  seriesByDay,
   timeframeWindow
 } from "@/lib/revenue/ledgerEngine";
+import {
+  calculateGrossRevenue,
+  calculateNetProfit,
+  calculateNetRevenue,
+  calculateProfitMargin,
+  calculateTotalExpenses,
+  calculatePeriodDelta
+} from "@/lib/revenue/financialMath";
 import { goRevenue } from "@/lib/revenue/nav";
 import type {
   ComparisonMode,
   LedgerSource,
   ManualLedgerInput,
-  RevenueTimeframe,
   UnifiedTransaction,
   ViewMode
 } from "@/lib/revenue/types";
 import { SNAPSHOT_THEME } from "@/lib/snapshot-theme";
+import type { CustomDateRange, DimadTimeframe } from "@/lib/utils/timeframeFilter";
 
-const TIMEFRAMES: RevenueTimeframe[] = ["7D", "30D", "MTD", "QTD", "YTD", "1Y", "CUSTOM"];
 const SOURCE_PILLS: { id: LedgerSource; label: string }[] = [
   { id: "stripe", label: "Stripe" },
   { id: "shopify", label: "Shopify" },
@@ -46,16 +59,22 @@ const SOURCE_PILLS: { id: LedgerSource; label: string }[] = [
 
 export default function RevenueWorkspacePage() {
   const manualMenuRef = useRef<HTMLDivElement>(null);
-  const [ledger, setLedger] = useState<UnifiedTransaction[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [usingMock, setUsingMock] = useState(false);
-  const [timeframe, setTimeframe] = useState<RevenueTimeframe>("30D");
-  const [customFrom, setCustomFrom] = useState(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 29);
-    return d.toISOString().slice(0, 10);
+  const { ledger, setLedger, usingMock, setUsingMock, syncing, refresh } = useRevenueData();
+  const [timeframe, setTimeframe] = useState<DimadTimeframe>("30D");
+  // Fixed placeholder for SSR; real window dates applied after mount to avoid hydration drift.
+  const [customRange, setCustomRange] = useState<CustomDateRange>({
+    startDate: "1970-01-01",
+    endDate: "1970-01-30"
   });
-  const [customTo, setCustomTo] = useState(() => new Date().toISOString().slice(0, 10));
+  useEffect(() => {
+    const to = new Date();
+    const from = new Date();
+    from.setDate(from.getDate() - 29);
+    setCustomRange({
+      startDate: from.toISOString().slice(0, 10),
+      endDate: to.toISOString().slice(0, 10)
+    });
+  }, []);
   const [compare, setCompare] = useState<ComparisonMode>("previous_period");
   const [viewMode, setViewMode] = useState<ViewMode>("consolidated");
   const [sources, setSources] = useState<Set<LedgerSource>>(new Set(SOURCE_PILLS.map((s) => s.id)));
@@ -64,8 +83,10 @@ export default function RevenueWorkspacePage() {
   const [aiOpen, setAiOpen] = useState(false);
   const [aiResult, setAiResult] = useState<{ title: string; bullets: string[] } | null>(null);
   const [expenseTab, setExpenseTab] = useState<"all" | "recurring">("all");
-  const [chartMode, setChartMode] = useState<"line" | "stacked">("line");
   const [detail, setDetail] = useState<CategoryDetailSelection | null>(null);
+  const [detailLedger, setDetailLedger] = useState<UnifiedTransaction[] | null>(null);
+  // Instant cache/fallback always paints KPIs — never block on skeletons after welcome.
+  const showSkeletons = false;
 
   useEffect(() => {
     const onDoc = (event: MouseEvent) => {
@@ -75,53 +96,13 @@ export default function RevenueWorkspacePage() {
     return () => document.removeEventListener("mousedown", onDoc);
   }, []);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [stripe, shopify, gumroad, patreon, lemon, plaid, manual] = await Promise.all([
-        authFetch("/api/integrations/stripe/metrics"),
-        authFetch("/api/shopify/data?range=month"),
-        authFetch("/api/gumroad/data"),
-        authFetch("/api/patreon/data"),
-        authFetch("/api/lemonsqueezy/data"),
-        authFetch("/api/plaid/data"),
-        authFetch("/api/revenue/manual")
-      ]);
-      const uid = "user";
-      const live = adaptLivePayloads(uid, {
-        stripe: stripe.data as Record<string, unknown>,
-        shopify: shopify.data as Record<string, unknown>,
-        gumroad: gumroad.data as Record<string, unknown>,
-        patreon: patreon.data as Record<string, unknown>,
-        lemon: lemon.data as Record<string, unknown>,
-        plaid: plaid.data as Record<string, unknown>
-      });
-      const manualEntries = Array.isArray((manual.data as { entries?: UnifiedTransaction[] }).entries)
-        ? ((manual.data as { entries: UnifiedTransaction[] }).entries || [])
-        : [];
-      const combined = [...live, ...manualEntries];
-      if (combined.length) {
-        setLedger(combined);
-        setUsingMock(false);
-      } else {
-        setLedger(generateMockLedger(uid));
-        setUsingMock(true);
-      }
-    } catch {
-      setLedger(generateMockLedger("demo"));
-      setUsingMock(true);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
   const windowRange = useMemo(
-    () => timeframeWindow(timeframe, { from: customFrom, to: customTo }),
-    [timeframe, customFrom, customTo]
+    () =>
+      timeframeWindow(timeframe, {
+        from: customRange.startDate,
+        to: customRange.endDate
+      }),
+    [timeframe, customRange]
   );
   const prevRange = useMemo(
     () => comparisonWindow(windowRange.from, windowRange.to, compare),
@@ -136,15 +117,36 @@ export default function RevenueWorkspacePage() {
     () => filterLedger(ledger, { from: prevRange.from, to: prevRange.to, sources }),
     [ledger, prevRange, sources]
   );
-  const kpis = useMemo(() => computeKpis(filtered, previous), [filtered, previous]);
+  const kpis = useMemo(() => {
+    const base = computeKpis(filtered, previous);
+    const grossRevenue = calculateGrossRevenue(filtered);
+    const netRevenue = calculateNetRevenue(filtered);
+    const totalExpenses = calculateTotalExpenses(filtered);
+    const netProfit = calculateNetProfit(netRevenue, totalExpenses);
+    const marginPct = calculateProfitMargin(netProfit, netRevenue);
+    const prevGross = calculateGrossRevenue(previous);
+    const prevNet = calculateNetRevenue(previous);
+    const prevExp = calculateTotalExpenses(previous);
+    const prevProfit = calculateNetProfit(prevNet, prevExp);
+    return {
+      ...base,
+      grossRevenue,
+      netRevenue,
+      totalExpenses,
+      netProfit,
+      marginPct,
+      deltas: {
+        grossRevenue: calculatePeriodDelta(grossRevenue, prevGross),
+        netRevenue: calculatePeriodDelta(netRevenue, prevNet),
+        totalExpenses: calculatePeriodDelta(totalExpenses, prevExp),
+        netProfit: calculatePeriodDelta(netProfit, prevProfit)
+      }
+    };
+  }, [filtered, previous]);
   const channels = useMemo(() => channelBreakdown(filtered, previous), [filtered, previous]);
   const recurring = useMemo(
     () => detectRecurringExpenses(filtered.filter((r) => r.type === "EXPENSE")),
     [filtered]
-  );
-  const series = useMemo(
-    () => seriesByDay(filtered, windowRange.from, windowRange.to),
-    [filtered, windowRange]
   );
   const expenses = useMemo(() => filtered.filter((r) => r.type === "EXPENSE"), [filtered]);
 
@@ -216,17 +218,29 @@ export default function RevenueWorkspacePage() {
   }
 
   function openKpiDetail(label: string, categoryType: "REVENUE" | "EXPENSE" = "REVENUE") {
+    setDetailLedger(null);
     setDetail({ categoryTitle: label, categoryType, match: "kpi" });
   }
 
   function openChannelDetail(platformLabel: string, source: LedgerSource) {
     const isExpense = source === "plaid";
+    setDetailLedger(null);
     setDetail({
       categoryTitle: platformLabel,
       categoryType: isExpense ? "EXPENSE" : "REVENUE",
       match: "source",
       sourceId: source
     });
+  }
+
+  function openPeriodDetail(opts: {
+    title: string;
+    from: string;
+    to: string;
+    transactions: UnifiedTransaction[];
+  }) {
+    setDetailLedger(opts.transactions);
+    setDetail({ categoryTitle: opts.title, categoryType: "REVENUE", match: "kpi" });
   }
 
   function openForecastGoalComposer(goalData: {
@@ -266,8 +280,6 @@ export default function RevenueWorkspacePage() {
     }
     setDetail(null);
   }
-
-  const maxSeries = Math.max(1, ...series.map((d) => Math.max(d.revenue, d.expenses, Math.abs(d.profit))));
 
   return (
     <DashboardShell
@@ -318,6 +330,10 @@ export default function RevenueWorkspacePage() {
               </div>
             ) : null}
           </div>
+          <SyncPill syncing={syncing} />
+          <button type="button" style={btnStyle} onClick={() => void refresh({ forceSync: true })}>
+            Refresh
+          </button>
           <button type="button" style={btnStyle} onClick={() => setAiOpen(true)}>
             AI Financial Analyst
           </button>
@@ -334,6 +350,7 @@ export default function RevenueWorkspacePage() {
         </>
       }
     >
+      <RevenueSkeletonStyles />
       <RevenueNav active="overview" />
       {usingMock ? (
         <p style={{ margin: "0 0 12px", color: SNAPSHOT_THEME.mute, fontSize: 11 }}>
@@ -343,18 +360,15 @@ export default function RevenueWorkspacePage() {
 
       {/* Sticky filters */}
       <section style={{ ...panelStyle, position: "sticky", top: 0, zIndex: 5, backdropFilter: "blur(8px)" }}>
+        <div style={{ marginBottom: 10 }}>
+          <TimeRangeSelector
+            value={timeframe}
+            customRange={customRange}
+            onChange={setTimeframe}
+            onCustomRangeChange={setCustomRange}
+          />
+        </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginBottom: 10 }}>
-          {TIMEFRAMES.map((tf) => (
-            <button
-              key={tf}
-              type="button"
-              onClick={() => setTimeframe(tf)}
-              style={pill(timeframe === tf)}
-            >
-              {tf === "CUSTOM" ? "Custom" : tf}
-            </button>
-          ))}
-          <span style={sep} />
           <button type="button" style={pill(compare === "previous_period")} onClick={() => setCompare("previous_period")}>
             vs Previous Period
           </button>
@@ -369,23 +383,6 @@ export default function RevenueWorkspacePage() {
             Per-Channel
           </button>
         </div>
-        {timeframe === "CUSTOM" ? (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginBottom: 10 }}>
-            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: SNAPSHOT_THEME.mute }}>
-              From
-              <input
-                type="date"
-                value={customFrom}
-                onChange={(e) => setCustomFrom(e.target.value)}
-                style={dateInput}
-              />
-            </label>
-            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: SNAPSHOT_THEME.mute }}>
-              To
-              <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} style={dateInput} />
-            </label>
-          </div>
-        ) : null}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
           {SOURCE_PILLS.map((s) => (
             <button key={s.id} type="button" onClick={() => toggleSource(s.id)} style={pill(sources.has(s.id))}>
@@ -396,104 +393,95 @@ export default function RevenueWorkspacePage() {
       </section>
 
       {/* Executive KPIs */}
-      <div style={grid4}>
-        <Kpi
-          label="Gross Revenue"
-          value={loading ? "…" : money(kpis.grossRevenue)}
-          delta={kpis.deltas.grossRevenue}
-          hint={`${kpis.sourceCounts.revenue} revenue sources`}
-          onClick={() => openKpiDetail("Gross Revenue", "REVENUE")}
-          active={detail?.categoryTitle === "Gross Revenue"}
-        />
-        <Kpi
-          label="Net Revenue"
-          value={loading ? "…" : money(kpis.netRevenue)}
-          delta={kpis.deltas.netRevenue}
-          hint="After platform fees"
-          onClick={() => openKpiDetail("Net Revenue", "REVENUE")}
-          active={detail?.categoryTitle === "Net Revenue"}
-        />
-        <Kpi
-          label="Total Expenses"
-          value={loading ? "…" : money(kpis.totalExpenses)}
-          delta={kpis.deltas.totalExpenses}
-          hint={`${kpis.sourceCounts.expense} expense sources`}
-          onClick={() => openKpiDetail("Total Expenses", "EXPENSE")}
-          active={detail?.categoryTitle === "Total Expenses"}
-        />
-        <Kpi
-          label="Net Profit"
-          value={loading ? "…" : money(kpis.netProfit)}
-          delta={kpis.deltas.netProfit}
-          hint={`${kpis.marginPct.toFixed(1)}% margin`}
-          onClick={() => openKpiDetail("Net Profit", "REVENUE")}
-          active={detail?.categoryTitle === "Net Profit"}
-        />
-      </div>
-
-      {/* Velocity row */}
-      <div style={{ ...grid4, marginTop: 12 }}>
-        <Kpi
-          label="MRR"
-          value={money(kpis.mrr)}
-          hint={`One-time ${money(kpis.oneTimeRevenue)}`}
-          onClick={() => openKpiDetail("MRR", "REVENUE")}
-          active={detail?.categoryTitle === "MRR"}
-        />
-        <Kpi
-          label="Average Order Value"
-          value={money(kpis.aov)}
-          hint="Across revenue rows"
-          onClick={() => openKpiDetail("Average Order Value", "REVENUE")}
-          active={detail?.categoryTitle === "Average Order Value"}
-        />
-        <Kpi
-          label="Transaction Count"
-          value={String(kpis.transactionCount)}
-          hint="In selected window"
-          onClick={() => openKpiDetail("Transaction Count", "REVENUE")}
-          active={detail?.categoryTitle === "Transaction Count"}
-        />
-        <Kpi
-          label="Monthly Recurring Burn"
-          value={money(kpis.monthlyRecurringBurn)}
-          hint="Detected subscriptions"
-          onClick={() => openKpiDetail("Monthly Recurring Burn", "EXPENSE")}
-          active={detail?.categoryTitle === "Monthly Recurring Burn"}
-        />
-      </div>
-
-      {/* Chart */}
-      <section style={{ ...panelStyle, marginTop: 14 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
-          <p style={labelStyle}>Revenue vs Expenses</p>
-          <div style={{ display: "flex", gap: 6 }}>
-            <button type="button" style={pill(chartMode === "line")} onClick={() => setChartMode("line")}>
-              Consolidated
-            </button>
-            <button type="button" style={pill(chartMode === "stacked")} onClick={() => setChartMode("stacked")}>
-              Stacked channels
-            </button>
+      {showSkeletons ? (
+        <>
+          <KpiGridSkeleton count={4} />
+          <div style={{ marginTop: 12 }}>
+            <KpiGridSkeleton count={4} />
           </div>
-        </div>
-        <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 160, marginTop: 10 }}>
-          {series.map((day) => {
-            const revH = (day.revenue / maxSeries) * 140;
-            const expH = (day.expenses / maxSeries) * 140;
-            return (
-              <div key={day.date} title={`${day.date}\nRev ${money(day.revenue)}\nExp ${money(day.expenses)}`} style={{ flex: 1, display: "flex", alignItems: "flex-end", gap: 1, minWidth: 0 }}>
-                <div style={{ flex: 1, height: Math.max(2, revH), background: SNAPSHOT_THEME.gold, borderRadius: "3px 3px 0 0", opacity: 0.9 }} />
-                {chartMode === "stacked" || true ? (
-                  <div style={{ flex: 1, height: Math.max(2, expH), background: "rgba(229,115,115,0.75)", borderRadius: "3px 3px 0 0" }} />
-                ) : null}
-              </div>
-            );
-          })}
-        </div>
-        <p style={{ margin: "8px 0 0", fontSize: 10, color: SNAPSHOT_THEME.mute }}>
-          Gold = revenue · Red = expenses · {viewMode === "per_channel" ? "Per-channel table below" : "Consolidated trend"}
-        </p>
-      </section>
+          <ChartSkeleton />
+        </>
+      ) : (
+        <>
+          <div style={grid4}>
+            <Kpi
+              label="Gross Revenue"
+              value={money(kpis.grossRevenue)}
+              delta={kpis.deltas.grossRevenue}
+              hint={`${kpis.sourceCounts.revenue} revenue sources`}
+              onClick={() => openKpiDetail("Gross Revenue", "REVENUE")}
+              active={detail?.categoryTitle === "Gross Revenue"}
+            />
+            <Kpi
+              label="Net Revenue"
+              value={money(kpis.netRevenue)}
+              delta={kpis.deltas.netRevenue}
+              hint="After platform fees"
+              onClick={() => openKpiDetail("Net Revenue", "REVENUE")}
+              active={detail?.categoryTitle === "Net Revenue"}
+            />
+            <Kpi
+              label="Total Expenses"
+              value={money(kpis.totalExpenses)}
+              delta={kpis.deltas.totalExpenses}
+              hint={`${kpis.sourceCounts.expense} expense sources`}
+              onClick={() => openKpiDetail("Total Expenses", "EXPENSE")}
+              active={detail?.categoryTitle === "Total Expenses"}
+            />
+            <Kpi
+              label="Net Profit"
+              value={money(kpis.netProfit)}
+              delta={kpis.deltas.netProfit}
+              hint={`${kpis.marginPct.toFixed(1)}% margin`}
+              onClick={() => openKpiDetail("Net Profit", "REVENUE")}
+              active={detail?.categoryTitle === "Net Profit"}
+            />
+          </div>
+
+          <div style={{ ...grid4, marginTop: 12 }}>
+            <Kpi
+              label="MRR"
+              value={money(kpis.mrr)}
+              hint={`One-time ${money(kpis.oneTimeRevenue)}`}
+              onClick={() => openKpiDetail("MRR", "REVENUE")}
+              active={detail?.categoryTitle === "MRR"}
+            />
+            <Kpi
+              label="Average Order Value"
+              value={money(kpis.aov)}
+              hint="Across revenue rows"
+              onClick={() => openKpiDetail("Average Order Value", "REVENUE")}
+              active={detail?.categoryTitle === "Average Order Value"}
+            />
+            <Kpi
+              label="Transaction Count"
+              value={String(kpis.transactionCount)}
+              hint="In selected window"
+              onClick={() => openKpiDetail("Transaction Count", "REVENUE")}
+              active={detail?.categoryTitle === "Transaction Count"}
+            />
+            <Kpi
+              label="Monthly Recurring Burn"
+              value={money(kpis.monthlyRecurringBurn)}
+              hint="Detected subscriptions"
+              onClick={() => openKpiDetail("Monthly Recurring Burn", "EXPENSE")}
+              active={detail?.categoryTitle === "Monthly Recurring Burn"}
+            />
+          </div>
+
+          <RevenueExpenseChart
+            transactions={ledger}
+            sources={sources}
+            timeframe={timeframe}
+            customRange={customRange}
+            onTimeframeChange={setTimeframe}
+            onCustomRangeChange={setCustomRange}
+            hideTimeframe
+            onDrillPeriod={openPeriodDetail}
+            onSimulateForecast={() => openKpiDetail("Net Profit", "REVENUE")}
+          />
+        </>
+      )}
 
       {/* Channel table */}
       <section style={{ ...panelStyle, marginTop: 14 }}>
@@ -629,8 +617,11 @@ export default function RevenueWorkspacePage() {
           categoryType={detail.categoryType}
           match={detail.match}
           sourceId={detail.sourceId}
-          transactions={filtered}
-          onClose={() => setDetail(null)}
+          transactions={detailLedger || filtered}
+          onClose={() => {
+            setDetail(null);
+            setDetailLedger(null);
+          }}
           onConvertToGoal={openForecastGoalComposer}
         />
       ) : null}
@@ -795,16 +786,6 @@ const menuItem: CSSProperties = {
   fontSize: 12,
   fontWeight: 600,
   cursor: "pointer"
-};
-
-const dateInput: CSSProperties = {
-  background: "#070A0F",
-  border: `1px solid ${SNAPSHOT_THEME.navyLine}`,
-  borderRadius: 8,
-  color: SNAPSHOT_THEME.ink,
-  padding: "5px 8px",
-  font: "inherit",
-  fontSize: 11
 };
 
 function pill(active: boolean): CSSProperties {

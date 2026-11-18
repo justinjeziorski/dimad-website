@@ -2,11 +2,17 @@
 
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import DashboardShell from "@/components/dashboard/DashboardShell";
+import TimeRangeSelector from "@/components/shared/TimeRangeSelector";
 import { authFetch } from "@/lib/dimad-auth-client";
 import { compactNumber, generateMockGrowthEvents, summarizeGrowth } from "@/lib/growth/growthEngine";
 import type { GrowthSource, UnifiedGrowthEvent } from "@/lib/growth/types";
 import { formatDelta } from "@/lib/revenue/ledgerEngine";
 import { SNAPSHOT_THEME } from "@/lib/snapshot-theme";
+import {
+  filterDataByTimeframe,
+  type CustomDateRange,
+  type DimadTimeframe
+} from "@/lib/utils/timeframeFilter";
 
 const SOURCES: { id: GrowthSource; label: string }[] = [
   { id: "youtube", label: "YouTube" },
@@ -17,19 +23,63 @@ const SOURCES: { id: GrowthSource; label: string }[] = [
   { id: "manual", label: "Manual" }
 ];
 
+const GROWTH_CACHE_KEY = "dimad_growth_events_v1";
+const STRUCTURAL_GROWTH = generateMockGrowthEvents("demo", new Date("2025-06-15T12:00:00.000Z"));
+
+function readGrowthCache(): UnifiedGrowthEvent[] | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(GROWTH_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { events?: UnifiedGrowthEvent[] };
+    return Array.isArray(parsed.events) && parsed.events.length ? parsed.events : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeGrowthCache(events: UnifiedGrowthEvent[]) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(GROWTH_CACHE_KEY, JSON.stringify({ events, at: Date.now() }));
+  } catch {
+    /* ignore */
+  }
+}
+
 export default function GrowthWorkspacePage() {
-  const [events, setEvents] = useState<UnifiedGrowthEvent[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [usingMock, setUsingMock] = useState(false);
+  const [events, setEvents] = useState<UnifiedGrowthEvent[]>(STRUCTURAL_GROWTH);
+  const [syncing, setSyncing] = useState(false);
+  const [usingMock, setUsingMock] = useState(true);
   const [sources, setSources] = useState<Set<GrowthSource>>(new Set(["youtube", "x", "mailerlite"]));
+  const [timeframe, setTimeframe] = useState<DimadTimeframe>("30D");
+  const [customRange, setCustomRange] = useState<CustomDateRange>({
+    startDate: "1970-01-01",
+    endDate: "1970-01-30"
+  });
+
+  useEffect(() => {
+    const to = new Date();
+    const from = new Date();
+    from.setDate(from.getDate() - 29);
+    setCustomRange({
+      startDate: from.toISOString().slice(0, 10),
+      endDate: to.toISOString().slice(0, 10)
+    });
+    const cached = readGrowthCache();
+    if (cached?.length) {
+      setEvents(cached);
+      setUsingMock(false);
+    }
+  }, []);
 
   const load = useCallback(async () => {
-    setLoading(true);
+    setSyncing(true);
     try {
       const [youtube, x, mailerlite] = await Promise.all([
-        authFetch("/api/youtube/data"),
-        authFetch("/api/x/data"),
-        authFetch("/api/mailerlite/data")
+        authFetch("/api/youtube/data", {}, { tokenWaitMs: 2500 }),
+        authFetch("/api/x/data", {}, { tokenWaitMs: 2500 }),
+        authFetch("/api/mailerlite/data", {}, { tokenWaitMs: 2500 })
       ]);
       const live: UnifiedGrowthEvent[] = [];
       const yt = youtube.data as Record<string, unknown>;
@@ -125,26 +175,37 @@ export default function GrowthWorkspacePage() {
       if (live.length) {
         setEvents(live);
         setUsingMock(false);
-      } else {
-        setEvents(generateMockGrowthEvents("demo"));
+        writeGrowthCache(live);
+      } else if (!readGrowthCache()?.length) {
+        setEvents(STRUCTURAL_GROWTH);
         setUsingMock(true);
       }
     } catch {
-      setEvents(generateMockGrowthEvents("demo"));
-      setUsingMock(true);
+      if (!readGrowthCache()?.length) {
+        setEvents(STRUCTURAL_GROWTH);
+        setUsingMock(true);
+      }
     } finally {
-      setLoading(false);
+      setSyncing(false);
     }
   }, []);
 
+  // Deferred background sync after first paint.
   useEffect(() => {
-    void load();
+    const handle = window.setTimeout(() => {
+      void load();
+    }, 50);
+    return () => window.clearTimeout(handle);
   }, [load]);
 
-  const summary = useMemo(() => summarizeGrowth(events, sources), [events, sources]);
+  const ranged = useMemo(
+    () => filterDataByTimeframe(events, timeframe, customRange),
+    [events, timeframe, customRange]
+  );
+  const summary = useMemo(() => summarizeGrowth(ranged, sources), [ranged, sources]);
   const visible = useMemo(
-    () => events.filter((e) => sources.has(e.source)).sort((a, b) => Date.parse(b.date) - Date.parse(a.date)),
-    [events, sources]
+    () => ranged.filter((e) => sources.has(e.source)).sort((a, b) => Date.parse(b.date) - Date.parse(a.date)),
+    [ranged, sources]
   );
 
   function toggle(id: GrowthSource) {
@@ -161,6 +222,13 @@ export default function GrowthWorkspacePage() {
       kicker="Acquisition"
       title="Growth Command Center"
       subtitle="Unified audience events across YouTube, X, MailerLite, and future channels — same metric model for every platform."
+      actions={
+        syncing ? (
+          <span style={{ fontSize: 10, color: SNAPSHOT_THEME.mute, fontWeight: 700, letterSpacing: "0.08em" }}>
+            SYNCING LATEST DATA…
+          </span>
+        ) : null
+      }
     >
       {usingMock ? (
         <p style={{ margin: "0 0 12px", color: SNAPSHOT_THEME.mute, fontSize: 11 }}>
@@ -169,6 +237,16 @@ export default function GrowthWorkspacePage() {
       ) : null}
 
       <section style={panelStyle}>
+        <p style={labelStyle}>Time range</p>
+        <TimeRangeSelector
+          value={timeframe}
+          customRange={customRange}
+          onChange={setTimeframe}
+          onCustomRangeChange={setCustomRange}
+        />
+      </section>
+
+      <section style={{ ...panelStyle, marginTop: 12 }}>
         <p style={labelStyle}>Sources</p>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {SOURCES.map((s) => (
@@ -182,22 +260,22 @@ export default function GrowthWorkspacePage() {
       <div style={grid4}>
         <Kpi
           label="Total Audience Reach"
-          value={loading ? "…" : compactNumber(summary.totalAudienceReach)}
+          value={compactNumber(summary.totalAudienceReach)}
           delta={summary.reachDeltaPct}
         />
         <Kpi
           label="Net Follower Velocity"
-          value={loading ? "…" : compactNumber(summary.netFollowerVelocity)}
+          value={compactNumber(summary.netFollowerVelocity)}
           delta={summary.followerVelocityDeltaPct}
         />
         <Kpi
           label="Content Output Cadence"
-          value={loading ? "…" : compactNumber(summary.contentOutputCadence)}
+          value={compactNumber(summary.contentOutputCadence)}
           delta={summary.outputCadenceDeltaPct}
         />
         <Kpi
           label="Avg Engagement Rate"
-          value={loading ? "…" : `${summary.averageEngagementRate.toFixed(1)}%`}
+          value={`${summary.averageEngagementRate.toFixed(1)}%`}
           delta={summary.engagementDeltaPct}
         />
       </div>

@@ -1,8 +1,8 @@
 import type { GrowthSource, GrowthSummaryMetrics, UnifiedGrowthEvent } from "@/lib/growth/types";
 import { pctDelta } from "@/lib/revenue/ledgerEngine";
 
-export function generateMockGrowthEvents(userId = "demo"): UnifiedGrowthEvent[] {
-  const now = new Date();
+export function generateMockGrowthEvents(userId = "demo", nowInput?: Date): UnifiedGrowthEvent[] {
+  const now = nowInput ? new Date(nowInput) : new Date();
   const rows: UnifiedGrowthEvent[] = [];
   for (let i = 0; i < 12; i += 1) {
     const d = new Date(now);

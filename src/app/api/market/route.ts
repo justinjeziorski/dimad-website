@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { perfStart, perfTime } from "@/lib/perf/timing";
 
 const DEFAULT_WATCHLIST = ["AAPL", "MSFT", "NVDA", "TSLA", "SPY", "AMZN"] as const;
 
@@ -65,8 +66,10 @@ async function readJson<T>(res: Response): Promise<T> {
 }
 
 export async function GET(req: NextRequest) {
+  const total = perfStart("api.market.finnhub.total");
   const apiKey = process.env.FINNHUB_API_KEY;
   if (!apiKey) {
+    total.end({ ok: false, reason: "missing_key" });
     return NextResponse.json(
       { error: "Market data is unavailable because FINNHUB_API_KEY is not configured." },
       { status: 500, headers: { "Cache-Control": "no-store" } }
@@ -76,22 +79,24 @@ export async function GET(req: NextRequest) {
   const symbols = parseSymbols(req);
 
   try {
-    const quoteRequests = symbols.map(async (symbol) => {
-      const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${apiKey}`, {
-        next: { revalidate: 60 }
-      });
-      const quote = await readJson<FinnhubQuote>(res);
-      return {
-        symbol,
-        price: num(quote.c),
-        change: num(quote.d),
-        percent: num(quote.dp),
-        high: num(quote.h),
-        low: num(quote.l)
-      } satisfies MarketQuote;
-    });
+    const quoteRequests = symbols.map(async (symbol) =>
+      perfTime(`api.market.quote.${symbol}`, async () => {
+        const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${apiKey}`, {
+          next: { revalidate: 60 }
+        });
+        const quote = await readJson<FinnhubQuote>(res);
+        return {
+          symbol,
+          price: num(quote.c),
+          change: num(quote.d),
+          percent: num(quote.dp),
+          high: num(quote.h),
+          low: num(quote.l)
+        } satisfies MarketQuote;
+      })
+    );
 
-    const newsRequest = (async () => {
+    const newsRequest = perfTime("api.market.news", async () => {
       const res = await fetch(`https://finnhub.io/api/v1/news?category=general&token=${apiKey}`, {
         next: { revalidate: 60 }
       });
@@ -104,17 +109,19 @@ export async function GET(req: NextRequest) {
         datetime: num(article.datetime) ?? 0,
         image: article.image || ""
       })) satisfies MarketArticle[];
-    })();
+    });
 
     const results = await Promise.all([...quoteRequests, newsRequest]);
     const news = results.at(-1) as MarketArticle[];
     const quotes = results.slice(0, -1) as MarketQuote[];
 
+    total.end({ ok: true, symbols: symbols.length });
     return NextResponse.json(
       { quotes, news },
       { headers: { "Cache-Control": CACHE_HEADER } }
     );
   } catch {
+    total.end({ ok: false });
     return NextResponse.json(
       { error: "Market data is temporarily unavailable." },
       { status: 502, headers: { "Cache-Control": "no-store" } }

@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties, type FormEvent } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import { authFetch } from "@/lib/dimad-auth-client";
+import { useIframeCenteredOverlay } from "@/hooks/useIframeCenteredOverlay";
 import {
   addLocalSourceTag,
   DEFAULT_SOURCE_TAGS,
@@ -10,6 +11,20 @@ import {
 } from "@/lib/revenue/source-tags";
 import type { ManualLedgerInput, UnifiedTransaction } from "@/lib/revenue/types";
 import { SNAPSHOT_THEME } from "@/lib/snapshot-theme";
+
+const DEFAULT_CATEGORIES = [
+  "One-Time Sale",
+  "Subscription",
+  "Consulting",
+  "Affiliate",
+  "SaaS Tools",
+  "Payroll",
+  "Marketing",
+  "Operations",
+  "Other"
+];
+
+const CREATE_VALUE = "__dimad_create_new__";
 
 export default function ManualEntryModal({
   open,
@@ -22,19 +37,25 @@ export default function ManualEntryModal({
   onSave: (input: ManualLedgerInput & { id?: string }) => Promise<void>;
   initial?: UnifiedTransaction | null;
 }) {
+  const overlayStyle = useIframeCenteredOverlay(open);
   const [type, setType] = useState<"REVENUE" | "EXPENSE">("REVENUE");
   const [merchantOrCustomer, setMerchant] = useState("");
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [category, setCategory] = useState("One-Time Sale");
+  const [categories, setCategories] = useState<string[]>(DEFAULT_CATEGORIES);
+  const [creatingCategory, setCreatingCategory] = useState(false);
+  const [newCategory, setNewCategory] = useState("");
   const [platformLabel, setPlatformLabel] = useState(DEFAULT_SOURCE_TAGS[0] || "Cash / Wire");
   const [tags, setTags] = useState<string[]>(DEFAULT_SOURCE_TAGS);
-  const [newTagOpen, setNewTagOpen] = useState(false);
+  const [creatingTag, setCreatingTag] = useState(false);
   const [newTag, setNewTag] = useState("");
   const [isRecurring, setIsRecurring] = useState(false);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const newTagRef = useRef<HTMLInputElement>(null);
+  const newCategoryRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -61,9 +82,16 @@ export default function ManualEntryModal({
       setAmount(String(initial.amount || ""));
       setDate(initial.date.slice(0, 10));
       setCategory(initial.category || "One-Time Sale");
+      setCategories((prev) =>
+        initial.category && !prev.includes(initial.category) ? [...prev, initial.category] : prev
+      );
       setPlatformLabel(initial.platformLabel || DEFAULT_SOURCE_TAGS[0]!);
       setIsRecurring(Boolean(initial.isRecurring));
       setNotes(initial.notes || "");
+      setCreatingCategory(false);
+      setCreatingTag(false);
+      setNewCategory("");
+      setNewTag("");
       return;
     }
     setType("REVENUE");
@@ -74,30 +102,51 @@ export default function ManualEntryModal({
     setPlatformLabel(DEFAULT_SOURCE_TAGS[0] || "Cash / Wire");
     setIsRecurring(false);
     setNotes("");
-    setNewTagOpen(false);
+    setCreatingCategory(false);
+    setCreatingTag(false);
+    setNewCategory("");
     setNewTag("");
     setError("");
   }, [open, initial]);
 
+  useEffect(() => {
+    if (creatingTag) newTagRef.current?.focus();
+  }, [creatingTag]);
+
+  useEffect(() => {
+    if (creatingCategory) newCategoryRef.current?.focus();
+  }, [creatingCategory]);
+
   if (!open) return null;
 
-  async function saveNewTag() {
+  function commitNewTag() {
     const tag = newTag.trim();
-    if (!tag) return;
+    if (!tag) {
+      setCreatingTag(false);
+      return;
+    }
     const next = addLocalSourceTag(tag);
     setTags(next);
     setPlatformLabel(tag);
     setNewTag("");
-    setNewTagOpen(false);
-    try {
-      await authFetch("/api/revenue/source-tags", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tag })
-      });
-    } catch {
-      /* local persistence already done */
+    setCreatingTag(false);
+    void authFetch("/api/revenue/source-tags", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tag })
+    }).catch(() => undefined);
+  }
+
+  function commitNewCategory() {
+    const value = newCategory.trim();
+    if (!value) {
+      setCreatingCategory(false);
+      return;
     }
+    setCategories((prev) => (prev.includes(value) ? prev : [...prev, value]));
+    setCategory(value);
+    setNewCategory("");
+    setCreatingCategory(false);
   }
 
   async function submit(event: FormEvent) {
@@ -112,6 +161,10 @@ export default function ManualEntryModal({
       setError("Choose or create a custom source tag.");
       return;
     }
+    if (!category.trim()) {
+      setError("Choose or create a category.");
+      return;
+    }
     setSaving(true);
     try {
       await onSave({
@@ -120,7 +173,7 @@ export default function ManualEntryModal({
         merchantOrCustomer: merchantOrCustomer.trim(),
         amount: value,
         date: new Date(date).toISOString(),
-        category,
+        category: category.trim(),
         platformLabel: platformLabel.trim(),
         isRecurring,
         recurringInterval: isRecurring ? "monthly" : undefined,
@@ -140,13 +193,9 @@ export default function ManualEntryModal({
       aria-modal
       onClick={onClose}
       style={{
-        position: "fixed",
-        inset: 0,
+        ...overlayStyle,
         zIndex: 80,
-        background: "rgba(4,8,16,0.72)",
-        display: "grid",
-        placeItems: "center",
-        padding: 16
+        background: "rgba(4,8,16,0.72)"
       }}
     >
       <form
@@ -154,12 +203,15 @@ export default function ManualEntryModal({
         onSubmit={(event) => void submit(event)}
         style={{
           width: "min(440px, 100%)",
+          maxHeight: "min(92%, 640px)",
+          overflow: "auto",
           background: SNAPSHOT_THEME.navy,
           border: `1px solid ${SNAPSHOT_THEME.navyLine}`,
           borderRadius: 16,
           padding: 18,
           display: "grid",
-          gap: 10
+          gap: 10,
+          boxShadow: "0 24px 60px rgba(0,0,0,0.5)"
         }}
       >
         <div>
@@ -194,42 +246,125 @@ export default function ManualEntryModal({
             <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={inputStyle} required />
           </label>
         </div>
-        <label style={labelStyle}>
-          Category
-          <input value={category} onChange={(e) => setCategory(e.target.value)} style={inputStyle} />
-        </label>
+
+        <div style={{ display: "grid", gap: 6 }}>
+          <span style={{ fontSize: 11, color: SNAPSHOT_THEME.mute }}>Category</span>
+          {creatingCategory ? (
+            <div style={{ display: "flex", gap: 8 }}>
+              <input
+                ref={newCategoryRef}
+                value={newCategory}
+                onChange={(e) => setNewCategory(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    commitNewCategory();
+                  }
+                  if (e.key === "Escape") {
+                    setCreatingCategory(false);
+                    setNewCategory("");
+                  }
+                }}
+                placeholder="New category name"
+                style={{ ...inputStyle, flex: 1 }}
+              />
+              <button type="button" onClick={commitNewCategory} style={primaryBtn}>
+                Add
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setCreatingCategory(false);
+                  setNewCategory("");
+                }}
+                style={ghostBtn}
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <select
+              value={category}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value === CREATE_VALUE) {
+                  setCreatingCategory(true);
+                  setNewCategory("");
+                  return;
+                }
+                setCategory(value);
+              }}
+              style={inputStyle}
+            >
+              {categories.map((item) => (
+                <option key={item} value={item}>
+                  {item}
+                </option>
+              ))}
+              <option value={CREATE_VALUE}>＋ New category…</option>
+            </select>
+          )}
+        </div>
+
         <div style={{ display: "grid", gap: 6 }}>
           <span style={{ fontSize: 11, color: SNAPSHOT_THEME.mute }}>Custom source tag</span>
-          <div style={{ display: "flex", gap: 8 }}>
+          {creatingTag ? (
+            <div style={{ display: "flex", gap: 8 }}>
+              <input
+                ref={newTagRef}
+                value={newTag}
+                onChange={(e) => setNewTag(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    commitNewTag();
+                  }
+                  if (e.key === "Escape") {
+                    setCreatingTag(false);
+                    setNewTag("");
+                  }
+                }}
+                placeholder="New source tag"
+                style={{ ...inputStyle, flex: 1 }}
+              />
+              <button type="button" onClick={commitNewTag} style={primaryBtn}>
+                Add
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setCreatingTag(false);
+                  setNewTag("");
+                }}
+                style={ghostBtn}
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
             <select
               value={platformLabel}
-              onChange={(e) => setPlatformLabel(e.target.value)}
-              style={{ ...inputStyle, flex: 1 }}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value === CREATE_VALUE) {
+                  setCreatingTag(true);
+                  setNewTag("");
+                  return;
+                }
+                setPlatformLabel(value);
+              }}
+              style={inputStyle}
             >
               {tags.map((tag) => (
                 <option key={tag} value={tag}>
                   {tag}
                 </option>
               ))}
+              <option value={CREATE_VALUE}>＋ New source tag…</option>
             </select>
-            <button type="button" onClick={() => setNewTagOpen((v) => !v)} style={ghostBtn}>
-              New
-            </button>
-          </div>
-          {newTagOpen ? (
-            <div style={{ display: "flex", gap: 8 }}>
-              <input
-                value={newTag}
-                onChange={(e) => setNewTag(e.target.value)}
-                placeholder="New source tag"
-                style={{ ...inputStyle, flex: 1 }}
-              />
-              <button type="button" onClick={() => void saveNewTag()} style={primaryBtn}>
-                Save tag
-              </button>
-            </div>
-          ) : null}
+          )}
         </div>
+
         <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: SNAPSHOT_THEME.mute }}>
           <input type="checkbox" checked={isRecurring} onChange={(e) => setIsRecurring(e.target.checked)} />
           Recurring (monthly)

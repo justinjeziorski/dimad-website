@@ -46,8 +46,16 @@ function requestTokenFromParent(timeoutMs: number) {
 }
 
 export async function waitForFirebaseToken(maxMs = 15000) {
+  const t0 = typeof performance !== "undefined" ? performance.now() : Date.now();
   const handedOff = readPlaidBearer();
-  if (handedOff) return handedOff;
+  if (handedOff) {
+    console.log(
+      `[dimad-perf] client.auth.waitForToken → ${(
+        (typeof performance !== "undefined" ? performance.now() : Date.now()) - t0
+      ).toFixed(1)}ms (plaid_bearer)`
+    );
+    return handedOff;
+  }
 
   const deadline = Date.now() + maxMs;
 
@@ -83,19 +91,48 @@ export async function waitForFirebaseToken(maxMs = 15000) {
 
   while (Date.now() < deadline) {
     const token = await fromAuth();
-    if (token) return token;
+    if (token) {
+      console.log(
+        `[dimad-perf] client.auth.waitForToken → ${(
+          (typeof performance !== "undefined" ? performance.now() : Date.now()) - t0
+        ).toFixed(1)}ms (auth_currentUser)`
+      );
+      return token;
+    }
     const parentToken = await requestTokenFromParent(Math.min(2000, Math.max(500, deadline - Date.now())));
-    if (parentToken) return parentToken;
+    if (parentToken) {
+      console.log(
+        `[dimad-perf] client.auth.waitForToken → ${(
+          (typeof performance !== "undefined" ? performance.now() : Date.now()) - t0
+        ).toFixed(1)}ms (parent_postMessage)`
+      );
+      return parentToken;
+    }
     await new Promise((r) => setTimeout(r, 200));
   }
 
-  return (await fromAuth()) || (await requestTokenFromParent(2000));
+  const token = (await fromAuth()) || (await requestTokenFromParent(2000));
+  console.log(
+    `[dimad-perf] client.auth.waitForToken → ${(
+      (typeof performance !== "undefined" ? performance.now() : Date.now()) - t0
+    ).toFixed(1)}ms (maxMs=${maxMs}, hasToken=${Boolean(token)})`
+  );
+  return token;
 }
 
-export async function authFetch(path: string, init: RequestInit = {}) {
-  const token = await waitForFirebaseToken(15000);
+export async function authFetch(
+  path: string,
+  init: RequestInit = {},
+  opts?: { tokenWaitMs?: number }
+) {
+  const t0 = typeof performance !== "undefined" ? performance.now() : Date.now();
+  const token = await waitForFirebaseToken(opts?.tokenWaitMs ?? 15000);
+  const tAuth = typeof performance !== "undefined" ? performance.now() : Date.now();
   const headers = new Headers(init.headers || {});
   if (token) headers.set("Authorization", `Bearer ${token}`);
+  console.log(
+    `[dimad-perf] client.authFetch.start ${path} authWait=${(tAuth - t0).toFixed(1)}ms`
+  );
   const res = await fetch(path, {
     ...init,
     headers,
@@ -103,5 +140,9 @@ export async function authFetch(path: string, init: RequestInit = {}) {
     cache: "no-store"
   });
   const data = await res.json().catch(() => ({}));
+  const t1 = typeof performance !== "undefined" ? performance.now() : Date.now();
+  console.log(
+    `[dimad-perf] client.authFetch.done ${path} → ${(t1 - t0).toFixed(1)}ms (network=${(t1 - tAuth).toFixed(1)}ms, status=${res.status})`
+  );
   return { res, data, token };
 }

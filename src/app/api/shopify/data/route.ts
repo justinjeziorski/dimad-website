@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { perfStart, perfTime } from "@/lib/perf/timing";
 import { requireFirebaseUser } from "@/lib/session";
 import {
   deleteShopifyIntegration,
@@ -18,21 +19,31 @@ function parseRange(raw: string | null): ShopifyRangeKey {
 }
 
 export async function GET(req: NextRequest) {
-  const session = await requireFirebaseUser(req);
-  if ("error" in session) return session.error;
+  const total = perfStart("api.shopify.data.total");
+  const session = await perfTime("api.shopify.auth", () => requireFirebaseUser(req));
+  if ("error" in session) {
+    total.end({ ok: false, reason: "auth" });
+    return session.error;
+  }
 
   const range = parseRange(req.nextUrl.searchParams.get("range"));
   const from = req.nextUrl.searchParams.get("from");
   const to = req.nextUrl.searchParams.get("to");
 
   try {
-    const record = await readShopifyIntegration(session.uid, session.idToken);
+    const record = await perfTime("api.shopify.firestore_read", () =>
+      readShopifyIntegration(session.uid, session.idToken)
+    );
     console.log("Shopify data lookup", session.uid, record ? record.shop : "none", range);
     if (!record) {
+      total.end({ ok: true, connected: false });
       return NextResponse.json({ ok: true, connected: false }, { headers: noStore });
     }
 
-    const data = await fetchShopifyStoreData(record, { range, from, to });
+    const data = await perfTime("api.shopify.graphql", () =>
+      fetchShopifyStoreData(record, { range, from, to })
+    );
+    total.end({ ok: true, connected: true });
     return NextResponse.json(
       {
         ok: true,
@@ -44,6 +55,7 @@ export async function GET(req: NextRequest) {
   } catch (err) {
     const message = err instanceof Error ? err.message : "shopify_request_failed";
     console.error("Shopify data route failed", session.uid, message);
+    total.end({ ok: false, error: message });
     const safe =
       message === "firestore_permission_denied" ||
       message === "firestore_read_failed" ||

@@ -3871,20 +3871,40 @@ const DIMAD_WELCOME = {
         ? 'All systems synced'
         : status === 'partial'
           ? 'Metrics partially synced'
-          : 'Syncing live metrics…');
+          : 'Synchronizing Command Center…');
+  },
+
+  setPlatformProgress(progress) {
+    const bar = document.querySelector('#dimad-welcome-gate .welcome-bar > span');
+    if (!bar || typeof progress !== 'number') return;
+    const pct = Math.max(8, Math.min(100, Math.round(progress * 100)));
+    bar.style.width = pct + '%';
+    bar.style.animation = 'none';
+    bar.style.background = 'linear-gradient(90deg, #D4AF37 0%, #f0d78c 100%)';
   },
 
   onPreloadMessage(event) {
     if (event.origin !== window.location.origin) return;
     const data = event.data;
-    if (!data || data.type !== 'dimad-workspace-preload') return;
+    if (!data) return;
+    if (data.type === 'dimad-platform-sync') {
+      const detail = data.detail || 'Synchronizing Command Center…';
+      if (typeof DIMAD_WELCOME.setStatus === 'function' && DIMAD_WELCOME.active && !DIMAD_WELCOME.ready) {
+        DIMAD_WELCOME.setStatus(detail);
+      }
+      DIMAD_WELCOME.setSyncStatus(data.status || 'syncing', detail);
+      if (typeof data.progress === 'number') DIMAD_WELCOME.setPlatformProgress(data.progress);
+      return;
+    }
+    if (data.type !== 'dimad-workspace-preload') return;
     DIMAD_WELCOME.setSyncStatus(data.status, data.detail || '');
   },
 
   startWorkspacePreload() {
     if (this._preloadStarted) return;
     this._preloadStarted = true;
-    this.setSyncStatus('syncing', 'Syncing live metrics…');
+    this.setSyncStatus('syncing', 'Establishing secure gateway session…');
+    this.setStatus('Establishing secure gateway session…');
 
     if (!this._preloadListenerBound) {
       this._preloadListenerBound = true;
@@ -21254,7 +21274,7 @@ window.onload = async function() {
       if (gate) gate.remove();
       DIMAD_WELCOME.startWorkspacePreload();
     } else {
-      DIMAD_WELCOME.setStatus('Generating Command Center…');
+      DIMAD_WELCOME.setStatus('Establishing secure gateway session…');
       DIMAD_WELCOME.startWorkspacePreload();
     }
   }

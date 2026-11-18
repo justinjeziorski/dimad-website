@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, type ReactNode } from "react";
+import { perfMark } from "@/lib/perf/timing";
 
 export default function RevenueLayout({ children }: { children: ReactNode }) {
   useEffect(() => {
+    perfMark("client.revenue.layout.mount");
     if (typeof window === "undefined" || window.parent === window) return;
 
     let last = 0;

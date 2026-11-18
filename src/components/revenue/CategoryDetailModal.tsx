@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, type CSSProperties } from "react";
+import { useIframeCenteredOverlay } from "@/hooks/useIframeCenteredOverlay";
 import type { UnifiedTransaction } from "@/lib/revenue/types";
 import { money } from "@/lib/revenue/ledgerEngine";
 import { SNAPSHOT_THEME } from "@/lib/snapshot-theme";
@@ -39,6 +40,7 @@ export default function CategoryDetailModal({
   onClose,
   onConvertToGoal
 }: Props) {
+  const overlayStyle = useIframeCenteredOverlay(true);
   const [forecastGrowth, setForecastGrowth] = useState(10);
   const [forecastMonths, setForecastMonths] = useState(6);
   const [saving, setSaving] = useState(false);
@@ -56,6 +58,7 @@ export default function CategoryDetailModal({
         );
       }
       if (match === "kpi") {
+        if (title.startsWith("period ")) return true;
         if (title.includes("expense") || title.includes("burn")) return tx.type === "EXPENSE";
         if (title.includes("mrr")) return tx.type === "REVENUE" && tx.isRecurring;
         if (title.includes("one-time") || title.includes("order")) return tx.type === "REVENUE" && !tx.isRecurring;
@@ -102,20 +105,18 @@ export default function CategoryDetailModal({
       aria-modal
       onClick={onClose}
       style={{
-        position: "fixed",
-        inset: 0,
+        ...overlayStyle,
         zIndex: 90,
-        display: "grid",
-        placeItems: "center",
         background: "rgba(0,0,0,0.7)",
-        backdropFilter: "blur(4px)",
-        padding: 16
+        backdropFilter: "blur(4px)"
       }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
           width: "min(720px, 100%)",
+          maxHeight: "min(92%, 720px)",
+          overflow: "auto",
           borderRadius: 16,
           background: SNAPSHOT_THEME.navy,
           border: `1px solid ${SNAPSHOT_THEME.navyLine}`,

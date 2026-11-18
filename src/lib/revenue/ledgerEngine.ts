@@ -7,6 +7,7 @@ import type {
   RevenueTimeframe,
   UnifiedTransaction
 } from "@/lib/revenue/types";
+import { getTimeframeWindow } from "@/lib/utils/timeframeFilter";
 
 const DAY_MS = 86_400_000;
 
@@ -42,21 +43,11 @@ export function timeframeWindow(
   custom?: { from: string; to: string },
   now = new Date()
 ): { from: Date; to: Date } {
-  const to = startOfDay(now);
-  to.setHours(23, 59, 59, 999);
-  if (timeframe === "CUSTOM" && custom?.from && custom?.to) {
-    return { from: new Date(custom.from), to: new Date(custom.to) };
-  }
-  const from = startOfDay(now);
-  if (timeframe === "7D") from.setDate(from.getDate() - 6);
-  else if (timeframe === "30D") from.setDate(from.getDate() - 29);
-  else if (timeframe === "MTD") from.setDate(1);
-  else if (timeframe === "QTD") {
-    const q = Math.floor(from.getMonth() / 3) * 3;
-    from.setMonth(q, 1);
-  } else if (timeframe === "YTD") from.setMonth(0, 1);
-  else if (timeframe === "1Y") from.setFullYear(from.getFullYear() - 1);
-  return { from, to };
+  return getTimeframeWindow(
+    timeframe,
+    custom?.from && custom?.to ? { startDate: custom.from, endDate: custom.to } : null,
+    now
+  );
 }
 
 export function comparisonWindow(
@@ -258,9 +249,9 @@ export function seriesByDay(rows: UnifiedTransaction[], from: Date, to: Date) {
 }
 
 /** Deterministic demo ledger so the workspace is fully interactive without live links. */
-export function generateMockLedger(userId = "demo"): UnifiedTransaction[] {
+export function generateMockLedger(userId = "demo", nowInput?: Date): UnifiedTransaction[] {
   const rows: UnifiedTransaction[] = [];
-  const now = new Date();
+  const now = nowInput ? new Date(nowInput) : new Date();
   const push = (partial: Omit<UnifiedTransaction, "userId" | "currency"> & { currency?: string }) => {
     rows.push({ userId, currency: "USD", ...partial });
   };

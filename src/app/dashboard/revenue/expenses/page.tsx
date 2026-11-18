@@ -1,56 +1,34 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import DashboardShell from "@/components/dashboard/DashboardShell";
 import RevenueNav from "@/components/revenue/RevenueNav";
-import { authFetch } from "@/lib/dimad-auth-client";
-import { adaptLivePayloads } from "@/lib/revenue/adapters";
-import { detectRecurringExpenses, generateMockLedger, money } from "@/lib/revenue/ledgerEngine";
+import {
+  ExpenseRowsSkeleton,
+  RevenueSkeletonStyles,
+  SyncPill
+} from "@/components/revenue/RevenueSkeletons";
+import { useRevenueData } from "@/hooks/useRevenueData";
+import { detectRecurringExpenses, money } from "@/lib/revenue/ledgerEngine";
 import { goRevenue } from "@/lib/revenue/nav";
 import type { UnifiedTransaction } from "@/lib/revenue/types";
 import { SNAPSHOT_THEME } from "@/lib/snapshot-theme";
 
 export default function RevenueExpensesPage() {
-  const [rows, setRows] = useState<UnifiedTransaction[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [connected, setConnected] = useState(false);
-  const [institution, setInstitution] = useState("");
+  const { ledger, setLedger, usingMock, loading, syncing, plaid, refresh } = useRevenueData();
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState<"all" | "recurring">("all");
-  const [usingMock, setUsingMock] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const { data, res } = await authFetch("/api/plaid/data");
-      const payload = data as Record<string, unknown>;
-      const isConnected = Boolean(payload.connected) && res.ok;
-      setConnected(isConnected);
-      setInstitution(String(payload.institutionName || ""));
-      const live = adaptLivePayloads("user", { plaid: payload }).filter((r) => r.source === "plaid");
-      if (live.length) {
-        setRows(live);
-        setUsingMock(false);
-      } else if (isConnected) {
-        setRows([]);
-        setUsingMock(false);
-      } else {
-        const mock = generateMockLedger("demo").filter((r) => r.source === "plaid");
-        setRows(mock);
-        setUsingMock(true);
-      }
-    } catch {
-      setRows(generateMockLedger("demo").filter((r) => r.source === "plaid"));
-      setUsingMock(true);
-      setConnected(false);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const rows = useMemo(
+    () =>
+      ledger.filter(
+        (r) => r.type === "EXPENSE" && (r.source === "plaid" || r.source === "manual")
+      ),
+    [ledger]
+  );
+  const showSkeletons = loading && !rows.length;
+  const connected = Boolean(plaid?.connected) || (rows.some((r) => r.source === "plaid") && !usingMock);
+  const institution = plaid?.institutionName || "";
 
   const recurring = useMemo(() => detectRecurringExpenses(rows), [rows]);
   const filtered = useMemo(() => {
@@ -68,7 +46,7 @@ export default function RevenueExpensesPage() {
   const total = filtered.reduce((a, r) => a + r.amount, 0);
 
   function togglePersonal(id: string) {
-    setRows((prev) =>
+    setLedger((prev) =>
       prev.map((row) => {
         if (row.id !== id) return row;
         const personal = !(row.excluded || row.businessPersonal === "personal");
@@ -76,7 +54,7 @@ export default function RevenueExpensesPage() {
           ...row,
           excluded: personal,
           businessPersonal: personal ? "personal" : "business"
-        };
+        } satisfies UnifiedTransaction;
       })
     );
   }
@@ -88,15 +66,17 @@ export default function RevenueExpensesPage() {
       subtitle="Plaid-synced bank expenses and detected recurring subscriptions. Mark rows Business or Excluded/Personal."
       actions={
         <>
+          <SyncPill syncing={syncing} />
           <button type="button" style={btnStyle} onClick={() => goRevenue("/dashboard/revenue")}>
             ← Back to Revenue
           </button>
-          <button type="button" style={btnStyle} onClick={() => void load()}>
-            Refresh Plaid
+          <button type="button" style={btnStyle} onClick={() => void refresh({ forceSync: true })}>
+            Refresh
           </button>
         </>
       }
     >
+      <RevenueSkeletonStyles />
       <RevenueNav active="expenses" />
 
       {usingMock ? (
@@ -109,16 +89,39 @@ export default function RevenueExpensesPage() {
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
           <div>
             <p style={labelStyle}>Plaid connection</p>
-            <div style={{ fontSize: 18, fontWeight: 700 }}>
-              {loading ? "…" : connected ? institution || "Connected bank" : "Not connected"}
-            </div>
+            {showSkeletons ? (
+              <div
+                style={{
+                  height: 22,
+                  width: 160,
+                  borderRadius: 8,
+                  background: "rgba(212,175,55,0.12)"
+                }}
+              />
+            ) : (
+              <div style={{ fontSize: 18, fontWeight: 700 }}>
+                {connected ? institution || "Connected bank" : "Not connected"}
+              </div>
+            )}
             <p style={{ margin: "4px 0 0", fontSize: 11, color: SNAPSHOT_THEME.mute }}>
               {connected ? "Live expenses from linked accounts" : "Connect Plaid to replace demo spend"}
             </p>
           </div>
           <div style={{ textAlign: "right" }}>
             <p style={labelStyle}>Spend in view</p>
-            <div style={{ fontSize: 22, fontWeight: 700 }}>{loading ? "…" : money(total)}</div>
+            {showSkeletons ? (
+              <div
+                style={{
+                  height: 26,
+                  width: 96,
+                  marginLeft: "auto",
+                  borderRadius: 8,
+                  background: "rgba(212,175,55,0.12)"
+                }}
+              />
+            ) : (
+              <div style={{ fontSize: 22, fontWeight: 700 }}>{money(total)}</div>
+            )}
           </div>
         </div>
       </section>
@@ -141,7 +144,9 @@ export default function RevenueExpensesPage() {
 
         {tab === "recurring" ? (
           <div style={{ display: "grid", gap: 8 }}>
-            {recurring.length ? (
+            {showSkeletons ? (
+              <ExpenseRowsSkeleton count={4} />
+            ) : recurring.length ? (
               recurring.map((r) => (
                 <div key={r.merchant} style={rowCard}>
                   <div>
@@ -162,8 +167,8 @@ export default function RevenueExpensesPage() {
           </div>
         ) : (
           <div style={{ display: "grid", gap: 8 }}>
-            {loading ? (
-              <p style={{ color: SNAPSHOT_THEME.mute, fontSize: 12 }}>Loading…</p>
+            {showSkeletons ? (
+              <ExpenseRowsSkeleton />
             ) : filtered.length ? (
               filtered.map((row) => {
                 const personal = row.excluded || row.businessPersonal === "personal";

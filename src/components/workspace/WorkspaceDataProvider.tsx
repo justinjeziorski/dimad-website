@@ -4,6 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -82,9 +83,18 @@ export async function preloadAllWorkspaceData(): Promise<WorkspaceCacheSnapshot>
   return next;
 }
 
+function emptyWorkspaceSnapshot(): WorkspaceCacheSnapshot {
+  return { entries: {}, preloadStatus: "idle", updatedAt: 0 };
+}
+
 export function WorkspaceDataProvider({ children }: { children: ReactNode }) {
-  const [snapshot, setSnapshot] = useState<WorkspaceCacheSnapshot>(() => readWorkspaceCache());
+  // Empty on SSR + first client paint; hydrate from sessionStorage after mount.
+  const [snapshot, setSnapshot] = useState<WorkspaceCacheSnapshot>(emptyWorkspaceSnapshot);
   const inflight = useRef<Promise<WorkspaceCacheSnapshot> | null>(null);
+
+  useEffect(() => {
+    setSnapshot(readWorkspaceCache());
+  }, []);
 
   const preload = useCallback(async () => {
     if (inflight.current) return inflight.current;
