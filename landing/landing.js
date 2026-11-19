@@ -196,5 +196,80 @@
     return false;
   };
 
+  window.openContactModal = function () {
+    const modal = document.getElementById("contact-modal");
+    const error = document.getElementById("contact-form-error");
+    const success = document.getElementById("contact-form-success");
+    const form = document.getElementById("contactForm");
+    if (!modal) return;
+    if (error) {
+      error.classList.add("hidden");
+      error.textContent = "";
+    }
+    if (success) success.classList.add("hidden");
+    if (form) form.reset();
+    modal.classList.remove("hidden");
+    setTimeout(() => document.getElementById("contact-first-name")?.focus(), 50);
+  };
+
+  window.closeContactModal = function () {
+    const modal = document.getElementById("contact-modal");
+    if (modal) modal.classList.add("hidden");
+  };
+
+  window.submitContactForm = async function (event) {
+    event.preventDefault();
+    const form = document.getElementById("contactForm");
+    const error = document.getElementById("contact-form-error");
+    const success = document.getElementById("contact-form-success");
+    const submitBtn = document.getElementById("contact-submit-btn");
+    if (!form) return false;
+
+    const firstName = String(form.firstName?.value || "").trim();
+    const lastName = String(form.lastName?.value || "").trim();
+    const email = String(form.email?.value || "").trim();
+    const message = String(form.message?.value || "").trim();
+    const company = String(form.company?.value || "").trim();
+
+    if (error) {
+      error.classList.add("hidden");
+      error.textContent = "";
+    }
+    if (success) success.classList.add("hidden");
+    if (submitBtn) submitBtn.disabled = true;
+
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ firstName, lastName, email, message, company })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) {
+        throw new Error(data.error || "Could not send your message right now.");
+      }
+      form.reset();
+      if (success) success.classList.remove("hidden");
+      showToast("Message sent to Dimad");
+      setTimeout(() => window.closeContactModal(), 1400);
+    } catch (err) {
+      if (error) {
+        error.textContent = err instanceof Error ? err.message : "Could not send your message right now.";
+        error.classList.remove("hidden");
+      }
+    } finally {
+      if (submitBtn) submitBtn.disabled = false;
+    }
+    return false;
+  };
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    const contactModal = document.getElementById("contact-modal");
+    if (contactModal && !contactModal.classList.contains("hidden")) {
+      window.closeContactModal();
+    }
+  });
+
   fetch(MAILERLITE_TRACK).catch(function () {});
 })();

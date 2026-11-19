@@ -44,7 +44,7 @@
         <button type="button" onclick="openModal('Travel')" class="hover:text-white transition-colors">Travel</button>
         <button type="button" onclick="openModal('Concierge')" class="hover:text-white transition-colors">Concierge</button>
         <button type="button" onclick="openModal('Rewards')" class="hover:text-white transition-colors">Rewards</button>
-        <button type="button" onclick="openModal('Membership')" class="hover:text-white transition-colors">Membership</button>
+        <button type="button" onclick="openModal('Pricing')" class="hover:text-white transition-colors">Pricing</button>
         <button type="button" onclick="openModal('Demo')" class="brand-gold font-semibold hover:opacity-90 transition-opacity">Demo</button>
       </nav>
 
@@ -494,15 +494,55 @@
     </div>
   </div>
 
+  <!-- CONTACT MODAL -->
+  <div id="contact-modal" class="fixed inset-0 bg-[#02040a]/80 backdrop-blur-sm z-[60] hidden flex items-center justify-center p-6" role="dialog" aria-modal="true" aria-labelledby="contact-modal-title">
+    <div class="landing-panel rounded-2xl p-7 sm:p-8 max-w-lg w-full text-left shadow-2xl relative border border-white/10">
+      <button type="button" onclick="closeContactModal()" class="absolute top-4 right-4 text-slate-500 hover:text-white text-sm" aria-label="Close contact form">✕</button>
+      <div id="contact-modal-title" class="text-amber-400 font-black text-xl mb-1 tracking-wide">Contact</div>
+      <p class="text-slate-400 text-sm mb-6">Send a note to the Dimad team or email us at <a href="mailto:admin@dimad.co" class="text-amber-300 hover:text-amber-200 underline underline-offset-2">admin@dimad.co</a>. We'll get back to you shortly!</p>
+
+      <form id="contactForm" onsubmit="submitContactForm(event); return false;" class="space-y-3.5">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          <div>
+            <label for="contact-first-name" class="block text-[11px] uppercase tracking-wider text-slate-500 font-semibold mb-1.5" title="First">First name</label>
+            <input id="contact-first-name" name="firstName" type="text" required autocomplete="given-name" title="First" class="w-full bg-[#050812] border border-white/15 rounded-xl px-3.5 py-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-amber-500/70" placeholder="Blake" />
+          </div>
+          <div>
+            <label for="contact-last-name" class="block text-[11px] uppercase tracking-wider text-slate-500 font-semibold mb-1.5" title="Last">Last name</label>
+            <input id="contact-last-name" name="lastName" type="text" required autocomplete="family-name" title="Last" class="w-full bg-[#050812] border border-white/15 rounded-xl px-3.5 py-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-amber-500/70" placeholder="Rivera" />
+          </div>
+        </div>
+        <div>
+          <label for="contact-email" class="block text-[11px] uppercase tracking-wider text-slate-500 font-semibold mb-1.5">Email</label>
+          <input id="contact-email" name="email" type="email" required autocomplete="email" class="w-full bg-[#050812] border border-white/15 rounded-xl px-3.5 py-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-amber-500/70" placeholder="you@company.com" />
+        </div>
+        <div>
+          <label for="contact-message" class="block text-[11px] uppercase tracking-wider text-slate-500 font-semibold mb-1.5">Message</label>
+          <textarea id="contact-message" name="message" required rows="4" class="w-full bg-[#050812] border border-white/15 rounded-xl px-3.5 py-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-amber-500/70 resize-y min-h-[110px]" placeholder="How can we help?"></textarea>
+        </div>
+        <input type="text" name="company" id="contact-company" tabindex="-1" autocomplete="off" class="hidden" aria-hidden="true" />
+        <p id="contact-form-error" class="hidden text-red-400 text-sm"></p>
+        <p id="contact-form-success" class="hidden text-amber-300 text-sm font-medium">Message sent. We’ll be in touch soon.</p>
+        <button id="contact-submit-btn" type="submit" class="w-full gold-cta-glow text-slate-950 font-extrabold px-5 py-3 rounded-xl text-sm">
+          Send
+        </button>
+      </form>
+    </div>
+  </div>
+
   <!-- FOOTER -->
   <footer class="relative z-20 border-t border-white/10 py-8 px-5 sm:px-8">
     <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
       <div class="font-bold tracking-wider text-slate-300">dimad</div>
       <div>© 2026 dimad. All rights reserved.</div>
-      <div class="flex items-center gap-5">
+      <div class="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+        <button type="button" onclick="openModal('Privacy Policy')" class="hover:text-slate-300 transition-colors">Privacy Policy</button>
+        <button type="button" onclick="openModal('Terms of Service')" class="hover:text-slate-300 transition-colors">Terms of Service</button>
+        <button type="button" onclick="openModal('Security and Compliance')" class="hover:text-slate-300 transition-colors">Security and Compliance</button>
+        <button type="button" onclick="openModal('Cookie Policy')" class="hover:text-slate-300 transition-colors">Cookie Policy</button>
+        <button type="button" onclick="openModal('Partnerships')" class="hover:text-slate-300 transition-colors">Partnerships</button>
         <button type="button" onclick="openModal('About')" class="hover:text-slate-300 transition-colors">About</button>
-        <button type="button" onclick="openModal('Manifesto')" class="hover:text-slate-300 transition-colors">Manifesto</button>
-        <button type="button" onclick="openModal('Contact')" class="hover:text-slate-300 transition-colors">Contact</button>
+        <button type="button" onclick="openContactModal()" class="hover:text-slate-300 transition-colors">Contact</button>
       </div>
     </div>
   </footer>
