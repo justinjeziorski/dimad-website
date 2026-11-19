@@ -12,7 +12,8 @@ const copies = [
   ["dashboard", "public/dashboard"],
   ["views", "public/views"],
   ["auth", "public/auth"],
-  ["assets", "public/assets"]
+  ["assets", "public/assets"],
+  ["landing", "public/landing"]
 ];
 
 for (const [from, to] of copies) {

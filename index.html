@@ -3,511 +3,451 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>dimad — Build here. Create there. Live everywhere.</title>
-    <!-- Tailwind CSS CDN -->
+  <title>dimad — designed for a life in motion</title>
   <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Inter & JetBrains Mono Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
-    <!-- Three.js CDN for 3D Globe Background -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/landing/landing.css">
   <script>
     tailwind.config = {
-            darkMode: 'class',
+      darkMode: 'class',
       theme: {
         extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                        mono: ['JetBrains Mono', 'monospace'],
-                    },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
           colors: {
-                        darkbg: '#0f172a',
-                        cardbg: '#1e293b',
-                        cardborder: '#334155',
-                        accent: '#f59e0b',
-                        accenthover: '#d97706',
+            darkbg: '#02040a',
+            cardbg: '#0b1220',
+            cardborder: '#1e293b',
+            accent: '#f59e0b',
+            accenthover: '#d97706',
           }
         }
       }
     }
   </script>
-  <style>
-        /* Custom scrollbar & glowing accents */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #0f172a; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #f59e0b; }
-        
-        .glow-amber {
-            box-shadow: 0 0 50px -10px rgba(245, 158, 11, 0.25);
-        }
-        .glow-card {
-            box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.6);
-        }
-  </style>
 </head>
-<body class="bg-darkbg text-slate-100 font-sans antialiased selection:bg-amber-500 selection:text-slate-950">
+<body class="bg-[#02040a] text-slate-100 font-sans antialiased min-h-screen relative selection:bg-amber-400/30 selection:text-amber-200">
 
-    <!-- NAVIGATION BAR -->
-    <header class="border-b border-slate-800/80 sticky top-0 z-50 bg-darkbg/90 backdrop-blur-md">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between">
-            <div class="flex items-center">
-                <!-- Brand logo: strictly lowercase 'dimad' without OS or Nomad OS -->
-                <a href="#" class="text-2xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-amber-200 to-amber-500 hover:from-amber-300 hover:via-amber-100 hover:to-amber-400 transition-all duration-300">dimad</a>
-      </div>
+  <canvas id="nightSkyCanvas" aria-hidden="true"></canvas>
 
-            <!-- Page Nav Links -->
-            <nav class="hidden md:flex items-center space-x-8 text-sm font-medium text-slate-300">
-                <button onclick="openModal('Dashboard')" class="hover:text-amber-400 transition-colors">Dashboard</button>
-                <button onclick="openModal('Travel')" class="hover:text-amber-400 transition-colors">Travel</button>
-                <button onclick="openModal('Concierge')" class="hover:text-amber-400 transition-colors">Concierge</button>
-                <button onclick="openModal('Rewards')" class="hover:text-amber-400 transition-colors">Rewards</button>
-                <button onclick="openModal('Membership')" class="hover:text-amber-400 transition-colors">Membership</button>
-                <button onclick="openModal('Demo')" class="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-amber-200 to-amber-500 hover:from-amber-300 hover:via-amber-100 hover:to-amber-400 transition-all duration-300">Demo</button>
-            </nav>
+  <!-- NAVIGATION -->
+  <header class="sticky top-0 z-30 glass-nav w-full">
+    <div class="max-w-7xl mx-auto px-5 sm:px-8 h-16 sm:h-[72px] flex items-center justify-between">
+      <a href="#" class="text-2xl font-black tracking-wider brand-gold hover:opacity-90 transition-opacity">dimad</a>
 
-            <div class="flex items-center space-x-4">
-                <button type="button" onclick="openPinModal(event)" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold px-5 py-2.5 rounded-xl transition text-sm shadow-lg shadow-amber-500/20">
-                    Log In / Sign Up
-                </button>
-            </div>
-        </div>
-    </header>
+      <nav aria-label="Primary" class="hidden md:flex items-center gap-7 lg:gap-8 text-sm font-medium text-slate-300">
+        <button type="button" onclick="openModal('Dashboard')" class="hover:text-white transition-colors">Dashboard</button>
+        <button type="button" onclick="openModal('Travel')" class="hover:text-white transition-colors">Travel</button>
+        <button type="button" onclick="openModal('Concierge')" class="hover:text-white transition-colors">Concierge</button>
+        <button type="button" onclick="openModal('Rewards')" class="hover:text-white transition-colors">Rewards</button>
+        <button type="button" onclick="openModal('Membership')" class="hover:text-white transition-colors">Membership</button>
+        <button type="button" onclick="openModal('Demo')" class="brand-gold font-semibold hover:opacity-90 transition-opacity">Demo</button>
+      </nav>
 
-    <!-- HERO SECTION WITH 3D PARTICLES -->
-    <section class="relative pt-16 sm:pt-24 pb-20 px-4 sm:px-6 overflow-hidden min-h-[85vh] flex flex-col justify-center items-center">
-        <!-- 3D Globe Canvas Background -->
-        <div class="absolute inset-0 z-0 opacity-70 pointer-events-none flex items-center justify-center">
-            <canvas id="globe-canvas" class="w-full h-full max-w-[1100px] max-h-[720px]"></canvas>
-        </div>
-
-        <!-- Ambient Lighting Glow -->
-        <div class="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] bg-amber-500/10 blur-[130px] rounded-full pointer-events-none"></div>
-
-        <div class="max-w-5xl mx-auto text-center relative z-10">
-            <!-- Slogan Headline -->
-            <h1 class="text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight mb-4 leading-[1.05]">
-                <span class="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-amber-200 to-amber-500">designed for a life in motion</span>
-            </h1>
-
-            <!-- Sub-hero -->
-            <p class="text-base sm:text-lg text-slate-300 font-medium mb-8 max-w-3xl mx-auto leading-relaxed">
-                The all-in-one operating system designed for independent creators and<br/>
-                entrepreneurs to run their business and lifestyle from anywhere.
-            </p>
-
-            <!-- Supporting CTA copy -->
-            <p class="text-lg sm:text-xl text-slate-400 mb-10 max-w-3xl mx-auto font-light leading-relaxed">
-                Join the community of those who measure intelligence by freedom.
-            </p>
-
-            <!-- Primary CTA: waitlist only (no links, no dashboard/login hrefs) -->
-            <div class="flex flex-col items-center mb-16 w-full max-w-md mx-auto">
-                <form onsubmit="handleWaitlistSubmit(event); return false;" class="waitlist-form w-full flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-3">
-                    <input type="email" name="fields[email]" required autocomplete="email" placeholder="Enter email" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-4 py-4 text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 text-sm">
-                    <input type="hidden" name="ml-submit" value="1">
-                    <input type="hidden" name="anticsrf" value="true">
-                    <button type="submit" class="w-full sm:w-auto bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold px-10 py-4 rounded-xl text-lg transition shadow-xl shadow-amber-500/20 text-center transform hover:-translate-y-0.5 whitespace-nowrap">
-                        Join the Waitlist
-                    </button>
-                </form>
-                <div class="waitlist-success hidden mt-4 text-amber-400 font-medium text-sm">
-                    ✓ You're on the list. Welcome to dimad.
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- TAILORED OPERATING MODES SECTION -->
-    <section id="features" class="py-20 px-4 sm:px-6 border-t border-slate-800/80 bg-slate-900/40">
-        <div class="max-w-7xl mx-auto">
-            <div class="text-center max-w-3xl mx-auto mb-12">
-                <div class="inline-block bg-amber-500/10 text-amber-400 text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-md mb-3 border border-amber-500/20">
-                    Tailored Operating Modes
-                </div>
-                <h2 class="text-3xl sm:text-4xl font-bold text-white mb-4">
-                    Switch instantly between managing your business and building it.
-                </h2>
-                
-                <!-- Toggle Switcher -->
-                <div class="flex justify-center mt-8">
-                    <div class="bg-slate-950 p-1.5 rounded-xl border border-slate-800 flex space-x-2">
-                        <button id="btn-entrepreneur" onclick="switchMode('entrepreneur')" class="px-6 py-2.5 rounded-lg text-sm font-bold transition-all bg-amber-500 text-slate-950 shadow-md">
-                            💼 Entrepreneur Mode
-                        </button>
-                        <button id="btn-creator" onclick="switchMode('creator')" class="px-6 py-2.5 rounded-lg text-sm font-bold transition-all text-slate-400 hover:text-white">
-                            🎨 Creator Mode
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ENTREPRENEUR MODE CONTENT -->
-            <div id="mode-entrepreneur" class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div class="bg-cardbg border border-slate-800 rounded-2xl p-8 shadow-xl space-y-4 hover:border-amber-500/40 transition">
-                    <div class="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 text-2xl font-bold">📊</div>
-                    <h3 class="text-xl font-bold text-white">Pipeline & CRM Kanban</h3>
-                    <p class="text-slate-400 text-sm leading-relaxed">Manage clients, track deal velocity, and organize business operations with an intuitive, zero-clutter pipeline visualizer.</p>
-                </div>
-
-                <div class="bg-cardbg border border-slate-800 rounded-2xl p-8 shadow-xl space-y-4 hover:border-amber-500/40 transition">
-                    <div class="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 text-2xl font-bold">🌐</div>
-                    <h3 class="text-xl font-bold text-white">Global Timezone Engine</h3>
-                    <p class="text-slate-400 text-sm leading-relaxed">Seamlessly map client schedules, team availability, and call windows across changing international time zones without the headache.</p>
-                </div>
-
-                <div class="bg-cardbg border border-slate-800 rounded-2xl p-8 shadow-xl space-y-4 hover:border-amber-500/40 transition">
-                    <div class="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 text-2xl font-bold">🎯</div>
-                    <h3 class="text-xl font-bold text-white">Goals & OKRs</h3>
-                    <p class="text-slate-400 text-sm leading-relaxed">Align long-term business vision with actionable quarterly objectives and daily focus targets, keeping growth on schedule.</p>
-      </div>
-    </div>
-
-            <!-- CREATOR MODE CONTENT -->
-            <div id="mode-creator" class="hidden grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div class="bg-cardbg border border-slate-800 rounded-2xl p-8 shadow-xl space-y-4 hover:border-amber-500/40 transition">
-                    <div class="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 text-2xl font-bold">✍️</div>
-                    <h3 class="text-xl font-bold text-white">Design Studio & Writing Zone</h3>
-                    <p class="text-slate-400 text-sm leading-relaxed">A clean, distraction-free environment built specifically for deep writing, drafting essays, and crafting high-impact content.</p>
-                </div>
-
-                <div class="bg-cardbg border border-slate-800 rounded-2xl p-8 shadow-xl space-y-4 hover:border-amber-500/40 transition">
-                    <div class="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 text-2xl font-bold">🎨</div>
-                    <h3 class="text-xl font-bold text-white">Canva Embeds</h3>
-                    <p class="text-slate-400 text-sm leading-relaxed">Embed and preview your graphics, presentations, and brand kits directly within your workspace for seamless media planning.</p>
-      </div>
-
-                <div class="bg-cardbg border border-slate-800 rounded-2xl p-8 shadow-xl space-y-4 hover:border-amber-500/40 transition">
-                    <div class="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 text-2xl font-bold">🤝</div>
-                    <h3 class="text-xl font-bold text-white">Creator Pipeline</h3>
-                    <p class="text-slate-400 text-sm leading-relaxed">Manage your brand partnerships, sponsorship deals, and active outreach pipelines all in one unified view.</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- NOMADIC LIFESTYLE SECTION -->
-    <section id="nomads" class="py-20 px-4 sm:px-6 border-t border-slate-800/80">
-        <div class="max-w-7xl mx-auto">
-            <div class="text-center max-w-3xl mx-auto mb-16">
-                <div class="inline-block bg-amber-500/10 text-amber-400 text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-md mb-3 border border-amber-500/20">
-                    Nomadic Lifestyle
-      </div>
-                <h3 class="text-3xl sm:text-4xl font-bold text-white mb-4">Engineered for the Borderless Life</h3>
-                <p class="text-slate-400">Essential tools and local integration designed to eliminate arrival friction wherever you land next.</p>
-    </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <!-- Human Concierge Service -->
-                <div class="bg-cardbg border border-slate-800 rounded-2xl p-8 shadow-xl relative overflow-hidden flex flex-col justify-between">
-                    <div>
-                        <div class="flex items-center justify-between mb-4">
-                            <span class="text-xs font-extrabold uppercase tracking-widest bg-amber-500/20 text-amber-400 px-3 py-1 rounded-full">Premium Feature</span>
-                            <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Coming Soon</span>
-    </div>
-                        <h4 class="text-2xl font-bold text-white mb-3">Human Concierge Service</h4>
-                        <p class="text-slate-400 text-sm leading-relaxed mb-6">
-                            We know you're busy. Our human-to-human concierge service helps build itineraries, books flights, short or long-term accommodations, and ensures you have everything you need for your next travel day.
-                        </p>
-    </div>
-  </div>
-
-                <!-- Smart Geolocation Widgets -->
-                <div class="bg-cardbg border border-slate-800 rounded-2xl p-8 shadow-xl">
-                    <div class="flex items-center justify-between mb-4">
-                        <div class="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center text-amber-500 font-bold">📍</div>
-                        <span class="text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-1 rounded-full">Active Location: Da Nang, Vietnam</span>
-                    </div>
-                    <h4 class="text-2xl font-bold text-white mb-3">Smart Geolocation Widgets</h4>
-                    <p class="text-slate-400 text-sm mb-6 leading-relaxed">
-                        Your dashboard automatically updates with the exact local services for your current city so you never have to wonder what app to download.
-                    </p>
-                    <div class="grid grid-cols-3 gap-3 text-center">
-                        <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
-                            <div class="text-amber-400 font-bold mb-1">Grab</div>
-                            <div class="text-xs text-slate-400">Rideshare</div>
-                        </div>
-                        <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
-                            <div class="text-amber-400 font-bold mb-1">GrabFood</div>
-                            <div class="text-xs text-slate-400">Food Delivery</div>
-                        </div>
-                        <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl">
-                            <div class="text-amber-400 font-bold mb-1">GrabMart</div>
-                            <div class="text-xs text-slate-400">Grocery</div>
-                        </div>
-                    </div>
-        </div>
-
-                <!-- Your City Preferred -->
-                <div class="bg-cardbg border border-slate-800 rounded-2xl p-8 shadow-xl">
-                    <div class="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center text-amber-500 font-bold mb-4">☕</div>
-                    <h4 class="text-2xl font-bold text-white mb-3">Your City Preferred</h4>
-                    <p class="text-slate-400 text-sm mb-6 leading-relaxed">
-                        We partner directly with top-tier local businesses to ensure you instantly have a trusted coffee shop, quiet coworking space, reliable convenience store, and gym ready upon arrival.
-                    </p>
-                    <ul class="space-y-2 text-xs text-slate-300">
-                        <li class="flex items-center"><span class="text-amber-500 mr-2">✓</span> Vetted cafes with high-speed Wi-Fi</li>
-                        <li class="flex items-center"><span class="text-amber-500 mr-2">✓</span> Verified coworking spaces & quiet pods</li>
-                        <li class="flex items-center"><span class="text-amber-500 mr-2">✓</span> Local gym pass discounts</li>
-                    </ul>
-        </div>
-
-                <!-- Digital Maps & Travel Guides -->
-                <div class="bg-cardbg border border-slate-800 rounded-2xl p-8 shadow-xl">
-                    <div class="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center text-amber-500 font-bold mb-4">🗺️</div>
-                    <h4 class="text-2xl font-bold text-white mb-3">Digital Maps & Travel Guides</h4>
-                    <p class="text-slate-400 text-sm mb-6 leading-relaxed">
-                        Curated city guides and interactive custom maps featuring key neighborhoods, nomad hubs, and essential emergency spots.
-                    </p>
-                    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs text-slate-400">
-                        <span class="text-amber-400 font-semibold">City Guide Included:</span> Neighborhood breakdowns, SIM card setups, tax residency notes, and safety tips.
-          </div>
-        </div>
-          </div>
-        </div>
-    </section>
-
-    <!-- $DIM REWARDS ECOSYSTEM SECTION -->
-    <section id="dim-perks" class="py-20 px-4 sm:px-6 border-t border-slate-800/80 bg-slate-900/40">
-        <div class="max-w-4xl mx-auto text-center">
-            <div class="inline-block bg-amber-500/10 text-amber-400 text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-md mb-3 border border-amber-500/20">
-                $DIM Rewards Ecosystem
-            </div>
-            <h3 class="text-3xl sm:text-4xl font-bold text-white mb-4">Earn Points For Tracking Your Progress</h3>
-            <p class="text-slate-400 text-base leading-relaxed mb-6">
-                A loyalty reward system that rewards you for tracking your progress. Set your own goals and hours and earn points that can be redeemed through our premium concierge services. Points can be redeemed through flights, hotels, and other in-platform services.
-            </p>
-            <div class="inline-block text-xs text-amber-400/90 font-semibold bg-slate-950 border border-slate-800 px-4 py-2 rounded-full">
-                🔒 Points are only available to our paid membership tiers (coming soon).
-          </div>
-        </div>
-    </section>
-
-    <!-- FINAL CTA SECTION -->
-    <section id="join" class="py-24 px-4 sm:px-6 border-t border-slate-800/80 text-center relative overflow-hidden">
-        <div class="max-w-3xl mx-auto relative z-10">
-            <h3 class="text-3xl sm:text-5xl font-extrabold text-white mb-6">Ready to upgrade your nomadic lifestyle?</h3>
-            <p class="text-lg text-slate-400 mb-10">Join global entrepreneurs and creators building the future from anywhere in the world.</p>
-            
-            <form onsubmit="handleWaitlistSubmit(event); return false;" class="waitlist-form flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-4 max-w-md mx-auto">
-                <input type="email" name="fields[email]" required autocomplete="email" placeholder="Enter email" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3.5 text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 text-sm">
-                <input type="hidden" name="ml-submit" value="1">
-                <input type="hidden" name="anticsrf" value="true">
-                <button type="submit" class="w-full sm:w-auto bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-8 py-3.5 rounded-xl transition whitespace-nowrap shadow-lg shadow-amber-500/20">
-                    Join the Waitlist
-          </button>
-            </form>
-            <div class="waitlist-success hidden mt-4 text-amber-400 font-medium text-sm">
-                ✓ You're on the list. Welcome to dimad.
-          </div>
-        </div>
-    </section>
-
-    <!-- EXECUTIVE PIN MODAL -->
-    <div id="pin-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[60] hidden flex items-center justify-center p-6">
-        <div class="bg-cardbg border border-amber-500/30 rounded-2xl p-8 max-w-sm w-full text-center shadow-2xl relative">
-            <div class="text-amber-500 font-black text-xl mb-2 tracking-wide">EXECUTIVE ACCESS</div>
-            <p class="text-slate-400 text-sm mb-6">Enter the 4-digit code to continue to Log In / Sign Up.</p>
-            <form onsubmit="submitPin(event)" class="space-y-4">
-                <input id="exec-pin-input" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="off" placeholder="••••" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3.5 text-center text-xl tracking-[0.6em] text-white placeholder-slate-600 focus:outline-none focus:border-amber-500 font-mono">
-                <p id="pin-error" class="hidden text-red-500 text-sm font-medium">Incorrect code. Access denied.</p>
-                <button type="submit" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold px-5 py-3 rounded-xl transition text-sm shadow-lg shadow-amber-500/20">
-                    Unlock
+      <div class="flex items-center gap-3">
+        <button type="button" onclick="focusWaitlist()" class="md:hidden px-3.5 py-1.5 rounded-full text-xs font-semibold text-amber-300 bg-amber-500/15 border border-amber-400/40">
+          Join Waitlist
         </button>
+        <button type="button" onclick="openPinModal(event)" class="hidden sm:inline-flex gold-cta-glow text-slate-950 font-extrabold px-5 py-2.5 rounded-xl text-sm">
+          Log In / Sign Up
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ASYMMETRIC HERO -->
+  <main class="relative z-20 flex-1 w-full">
+    <section class="min-h-[88vh] flex items-center py-14 sm:py-20">
+      <div class="max-w-7xl mx-auto w-full px-5 sm:px-8">
+        <div class="max-w-2xl text-left">
+          <!-- Stacked headline: "a" sits under the "n" in designed -->
+          <h1 class="text-4xl sm:text-5xl lg:text-[58px] font-extrabold tracking-tight leading-[0.98] mb-6">
+            <span class="block text-white">designed for</span>
+            <span class="block whitespace-nowrap">
+              <span class="invisible select-none" aria-hidden="true">desig</span><span class="brand-gold">a life in motion</span>
+            </span>
+          </h1>
+
+          <p class="text-base sm:text-lg lg:text-[20px] font-normal text-slate-200 leading-relaxed mb-5 max-w-xl">
+            The all-in-one operating system for independent creators and entrepreneurs to run their business and lifestyle from anywhere.
+          </p>
+
+          <p class="text-sm sm:text-base font-normal text-slate-400 tracking-wide mb-8">
+            Join the community of those who measure intelligence by freedom.
+          </p>
+
+          <!-- Two-step waitlist -->
+          <div id="waitlistStage" class="max-w-lg">
+            <form id="waitlistForm" onsubmit="handleWaitlistSubmit(event); return false;" class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+              <div class="glass-input flex-1 flex items-center rounded-2xl px-4 py-3.5">
+                <svg class="w-4 h-4 text-slate-400 mr-3 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+                </svg>
+                <input
+                  id="emailInput"
+                  type="email"
+                  name="fields[email]"
+                  required
+                  autocomplete="email"
+                  placeholder="Enter email"
+                  aria-label="Email address"
+                  class="w-full bg-transparent text-white placeholder-slate-400 text-sm sm:text-base focus:outline-none"
+                />
+              </div>
+              <input type="hidden" name="ml-submit" value="1">
+              <input type="hidden" name="anticsrf" value="true">
+              <button type="submit" class="gold-cta-glow px-7 py-3.5 rounded-2xl text-slate-950 font-semibold text-sm sm:text-base whitespace-nowrap cursor-pointer">
+                Join the Waitlist
+              </button>
             </form>
-            <button type="button" onclick="closePinModal()" class="mt-4 text-slate-500 hover:text-slate-300 text-sm font-medium">Cancel</button>
-  </div>
-</div>
 
-    <!-- COMING SOON MODAL -->
-    <div id="coming-soon-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-6">
-        <div class="bg-cardbg border border-slate-800 rounded-2xl p-8 max-w-md w-full text-center shadow-2xl relative">
-            <div class="text-amber-500 font-black text-2xl mb-2">COMING SOON</div>
-            <p id="modal-page-title" class="text-slate-300 text-sm mb-6">This section is currently in development for early access members.</p>
-            <button onclick="closeModal()" class="bg-slate-800 hover:bg-slate-700 text-white font-semibold px-6 py-2.5 rounded-xl transition text-sm">Close</button>
+            <div id="confirmationStep" class="hidden rounded-2xl bg-[#070B14]/90 backdrop-blur-xl border border-amber-400/35 p-5 text-left shadow-2xl">
+              <div class="flex items-center gap-2 text-amber-300 font-semibold text-sm sm:text-base mb-1.5">
+                <svg class="w-5 h-5 text-[#F59E0B] shrink-0" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>You're on the list. Want priority early access?</span>
+              </div>
+              <p class="text-xs sm:text-sm text-slate-300 mb-4">
+                Spot reserved for <span id="confirmedEmailText" class="text-white font-medium"></span>. Tag your profile for priority cohort invites:
+              </p>
+              <div class="flex flex-wrap items-center gap-2.5 mb-3">
+                <button type="button" onclick="selectIdentityTag(this, 'Creator')" class="identity-pill px-4 py-1.5 rounded-full text-xs font-medium bg-white/[0.05] text-slate-200 border border-white/15 hover:border-amber-400/70 hover:text-amber-200 transition-all cursor-pointer">Creator</button>
+                <button type="button" onclick="selectIdentityTag(this, 'Entrepreneur')" class="identity-pill px-4 py-1.5 rounded-full text-xs font-medium bg-white/[0.05] text-slate-200 border border-white/15 hover:border-amber-400/70 hover:text-amber-200 transition-all cursor-pointer">Entrepreneur</button>
+                <button type="button" onclick="selectIdentityTag(this, 'Both')" class="identity-pill px-4 py-1.5 rounded-full text-xs font-medium bg-white/[0.05] text-slate-200 border border-white/15 hover:border-amber-400/70 hover:text-amber-200 transition-all cursor-pointer">Both</button>
+              </div>
+              <div class="flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-white/10">
+                <span id="tagStatusText">Optional — helps tailor your onboarding</span>
+                <button type="button" onclick="resetWaitlist()" class="text-slate-400 hover:text-white underline cursor-pointer">Use a different email</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- OPERATING MODES -->
+    <section id="features" class="relative z-20 py-20 px-5 sm:px-8 border-t border-white/10">
+      <div class="max-w-7xl mx-auto">
+        <div class="text-center max-w-3xl mx-auto mb-12">
+          <div class="inline-block bg-amber-500/10 text-amber-400 text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-md mb-3 border border-amber-500/20">
+            Tailored Operating Modes
+          </div>
+          <h2 class="text-3xl sm:text-4xl font-bold text-white mb-4">
+            Switch instantly between managing your business and building it.
+          </h2>
+          <div class="flex justify-center mt-8">
+            <div class="bg-[#050812]/90 p-1.5 rounded-xl border border-white/10 flex space-x-2">
+              <button id="btn-entrepreneur" onclick="switchMode('entrepreneur')" class="px-6 py-2.5 rounded-lg text-sm font-bold transition-all bg-amber-500 text-slate-950 shadow-md">
+                Entrepreneur Mode
+              </button>
+              <button id="btn-creator" onclick="switchMode('creator')" class="px-6 py-2.5 rounded-lg text-sm font-bold transition-all text-slate-400 hover:text-white">
+                Creator Mode
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div id="mode-entrepreneur" class="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div class="landing-panel rounded-2xl p-8 space-y-4 hover:border-amber-500/40 transition">
+            <div class="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 text-2xl font-bold">📊</div>
+            <h3 class="text-xl font-bold text-white">Sales & Revenue</h3>
+            <p class="text-slate-400 text-sm leading-relaxed">Syncs live sales and expenses from Stripe, storefronts, and bank accounts into one feed. Watch cash flow clearly and use our AI features to stay on top of your P&amp;L without manual bookkeeping.</p>
+          </div>
+          <div class="landing-panel rounded-2xl p-8 space-y-4 hover:border-amber-500/40 transition">
+            <div class="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 text-2xl font-bold">🌐</div>
+            <h3 class="text-xl font-bold text-white">Growth &amp; Acquisition</h3>
+            <p class="text-slate-400 text-sm leading-relaxed">Shows whether your content and marketing drive real growth and acquisition or just burn time. Keep what converts and drop what doesn't.</p>
+          </div>
+          <div class="landing-panel rounded-2xl p-8 space-y-4 hover:border-amber-500/40 transition">
+            <div class="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 text-2xl font-bold">🎯</div>
+            <h3 class="text-xl font-bold text-white">Invoices &amp; Proposals</h3>
+            <p class="text-slate-400 text-sm leading-relaxed">Create, send, and track client invoices from one place with clear payment status. Get paid on time and spend less time chasing updates or reconciling records.</p>
+          </div>
+        </div>
+
+        <div id="mode-creator" class="hidden grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div class="landing-panel rounded-2xl p-8 space-y-4 hover:border-amber-500/40 transition">
+            <div class="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 text-2xl font-bold">🎨</div>
+            <h3 class="text-xl font-bold text-white">Content Creation</h3>
+            <p class="text-slate-400 text-sm leading-relaxed">Supports writing, drafting, and content prep with AI tools and a quick Canva link while keeping your brand and voice steady.</p>
+          </div>
+          <div class="landing-panel rounded-2xl p-8 space-y-4 hover:border-amber-500/40 transition">
+            <div class="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 text-2xl font-bold">🤝</div>
+            <h3 class="text-xl font-bold text-white">Creator Pipeline</h3>
+            <p class="text-slate-400 text-sm leading-relaxed">Keeps sponsorships, brand deals, and outbound pitches organized so you can track conversations, follow up on time, and close clean partnerships.</p>
+          </div>
+          <div class="landing-panel rounded-2xl p-8 space-y-4 hover:border-amber-500/40 transition">
+            <div class="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 text-2xl font-bold">📅</div>
+            <h3 class="text-xl font-bold text-white">Content Scheduler</h3>
+            <p class="text-slate-400 text-sm leading-relaxed">Coordinates your time, content calendar, and production list so drafts move cleanly from idea to scheduled release.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- NOMADIC LIFESTYLE -->
+    <section id="nomads" class="relative z-20 py-20 px-5 sm:px-8 border-t border-white/10">
+      <div class="max-w-7xl mx-auto">
+        <div class="text-center max-w-3xl mx-auto mb-16">
+          <div class="inline-block bg-amber-500/10 text-amber-400 text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-md mb-3 border border-amber-500/20">
+            Global Lifestyle
+          </div>
+          <h3 class="text-3xl sm:text-4xl font-bold text-white mb-4">Engineered for the Borderless Life</h3>
+          <p class="text-slate-400">Essential tools and local integration designed to eliminate arrival friction wherever you land next.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div class="landing-panel rounded-2xl p-8">
+            <div class="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center text-amber-500 font-bold mb-4">✈️</div>
+            <h4 class="text-2xl font-bold text-white mb-3">Human Concierge Service</h4>
+            <p class="text-slate-400 text-sm mb-6 leading-relaxed">
+              We know you’re busy. Dimad partners directly with Nexion’s travel hosting agency for end-to-end trip planning and booking across business and personal travel. Put your in-app points toward trips so you can spend less time managing itineraries and more time in-flight.
+            </p>
+            <div class="grid grid-cols-3 gap-3 text-left">
+              <div class="bg-[#050812]/80 border border-white/10 p-3 rounded-xl space-y-2">
+                <div class="text-[10px] uppercase tracking-wider text-amber-400 font-semibold">Chat</div>
+                <button type="button" tabindex="-1" class="w-full rounded-lg bg-amber-500 text-slate-950 text-[10px] font-bold py-1.5 px-2 cursor-default">
+                  Open Travel Request Form
+                </button>
+                <div class="rounded-lg bg-amber-500/10 border border-amber-500/20 px-2 py-1.5 text-[10px] text-amber-200 leading-snug">
+                  Hi Blake, my name is Justin, I've received your travel requests, and will get back to you shortly.
+                </div>
+              </div>
+              <div class="bg-[#050812]/80 border border-white/10 p-3 rounded-xl space-y-1.5">
+                <div class="text-[10px] uppercase tracking-wider text-amber-400 font-semibold">Itinerary</div>
+                <div class="text-[11px] text-white font-semibold">Da Nang → Bangkok</div>
+                <div class="text-[10px] text-slate-400 leading-snug">2 nights · Apr 12–14</div>
+                <div class="text-[10px] text-slate-300 leading-snug">Flight DAD → BKK <span class="text-amber-300 font-semibold">$188.00</span></div>
+                <div class="text-[10px] text-slate-300 leading-snug">Marriott Marquis Bangkok <span class="text-amber-300 font-semibold">$444.00</span></div>
+              </div>
+              <div class="bg-[#050812]/80 border border-white/10 p-3 rounded-xl space-y-1.5">
+                <div class="text-[10px] uppercase tracking-wider text-amber-400 font-semibold">Confirm</div>
+                <div class="text-[11px] text-white font-semibold">Total $632.00</div>
+                <div class="text-[10px] text-slate-300 leading-snug">Use <span class="text-amber-300 font-semibold">50,000 $DIM</span></div>
+                <div class="text-[10px] text-emerald-400 font-medium">$31.25 off trip</div>
+                <button type="button" tabindex="-1" class="w-full mt-1 rounded-lg bg-amber-500 text-slate-950 text-[10px] font-bold py-1.5 cursor-default">
+                  Confirm
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="landing-panel rounded-2xl p-8">
+            <div class="flex items-center justify-between mb-4">
+              <div class="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center text-amber-500 font-bold">📍</div>
+              <span class="text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-1 rounded-full">Active Location: Da Nang, Vietnam</span>
+            </div>
+            <h4 class="text-2xl font-bold text-white mb-3">Smart Geolocation Widgets</h4>
+            <p class="text-slate-400 text-sm mb-6 leading-relaxed">
+              Your dashboard automatically updates with the exact local services for your current city so you never have to wonder what app to download next. From rideshares to ESIM's, we have you covered.
+            </p>
+            <div class="grid grid-cols-3 gap-3 text-center">
+              <div class="bg-[#050812]/80 border border-white/10 p-3 rounded-xl flex flex-col items-center gap-1.5">
+                <img src="https://cdn.simpleicons.org/grab/00B14F" alt="" class="w-5 h-5" width="20" height="20" loading="lazy" />
+                <div class="text-amber-400 font-bold text-sm leading-none">Grab</div>
+                <div class="text-xs text-slate-400">Rideshare</div>
+              </div>
+              <div class="bg-[#050812]/80 border border-white/10 p-3 rounded-xl flex flex-col items-center gap-1.5">
+                <img src="https://cdn.simpleicons.org/grab/00B14F" alt="" class="w-5 h-5" width="20" height="20" loading="lazy" />
+                <div class="text-amber-400 font-bold text-sm leading-none">GrabFood</div>
+                <div class="text-xs text-slate-400">Food Delivery</div>
+              </div>
+              <div class="bg-[#050812]/80 border border-white/10 p-3 rounded-xl flex flex-col items-center gap-1.5">
+                <img src="https://cdn.simpleicons.org/grab/00B14F" alt="" class="w-5 h-5" width="20" height="20" loading="lazy" />
+                <div class="text-amber-400 font-bold text-sm leading-none">GrabMart</div>
+                <div class="text-xs text-slate-400">Grocery</div>
+              </div>
+            </div>
+            <div class="grid grid-cols-3 gap-3 text-center mt-3">
+              <div class="bg-[#050812]/80 border border-white/10 p-3 rounded-xl flex flex-col items-center gap-1.5">
+                <span class="w-5 h-5 rounded-md bg-teal-500/20 border border-teal-400/40 text-teal-300 text-[10px] font-black flex items-center justify-center" aria-hidden="true">eSIM</span>
+                <div class="text-amber-400 font-bold text-sm leading-none">Airalo</div>
+                <div class="text-xs text-slate-400">eSIM</div>
+              </div>
+              <div class="bg-[#050812]/80 border border-white/10 p-3 rounded-xl flex flex-col items-center gap-1.5">
+                <img src="https://cdn.simpleicons.org/nordvpn/4687FF" alt="" class="w-5 h-5" width="20" height="20" loading="lazy" />
+                <div class="text-amber-400 font-bold text-sm leading-none">NordVPN</div>
+                <div class="text-xs text-slate-400">VPN</div>
+              </div>
+              <div class="bg-[#050812]/80 border border-white/10 p-3 rounded-xl flex flex-col items-center gap-1.5">
+                <span class="w-5 h-5 rounded-md bg-orange-500/20 border border-orange-400/40 text-orange-300 text-[10px] font-black flex items-center justify-center" aria-hidden="true">Vx</span>
+                <div class="text-amber-400 font-bold text-sm leading-none">Vexere</div>
+                <div class="text-xs text-slate-400">Ground Transport</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="landing-panel rounded-2xl p-8">
+            <div class="flex items-center justify-between mb-4">
+              <div class="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center text-amber-500 font-bold">☕</div>
+              <span class="text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-1 rounded-full">Yerevan, Armenia</span>
+            </div>
+            <h4 class="text-2xl font-bold text-white mb-3">Your City Preferred</h4>
+            <p class="text-slate-400 text-sm mb-6 leading-relaxed">
+              Leave navigating new cities to us. We partner directly with local businesses to ensure you instantly have a trusted coffee shop, quiet coworking space, reliable grocery store, and gym ready upon arrival.
+            </p>
+            <div class="grid grid-cols-3 gap-3 text-left">
+              <div class="bg-[#050812]/80 border border-white/10 p-3 rounded-xl space-y-2">
+                <div class="text-[10px] uppercase tracking-wider text-amber-400 font-semibold">Cafe</div>
+                <div>
+                  <div class="text-[11px] text-white font-semibold leading-snug">Surf Coffee</div>
+                  <div class="text-[10px] text-slate-400">Workspace</div>
+                </div>
+                <div>
+                  <div class="text-[11px] text-white font-semibold leading-snug">Sweet Coast</div>
+                  <div class="text-[10px] text-slate-400">Experiential</div>
+                </div>
+              </div>
+              <div class="bg-[#050812]/80 border border-white/10 p-3 rounded-xl space-y-2">
+                <div class="text-[10px] uppercase tracking-wider text-amber-400 font-semibold">Gym</div>
+                <div>
+                  <div class="text-[11px] text-white font-semibold leading-snug">Fitness Eleven 11</div>
+                  <div class="text-[10px] text-slate-400">Budget</div>
+                </div>
+                <div>
+                  <div class="text-[11px] text-white font-semibold leading-snug">Reebok Sports Club</div>
+                  <div class="text-[10px] text-slate-400">Premium</div>
+                </div>
+              </div>
+              <div class="bg-[#050812]/80 border border-white/10 p-3 rounded-xl space-y-2">
+                <div class="text-[10px] uppercase tracking-wider text-amber-400 font-semibold">Grocery</div>
+                <div>
+                  <div class="text-[11px] text-white font-semibold leading-snug">Yerevan City</div>
+                  <div class="text-[10px] text-slate-400">Budget</div>
+                </div>
+                <div>
+                  <div class="text-[11px] text-white font-semibold leading-snug">SAS Supermarket</div>
+                  <div class="text-[10px] text-slate-400">Premium</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="landing-panel rounded-2xl p-8">
+            <div class="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center text-amber-500 font-bold mb-4">🗺️</div>
+            <h4 class="text-2xl font-bold text-white mb-3">Digital Maps & Travel Guides</h4>
+            <p class="text-slate-400 text-sm mb-6 leading-relaxed">
+              From Mexico City to Tbilisi, our digital maps and travel guides are built for logistics, local picks, or a slow morning dreaming of your next destination.
+            </p>
+            <article class="bg-[#050812]/80 rounded-xl border border-white/10 overflow-hidden text-left flex flex-row items-stretch">
+              <div class="w-[38%] min-w-[7.5rem] max-w-[9.5rem] shrink-0 self-stretch">
+                <img
+                  src="/assets/tbilisi-metekhi.jpg"
+                  alt="Metekhi Church overlooking the river in Tbilisi"
+                  class="w-full h-full object-cover object-center"
+                  loading="lazy"
+                />
+              </div>
+              <div class="flex-1 p-4 space-y-2 min-w-0 flex flex-col justify-center">
+                <div class="text-[10px] uppercase tracking-wider text-amber-400 font-semibold">City Guide · Featured</div>
+                <h5 class="text-sm sm:text-base font-bold text-white leading-snug">
+                  Why Tbilisi Is Becoming a Hub for Entrepreneurs
+                </h5>
+                <p class="text-[11px] text-slate-400 leading-relaxed">
+                  See why entrepreneurs are choosing Tbilisi—from low taxes and straightforward business setup to cost of living, visas, and daily life on the road.
+                </p>
+              </div>
+            </article>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- $DIM REWARDS -->
+    <section id="dim-perks" class="relative z-20 py-20 px-5 sm:px-8 border-t border-white/10">
+      <div class="max-w-4xl mx-auto text-center">
+        <div class="inline-block bg-amber-500/10 text-amber-400 text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-md mb-3 border border-amber-500/20">
+          $DIM Points Ecosystem
+        </div>
+        <h3 class="text-3xl sm:text-4xl font-bold text-white mb-4">Earn Points For Using Your Subscription</h3>
+        <p class="text-slate-400 text-base leading-relaxed max-w-3xl mx-auto">
+          $DIM rewards you for simply building inside your workspace without the micromanagement of a bad boss. Put your points earned toward discounts on flights and hotels through our concierge services, additional in-app purchases, or a break on your monthly subscription.
+        </p>
+      </div>
+    </section>
+
+    <!-- FINAL CTA -->
+    <section id="join" class="relative z-20 py-24 px-5 sm:px-8 border-t border-white/10 text-center">
+      <div class="max-w-3xl mx-auto">
+        <h3 class="text-3xl sm:text-5xl font-extrabold text-white mb-6">Ready to Upgrade Your View?</h3>
+        <p class="text-lg text-slate-400 mb-10">Dimad will be right here when you're ready.</p>
+        <form onsubmit="handleWaitlistSubmit(event); return false;" class="waitlist-form flex flex-col sm:flex-row justify-center items-center gap-3 max-w-md mx-auto">
+          <input type="email" name="fields[email]" required autocomplete="email" placeholder="Enter email" class="w-full glass-input rounded-xl px-4 py-3.5 text-white placeholder-slate-500 focus:outline-none text-sm">
+          <input type="hidden" name="ml-submit" value="1">
+          <input type="hidden" name="anticsrf" value="true">
+          <button type="submit" class="w-full sm:w-auto gold-cta-glow text-slate-950 font-bold px-8 py-3.5 rounded-xl whitespace-nowrap">
+            Join the Waitlist
+          </button>
+        </form>
+        <div class="waitlist-success hidden mt-4 text-amber-400 font-medium text-sm">
+          ✓ You're on the list. Welcome to dimad.
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- TOAST -->
+  <div id="toastBanner" class="fixed top-20 left-1/2 -translate-x-1/2 z-50 pointer-events-none opacity-0 -translate-y-2 transition-all duration-300">
+    <div class="px-4 py-2 rounded-full bg-slate-950/90 backdrop-blur-md border border-amber-400/30 text-xs font-medium text-amber-100 shadow-xl">
+      <span id="toastMessage"></span>
     </div>
-    </div>
-
-    <!-- FOOTER -->
-    <footer class="border-t border-slate-800/80 py-12 px-4 sm:px-6 bg-slate-950 text-slate-500 text-sm">
-        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between space-y-4 sm:space-y-0">
-            <div class="font-bold tracking-wider text-slate-300">dimad</div>
-            <div class="text-xs text-slate-500">© 2026 dimad. All rights reserved. Build here. Create there. Live everywhere.</div>
   </div>
-    </footer>
 
-    <!-- INTERACTIVE SCRIPTS -->
-    <script>
-        // Mode Switcher Logic
-        function switchMode(mode) {
-            const entDiv = document.getElementById('mode-entrepreneur');
-            const creatorDiv = document.getElementById('mode-creator');
-            const entBtn = document.getElementById('btn-entrepreneur');
-            const creatorBtn = document.getElementById('btn-creator');
+  <!-- EXECUTIVE PIN MODAL -->
+  <div id="pin-modal" class="fixed inset-0 bg-[#02040a]/80 backdrop-blur-sm z-[60] hidden flex items-center justify-center p-6">
+    <div class="landing-panel border-amber-500/30 rounded-2xl p-8 max-w-sm w-full text-center shadow-2xl relative">
+      <div class="text-amber-500 font-black text-xl mb-2 tracking-wide">EXECUTIVE ACCESS</div>
+      <p class="text-slate-400 text-sm mb-6">Enter the 4-digit code to continue to Log In / Sign Up.</p>
+      <form onsubmit="submitPin(event)" class="space-y-4">
+        <input id="exec-pin-input" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="off" placeholder="••••" class="w-full bg-[#050812] border border-white/15 rounded-xl px-4 py-3.5 text-center text-xl tracking-[0.6em] text-white placeholder-slate-600 focus:outline-none focus:border-amber-500 font-mono">
+        <p id="pin-error" class="hidden text-red-500 text-sm font-medium">Incorrect code. Access denied.</p>
+        <button type="submit" class="w-full gold-cta-glow text-slate-950 font-extrabold px-5 py-3 rounded-xl text-sm">Unlock</button>
+      </form>
+      <button type="button" onclick="closePinModal()" class="mt-4 text-slate-500 hover:text-slate-300 text-sm font-medium">Cancel</button>
+    </div>
+  </div>
 
-            if (mode === 'entrepreneur') {
-                entDiv.classList.remove('hidden');
-                creatorDiv.classList.add('hidden');
-                entBtn.className = "px-6 py-2.5 rounded-lg text-sm font-bold transition-all bg-amber-500 text-slate-950 shadow-md";
-                creatorBtn.className = "px-6 py-2.5 rounded-lg text-sm font-bold transition-all text-slate-400 hover:text-white";
-            } else {
-                creatorDiv.classList.remove('hidden');
-                entDiv.classList.add('hidden');
-                creatorBtn.className = "px-6 py-2.5 rounded-lg text-sm font-bold transition-all bg-amber-500 text-slate-950 shadow-md";
-                entBtn.className = "px-6 py-2.5 rounded-lg text-sm font-bold transition-all text-slate-400 hover:text-white";
-            }
-        }
+  <!-- COMING SOON MODAL -->
+  <div id="coming-soon-modal" class="fixed inset-0 bg-[#02040a]/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-6">
+    <div class="landing-panel rounded-2xl p-8 max-w-md w-full text-center shadow-2xl relative">
+      <div class="text-amber-500 font-black text-2xl mb-2">COMING SOON</div>
+      <p id="modal-page-title" class="text-slate-300 text-sm mb-6">This section is currently in development for early access members.</p>
+      <button type="button" onclick="closeModal()" class="bg-white/10 hover:bg-white/15 text-white font-semibold px-6 py-2.5 rounded-xl transition text-sm">Close</button>
+    </div>
+  </div>
 
-        // Modal Handler
-        function openModal(pageName) {
-            document.getElementById('modal-page-title').innerText = `${pageName} is coming soon. Stay tuned for early access.`;
-            document.getElementById('coming-soon-modal').classList.remove('hidden');
-        }
+  <!-- FOOTER -->
+  <footer class="relative z-20 border-t border-white/10 py-8 px-5 sm:px-8">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+      <div class="font-bold tracking-wider text-slate-300">dimad</div>
+      <div>© 2026 dimad. All rights reserved.</div>
+      <div class="flex items-center gap-5">
+        <button type="button" onclick="openModal('About')" class="hover:text-slate-300 transition-colors">About</button>
+        <button type="button" onclick="openModal('Manifesto')" class="hover:text-slate-300 transition-colors">Manifesto</button>
+        <button type="button" onclick="openModal('Contact')" class="hover:text-slate-300 transition-colors">Contact</button>
+      </div>
+    </div>
+  </footer>
 
-        function closeModal() {
-            document.getElementById('coming-soon-modal').classList.add('hidden');
-        }
-
-        const EXEC_PIN = '2026';
-
-        function openPinModal(event) {
-            if (event) event.preventDefault();
-            const error = document.getElementById('pin-error');
-            const input = document.getElementById('exec-pin-input');
-            error.classList.add('hidden');
-            input.value = '';
-            document.getElementById('pin-modal').classList.remove('hidden');
-            setTimeout(function () { input.focus(); }, 50);
-        }
-
-        function closePinModal() {
-            document.getElementById('pin-modal').classList.add('hidden');
-            document.getElementById('pin-error').classList.add('hidden');
-            document.getElementById('exec-pin-input').value = '';
-        }
-
-        function submitPin(event) {
-            event.preventDefault();
-            const input = document.getElementById('exec-pin-input');
-            const error = document.getElementById('pin-error');
-            if (input.value === EXEC_PIN) {
-                localStorage.setItem('dimad_exec_access', 'true');
-                window.location.href = '/login.html';
-                return;
-            }
-            error.classList.remove('hidden');
-            input.value = '';
-            input.focus();
-        }
-
-        // MailerLite waitlist (form 202608495558657187)
-        const MAILERLITE_SUBSCRIBE = 'https://assets.mailerlite.com/jsonp/2736426/forms/202608495558657187/subscribe';
-
-        async function handleWaitlistSubmit(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            const form = (e.currentTarget && e.currentTarget.tagName === 'FORM')
-                ? e.currentTarget
-                : (e.target && e.target.closest ? e.target.closest('form') : null);
-            if (!form) return false;
-            const emailInput = form.querySelector('[name="fields[email]"]');
-            const submitBtn = form.querySelector('button[type="submit"]');
-            if (!emailInput || !emailInput.value.trim()) return false;
-
-            submitBtn.disabled = true;
-            const payload = new FormData(form);
-
-            try {
-                await fetch(MAILERLITE_SUBSCRIBE, {
-                    method: 'POST',
-                    body: payload,
-                    mode: 'no-cors'
-                });
-            } catch (err) {
-                // MailerLite JSONP endpoints often omit CORS; the request still reaches the list.
-            }
-
-            const success = form.parentElement && form.parentElement.querySelector('.waitlist-success');
-            if (success) success.classList.remove('hidden');
-            emailInput.value = '';
-            form.reset();
-            submitBtn.disabled = false;
-            return false;
-        }
-
-        fetch('https://assets.mailerlite.com/jsonp/2736426/forms/202608495558657187/takel').catch(function () {});
-
-        // 3D Particle Globe Initialization
-        function initGlobe() {
-            const canvas = document.getElementById('globe-canvas');
-            if (!canvas) return;
-
-            const scene = new THREE.Scene();
-            const camera = new THREE.PerspectiveCamera(45, canvas.clientWidth / canvas.clientHeight, 0.1, 1000);
-            camera.position.z = 165;
-            camera.position.y = -10;
-
-            const renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: true });
-            renderer.setSize(canvas.clientWidth, canvas.clientHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-
-            const radius = 84;
-            const count = 2500;
-            const geometry = new THREE.BufferGeometry();
-            const positions = new Float32Array(count * 3);
-
-            for (let i = 0; i < count; i++) {
-                const phi = Math.acos(-1 + (2 * i) / count);
-                const theta = Math.sqrt(count * Math.PI) * phi;
-
-                positions[i * 3] = radius * Math.cos(theta) * Math.sin(phi);
-                positions[i * 3 + 1] = radius * Math.sin(theta) * Math.sin(phi);
-                positions[i * 3 + 2] = radius * Math.cos(phi);
-            }
-
-            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-
-            const material = new THREE.PointsMaterial({
-                color: 0xf59e0b,
-                size: 1.6,
-                transparent: true,
-                opacity: 0.75
-            });
-
-            const particleGlobe = new THREE.Points(geometry, material);
-            scene.add(particleGlobe);
-
-            function animate() {
-                requestAnimationFrame(animate);
-                particleGlobe.rotation.y += 0.0015;
-                particleGlobe.rotation.x += 0.0005;
-                renderer.render(scene, camera);
-            }
-            animate();
-
-            window.addEventListener('resize', () => {
-                if (!canvas.clientWidth || !canvas.clientHeight) return;
-                camera.aspect = canvas.clientWidth / canvas.clientHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(canvas.clientWidth, canvas.clientHeight);
-            });
-        }
-
-        window.addEventListener('load', initGlobe);
-    </script>
-    <script type="importmap">
-    {
-      "imports": {
-        "firebase/app": "https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js",
-        "firebase/analytics": "https://www.gstatic.com/firebasejs/13.2.0/firebase-analytics.js",
-        "firebase/auth": "https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js",
-        "firebase/firestore": "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js",
-        "firebase/storage": "https://www.gstatic.com/firebasejs/13.2.0/firebase-storage.js",
-        "react": "https://esm.sh/react@19.3.1"
-      }
+  <script src="/landing/night-sky.js" defer></script>
+  <script src="/landing/landing.js" defer></script>
+  <script type="importmap">
+  {
+    "imports": {
+      "firebase/app": "https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js",
+      "firebase/analytics": "https://www.gstatic.com/firebasejs/13.2.0/firebase-analytics.js",
+      "firebase/auth": "https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js",
+      "firebase/firestore": "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js",
+      "firebase/storage": "https://www.gstatic.com/firebasejs/13.2.0/firebase-storage.js",
+      "react": "https://esm.sh/react@19.3.1"
     }
-    </script>
-    <script type="module" src="/firebase.js"></script>
+  }
+  </script>
+  <script type="module" src="/firebase.js"></script>
 </body>
 </html>
