@@ -6,7 +6,9 @@
     "dev": "next dev -p 3000",
     "prebuild": "node scripts/copy-static.mjs",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "quotes:import": "node scripts/import-daily-quotes.mjs",
+    "quotes:import:dry": "node scripts/import-daily-quotes.mjs --dry-run"
   },
   "dependencies": {
     "@tiptap/extension-bubble-menu": "^3.33.1",

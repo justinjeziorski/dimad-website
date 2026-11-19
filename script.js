@@ -3752,31 +3752,72 @@ function openFocusLog() {
 }
 
 const DAILY_QUOTE = {
-  quotes: [
-    { text: 'At the birth of every great business organization was an enthusiast consumed with earnestness of purpose and confidence in their powers.', author: 'B.C. Forbes' },
-    { text: 'The secret of getting ahead is getting started.', author: 'Mark Twain' },
-    { text: 'What you do every day matters more than what you do once in a while.', author: 'Gretchen Rubin' },
-    { text: 'Discipline is choosing between what you want now and what you want most.', author: 'Abraham Lincoln' },
-    { text: 'An inch of movement will bring you closer to your goals than a mile of intention.', author: 'Steve Maraboli' },
-    { text: 'Do the hard jobs first. The easy jobs will take care of themselves.', author: 'Dale Carnegie' },
-    { text: 'Action is the foundational key to all success.', author: 'Pablo Picasso' }
-  ],
+  /** Single emergency fallback when Firestore / API has no doc for today (UTC). */
+  fallback: {
+    quote: 'Remember, today is the tomorrow you worried about yesterday.',
+    author: 'Dale Carnegie',
+    context: 'Author of How To Win Friends and Influence People'
+  },
+  cached: null,
+  loading: null,
 
   pick() {
-    const key = typeof FOCUS_TIMER !== 'undefined' ? FOCUS_TIMER.dayKey() : String(new Date().getDate());
-    let hash = 0;
-    for (let i = 0; i < key.length; i += 1) hash = (hash * 31 + key.charCodeAt(i)) % 2147483647;
-    return this.quotes[Math.abs(hash) % this.quotes.length];
+    return this.cached || this.fallback;
+  },
+
+  formatAttribution(q) {
+    const author = q.author || '';
+    const context = q.context || '';
+    if (author && context) return `— ${author}, ${context}`;
+    if (author) return `— ${author}`;
+    return '';
   },
 
   html() {
     const q = this.pick();
-    return `"${q.text}" <span class="not-italic text-brand-gold font-semibold">— ${q.author}</span>`;
+    const text = q.quote || q.text || '';
+    const attribution = this.formatAttribution(q);
+    return `"${text}" <span class="not-italic text-brand-gold font-semibold">${attribution}</span>`;
+  },
+
+  paint() {
+    const html = this.html();
+    const el = document.getElementById('cc-quote-text');
+    if (el) el.innerHTML = html;
+    const welcome = document.getElementById('welcome-quote');
+    if (welcome) welcome.innerHTML = html;
+    const clockIn = document.getElementById('clock-in-quote');
+    if (clockIn) clockIn.innerHTML = html;
+  },
+
+  async fetchToday() {
+    if (this.cached) return this.cached;
+    if (this.loading) return this.loading;
+    this.loading = (async () => {
+      try {
+        const res = await fetch('/api/quotes/daily', { credentials: 'same-origin' });
+        if (!res.ok) throw new Error('quote_http_' + res.status);
+        const data = await res.json();
+        if (data && data.quote && data.author) {
+          this.cached = {
+            quote: String(data.quote),
+            author: String(data.author),
+            context: String(data.context || '')
+          };
+        }
+      } catch (err) {
+        console.warn('DAILY_QUOTE fetch failed; using emergency fallback', err);
+      } finally {
+        this.loading = null;
+      }
+      return this.pick();
+    })();
+    return this.loading;
   },
 
   render() {
-    const el = document.getElementById('cc-quote-text');
-    if (el) el.innerHTML = this.html();
+    this.paint();
+    this.fetchToday().then(() => this.paint());
   }
 };
 
