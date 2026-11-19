@@ -93,3 +93,55 @@ body {
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
+
+.compat-row {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.55rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 0.15rem 0.25rem;
+}
+
+.compat-row::-webkit-scrollbar {
+  display: none;
+}
+
+.compat-logo {
+  display: inline-flex;
+  flex-shrink: 0;
+  cursor: default;
+}
+
+.compat-logo__orb {
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(7, 11, 20, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.compat-logo:hover .compat-logo__orb {
+  border-color: rgba(245, 158, 11, 0.45);
+  transform: translateY(-1px);
+}
+
+.compat-logo__orb img,
+.compat-logo__orb svg {
+  width: 1rem;
+  height: 1rem;
+  object-fit: contain;
+  display: block;
+}
+
+.compat-logo__orb--chatgpt svg {
+  width: 1.05rem;
+  height: 1.05rem;
+}
