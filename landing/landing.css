@@ -145,3 +145,319 @@ body {
   width: 1.05rem;
   height: 1.05rem;
 }
+
+.identity-card {
+  transition: border-color 0.25s ease, transform 0.25s ease;
+}
+
+.identity-card:hover {
+  border-color: rgba(245, 158, 11, 0.35);
+  transform: translateY(-2px);
+}
+
+.identity-start {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(251, 191, 36, 0.85);
+}
+
+.identity-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.7rem;
+  border-radius: 9999px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+button.identity-badge:hover {
+  background: rgba(245, 158, 11, 0.2);
+  border-color: rgba(245, 158, 11, 0.5);
+  color: #fde68a;
+}
+
+/* Alternating section underlays: open = globe visible, panel = solid box */
+.section-open {
+  background: transparent;
+}
+
+.section-panel {
+  position: relative;
+  background:
+    linear-gradient(180deg, rgba(7, 11, 20, 0.96) 0%, rgba(2, 4, 10, 0.98) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.section-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse 70% 55% at 50% 0%, rgba(245, 158, 11, 0.05), transparent 65%);
+}
+
+/* 02 / Life Cycle — split circle + stage reader */
+.lifecycle-split {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+  align-items: center;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.lifecycle-diagram {
+  position: relative;
+  width: min(100%, 22rem);
+  aspect-ratio: 1;
+  margin: 0 auto 2.4rem;
+}
+
+.lifecycle-diagram__ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.lifecycle-arc {
+  opacity: 0.45;
+  transition: opacity 0.2s ease;
+}
+
+.lifecycle-arc.is-active {
+  opacity: 1;
+}
+
+.lifecycle-node {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.1rem;
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(7, 11, 20, 0.88);
+  color: #e2e8f0;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.lifecycle-node:hover {
+  border-color: rgba(245, 158, 11, 0.45);
+}
+
+.lifecycle-node.is-active {
+  border-color: rgba(245, 158, 11, 0.85);
+  background: rgba(245, 158, 11, 0.12);
+  box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.08), 0 0 24px rgba(245, 158, 11, 0.18);
+  color: #fff;
+}
+
+.lifecycle-node__index {
+  font-size: 0.65rem;
+  letter-spacing: 0.14em;
+  font-weight: 700;
+  color: #fbbf24;
+}
+
+.lifecycle-node__label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.lifecycle-node[data-stage="build"] {
+  left: 50%;
+  top: 0;
+  transform: translate(-50%, 0);
+}
+
+.lifecycle-node[data-stage="manage"] {
+  right: 0;
+  top: 50%;
+  transform: translate(0, -50%);
+}
+
+.lifecycle-node[data-stage="earn"] {
+  left: 50%;
+  bottom: 0;
+  transform: translate(-50%, 0);
+}
+
+.lifecycle-node[data-stage="book"] {
+  left: 0;
+  top: 50%;
+  transform: translate(0, -50%);
+}
+
+.lifecycle-node[data-stage="build"]:hover,
+.lifecycle-node[data-stage="build"].is-active {
+  transform: translate(-50%, 0) scale(1.04);
+}
+
+.lifecycle-node[data-stage="manage"]:hover,
+.lifecycle-node[data-stage="manage"].is-active {
+  transform: translate(0, -50%) scale(1.04);
+}
+
+.lifecycle-node[data-stage="earn"]:hover,
+.lifecycle-node[data-stage="earn"].is-active {
+  transform: translate(-50%, 0) scale(1.04);
+}
+
+.lifecycle-node[data-stage="book"]:hover,
+.lifecycle-node[data-stage="book"].is-active {
+  transform: translate(0, -50%) scale(1.04);
+}
+
+.lifecycle-hub {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 5.25rem;
+  height: 5.25rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  background: rgba(7, 11, 20, 0.92);
+  box-shadow: 0 0 0 8px rgba(245, 158, 11, 0.05);
+  text-align: center;
+}
+
+.lifecycle-hub__index {
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  font-weight: 700;
+  color: #fbbf24;
+  line-height: 1.1;
+}
+
+.lifecycle-hub__name {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.lifecycle-diagram__nav {
+  position: absolute;
+  left: 50%;
+  bottom: -0.15rem;
+  transform: translate(-50%, 100%);
+  display: flex;
+  gap: 0.4rem;
+  z-index: 3;
+}
+
+.lifecycle-nav-btn {
+  width: 1.85rem;
+  height: 1.85rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(7, 11, 20, 0.8);
+  color: #fbbf24;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.lifecycle-nav-btn:hover {
+  border-color: rgba(245, 158, 11, 0.5);
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.lifecycle-reader {
+  border-radius: 1.25rem;
+  padding: 1.25rem 1.35rem;
+  min-height: 17.5rem;
+}
+
+.lifecycle-reader__step {
+  font-size: 0.6875rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #fbbf24;
+  font-weight: 700;
+  margin-bottom: 0.55rem;
+}
+
+.lifecycle-reader__slogan {
+  font-size: 1.35rem;
+  line-height: 1.2;
+  font-weight: 800;
+  color: #fff;
+  margin: 0 0 0.55rem;
+  letter-spacing: -0.01em;
+}
+
+.lifecycle-reader__desc {
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: rgba(148, 163, 184, 0.98);
+  margin: 0 0 1rem;
+}
+
+.lifecycle-reader__bullets {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.lifecycle-reader__bullets li {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: rgba(226, 232, 240, 0.95);
+}
+
+.lifecycle-reader__bullets li span {
+  color: #fbbf24;
+  font-weight: 600;
+}
+
+@media (min-width: 900px) {
+  .lifecycle-split {
+    grid-template-columns: minmax(18rem, 0.9fr) minmax(0, 1.15fr);
+    gap: 2rem 2.5rem;
+    align-items: center;
+  }
+
+  .lifecycle-diagram {
+    width: min(100%, 24rem);
+    margin: 0 0 2.4rem;
+  }
+
+  .lifecycle-reader {
+    padding: 1.5rem 1.65rem;
+    min-height: 19rem;
+  }
+
+  .lifecycle-reader__slogan {
+    font-size: 1.55rem;
+  }
+}

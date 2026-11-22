@@ -78,31 +78,6 @@
     input.focus();
   };
 
-  window.switchMode = function (mode) {
-    const entDiv = document.getElementById("mode-entrepreneur");
-    const creatorDiv = document.getElementById("mode-creator");
-    const entBtn = document.getElementById("btn-entrepreneur");
-    const creatorBtn = document.getElementById("btn-creator");
-    if (!entDiv || !creatorDiv || !entBtn || !creatorBtn) return;
-
-    const active =
-      "px-6 py-2.5 rounded-lg text-sm font-bold transition-all bg-amber-500 text-slate-950 shadow-md";
-    const idle =
-      "px-6 py-2.5 rounded-lg text-sm font-bold transition-all text-slate-400 hover:text-white";
-
-    if (mode === "entrepreneur") {
-      entDiv.classList.remove("hidden");
-      creatorDiv.classList.add("hidden");
-      entBtn.className = active;
-      creatorBtn.className = idle;
-    } else {
-      creatorDiv.classList.remove("hidden");
-      entDiv.classList.add("hidden");
-      creatorBtn.className = active;
-      entBtn.className = idle;
-    }
-  };
-
   window.focusWaitlist = function () {
     const form = document.getElementById("waitlistForm");
     const input = document.getElementById("emailInput");
@@ -270,6 +245,129 @@
       window.closeContactModal();
     }
   });
+
+  const LIFECYCLE_STAGES = [
+    {
+      id: "build",
+      index: "01",
+      label: "Build",
+      step: "01 / Build",
+      slogan: "It All Starts With an Idea",
+      desc: "Everything you make, and everyone you make it with, in one place.",
+      bullets: [
+        ["Content scheduler.", "One calendar from idea to scheduled release."],
+        ["Creator pipeline.", "Sponsorships, brand deals and outbound pitches, tracked to the follow-up."],
+        ["AI in your workspace.", "Brainstorm, draft, write, and create content with your favorite AI tools, then use our Canva quick-link to finalize visuals."]
+      ]
+    },
+    {
+      id: "manage",
+      index: "02",
+      label: "Manage",
+      step: "02 / Manage",
+      slogan: "Run the Numbers",
+      desc: "Stop wasting time wondering what's working and what isn't. Our third-party integrations make it easy to understand the numbers behind your ideas.",
+      bullets: [
+        ["Sales and expenses.", "Sync from Stripe, your storefronts and bank accounts into one feed."],
+        ["Invoices and proposals.", "Create, send and track with clear payment status."],
+        ["P&L Maintenance.", "Watch cash flow clearly and use our AI features to stay on top of your P&L without manual bookkeeping."]
+      ]
+    },
+    {
+      id: "earn",
+      index: "03",
+      label: "Earn",
+      step: "03 / Earn",
+      slogan: "A Thank You For Showing Up",
+      desc: "A first-of-its-kind workspace that rewards you for showing up. We know starting something alone is hard. Here's a little something to keep you going.",
+      bullets: [
+        ["Earn.", "Monthly point deposits for subscribing, time-based milestones, and hours spent building."],
+        ["Redeem.", "Use points as travel credits on your concierge bookings, in-platform services such as additional AI usage, onward travel tickets, and data storage."],
+        ["Loyalty.", "Every point is earned through an investment in yourself. We just thank you for being here."]
+      ]
+    },
+    {
+      id: "book",
+      index: "04",
+      label: "Book",
+      step: "04 / Book",
+      slogan: "Because You Can",
+      desc: "Real human connection is rare in a productivity dashboard these days. We decided to keep it. So, whether you're traveling for business or leisure, our team takes care of the details. Automate your tasks, not your life.",
+      bullets: [
+        ["Curated experiences.", "Our professional team handles end-to-end travel services from inquiries to booking from flights, to accommodations, to dining."],
+        ["Research.", "Leave the research to us. Whether you're looking for the cheapest flights or the most luxurious hotels. You pick your preferences. We'll handle the rest."],
+        ["Services and Fees.", "What you see is what you pay. Dimad never charges extra for flights or hotels and operates on a commission structure which allows us to reinvest in our members through our loyalty point ecosystem."]
+      ]
+    }
+  ];
+
+  function initLifecycle() {
+    const root = document.querySelector("[data-lifecycle]");
+    if (!root) return;
+
+    const nodes = Array.from(root.querySelectorAll(".lifecycle-node[data-stage]"));
+    const arcs = Array.from(root.querySelectorAll(".lifecycle-arc[data-arc]"));
+    const stepEl = root.querySelector("[data-lifecycle-step]");
+    const sloganEl = root.querySelector("[data-lifecycle-slogan]");
+    const descEl = root.querySelector("[data-lifecycle-desc]");
+    const bulletsEl = root.querySelector("[data-lifecycle-bullets]");
+    const hubIndex = root.querySelector("[data-lifecycle-hub-index]");
+    const hubName = root.querySelector("[data-lifecycle-hub-name]");
+    const prevBtn = root.querySelector("[data-lifecycle-prev]");
+    const nextBtn = root.querySelector("[data-lifecycle-next]");
+    let activeId = "build";
+
+    function selectStage(id) {
+      const stage = LIFECYCLE_STAGES.find((item) => item.id === id);
+      if (!stage) return;
+      activeId = stage.id;
+
+      nodes.forEach((node) => {
+        const on = node.getAttribute("data-stage") === stage.id;
+        node.classList.toggle("is-active", on);
+        node.setAttribute("aria-selected", on ? "true" : "false");
+      });
+
+      arcs.forEach((arc) => {
+        arc.classList.toggle("is-active", arc.getAttribute("data-arc") === stage.id);
+      });
+
+      if (hubIndex) hubIndex.textContent = stage.index;
+      if (hubName) hubName.textContent = stage.label;
+      if (stepEl) stepEl.textContent = stage.step;
+      if (sloganEl) sloganEl.textContent = stage.slogan;
+      if (descEl) descEl.textContent = stage.desc;
+      if (bulletsEl) {
+        bulletsEl.innerHTML = stage.bullets
+          .map(([lead, rest]) => `<li><span>${lead}</span> ${rest}</li>`)
+          .join("");
+      }
+    }
+
+    function stepBy(delta) {
+      const index = LIFECYCLE_STAGES.findIndex((item) => item.id === activeId);
+      const next = (index + delta + LIFECYCLE_STAGES.length) % LIFECYCLE_STAGES.length;
+      selectStage(LIFECYCLE_STAGES[next].id);
+    }
+
+    nodes.forEach((node) => {
+      node.addEventListener("click", () => selectStage(node.getAttribute("data-stage")));
+    });
+    if (prevBtn) prevBtn.addEventListener("click", () => stepBy(-1));
+    if (nextBtn) nextBtn.addEventListener("click", () => stepBy(1));
+
+    window.goToLifecycleStage = function (id) {
+      selectStage(id);
+      const section = document.getElementById("lifecycle");
+      if (section) {
+        section.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    };
+
+    selectStage(activeId);
+  }
+
+  initLifecycle();
 
   fetch(MAILERLITE_TRACK).catch(function () {});
 })();
