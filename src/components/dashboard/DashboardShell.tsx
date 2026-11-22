@@ -26,9 +26,9 @@ export default function DashboardShell({
       style={{
         minHeight: embedded ? undefined : "100vh",
         margin: 0,
-        background: `linear-gradient(180deg, ${SNAPSHOT_THEME.navySoft} 0%, ${SNAPSHOT_THEME.navy} 40%, #060d18 100%)`,
+        background: `radial-gradient(ellipse 90% 50% at 50% -10%, rgba(56, 189, 248, 0.06), transparent 55%), linear-gradient(180deg, ${SNAPSHOT_THEME.navySoft} 0%, ${SNAPSHOT_THEME.navy} 45%, #060911 100%)`,
         color: SNAPSHOT_THEME.ink,
-        fontFamily: '"JetBrains Mono", ui-monospace, monospace',
+        fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
         padding: embedded ? "18px 16px 28px" : "28px 20px 48px"
       }}
     >

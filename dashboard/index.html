@@ -31,7 +31,16 @@
             serif: ['Lora', 'Georgia', 'serif']
           },
           colors: {
-            brand: { black: '#070A0F', panel: '#0B0F17', border: '#1E293B', accent: '#38BDF8', mint: '#10B981', gold: '#F59E0B', alert: '#EF4444' }
+            brand: {
+              black: '#060911',
+              panel: '#0c1220',
+              nested: '#080c16',
+              border: '#141c2b',
+              accent: '#38bdf8',
+              mint: '#34d399',
+              gold: '#f5b942',
+              alert: '#fb7185'
+            }
           }
         }
       }
@@ -67,12 +76,15 @@
          0  2px 0 #000;
     }
 
-    html, body { width: 100%; height: 100%; margin: 0; padding: 0; background-color: #070A0F; overflow: hidden; }
+    html, body { width: 100%; height: 100%; margin: 0; padding: 0; background-color: #060911; overflow: hidden; }
 
     .dimad-app-root {
-      font-family: 'JetBrains Mono', monospace;
-      background-color: #070A0F;
-      color: #f8fafc;
+      font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+      background:
+        radial-gradient(ellipse 90% 55% at 50% -8%, rgba(56, 189, 248, 0.07), transparent 55%),
+        radial-gradient(ellipse 70% 40% at 80% 0%, rgba(245, 185, 66, 0.05), transparent 50%),
+        #060911;
+      color: #f1f5f9;
       width: 100vw;
       height: 100vh;
       position: absolute;
@@ -86,9 +98,60 @@
     }
 
     .dimad-app-root ::-webkit-scrollbar { width: 4px; height: 4px; }
-    .dimad-app-root ::-webkit-scrollbar-track { background: #070A0F; }
-    .dimad-app-root ::-webkit-scrollbar-thumb { background: #1E293B; border-radius: 2px; }
-    .dimad-app-root ::-webkit-scrollbar-thumb:hover { background: #38BDF8; }
+    .dimad-app-root ::-webkit-scrollbar-track { background: #060911; }
+    .dimad-app-root ::-webkit-scrollbar-thumb { background: #1a2233; border-radius: 2px; }
+    .dimad-app-root ::-webkit-scrollbar-thumb:hover { background: #38bdf8; }
+
+    .tabular-nums, .font-mono.tabular-live {
+      font-variant-numeric: tabular-nums;
+      font-feature-settings: "tnum" 1;
+    }
+    .micro-label {
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #64748b;
+    }
+    .surface-card {
+      background: rgba(12, 18, 32, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .surface-nested {
+      background: #080c16;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+    }
+    .border-hairline { border-color: rgba(255, 255, 255, 0.06) !important; }
+    .border-gold-soft { border-color: rgba(245, 185, 66, 0.35) !important; }
+    .glass-bar {
+      background: rgba(12, 18, 32, 0.78);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+    .sub-nav-btn.is-active {
+      background: rgba(245, 185, 66, 0.1);
+      color: #f1f5f9 !important;
+      border-left: 2px solid #f5b942;
+      padding-left: 6px;
+      font-weight: 600;
+    }
+    .nav-quick-ai {
+      box-shadow: 0 0 0 1px rgba(245, 185, 66, 0.28), 0 0 18px rgba(56, 189, 248, 0.12);
+    }
+    .status-dot-pulse {
+      box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.55);
+      animation: status-dot-pulse 1.8s ease-out infinite;
+    }
+    @keyframes status-dot-pulse {
+      0% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.5); }
+      70% { box-shadow: 0 0 0 6px rgba(56, 189, 248, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0); }
+    }
+    .milestone-progress-fill {
+      background: linear-gradient(90deg, rgba(245, 185, 66, 0.35), rgba(245, 185, 66, 0.75));
+    }
 
     @keyframes mkt-ticker-scroll {
       from { transform: translateX(0); }
@@ -126,10 +189,10 @@
       justify-content: center;
       padding: 1.25rem;
       background:
-        radial-gradient(ellipse at 50% 28%, rgba(245, 158, 11, 0.12), transparent 48%),
-        #070A0F;
-      font-family: 'JetBrains Mono', monospace;
-      color: #f8fafc;
+        radial-gradient(ellipse at 50% 28%, rgba(245, 185, 66, 0.12), transparent 48%),
+        #060911;
+      font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+      color: #f1f5f9;
       transition: opacity 0.45s ease, visibility 0.45s ease;
     }
     #dimad-welcome-gate.is-leaving {
@@ -161,10 +224,11 @@
     #dimad-welcome-gate .welcome-kicker {
       margin: 0;
       font-size: 10px;
-      letter-spacing: 0.18em;
+      letter-spacing: 0.16em;
       text-transform: uppercase;
-      color: #F59E0B;
+      color: #f5b942;
       font-weight: 700;
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
     }
     #dimad-welcome-gate .welcome-status {
       margin: 0.35rem 0 0;
@@ -175,7 +239,7 @@
       width: min(14rem, 70vw);
       height: 3px;
       border-radius: 999px;
-      background: #1E293B;
+      background: #141c2b;
       overflow: hidden;
       margin-top: 0.85rem;
     }
@@ -184,7 +248,7 @@
       height: 100%;
       width: 35%;
       border-radius: inherit;
-      background: linear-gradient(90deg, #F59E0B, #fbbf24, #F59E0B);
+      background: linear-gradient(90deg, #f5b942, #fbbf24, #f5b942);
       background-size: 200% 100%;
       animation: welcome-bar-slide 1.2s linear infinite;
     }
@@ -194,8 +258,9 @@
     }
     #dimad-welcome-gate .welcome-card {
       width: 100%;
-      border: 1px solid rgba(245, 158, 11, 0.35);
-      background: #0B0F17;
+      border: 1px solid rgba(245, 185, 66, 0.35);
+      background: rgba(12, 18, 32, 0.92);
+      backdrop-filter: blur(12px);
       border-radius: 1.1rem;
       padding: 1.15rem 1.2rem 1.25rem;
       text-align: left;
@@ -215,8 +280,9 @@
     }
     #dimad-welcome-gate .welcome-quote {
       margin-top: 0.9rem;
-      border: 1px solid rgba(245, 158, 11, 0.28);
-      background: rgba(7, 10, 15, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-left: 2px solid #f5b942;
+      background: #080c16;
       border-radius: 0.85rem;
       padding: 0.8rem 0.9rem;
     }
@@ -225,8 +291,9 @@
       font-size: 8px;
       letter-spacing: 0.14em;
       text-transform: uppercase;
-      color: #F59E0B;
+      color: #64748b;
       font-weight: 700;
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
       margin-bottom: 0.35rem;
     }
     #dimad-welcome-gate .welcome-quote p {
@@ -244,8 +311,8 @@
       overflow: auto;
     }
     #dimad-welcome-gate .welcome-goal-block {
-      border: 1px solid #1E293B;
-      background: #070A0F;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      background: #080c16;
       border-radius: 0.8rem;
       padding: 0.7rem 0.8rem;
     }
@@ -253,8 +320,9 @@
       font-size: 9px;
       letter-spacing: 0.12em;
       text-transform: uppercase;
-      color: #F59E0B;
+      color: #f5b942;
       font-weight: 700;
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
       margin-bottom: 0.35rem;
     }
     #dimad-welcome-gate .welcome-goal-block ul {
@@ -282,8 +350,8 @@
       width: 100%;
       border: 0;
       border-radius: 0.85rem;
-      background: #F59E0B;
-      color: #070A0F;
+      background: #f5b942;
+      color: #060911;
       font: inherit;
       font-size: 12px;
       font-weight: 800;
@@ -293,7 +361,7 @@
     #dimad-welcome-gate .welcome-primary:hover { background: #fbbf24; }
     #dimad-welcome-gate .welcome-ghost {
       width: 100%;
-      border: 1px solid #1E293B;
+      border: 1px solid rgba(255, 255, 255, 0.06);
       border-radius: 0.85rem;
       background: transparent;
       color: #94a3b8;
@@ -303,7 +371,7 @@
       padding: 0.65rem 1rem;
       cursor: pointer;
     }
-    #dimad-welcome-gate .welcome-ghost:hover { color: #F59E0B; border-color: #F59E0B; }
+    #dimad-welcome-gate .welcome-ghost:hover { color: #f5b942; border-color: rgba(245, 185, 66, 0.35); }
     #dimad-welcome-gate .welcome-sync {
       margin: 10px 0 0;
       font-size: 10px;
@@ -350,11 +418,125 @@
 
     .cc-rail-card { width: fit-content; max-width: 100%; }
     .cc-rail-card.cc-rail-open { width: 100%; }
-    .cal-dual-condensed, #cal-dual.cal-dual-condensed, #cs-cal-dual.cal-dual-condensed {
+    .cal-dual-condensed, #cs-cal-dual.cal-dual-condensed {
       display: grid;
       grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
       gap: 0.75rem;
       align-items: start;
+    }
+    /* Command Center Multiview: stack hourly + mini calendar vertically */
+    #cal-dual.cal-dual-condensed {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 0.75rem;
+      align-items: start;
+    }
+    /* Schedule pane fills remaining calendar height (no dead space) */
+    .cc-schedule-pane {
+      flex: 1 1 auto;
+      min-height: 180px;
+      height: 100%;
+      overflow: auto;
+      display: flex;
+      flex-direction: column;
+    }
+    .cc-schedule-pane > * {
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+    #cal-dual,
+    #hourly-slots-container {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    /* Equal-size Command Center quad modules — stretch with calendar column */
+    .cc-quad-grid {
+      grid-auto-rows: 1fr;
+      align-content: stretch;
+    }
+    .cc-quad-card {
+      min-height: 226px;
+      height: 100%;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .cc-quad-card > [data-cc-body],
+    .cc-quad-card > .cc-quad-body {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: auto;
+    }
+    .cc-quad-card > iframe {
+      flex: 1 1 auto;
+      min-height: 226px;
+      height: 100% !important;
+    }
+    /* Floating Dimad AI footer dock + expandable window */
+    .cc-dimad-ai-dock {
+      position: fixed;
+      left: 50%;
+      bottom: 18px;
+      transform: translateX(-50%);
+      z-index: 240;
+      width: min(720px, calc(100vw - 32px));
+      background: rgba(125, 186, 232, 0.22);
+      border: 1px solid rgba(186, 230, 253, 0.38);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      box-shadow: 0 10px 32px rgba(14, 40, 70, 0.35);
+    }
+    .cc-dimad-ai-float {
+      width: min(440px, calc(100vw - 32px));
+      max-width: calc(100vw - 32px);
+      height: min(560px, calc(100vh - 32px));
+      max-height: calc(100vh - 32px);
+      background: rgba(110, 170, 220, 0.18);
+      border: 1px solid rgba(186, 230, 253, 0.42);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+      color: #e8f4ff;
+    }
+    .cc-dimad-ai-float-drag {
+      cursor: grab;
+      user-select: none;
+      touch-action: none;
+    }
+    .cc-dimad-ai-float-drag.is-dragging {
+      cursor: grabbing;
+    }
+    .cc-dimad-ai-logo {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      z-index: 240;
+      width: 48px;
+      height: 48px;
+      border-radius: 9999px;
+      border: 1px solid rgba(186, 230, 253, 0.42);
+      background: rgba(125, 186, 232, 0.28);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      box-shadow: 0 10px 28px rgba(14, 40, 70, 0.4);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      cursor: pointer;
+      transition: transform 0.15s ease, background 0.15s ease;
+    }
+    .cc-dimad-ai-logo:hover {
+      transform: scale(1.05);
+      background: rgba(147, 197, 253, 0.38);
+    }
+    .cc-dimad-ai-logo img {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      object-fit: cover;
     }
   </style>
 </head>
@@ -390,77 +572,78 @@
 <div class="dimad-app-root">
 
   <!-- TOP STATIC UNIVERSAL UTILITY BAR -->
-  <header class="h-11 border-b border-brand-border bg-brand-panel flex items-center justify-between px-3 select-none flex-shrink-0 w-full">
+  <header class="h-12 sticky top-0 z-40 border-b border-hairline glass-bar flex items-center justify-between px-3 select-none flex-shrink-0 w-full">
     <div class="flex items-center space-x-3">
-      <div class="flex items-center space-x-2 font-bold tracking-wider text-slate-100">
-        <span class="w-2 h-2 rounded-full bg-brand-mint animate-pulse"></span>
-        <span>DIMAD<span class="text-brand-accent">OS</span></span>
+      <div class="flex items-center space-x-2 font-sans font-bold tracking-[0.12em] text-slate-100 text-[12px]">
+        <span>DIMAD <span class="text-brand-gold">OS</span></span>
       </div>
-      <div class="h-4 w-[1px] bg-brand-border"></div>
+      <div class="h-4 w-px bg-white/10"></div>
 
-      <!-- WEEKLY + DAILY FOCUS TRACKERS -->
-      <div class="flex items-center space-x-2 bg-brand-black/60 border border-brand-border/80 px-2.5 py-1 rounded">
-        <i class="fa-solid fa-stopwatch text-brand-mint text-xs shrink-0"></i>
+      <!-- FOCUS SESSION PILL -->
+      <div class="flex items-center space-x-2 bg-brand-nested/80 border border-hairline px-2.5 py-1 rounded-full">
+        <span class="w-1.5 h-1.5 rounded-full bg-brand-accent status-dot-pulse shrink-0" aria-hidden="true"></span>
+        <span class="micro-label text-[9px] text-slate-500 hidden sm:inline">Focus Session</span>
         <div class="flex items-center gap-1.5" title="Weekly focus toward 40 hours">
-          <span class="text-[9px] text-slate-400 font-semibold tracking-wide hidden lg:inline">WEEK</span>
-          <span id="weekly-progress-text" class="text-[10px] text-brand-accent font-bold font-mono whitespace-nowrap">14:30:00 / 40:00:00</span>
-          <div class="w-14 bg-brand-border/60 rounded-full h-1 overflow-hidden hidden sm:block">
-            <div id="weekly-progress-bar" class="bg-brand-mint h-full w-[36%] transition-all duration-500"></div>
+          <span class="text-[9px] text-slate-500 font-mono tracking-wider hidden lg:inline">WEEK</span>
+          <span id="weekly-progress-text" class="text-[10px] text-brand-accent font-bold font-mono tabular-nums whitespace-nowrap">14:30:00 / 40:00:00</span>
+          <div class="w-14 bg-white/5 rounded-full h-1 overflow-hidden hidden sm:block">
+            <div id="weekly-progress-bar" class="bg-brand-accent h-full w-[36%] transition-all duration-500"></div>
           </div>
         </div>
-        <div class="h-4 w-px bg-brand-border shrink-0"></div>
+        <div class="h-3.5 w-px bg-white/10 shrink-0"></div>
         <div class="flex items-center gap-1.5" title="Daily tracker resets at midnight">
-          <span class="text-[9px] text-slate-400 font-semibold tracking-wide hidden lg:inline">DAY</span>
-          <span id="daily-progress-text" class="text-[10px] text-brand-gold font-bold font-mono whitespace-nowrap">0:00:00 / 8:00:00</span>
-          <div class="w-14 bg-brand-border/60 rounded-full h-1 overflow-hidden hidden sm:block">
-            <div id="daily-progress-bar" class="bg-amber-500 h-full w-0 transition-all duration-500"></div>
+          <span class="text-[9px] text-slate-500 font-mono tracking-wider hidden lg:inline">DAY</span>
+          <span id="daily-progress-text" class="text-[10px] text-brand-gold font-bold font-mono tabular-nums whitespace-nowrap">0:00:00 / 8:00:00</span>
+          <div class="w-14 bg-white/5 rounded-full h-1 overflow-hidden hidden sm:block">
+            <div id="daily-progress-bar" class="bg-brand-gold h-full w-0 transition-all duration-500"></div>
           </div>
         </div>
-        <div class="flex items-center pl-1 border-l border-brand-border">
-          <button id="btn-timer-pause" type="button" onclick="toggleFocusClock()" class="bg-amber-500/15 hover:bg-amber-500/25 text-brand-gold px-2 py-0.5 rounded text-[9px] font-bold border border-amber-500/40 transition-all whitespace-nowrap">Clock In</button>
+        <div class="flex items-center pl-1 border-l border-hairline">
+          <button id="btn-timer-pause" type="button" onclick="toggleFocusClock()" class="bg-transparent hover:bg-rose-500/10 text-rose-300/90 px-2 py-0.5 rounded-full text-[9px] font-semibold border border-rose-400/30 transition-all whitespace-nowrap">Clock In</button>
         </div>
       </div>
     </div>
 
     <!-- BALANCE & FOCUS LOG -->
-    <div class="flex items-center space-x-3">
-      <button type="button" onclick="switchTab('ent-goals')" title="Clock-in streak" class="hidden sm:flex items-center gap-2 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 px-2 py-0.5 rounded text-[10px] whitespace-nowrap max-w-[28rem]">
-        <span class="inline-flex items-center gap-0.5 text-brand-gold leading-none">
-          <span class="text-[17px] leading-none">🔥</span>
-          <span data-streak-badge class="text-[13px] font-black font-mono leading-none tracking-tight">0d</span>
+    <div class="flex items-center space-x-2.5">
+      <button type="button" onclick="switchTab('ent-goals')" title="Clock-in streak" class="hidden sm:flex relative items-center gap-2 overflow-hidden bg-brand-nested border border-hairline hover:border-gold-soft px-2.5 py-1 rounded-full text-[10px] whitespace-nowrap max-w-[28rem] transition">
+        <span class="absolute inset-y-0 left-0 w-[28%] milestone-progress-fill opacity-40 pointer-events-none" aria-hidden="true"></span>
+        <span class="relative inline-flex items-center gap-1 text-brand-gold leading-none">
+          <span data-streak-badge class="text-[11px] font-black font-mono tabular-nums leading-none tracking-tight">0d</span>
         </span>
-        <span data-streak-next class="text-slate-400 font-mono truncate leading-none">Next Milestone: 10 Days</span>
+        <span data-streak-next class="relative text-slate-400 font-mono truncate leading-none text-[9px]">10K Next Milestone</span>
       </button>
 
-      <button onclick="openFocusLog()" class="flex items-center space-x-1 bg-brand-accent/10 hover:bg-brand-accent/20 border border-brand-accent/30 px-2 py-1 rounded text-brand-accent text-[10px] transition-all">
+      <button onclick="openFocusLog()" class="flex items-center space-x-1 bg-transparent hover:bg-white/5 border border-hairline hover:border-gold-soft px-2.5 py-1 rounded-full text-slate-300 hover:text-brand-gold text-[10px] font-medium transition-all">
         <i class="fa-solid fa-chart-line text-[9px]"></i>
         <span class="hidden md:inline">Focus Log</span>
       </button>
 
-      <div class="flex items-center space-x-1 bg-brand-border/40 px-2 py-1 rounded border border-brand-border/60">
+      <div class="flex items-center space-x-1 bg-brand-gold/10 px-2.5 py-1 rounded-full border border-gold-soft">
         <i class="fa-solid fa-coins text-brand-gold text-[10px]"></i>
-        <span id="dim-balance" class="text-brand-gold font-bold whitespace-nowrap">18,400 $DIM</span>
+        <span id="dim-balance" class="text-brand-gold font-bold font-mono tabular-nums whitespace-nowrap text-[10px]">18,400 $DIM</span>
       </div>
 
-      <div class="flex items-center space-x-2 border-l border-brand-border pl-3">
-        <div class="w-5 h-5 rounded-full bg-brand-accent/20 border border-brand-accent/50 flex items-center justify-center text-[10px] font-bold text-brand-accent">
+      <div class="flex items-center space-x-2 border-l border-hairline pl-3">
+        <div class="w-5 h-5 rounded-full bg-brand-gold/15 border border-gold-soft flex items-center justify-center text-[10px] font-bold text-brand-gold">
           <i class="fa-solid fa-user"></i>
         </div>
-        <span class="font-medium text-slate-300 hidden md:inline">FOUNDER</span>
+        <span class="font-mono text-[9px] tracking-wider uppercase text-slate-400 hidden md:inline">Founder</span>
       </div>
     </div>
   </header>
 
   <!-- FINANCIAL & CURRENCY TICKER STRIP -->
-  <div data-cc-module="ticker" class="h-6 bg-brand-black border-b border-brand-border/60 flex items-center gap-3 px-3 text-[9px] font-mono whitespace-nowrap">
-    <button type="button" onclick="openStocksFromTicker()" title="Open Financial Markets" class="shrink-0 text-slate-400 hover:text-brand-gold font-bold flex items-center gap-1 transition">
-      <i class="fa-solid fa-chart-simple text-brand-gold"></i> STOCK TICKER
+  <div data-cc-module="ticker" class="h-8 bg-brand-nested/90 border-b border-hairline flex items-center gap-3 px-3 text-[9px] font-mono whitespace-nowrap">
+    <button type="button" onclick="openStocksFromTicker()" title="Open Financial Markets" class="shrink-0 text-slate-500 hover:text-brand-gold font-bold tracking-wider uppercase flex items-center gap-1.5 transition">
+      <i class="fa-solid fa-chart-simple text-brand-gold"></i> Markets
     </button>
-    <div class="mkt-ticker-viewport" aria-label="Live watchlist ticker">
+    <div class="mkt-ticker-viewport tabular-nums" aria-label="Live watchlist ticker">
       <div id="mkt-live-quotes" class="mkt-ticker-track is-static"></div>
     </div>
-    <div class="shrink-0 text-slate-400 hidden md:block">
-      <span class="text-brand-accent font-semibold">Location: <span id="geo-location-label">Yerevan</span></span>
+    <div class="shrink-0 hidden md:flex items-center gap-1.5 pl-2 border-l border-hairline">
+      <span class="text-slate-500 uppercase tracking-wider text-[8px]">Location</span>
+      <span id="geo-location-label" class="text-brand-accent font-semibold">Yerevan</span>
     </div>
   </div>
 
@@ -468,103 +651,103 @@
   <div class="flex-1 flex overflow-hidden w-full">
 
     <!-- NAVIGATION PANEL (COLLAPSIBLE SIDEBAR) -->
-    <nav id="main-sidebar" class="w-52 border-r border-brand-border bg-brand-panel flex flex-col justify-between py-3 select-none flex-shrink-0 font-mono text-[10px] overflow-y-auto transition-all duration-300">
+    <nav id="main-sidebar" class="w-[230px] border-r border-hairline bg-brand-nested flex flex-col justify-between py-3 select-none flex-shrink-0 text-[10px] overflow-y-auto transition-all duration-300">
 
       <div class="flex flex-col space-y-3 w-full px-2">
 
         <!-- SIDEBAR TOGGLE BUTTON -->
-        <div class="flex items-center justify-between px-1 pb-1 border-b border-brand-border/40">
-          <span class="nav-text-label text-[8px] font-bold text-slate-500 tracking-wider uppercase">NAVIGATION</span>
-          <button onclick="toggleSidebar()" title="Toggle Sidebar" class="text-slate-400 hover:text-brand-accent p-1 rounded hover:bg-brand-black/50 transition-all mx-auto">
+        <div class="flex items-center justify-between px-1 pb-1 border-b border-hairline">
+          <span class="nav-text-label micro-label text-[8px]">Navigation</span>
+          <button onclick="toggleSidebar()" title="Toggle Sidebar" class="text-slate-500 hover:text-brand-gold p-1 rounded hover:bg-white/5 transition-all mx-auto">
             <i id="sidebar-toggle-icon" class="fa-solid fa-angles-left text-xs"></i>
           </button>
         </div>
 
         <!-- GLOBAL SHARED HUBS -->
         <div class="space-y-1">
-          <button onclick="switchTab('ent-email')" title="Inbox" class="nav-item-btn w-full bg-brand-black/40 hover:bg-brand-border border border-brand-border text-slate-200 py-2 px-2.5 rounded font-semibold flex items-center gap-2 transition-all">
+          <button onclick="switchTab('ent-email')" title="Inbox" class="nav-item-btn w-full bg-transparent hover:bg-white/5 border border-hairline text-slate-200 py-2 px-2.5 rounded-lg font-medium flex items-center gap-2 transition-all">
             <i class="fa-solid fa-inbox text-brand-gold text-xs"></i>
             <span class="nav-text-label">Inbox</span>
           </button>
 
-          <button onclick="switchTab('dimad-calendar')" title="DIMAD Calendar" class="nav-item-btn w-full bg-brand-black/40 hover:bg-brand-border border border-brand-border text-slate-200 py-2 px-2.5 rounded font-semibold flex items-center gap-2 transition-all">
-            <i class="fa-solid fa-calendar-days text-brand-mint text-xs"></i>
-            <span class="nav-text-label">DIMAD Calendar</span>
+          <button onclick="switchTab('dimad-calendar')" title="DIMAD Calendar" class="nav-item-btn w-full bg-transparent hover:bg-white/5 border border-hairline text-slate-200 py-2 px-2.5 rounded-lg font-medium flex items-center gap-2 transition-all">
+            <i class="fa-solid fa-calendar-days text-brand-accent text-xs"></i>
+            <span class="nav-text-label">Dimad Calendar</span>
           </button>
 
-          <button onclick="switchTab('dimad-notepad')" title="DIMAD Notepad" class="nav-item-btn w-full bg-brand-black/40 hover:bg-brand-border border border-brand-border text-slate-200 py-2 px-2.5 rounded font-semibold flex items-center gap-2 transition-all">
+          <button onclick="switchTab('dimad-notepad')" title="DIMAD Notepad" class="nav-item-btn w-full bg-transparent hover:bg-white/5 border border-hairline text-slate-200 py-2 px-2.5 rounded-lg font-medium flex items-center gap-2 transition-all">
             <i class="fa-solid fa-note-sticky text-brand-gold text-xs"></i>
-            <span class="nav-text-label">DIMAD Notepad</span>
+            <span class="nav-text-label">Dimad Notepad</span>
           </button>
 
-          <button onclick="switchTab('dimad-dimdrive')" title="dimDrive" class="nav-item-btn w-full bg-brand-black/40 hover:bg-brand-border border border-brand-border text-slate-200 py-2 px-2.5 rounded font-semibold flex items-center gap-2 transition-all">
+          <button onclick="switchTab('dimad-dimdrive')" title="dimDrive" class="nav-item-btn w-full bg-transparent hover:bg-white/5 border border-hairline text-slate-200 py-2 px-2.5 rounded-lg font-medium flex items-center gap-2 transition-all">
             <span class="text-sm leading-none">☁️</span>
             <span class="nav-text-label">dimDrive</span>
           </button>
 
-          <button onclick="openDimadAiNav()" title="DIMAD AI" class="nav-item-btn w-full bg-gradient-to-r from-brand-accent/20 to-brand-gold/25 hover:from-brand-accent/30 hover:to-brand-gold/35 border border-brand-accent/50 text-slate-100 py-2 px-2.5 rounded font-bold flex items-center gap-2 shadow-lg transition-all group">
-            <i class="fa-solid fa-bolt text-brand-accent text-xs"></i>
-            <span class="nav-text-label">DIMAD AI</span>
+          <button onclick="openDimadAiNav()" title="DIMAD AI" class="nav-item-btn nav-quick-ai w-full bg-gradient-to-r from-brand-gold/15 to-brand-accent/15 hover:from-brand-gold/25 hover:to-brand-accent/25 border border-gold-soft text-slate-100 py-2 px-2.5 rounded-lg font-semibold flex items-center gap-2 transition-all group">
+            <i class="fa-solid fa-bolt text-brand-gold text-xs"></i>
+            <span class="nav-text-label">Dimad AI</span>
           </button>
 
         </div>
 
-        <div class="h-[1px] bg-brand-border/60 my-1"></div>
+        <div class="h-px bg-white/5 my-1"></div>
 
         <!-- 01 // ENTREPRENEUR -->
         <div class="space-y-1">
-          <button onclick="switchIdentity('entrepreneur')" id="btn-identity-entrepreneur" title="Entrepreneur Mode" class="nav-header-box nav-item-btn w-full flex items-center justify-between px-2.5 py-2 rounded bg-brand-accent/10 border border-brand-accent/40 text-brand-accent font-bold transition-all">
+          <button onclick="switchIdentity('entrepreneur')" id="btn-identity-entrepreneur" title="Entrepreneur Mode" class="nav-header-box nav-item-btn w-full flex items-center justify-between px-2.5 py-2 rounded-lg bg-brand-gold/10 border border-gold-soft text-brand-gold font-bold tracking-wider text-[10px] transition-all">
             <span class="flex items-center gap-2">
               <i class="fa-solid fa-briefcase text-xs"></i>
               <span class="nav-text-label">ENTREPRENEUR</span>
             </span>
             <i data-identity-chevron="entrepreneur" class="fa-solid fa-chevron-down text-[9px] nav-text-label"></i>
           </button>
-          <div id="subnav-entrepreneur" class="nav-sub-container pl-3 space-y-1 pt-1 border-l border-brand-border/60 ml-2"></div>
+          <div id="subnav-entrepreneur" class="nav-sub-container pl-2 space-y-0.5 pt-1 border-l border-hairline ml-2"></div>
         </div>
 
         <!-- 02 // CREATOR -->
         <div class="space-y-1">
-          <button onclick="switchIdentity('creator')" id="btn-identity-creator" title="Creator Mode" class="nav-header-box nav-item-btn w-full flex items-center justify-between px-2.5 py-2 rounded bg-brand-black/40 border border-brand-border/60 text-slate-300 hover:text-brand-accent transition-all">
+          <button onclick="switchIdentity('creator')" id="btn-identity-creator" title="Creator Mode" class="nav-header-box nav-item-btn w-full flex items-center justify-between px-2.5 py-2 rounded-lg bg-transparent border border-hairline text-slate-400 hover:text-brand-gold transition-all tracking-wider text-[10px] font-bold">
             <span class="flex items-center gap-2">
               <i class="fa-solid fa-feather text-xs text-brand-gold"></i>
               <span class="nav-text-label">CREATOR</span>
             </span>
             <i data-identity-chevron="creator" class="fa-solid fa-chevron-right text-[9px] text-slate-500 nav-text-label"></i>
           </button>
-          <div id="subnav-creator" class="nav-sub-container pl-3 space-y-1 pt-1 border-l border-brand-border/60 ml-2 hidden"></div>
+          <div id="subnav-creator" class="nav-sub-container pl-2 space-y-0.5 pt-1 border-l border-hairline ml-2 hidden"></div>
         </div>
 
         <!-- 03 // NOMAD -->
         <div class="space-y-1">
-          <button onclick="switchIdentity('nomad')" id="btn-identity-nomad" title="Nomad Mode" class="nav-header-box nav-item-btn w-full flex items-center justify-between px-2.5 py-2 rounded bg-brand-black/40 border border-brand-border/60 text-slate-300 hover:text-brand-accent transition-all">
+          <button onclick="switchIdentity('nomad')" id="btn-identity-nomad" title="Nomad Mode" class="nav-header-box nav-item-btn w-full flex items-center justify-between px-2.5 py-2 rounded-lg bg-transparent border border-hairline text-slate-400 hover:text-brand-gold transition-all tracking-wider text-[10px] font-bold">
             <span class="flex items-center gap-2">
               <i class="fa-solid fa-compass text-xs text-brand-gold"></i>
               <span class="nav-text-label">NOMAD</span>
             </span>
             <i data-identity-chevron="nomad" class="fa-solid fa-chevron-right text-[9px] text-slate-500 nav-text-label"></i>
           </button>
-          <div id="subnav-nomad" class="nav-sub-container pl-3 space-y-1 pt-1 border-l border-brand-border/60 ml-2 hidden"></div>
+          <div id="subnav-nomad" class="nav-sub-container pl-2 space-y-0.5 pt-1 border-l border-hairline ml-2 hidden"></div>
         </div>
 
         <!-- 04 // COMMUNITY -->
         <div class="space-y-1">
-          <button onclick="switchIdentity('community')" id="btn-identity-community" title="Community Mode" class="nav-header-box nav-item-btn w-full flex items-center justify-between px-2.5 py-2 rounded bg-brand-black/40 border border-brand-border/60 text-slate-300 hover:text-brand-accent transition-all">
+          <button onclick="switchIdentity('community')" id="btn-identity-community" title="Community Mode" class="nav-header-box nav-item-btn w-full flex items-center justify-between px-2.5 py-2 rounded-lg bg-transparent border border-hairline text-slate-400 hover:text-brand-gold transition-all tracking-wider text-[10px] font-bold">
             <span class="flex items-center gap-2 min-w-0">
               <i class="fa-solid fa-users text-xs text-brand-gold"></i>
               <span class="nav-text-label">DIMAD CLUB</span>
-              <span class="nav-text-label text-[7px] bg-brand-gold/15 text-brand-gold border border-brand-gold/40 px-1 py-0.5 rounded uppercase tracking-wide">Premium</span>
+              <span class="nav-text-label text-[7px] bg-brand-gold/10 text-brand-gold border border-gold-soft px-1 py-0.5 rounded uppercase tracking-wide">Premium</span>
             </span>
             <i data-identity-chevron="community" class="fa-solid fa-chevron-right text-[9px] text-slate-500 nav-text-label"></i>
           </button>
-          <div id="subnav-community" class="nav-sub-container pl-3 space-y-1 pt-1 border-l border-brand-border/60 ml-2 hidden"></div>
+          <div id="subnav-community" class="nav-sub-container pl-2 space-y-0.5 pt-1 border-l border-hairline ml-2 hidden"></div>
         </div>
 
       </div>
 
       <!-- SYSTEM SETTINGS FOOTER -->
-      <div class="px-2 pt-3 border-t border-brand-border/40 space-y-1">
-        <button onclick="openSettingsVaultNav('dim-wallet')" title="Settings & Vault" class="nav-item-btn text-slate-400 hover:text-slate-200 block w-full text-left py-1.5 px-2 rounded flex items-center gap-2">
+      <div class="px-2 pt-3 border-t border-hairline space-y-1">
+        <button onclick="openSettingsVaultNav('dim-wallet')" title="Settings & Vault" class="nav-item-btn text-slate-500 hover:text-slate-200 block w-full text-left py-1.5 px-2 rounded-lg flex items-center gap-2">
           <i class="fa-solid fa-gear text-xs"></i>
           <span class="nav-text-label">Settings & Vault</span>
         </button>
@@ -573,13 +756,50 @@
     </nav>
 
     <!-- MAIN CONTENT VIEW AREA -->
-    <main id="view-container" class="flex-1 bg-brand-black overflow-y-auto p-4 w-full relative space-y-3">
+    <main id="view-container" class="flex-1 bg-transparent overflow-y-auto p-4 w-full relative space-y-3">
       <div class="text-slate-500 text-[10px] font-mono p-4">Loading views…</div>
     </main>
   </div>
 </div>
 
 <!-- DIMAD AI COMMAND CENTER PANEL -->
+<!-- Dimad AI footer dock + logo launcher + expandable floating chat -->
+<form id="cc-dimad-ai-form" data-cc-module="dimad-ai" onsubmit="event.preventDefault(); ccDimadAiSend();" class="cc-dimad-ai-dock rounded-xl px-2.5 py-2 flex items-center gap-2">
+  <button type="button" onclick="switchTab('dimad-ai-hub')" title="Open Dimad AI" class="inline-flex items-center gap-1.5 shrink-0 text-[10px] font-semibold text-sky-50 tracking-wide hover:text-sky-200 transition">
+    <i class="fa-solid fa-bolt text-sky-200 text-[9px]"></i>
+    Dimad AI
+  </button>
+  <input id="cc-dimad-ai-input" type="text" placeholder="Ask Dimad AI…" class="flex-1 min-w-0 bg-sky-950/20 border border-sky-200/25 rounded-lg px-2.5 py-1.5 text-[11px] text-sky-50 placeholder-sky-100/50 focus:outline-none focus:border-sky-200/55">
+  <button type="submit" class="shrink-0 bg-sky-300/90 hover:bg-sky-200 text-slate-950 font-bold text-[10px] px-3 py-1.5 rounded-lg transition">Send</button>
+  <button type="button" onclick="ccDimadAiCollapseDock()" title="Minimize to logo" class="shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-lg border border-sky-200/30 bg-sky-950/25 text-sky-100 hover:bg-sky-300/20 transition" aria-label="Minimize Dimad AI">
+    <i class="fa-solid fa-minus text-[10px]"></i>
+  </button>
+  <button type="button" onclick="ccDimadAiExpand()" title="Expand Dimad AI" class="shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-lg border border-sky-200/30 bg-sky-950/25 hover:bg-sky-300/20 transition" aria-label="Expand Dimad AI">
+    <i class="fa-solid fa-up-right-and-down-left-from-center text-sky-100 text-[11px]"></i>
+  </button>
+</form>
+
+<button type="button" id="cc-dimad-ai-logo" data-cc-module="dimad-ai" onclick="ccDimadAiRestoreDock()" title="Open Dimad AI" class="cc-dimad-ai-logo hidden" aria-label="Open Dimad AI">
+  <img src="/assets/dimad-logo.jpg" alt="Dimad">
+</button>
+
+<div id="cc-dimad-ai-float" class="cc-dimad-ai-float hidden fixed z-[250] rounded-2xl overflow-hidden flex flex-col" aria-hidden="true">
+  <div id="cc-dimad-ai-float-drag" class="cc-dimad-ai-float-drag flex items-center justify-between gap-2 px-3 py-2 border-b border-sky-100/20 bg-sky-950/25">
+    <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold text-sky-50">
+      <i class="fa-solid fa-bolt text-sky-200 text-[10px]"></i>
+      Dimad AI
+    </span>
+    <button type="button" onclick="ccDimadAiMinimize()" title="Minimize" class="w-7 h-7 rounded-lg border border-sky-100/25 bg-sky-950/30 text-sky-100 hover:bg-sky-300/20 flex items-center justify-center transition" aria-label="Minimize">
+      <i class="fa-solid fa-minus text-[10px]"></i>
+    </button>
+  </div>
+  <div id="cc-dimad-ai-float-msgs" class="flex-1 min-h-0 overflow-y-auto p-3 space-y-2 text-[11px] leading-relaxed"></div>
+  <form id="cc-dimad-ai-float-form" onsubmit="event.preventDefault(); ccDimadAiFloatSend();" class="shrink-0 border-t border-sky-100/20 p-2.5 flex items-center gap-2 bg-sky-950/20">
+    <input id="cc-dimad-ai-float-input" type="text" placeholder="Ask Dimad AI…" class="flex-1 min-w-0 bg-sky-950/25 border border-sky-200/25 rounded-lg px-2.5 py-1.5 text-[11px] text-sky-50 placeholder-sky-100/50 focus:outline-none focus:border-sky-200/55">
+    <button type="submit" class="shrink-0 bg-sky-300/90 hover:bg-sky-200 text-slate-950 font-bold text-[10px] px-3 py-1.5 rounded-lg transition">Send</button>
+  </form>
+</div>
+
 <div id="dimad-ai-panel" class="hidden fixed inset-0 z-[200] min-h-screen bg-slate-950 text-slate-100 flex-col md:flex-row">
 
   <aside class="w-full md:w-80 bg-slate-900 border-r border-slate-800 p-5 flex flex-col flex-shrink-0">

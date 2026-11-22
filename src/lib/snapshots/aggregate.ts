@@ -20,7 +20,7 @@ export type SnapshotMetric = {
 };
 
 function rangeDays(range: SnapshotRange): number {
-  return { "1D": 1, "1W": 7, "1M": 30, "1Q": 90, "1Y": 365 }[range];
+  return { "1D": 1, "1W": 7, "1M": 30, "1Y": 365 }[range];
 }
 
 function inRange(iso: string | undefined, range: SnapshotRange): boolean {
@@ -60,7 +60,7 @@ export function compactNumber(n: number) {
 
 /** Rough range scaling when APIs only expose a fixed period (e.g. Stripe 30d). */
 export function scaleForRange(amount: number, baseDays: number, range: SnapshotRange) {
-  const days: Record<SnapshotRange, number> = { "1D": 1, "1W": 7, "1M": 30, "1Q": 90, "1Y": 365 };
+  const days: Record<SnapshotRange, number> = { "1D": 1, "1W": 7, "1M": 30, "1Y": 365 };
   if (!baseDays) return amount;
   return amount * (days[range] / baseDays);
 }
@@ -370,7 +370,7 @@ export function sparkPath(values: number[], width = 240, height = 42) {
 }
 
 export function syntheticSeries(total: number, range: SnapshotRange) {
-  const points = range === "1D" ? 12 : range === "1W" ? 7 : range === "1M" ? 12 : range === "1Q" ? 12 : 12;
+  const points = range === "1D" ? 12 : range === "1W" ? 7 : 12;
   const out: number[] = [];
   let cursor = Math.max(total * 0.72, 0);
   for (let i = 0; i < points; i += 1) {

@@ -98,7 +98,7 @@ export default function DailyQuotesPage() {
                         key={item.date}
                         style={{
                           ...panelStyle,
-                          borderColor: item.isToday ? "rgba(212, 175, 55, 0.45)" : SNAPSHOT_THEME.navyLine
+                          borderColor: item.isToday ? "rgba(245, 185, 66, 0.45)" : SNAPSHOT_THEME.navyLine
                         }}
                       >
                         <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>

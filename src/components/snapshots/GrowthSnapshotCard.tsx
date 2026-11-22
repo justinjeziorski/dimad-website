@@ -69,7 +69,7 @@ export default function GrowthSnapshotCard() {
     <div ref={rootRef}>
       <SnapshotChrome
         kicker="Growth"
-        title="Audience reach"
+        title="Audience Reach"
         metrics={metrics}
         range={range}
         onRange={setRange}

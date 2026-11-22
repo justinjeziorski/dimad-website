@@ -73,7 +73,7 @@ export default function RevenueSnapshotCard() {
     <div ref={rootRef}>
       <SnapshotChrome
         kicker="Revenue"
-        title="Consolidated volume"
+        title="Total Volume"
         metrics={metrics}
         range={range}
         onRange={setRange}

@@ -1,201 +1,244 @@
 <!-- TAB 1: ENTREPRENEUR COMMAND CENTER -->
 <div id="view-ent-dashboard" class="tab-view space-y-3 w-full">
   <div class="flex items-center justify-between gap-2">
-    <span class="text-[9px] font-bold text-slate-500 tracking-wider uppercase">Command Center</span>
+    <span class="micro-label text-[9px]">Command Center</span>
     <div class="flex items-center gap-2">
       <div class="relative">
-        <button type="button" onclick="COMMAND_CENTER.toggleFilter('core')" class="text-[10px] font-semibold text-slate-300 hover:text-brand-gold border border-slate-700 bg-slate-950 px-2.5 py-1 rounded-lg transition">
+        <button type="button" onclick="COMMAND_CENTER.toggleFilter('core')" class="text-[10px] font-medium text-slate-400 hover:text-brand-gold border border-hairline bg-brand-panel/80 px-2.5 py-1 rounded-full transition">
           Dashboard Filters
         </button>
-        <div id="cc-module-filter" class="hidden absolute right-0 top-full mt-1 z-30 w-56 bg-slate-950 border border-slate-700 rounded-xl p-2 shadow-xl"></div>
+        <div id="cc-module-filter" class="hidden absolute right-0 top-full mt-1 z-30 w-56 surface-card rounded-xl p-2 shadow-xl"></div>
       </div>
     </div>
   </div>
 
-  <!-- QUOTE OF THE DAY -->
-  <div data-cc-module="quote" class="border border-brand-gold/40 bg-brand-panel p-2.5 rounded">
-    <div>
-      <a href="/dashboard/quotes" class="inline-flex items-center gap-1 text-[8px] text-brand-gold font-bold tracking-wider uppercase hover:text-amber-300 transition" title="Open Daily Quotes">
-        <i class="fa-solid fa-lightbulb text-brand-gold" aria-hidden="true"></i>
-        Quote of the Day
-      </a>
-    </div>
-    <div data-cc-body>
-      <p id="cc-quote-text" class="text-[10px] text-slate-200 italic mt-0.5 leading-relaxed"></p>
-    </div>
-  </div>
-
-  <!-- INTERNATIONAL CLOCKS -->
-  <div data-cc-module="clocks" class="relative">
-    <div class="flex items-center justify-between mb-1 gap-2">
-      <span class="text-[8px] text-slate-500 font-bold tracking-wider uppercase">World clocks</span>
-      <div class="flex items-center gap-2">
-        <button type="button" onclick="WORLD_CLOCKS.togglePicker()" class="text-[10px] font-semibold text-slate-300 hover:text-brand-gold border border-slate-700 bg-slate-950 px-2 py-0.5 rounded-lg transition">Select cities</button>
+  <!-- QUOTE + WORLD CLOCKS (50 / 50) -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-3 w-full items-stretch">
+    <div data-cc-module="quote" class="relative overflow-hidden surface-card rounded-xl px-2.5 py-2 flex flex-col h-full">
+      <span aria-hidden="true" class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 select-none font-serif leading-none text-[5.5rem] text-brand-gold/[0.1]">&ldquo;</span>
+      <div class="relative z-10 flex items-center justify-between mb-1.5 gap-2 shrink-0">
+        <a href="/dashboard/quotes" class="inline-flex items-center gap-1.5 text-[10px] font-semibold text-slate-100 tracking-wide hover:text-brand-gold transition" title="Open Daily Quotes">
+          <span aria-hidden="true" class="text-[10px] leading-none">📖</span>
+          Quote of the Day
+        </a>
       </div>
-    </div>
-    <div id="world-clocks-picker" class="hidden absolute right-0 top-7 z-40 w-80 bg-slate-950 border border-slate-700 rounded-xl shadow-xl overflow-hidden">
-      <div class="p-2 border-b border-slate-800 bg-slate-950">
-        <div class="flex items-center gap-2 bg-brand-black border border-amber-500/30 rounded-lg px-2">
-          <i class="fa-solid fa-magnifying-glass text-brand-gold text-[10px]"></i>
-          <input id="world-clocks-search" type="text" placeholder="Search cities or timezones..." oninput="WORLD_CLOCKS.filterCities(this.value)" class="flex-1 bg-transparent outline-none py-2 text-[12px] text-slate-100">
+      <div data-cc-body class="relative z-10 flex flex-col flex-1 min-h-0">
+        <p id="cc-quote-text" class="flex-1 flex items-center text-[13px] md:text-[14px] text-slate-100 italic leading-snug font-serif m-0"></p>
+        <div class="shrink-0 border-t border-hairline pt-1.5 flex items-baseline justify-between gap-3">
+          <span id="cc-quote-author" class="text-[10px] font-semibold text-brand-gold whitespace-nowrap"></span>
+          <span id="cc-quote-context" class="text-[8px] font-mono text-slate-500 text-right truncate"></span>
         </div>
-        <div id="world-clocks-picker-count" class="text-[9px] font-mono text-slate-500 px-0.5 pt-1">Pick up to 3 cities</div>
       </div>
-      <div id="world-clocks-picker-list" class="max-h-60 overflow-y-auto p-2"></div>
     </div>
-    <div data-cc-body>
-      <div id="world-clocks-grid" class="grid grid-cols-1 md:grid-cols-3 gap-3"></div>
-    </div>
-  </div>
 
-  <!-- UNIFIED SNAPSHOTS -->
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-3 w-full">
-    <div data-cc-module="revenue-snapshot" id="module-revenue-snapshot" class="min-w-0 w-full">
-      <iframe data-revenue-snapshot-frame title="Revenue Snapshot" src="/integrations/revenue-snapshot" class="block w-full rounded-2xl border border-brand-border" style="height:210px;border:0;overflow:hidden;background:#0A192F" scrolling="no"></iframe>
-    </div>
-    <div data-cc-module="growth-snapshot" id="module-growth-snapshot" class="min-w-0 w-full">
-      <iframe data-growth-snapshot-frame title="Growth Snapshot" src="/integrations/growth-snapshot" class="block w-full rounded-2xl border border-brand-border" style="height:210px;border:0;overflow:hidden;background:#0A192F" scrolling="no"></iframe>
-    </div>
-  </div>
-
-  <!-- CALENDAR -->
-  <div data-cc-module="calendar" class="flex flex-col space-y-3">
-      <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-900 border border-slate-800 p-4 rounded-2xl">
-        <div class="flex items-center flex-wrap gap-3">
-          <button type="button" onclick="CALENDAR_NAV.shiftCursor(-1)" class="bg-slate-950 hover:bg-slate-800 border border-slate-700 text-slate-200 px-3 py-1.5 rounded-xl text-xs font-semibold">◀ Prev</button>
-          <button type="button" onclick="CALENDAR_NAV.shiftCursor(1)" class="bg-slate-950 hover:bg-slate-800 border border-slate-700 text-slate-200 px-3 py-1.5 rounded-xl text-xs font-semibold">Next ▶</button>
-          <button type="button" onclick="CALENDAR_NAV.goToday()" class="bg-slate-950 hover:bg-slate-800 border border-slate-700 text-slate-200 px-3 py-1.5 rounded-xl text-xs font-semibold">Today</button>
-          <h3 class="text-sm font-bold text-white" id="cal-view-title">Thursday, Nov 5</h3>
+    <div data-cc-module="clocks" class="relative min-w-0 surface-card rounded-xl px-2.5 py-2 flex flex-col">
+      <div class="flex items-center justify-between mb-1.5 gap-2">
+        <span class="text-[10px] font-semibold text-slate-100 tracking-wide flex items-center gap-1.5">
+          <i class="fa-regular fa-clock text-brand-gold text-[9px]"></i>
+          World Clocks
+        </span>
+        <button type="button" onclick="WORLD_CLOCKS.togglePicker()" class="text-[9px] font-mono text-slate-500 hover:text-brand-gold transition">+ Select cities</button>
+      </div>
+      <div id="world-clocks-picker" class="hidden absolute right-2 top-8 z-40 w-80 surface-card rounded-xl shadow-xl overflow-hidden">
+        <div class="p-2 border-b border-hairline bg-brand-nested">
+          <div class="flex items-center gap-2 bg-brand-black border border-gold-soft rounded-lg px-2">
+            <i class="fa-solid fa-magnifying-glass text-brand-gold text-[10px]"></i>
+            <input id="world-clocks-search" type="text" placeholder="Search cities or timezones..." oninput="WORLD_CLOCKS.filterCities(this.value)" class="flex-1 bg-transparent outline-none py-2 text-[12px] text-slate-100">
+          </div>
+          <div id="world-clocks-picker-count" class="text-[9px] font-mono text-slate-500 px-0.5 pt-1">Pick up to 3 cities</div>
         </div>
-        <div class="flex items-center flex-wrap gap-2">
-          <label class="sr-only" for="cal-mode-select">Calendar view</label>
-          <select id="cal-mode-select" onchange="CALENDAR_NAV.setMode(this.value)" class="text-[10px] font-mono bg-amber-500/10 text-brand-gold border border-amber-500/20 px-2 py-0.5 rounded outline-none cursor-pointer hover:bg-amber-500/20">
-            <option value="hourly">Hourly</option>
+        <div id="world-clocks-picker-list" class="max-h-60 overflow-y-auto p-2"></div>
+      </div>
+      <div data-cc-body class="min-h-0">
+        <div id="world-clocks-grid" class="grid grid-cols-3 gap-1.5"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN LOWER: Quad (Revenue / Growth / Accountability / Tasks) | Calendar -->
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-3 w-full items-stretch">
+    <div class="min-w-0 lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-3 h-full cc-quad-grid">
+      <div data-cc-module="revenue-snapshot" id="module-revenue-snapshot" class="min-w-0 w-full cc-quad-card rounded-xl overflow-hidden">
+        <iframe data-revenue-snapshot-frame title="Revenue Snapshot" src="/integrations/revenue-snapshot" class="block w-full h-full min-h-[226px] rounded-xl border border-hairline" style="height:100%;min-height:226px;border:0;overflow:hidden;background:#0c1220" scrolling="no"></iframe>
+      </div>
+      <div data-cc-module="growth-snapshot" id="module-growth-snapshot" class="min-w-0 w-full cc-quad-card rounded-xl overflow-hidden">
+        <iframe data-growth-snapshot-frame title="Growth Snapshot" src="/integrations/growth-snapshot" class="block w-full h-full min-h-[226px] rounded-xl border border-hairline" style="height:100%;min-height:226px;border:0;overflow:hidden;background:#0c1220" scrolling="no"></iframe>
+      </div>
+
+      <div data-cc-module="goals" class="surface-card p-3 rounded-xl space-y-2 min-w-0 cc-quad-card">
+        <h3 class="border-b border-hairline pb-1.5 flex items-center justify-between gap-2 shrink-0">
+          <button type="button" onclick="DIMAD_GOALS.openFromDash()" class="inline-flex items-center gap-1.5 text-[10px] font-semibold text-slate-100 tracking-wide hover:text-brand-gold transition">
+            <i class="fa-solid fa-bullseye text-brand-mint text-[9px]"></i> Accountability Log
+          </button>
+          <label class="sr-only" for="cc-goals-horizon">Time frame</label>
+          <select id="cc-goals-horizon" onchange="DIMAD_GOALS.setDashHorizon(this.value)" class="text-[9px] font-mono bg-brand-nested text-slate-300 border border-hairline px-2 py-0.5 rounded-full outline-none cursor-pointer hover:text-brand-gold hover:border-gold-soft max-w-[7.5rem]">
+            <option value="daily" selected>Daily</option>
             <option value="weekly">Weekly</option>
             <option value="monthly">Monthly</option>
+            <option value="quarterly">Quarterly</option>
+            <option value="yearly">Yearly</option>
+            <option value="one_time">One-time</option>
           </select>
-          <label class="flex items-center gap-1 text-[10px] font-semibold text-slate-400 cursor-pointer select-none">
-            <input id="cal-show-content" type="checkbox" checked onchange="DIMAD_CAL.setShowContent(this.checked)" class="accent-amber-500">
-            Content schedule
-          </label>
-          <label class="sr-only" for="cal-layout-select">Calendar layout</label>
-          <select id="cal-layout-select" data-cal-layout onchange="CALENDAR_NAV.setLayout(this.value)" class="text-[10px] font-mono bg-slate-950 text-slate-300 border border-slate-700 px-2 py-0.5 rounded outline-none cursor-pointer hover:text-brand-gold hover:border-amber-500/30">
-            <option value="full">Full view</option>
-            <option value="multi">Multiview</option>
-          </select>
-          <button type="button" onclick="CAL_SETTINGS.open()" title="Calendar settings" class="text-slate-400 hover:text-brand-gold px-1.5 py-0.5 border border-slate-700 rounded-lg bg-slate-950"><i class="fa-solid fa-gear text-[10px]"></i></button>
-          <button type="button" onclick="DIMAD_CAL.openComposer({ date: CALENDAR_NAV.dateKey(CALENDAR_NAV.anchorDate()) })" class="bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold px-4 py-2 rounded-xl transition shadow-lg shadow-amber-500/10">＋ New Event</button>
+        </h3>
+        <div data-cc-body class="cc-quad-body space-y-2 text-[10px]">
+          <div class="flex items-end justify-between gap-2">
+            <div class="flex-1 min-w-0 space-y-1">
+              <div class="bg-white/5 h-1 rounded-full overflow-hidden">
+                <div id="cc-goals-bar" class="bg-brand-mint h-full w-0"></div>
+              </div>
+              <p id="cc-goals-due" class="text-[9px] text-slate-400 leading-tight">Due today</p>
+            </div>
+            <span id="cc-goals-pct" class="text-[9px] font-mono tabular-nums text-slate-400 shrink-0">—</span>
+          </div>
+          <div id="cc-goals-list" class="space-y-1"></div>
         </div>
       </div>
-      <p class="hidden" id="cal-view-hint"></p>
 
-      <div data-cc-body class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
-        <div id="cal-dual" class="grid grid-cols-1 gap-3 items-start">
-          <div class="min-w-0" id="hourly-slots-container"></div>
-          <div class="hidden min-w-0" id="cal-companion-container"></div>
+      <div data-cc-module="tasks" class="surface-card p-3 rounded-xl space-y-2 min-w-0 cc-quad-card">
+        <h3 class="border-b border-hairline pb-1.5 flex items-center justify-between shrink-0">
+          <button type="button" onclick="switchTab('ent-tasks')" class="inline-flex items-center gap-1.5 text-[10px] font-semibold text-slate-100 tracking-wide hover:text-brand-gold transition">
+            <i class="fa-solid fa-list-check text-brand-gold text-[9px]"></i> Task Manager
+          </button>
+        </h3>
+        <div data-cc-body class="cc-quad-body space-y-1 text-[10px]">
+          <form id="cc-tm-add-form" class="relative shrink-0">
+            <input id="cc-tm-new" type="text" placeholder="Type a task and hit Enter…" class="w-full bg-brand-nested border border-hairline rounded-md px-2 py-1 text-[10px] font-sans text-slate-200 placeholder-slate-500 focus:outline-none focus:border-gold-soft">
+          </form>
+          <p id="cc-tm-limit" class="hidden text-[9px] font-mono text-brand-gold">Complete or Delete tasks to add more</p>
+          <div id="cc-tm-list" class="space-y-0.5"></div>
         </div>
-        <div class="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500 border-t border-slate-800 pt-2.5">
-          <span id="calendar-timezone-label">Timezone: Auto-detected</span>
+      </div>
+
+      <div data-cc-module="pipeline" class="surface-card p-3 rounded-xl space-y-2 min-w-0 cc-quad-card">
+        <h3 class="border-b border-hairline pb-1.5 flex items-center justify-between gap-2 shrink-0">
+          <button type="button" onclick="switchTab('creator-pipeline')" class="inline-flex items-center gap-1.5 text-[10px] font-semibold text-slate-100 tracking-wide hover:text-brand-gold transition">
+            <i class="fa-solid fa-diagram-project text-brand-gold text-[9px]"></i> Creator Pipeline
+          </button>
+          <label class="sr-only" for="cc-pipeline-status">Pipeline status</label>
+          <select id="cc-pipeline-status" onchange="PIPELINE.renderDash()" class="text-[9px] font-mono bg-brand-nested text-slate-300 border border-hairline px-2 py-0.5 rounded-full outline-none cursor-pointer hover:text-brand-gold hover:border-gold-soft max-w-[7.5rem]">
+            <option value="all">All open</option>
+            <option value="Target">Target</option>
+            <option value="Pitched">Pitched</option>
+            <option value="Negotiating">Negotiating</option>
+            <option value="Active Collab">Active Collab</option>
+            <option value="Paid">Paid</option>
+            <option value="Closed">Closed</option>
+          </select>
+        </h3>
+        <div data-cc-body class="cc-quad-body space-y-1.5 text-[10px]">
+          <div id="cc-pipeline-list" class="space-y-1.5"></div>
+        </div>
+      </div>
+
+      <div data-cc-module="billing" class="surface-card p-3 rounded-xl space-y-2 min-w-0 cc-quad-card">
+        <h3 class="border-b border-hairline pb-1.5 flex items-center justify-between gap-2 shrink-0">
+          <button type="button" onclick="switchTab('ent-invoices')" class="inline-flex items-center gap-1.5 text-[10px] font-semibold text-slate-100 tracking-wide hover:text-brand-gold transition">
+            <i class="fa-solid fa-file-invoice-dollar text-brand-gold text-[9px]"></i> Billing
+          </button>
+          <div class="flex items-center gap-1 min-w-0">
+            <label class="sr-only" for="cc-billing-kind">Billing type</label>
+            <select id="cc-billing-kind" onchange="INVOICES.onDashKindChange()" class="text-[9px] font-mono bg-brand-nested text-slate-300 border border-hairline px-2 py-0.5 rounded-full outline-none cursor-pointer hover:text-brand-gold hover:border-gold-soft max-w-[6.5rem]">
+              <option value="invoices" selected>Invoices</option>
+              <option value="proposals">Proposals</option>
+            </select>
+            <label class="sr-only" for="cc-billing-status">Billing status</label>
+            <select id="cc-billing-status" onchange="INVOICES.renderDash()" class="text-[9px] font-mono bg-brand-nested text-slate-300 border border-hairline px-2 py-0.5 rounded-full outline-none cursor-pointer hover:text-brand-gold hover:border-gold-soft max-w-[5.5rem]">
+              <option value="all" selected>All</option>
+              <option value="Draft">Draft</option>
+              <option value="Sent">Sent</option>
+              <option value="Paid">Paid</option>
+              <option value="Overdue">Overdue</option>
+            </select>
+          </div>
+        </h3>
+        <div data-cc-body class="cc-quad-body space-y-1.5 text-[10px]">
+          <div id="cc-billing-list" class="space-y-1.5"></div>
+        </div>
+      </div>
+    </div>
+
+    <div data-cc-module="calendar" class="min-w-0 lg:col-span-5 flex flex-col h-full">
+      <div data-cc-body class="surface-card rounded-xl p-3 space-y-3 flex-1 flex flex-col min-h-0">
+        <!-- Static monthly calendar -->
+        <div class="space-y-2">
+          <div class="grid grid-cols-[auto_1fr_auto] items-center gap-2">
+            <button type="button" onclick="CALENDAR_NAV.shiftMonth(-1)" class="bg-brand-nested hover:bg-white/5 text-slate-300 px-2.5 py-1 text-[10px] font-medium rounded-lg border border-hairline">Prev</button>
+            <p id="cc-month-title" class="text-[11px] font-semibold text-slate-100 font-mono text-center truncate">November 2026</p>
+            <div class="inline-flex items-center rounded-lg border border-hairline overflow-hidden">
+              <button type="button" onclick="CALENDAR_NAV.goToday()" class="bg-brand-nested hover:bg-white/5 text-slate-200 px-2.5 py-1 text-[10px] font-semibold border-r border-hairline">Today</button>
+              <button type="button" onclick="CALENDAR_NAV.shiftMonth(1)" class="bg-brand-nested hover:bg-white/5 text-slate-300 px-2.5 py-1 text-[10px] font-medium">Next</button>
+            </div>
+          </div>
+          <div id="cal-companion-container" class="min-w-0"></div>
+        </div>
+
+        <!-- Daily / Weekly schedule — grows to fill remaining module height -->
+        <div class="border-t border-hairline pt-3 flex-1 flex flex-col min-h-0 gap-2.5">
+          <div class="flex items-center flex-wrap justify-between gap-2 shrink-0">
+            <div class="inline-flex items-center rounded-full border border-hairline overflow-hidden p-0.5 bg-brand-nested">
+              <button type="button" data-cc-schedule-mode="hourly" onclick="CALENDAR_NAV.setMode('hourly')" class="px-3 py-1 text-[10px] font-semibold rounded-full text-slate-400 hover:text-slate-200 transition">Daily</button>
+              <button type="button" data-cc-schedule-mode="weekly" onclick="CALENDAR_NAV.setMode('weekly')" class="px-3 py-1 text-[10px] font-semibold rounded-full text-slate-400 hover:text-slate-200 transition">Weekly</button>
+            </div>
+            <div class="flex items-center flex-wrap gap-1.5">
+              <label class="flex items-center gap-1.5 text-[10px] font-medium text-slate-400 cursor-pointer select-none px-2 py-1 rounded-full border border-hairline hover:border-gold-soft transition">
+                <input id="cal-show-content" type="checkbox" checked onchange="DIMAD_CAL.setShowContent(this.checked)" class="accent-brand-gold">
+                Content schedule
+              </label>
+              <button type="button" onclick="CAL_SETTINGS.open()" title="Calendar settings" class="text-slate-500 hover:text-brand-gold px-1.5 py-1 border border-hairline rounded-full bg-transparent"><i class="fa-solid fa-gear text-[10px]"></i></button>
+              <button type="button" onclick="DIMAD_CAL.openComposer({ date: CALENDAR_NAV.dateKey(CALENDAR_NAV.anchorDate()) })" class="bg-brand-gold hover:bg-amber-400 text-brand-black text-[10px] font-bold px-3 py-1.5 rounded-full transition shadow-lg shadow-brand-gold/10">+ New Event</button>
+            </div>
+          </div>
+          <h3 class="text-sm font-semibold text-slate-100 font-sans shrink-0" id="cal-view-title">Thursday, Nov 5</h3>
+          <p class="hidden" id="cal-view-hint"></p>
+          <div id="cal-dual" class="flex-1 min-h-0 flex flex-col">
+            <div class="min-w-0 flex-1 min-h-0 flex flex-col" id="hourly-slots-container"></div>
+          </div>
+        </div>
+
+        <div class="shrink-0 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500 border-t border-hairline pt-2.5">
+          <span id="calendar-timezone-label" class="font-mono text-[10px]">Timezone: Auto-detected</span>
           <div class="relative inline-flex" data-account-wrap>
             <button type="button" id="calendar-source-status" title="Connect Gmail or Outlook to sync calendar into Command Center and DIMAD Calendar." onclick="event.preventDefault(); (window.DIMAD_AURINKO && window.DIMAD_AURINKO.connect ? window.DIMAD_AURINKO.connect() : (window.location.href='/api/auth/aurinko'))" class="bg-transparent border-0 text-[11px] font-semibold text-brand-gold hover:text-amber-300 px-0 py-0.5 transition inline-flex items-center gap-1.5">
               Connect Gmail / Outlook
             </button>
-            <div id="calendar-account-menu" data-account-menu class="hidden absolute right-0 bottom-full mb-1 z-50 min-w-[7.5rem] rounded-md border border-brand-border bg-neutral-950 shadow-xl">
-              <button type="button" data-account-logout class="w-full text-left px-3 py-2 text-[11px] font-mono text-slate-200 hover:bg-neutral-800 hover:text-brand-alert">Log out</button>
+            <div id="calendar-account-menu" data-account-menu class="hidden absolute right-0 bottom-full mb-1 z-50 min-w-[7.5rem] rounded-md border border-hairline bg-brand-nested shadow-xl">
+              <button type="button" data-account-logout class="w-full text-left px-3 py-2 text-[11px] font-mono text-slate-200 hover:bg-white/5 hover:text-brand-alert">Log out</button>
             </div>
-            <div id="calendar-connect-menu" data-account-menu class="hidden absolute right-0 bottom-full mb-1 z-50 min-w-[10.5rem] rounded-md border border-brand-border bg-neutral-950 shadow-xl">
-              <button type="button" data-account-connect="google" class="w-full text-left px-3 py-2 text-[11px] font-mono text-slate-200 hover:bg-neutral-800 hover:text-brand-gold">Connect Gmail</button>
-              <button type="button" data-account-connect="microsoft" class="w-full text-left px-3 py-2 text-[11px] font-mono text-slate-200 hover:bg-neutral-800 hover:text-brand-gold">Connect Outlook</button>
+            <div id="calendar-connect-menu" data-account-menu class="hidden absolute right-0 bottom-full mb-1 z-50 min-w-[10.5rem] rounded-md border border-hairline bg-brand-nested shadow-xl">
+              <button type="button" data-account-connect="google" class="w-full text-left px-3 py-2 text-[11px] font-mono text-slate-200 hover:bg-white/5 hover:text-brand-gold">Connect Gmail</button>
+              <button type="button" data-account-connect="microsoft" class="w-full text-left px-3 py-2 text-[11px] font-mono text-slate-200 hover:bg-white/5 hover:text-brand-gold">Connect Outlook</button>
             </div>
           </div>
         </div>
       </div>
+    </div>
   </div>
 
-  <!-- BUSINESS AI CHAT & NOTEPAD -->
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-    <div data-cc-module="copilot" class="border border-brand-accent/40 bg-brand-panel p-3.5 rounded space-y-2">
-      <h3 class="font-bold text-slate-100 text-xs border-b border-brand-border pb-1.5 flex items-center justify-between">
-        <span><i class="fa-solid fa-bolt text-brand-accent"></i> Business AI Chat</span>
-        <span class="flex items-center gap-2">
-          <span class="text-[8px] bg-brand-accent/20 text-brand-accent px-1.5 py-0.5 rounded">READY</span>
-          <button type="button" onclick="switchTab('ent-ai-business')" class="text-[9px] font-semibold text-sky-300 hover:text-sky-200 border border-sky-400/30 bg-sky-500/10 px-2 py-0.5 rounded-lg transition">Expand</button>
-        </span>
-      </h3>
-      <div data-cc-body class="space-y-2">
-        <div class="bg-brand-black/60 p-2.5 rounded border border-brand-border text-[10px] h-20 overflow-y-auto font-mono text-slate-300 space-y-1">
-          <p class="text-brand-accent"><strong>DIMAD AI:</strong> Operational parameters loaded for Yerevan node.</p>
-        </div>
-        <div class="flex space-x-1">
-          <input type="text" placeholder="Ask Business AI..." class="flex-1 bg-brand-black border border-brand-border px-2 py-1 rounded text-[10px] text-slate-200">
-          <button class="bg-brand-accent text-brand-black font-bold px-3 py-1 rounded text-[10px]">SEND</button>
-        </div>
-      </div>
-    </div>
-
-    <div data-cc-module="notepad" class="border border-amber-500/30 bg-brand-panel p-3.5 rounded space-y-2">
-      <h3 class="font-bold text-slate-100 text-xs border-b border-brand-border pb-1.5 flex items-center justify-between gap-2">
-        <span class="flex items-center gap-1.5 min-w-0">
-          <button type="button" onclick="DIMAD_NOTEPAD.openTab()" class="inline-flex items-center gap-1.5 shrink-0 hover:text-brand-gold transition">
-            <i class="fa-solid fa-note-sticky text-brand-gold"></i> DIMAD Notepad
-          </button>
-          <span class="relative">
-            <button type="button" onclick="DIMAD_NOTEPAD.toggleHelp(event, 'cc')" aria-label="About DIMAD Notepad" class="w-4 h-4 rounded-full border border-slate-600 text-[9px] leading-none text-slate-400 hover:text-brand-gold hover:border-amber-500/40">?</button>
-            <div id="cc-notepad-help" class="hidden absolute left-0 top-full mt-1 z-30 w-56 rounded-lg border border-slate-700 bg-slate-950 shadow-xl p-2.5 text-[10px] font-normal leading-relaxed text-slate-300">Cloud-based notepad. Autosaves directly to dimDrive. Think it. Jot it. Save it.</div>
-          </span>
-        </span>
-        <span class="flex flex-wrap items-center justify-end gap-1.5">
-          <span class="relative">
-            <button type="button" onclick="DIMAD_NOTEPAD.toggleRecent(event)" class="text-[9px] font-semibold text-slate-200 hover:text-brand-gold border border-slate-700 bg-slate-950 px-2 py-0.5 rounded-lg transition">Recent</button>
-            <div id="cc-notepad-recent" class="hidden absolute right-0 top-full mt-1 z-30 w-52 rounded-lg border border-slate-700 bg-slate-950 shadow-xl py-1"></div>
-          </span>
-          <button type="button" onclick="DIMAD_NOTEPAD.createFromDash()" class="text-[9px] font-semibold text-brand-gold hover:text-amber-300 border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 rounded-lg transition">+ New Note</button>
-        </span>
-      </h3>
-      <div data-cc-body class="space-y-2">
-        <textarea id="cc-notepad-body" rows="5" placeholder="Save your thoughts here..." oninput="DIMAD_NOTEPAD.markDirty('dash')" class="w-full min-h-[5rem] bg-brand-black/60 p-2.5 rounded border border-brand-border text-[11px] leading-relaxed text-slate-200 placeholder:text-slate-600 outline-none focus:border-amber-500/40 resize-none font-mono"></textarea>
-        <div class="flex items-center justify-between gap-2">
-          <p id="cc-notepad-status" class="text-[9px] text-slate-500">Autosaves to DIMAD Notepad.</p>
-          <button type="button" id="cc-notepad-save" onclick="DIMAD_NOTEPAD.saveDash()" class="text-[9px] font-semibold text-slate-200 hover:text-brand-gold border border-slate-700 bg-slate-950 px-2 py-0.5 rounded-lg transition">Save</button>
-        </div>
-      </div>
-    </div>
-
-    <div data-cc-module="goals" class="border border-brand-border bg-brand-panel p-3.5 rounded space-y-2">
-      <h3 class="font-bold text-slate-200 text-xs border-b border-brand-border pb-1.5 flex items-center justify-between">
-        <button type="button" onclick="DIMAD_GOALS.openFromDash()" class="inline-flex items-center gap-1.5 hover:text-brand-gold transition">
-          <i class="fa-solid fa-bullseye text-brand-mint"></i> Accountability Log
+  <!-- NOTEPAD -->
+  <div data-cc-module="notepad" class="surface-card p-3.5 rounded-xl space-y-2">
+    <h3 class="border-b border-hairline pb-1.5 flex items-center justify-between gap-2">
+      <span class="flex items-center gap-1.5 min-w-0">
+        <button type="button" onclick="DIMAD_NOTEPAD.openTab()" class="inline-flex items-center gap-1.5 shrink-0 text-[10px] font-semibold text-slate-100 tracking-wide hover:text-brand-gold transition">
+          <i class="fa-solid fa-note-sticky text-brand-gold text-[9px]"></i> Dimad Notepad
         </button>
-        <span id="cc-goals-period" class="text-[8px] text-brand-mint font-mono"></span>
-      </h3>
-      <div data-cc-body class="space-y-2 text-[10px]">
-        <div id="cc-goals-horizons" class="flex flex-wrap gap-1"></div>
-        <div class="flex items-end justify-between gap-2">
-          <div class="flex-1 min-w-0 space-y-1">
-            <div class="bg-brand-border h-1 rounded-full overflow-hidden">
-              <div id="cc-goals-bar" class="bg-brand-mint h-full w-0"></div>
-            </div>
-            <p id="cc-goals-due" class="text-[9px] text-slate-400 leading-tight">Due today</p>
-          </div>
-          <span id="cc-goals-pct" class="text-[9px] font-mono text-slate-400 shrink-0">—</span>
-        </div>
-        <div id="cc-goals-list" class="space-y-1 max-h-40 overflow-y-auto"></div>
-      </div>
-    </div>
-
-    <div data-cc-module="tasks" class="border border-brand-border bg-brand-panel p-3.5 rounded space-y-2">
-      <h3 class="font-bold text-slate-200 text-xs border-b border-brand-border pb-1.5 flex items-center justify-between">
-        <button type="button" onclick="switchTab('ent-tasks')" class="inline-flex items-center gap-1.5 hover:text-brand-gold transition">
-          <i class="fa-solid fa-list-check text-brand-gold"></i> Task Manager (To-Do List)
-        </button>
-        <button type="button" onclick="TASK_MANAGER.focusAdd('cc')" class="text-[9px] font-bold text-brand-gold hover:text-amber-300">+ Add Task</button>
-      </h3>
-      <div data-cc-body class="space-y-1.5 text-[10px]">
-        <form id="cc-tm-add-form" class="relative">
-          <input id="cc-tm-new" type="text" placeholder="Type a task and hit Enter…" class="w-full bg-brand-black border border-brand-border rounded-lg px-2.5 py-1.5 text-[10px] font-mono text-slate-200 placeholder-slate-500 focus:outline-none focus:border-brand-gold pr-16">
-        </form>
-        <p id="cc-tm-limit" class="hidden text-[10px] font-mono text-brand-gold">Complete or Delete tasks to add more</p>
-        <div id="cc-tm-list" class="space-y-1.5"></div>
+        <span class="relative">
+          <button type="button" onclick="DIMAD_NOTEPAD.toggleHelp(event, 'cc')" aria-label="About DIMAD Notepad" class="w-4 h-4 rounded-full border border-hairline text-[9px] leading-none text-slate-400 hover:text-brand-gold hover:border-gold-soft">?</button>
+          <div id="cc-notepad-help" class="hidden absolute left-0 top-full mt-1 z-30 w-56 rounded-lg surface-card shadow-xl p-2.5 text-[10px] font-normal leading-relaxed text-slate-300">Cloud-based notepad. Autosaves directly to dimDrive. Think it. Jot it. Save it.</div>
+        </span>
+      </span>
+      <span class="flex flex-wrap items-center justify-end gap-1.5">
+        <span class="relative">
+          <button type="button" onclick="DIMAD_NOTEPAD.toggleRecent(event)" class="text-[9px] font-semibold text-slate-300 hover:text-brand-gold border border-hairline bg-transparent px-2 py-0.5 rounded-full transition">Recent</button>
+          <div id="cc-notepad-recent" class="hidden absolute right-0 top-full mt-1 z-30 w-52 rounded-lg surface-card shadow-xl py-1"></div>
+        </span>
+        <button type="button" onclick="DIMAD_NOTEPAD.createFromDash()" class="text-[9px] font-semibold text-brand-gold hover:text-amber-300 border border-gold-soft bg-brand-gold/10 px-2 py-0.5 rounded-full transition">+ New Note</button>
+      </span>
+    </h3>
+    <div data-cc-body class="space-y-2">
+      <textarea id="cc-notepad-body" rows="5" placeholder="Save your thoughts here..." oninput="DIMAD_NOTEPAD.markDirty('dash')" class="w-full min-h-[5rem] surface-nested p-2.5 rounded-lg text-[11px] leading-relaxed text-slate-200 placeholder:text-slate-600 outline-none focus:border-gold-soft resize-none font-sans border border-hairline"></textarea>
+      <div class="flex items-center justify-between gap-2">
+        <p id="cc-notepad-status" class="text-[9px] text-slate-500">Autosaves to DIMAD Notepad.</p>
+        <button type="button" id="cc-notepad-save" onclick="DIMAD_NOTEPAD.saveDash()" class="text-[9px] font-semibold text-slate-300 hover:text-brand-gold border border-hairline bg-transparent px-2 py-0.5 rounded-full transition">Save</button>
       </div>
     </div>
   </div>

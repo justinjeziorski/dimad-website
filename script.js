@@ -1,4 +1,4 @@
-﻿let timerInterval = null, isTimerRunning = false, weeklyLoggedSeconds = 14.5 * 3600;
+let timerInterval = null, isTimerRunning = false, weeklyLoggedSeconds = 14.5 * 3600;
 let currentActiveMode = 'entrepreneur';
 
 const VIEW_FILES = [
@@ -440,7 +440,7 @@ const WORLD_CLOCKS = {
       const y2 = 24 - Math.cos(a) * outer;
       return `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="currentColor" stroke-opacity="${i % 3 === 0 ? '0.85' : '0.35'}" stroke-width="${i % 3 === 0 ? '1.6' : '1'}" stroke-linecap="round"/>`;
     }).join('');
-    return `<svg data-world-clock-analog="${id}" class="shrink-0" viewBox="0 0 48 48" width="44" height="44" aria-hidden="true">
+    return `<svg data-world-clock-analog="${id}" class="shrink-0" viewBox="0 0 48 48" width="34" height="34" aria-hidden="true">
       <circle cx="24" cy="24" r="22.5" fill="currentColor" fill-opacity="0.06" stroke="currentColor" stroke-opacity="0.45" stroke-width="1.4"/>
       ${ticks}
       <line data-hand="hour" x1="24" y1="24" x2="24" y2="13.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
@@ -494,29 +494,29 @@ const WORLD_CLOCKS = {
       const remote = cached && cached.imageUrl ? cached.imageUrl : '';
       const hero = remote || heroes[city.id];
       const shell = hero
-        ? 'relative overflow-hidden border border-amber-500/40 bg-cover bg-center p-2.5 rounded'
-        : 'border border-brand-border bg-brand-panel p-2.5 rounded';
+        ? 'relative overflow-hidden border border-hairline bg-cover bg-center px-2 py-1.5 rounded-lg h-[72px]'
+        : 'border border-hairline bg-brand-nested/90 backdrop-blur-md px-2 py-1.5 rounded-lg h-[72px]';
       const shellStyle = hero ? ` style="background-image:url('${this.escapeHtml(hero)}')"` : '';
-      const overlay = hero ? '<div data-world-clock-overlay class="pointer-events-none absolute inset-0 bg-gradient-to-r from-slate-950/80 via-slate-950/50 to-slate-950/25"></div>' : '';
+      const overlay = hero ? '<div data-world-clock-overlay class="pointer-events-none absolute inset-0" style="background:linear-gradient(180deg, rgba(8,12,22,0.72) 0%, rgba(8,12,22,0.9) 100%)"></div>' : '';
       const creditHref = remote && /^https:\/\//i.test(String(cached.photographerUrl || '')) ? cached.photographerUrl : '';
       const credit = creditHref
-        ? `<a data-world-clock-credit href="${this.escapeHtml(creditHref)}" target="_blank" rel="noopener noreferrer" class="absolute bottom-0.5 right-1.5 z-10 text-[8px] text-amber-100 truncate max-w-[70%]">${this.escapeHtml(cached.photographerName || '')}</a>`
+        ? `<a data-world-clock-credit href="${this.escapeHtml(creditHref)}" target="_blank" rel="noopener noreferrer" class="absolute bottom-0.5 right-1 z-10 text-[6px] text-slate-500 truncate max-w-[65%]">${this.escapeHtml(cached.photographerName || '')}</a>`
         : '';
-      const timeClass = hero ? 'text-amber-100' : tone.time;
-      const nameClass = hero ? 'text-amber-50' : 'text-slate-400';
-      const badgeClass = hero ? 'bg-amber-500/20 text-amber-100 border border-amber-200/20' : tone.badge;
+      const timeClass = idx === 0 ? 'text-brand-gold' : (hero ? 'text-slate-100' : tone.time);
+      const badgeClass = idx === 0
+        ? 'bg-brand-gold/15 text-brand-gold border border-gold-soft font-mono'
+        : (hero ? 'bg-white/10 text-slate-300 border border-white/10 font-mono' : tone.badge + ' font-mono');
       return `
-        <div data-world-clock-card="${city.id}" class="${shell} flex items-center justify-between gap-2"${shellStyle}>
+        <div data-world-clock-card="${city.id}" class="${shell} flex flex-col justify-between"${shellStyle}>
           ${overlay}
           ${credit}
-          <div class="relative z-10 flex items-center gap-2.5 min-w-0 ${timeClass}">
-            ${this.analogFace(city.id)}
-            <div class="min-w-0">
-              <p class="text-[9px] ${nameClass} font-bold">${city.city.toUpperCase()}</p>
-              <p data-world-clock="${city.id}" class="text-xs font-bold font-mono ${timeClass}">--:--:--</p>
-            </div>
+          <div class="relative z-10 flex items-start justify-between gap-1 w-full">
+            <p class="text-[8px] text-slate-100 font-bold tracking-wide leading-tight truncate">${city.city.toUpperCase()}</p>
+            <span data-world-clock-offset="${city.id}" class="text-[6px] tracking-wider ${badgeClass} px-1 py-0.5 rounded-full shrink-0">${this.offsetLabel(city.tz)}</span>
           </div>
-          <span data-world-clock-offset="${city.id}" class="relative z-10 text-[8px] ${badgeClass} px-1.5 py-0.5 rounded shrink-0">${this.offsetLabel(city.tz)}</span>
+          <div class="relative z-10">
+            <p data-world-clock="${city.id}" class="text-[12px] sm:text-[13px] font-bold font-mono tabular-nums leading-none ${timeClass}">--:--:--</p>
+          </div>
         </div>`;
     }).join('');
     this.tick();
@@ -661,33 +661,24 @@ const WORLD_CLOCKS = {
 
   paintCardBackground(card, data) {
     if (!card || !data || !data.imageUrl) return;
-    card.className = 'relative overflow-hidden border border-amber-500/40 bg-cover bg-center p-2.5 rounded flex items-center justify-between gap-2';
+    card.className = 'relative overflow-hidden border border-hairline bg-cover bg-center px-2 py-1.5 rounded-lg h-[72px] flex flex-col justify-between';
     card.style.backgroundImage = 'url("' + String(data.imageUrl).replace(/"/g, '') + '")';
     card.dataset.imageUrl = data.imageUrl;
     card.dataset.cityKey = data.cityKey || '';
     card.dataset.photographerName = data.photographerName || '';
     card.dataset.photographerUrl = data.photographerUrl || '';
     if (!card.querySelector('[data-world-clock-overlay]')) {
-      card.insertAdjacentHTML('afterbegin', '<div data-world-clock-overlay class="pointer-events-none absolute inset-0 bg-gradient-to-r from-slate-950/80 via-slate-950/50 to-slate-950/25"></div>');
+      card.insertAdjacentHTML('afterbegin', '<div data-world-clock-overlay class="pointer-events-none absolute inset-0" style="background:linear-gradient(180deg, rgba(8,12,22,0.72) 0%, rgba(8,12,22,0.9) 100%)"></div>');
+    } else {
+      card.querySelector('[data-world-clock-overlay]').style.background = 'linear-gradient(180deg, rgba(8,12,22,0.72) 0%, rgba(8,12,22,0.9) 100%)';
     }
-    const face = card.querySelector('.relative.z-10');
-    if (face) {
-      face.classList.remove('text-brand-accent', 'text-brand-gold', 'text-brand-mint');
-      face.classList.add('text-amber-100');
-    }
-    card.querySelectorAll('p').forEach((node, index) => {
-      node.classList.remove('text-slate-400', 'text-brand-accent', 'text-brand-gold', 'text-brand-mint');
-      node.classList.add(index === 0 ? 'text-amber-50' : 'text-amber-100');
-    });
-    const badge = card.querySelector('[data-world-clock-offset]');
-    if (badge) badge.className = 'relative z-10 text-[8px] bg-amber-500/20 text-amber-100 border border-amber-200/20 px-1.5 py-0.5 rounded shrink-0';
     let credit = card.querySelector('[data-world-clock-credit]');
     const creditHref = /^https:\/\//i.test(String(data.photographerUrl || '')) ? data.photographerUrl : '';
     if (data.photographerName && creditHref) {
       if (!credit) {
         credit = document.createElement('a');
         credit.dataset.worldClockCredit = '1';
-        credit.className = 'absolute bottom-0.5 right-1.5 z-10 text-[8px] text-amber-100 truncate max-w-[70%]';
+        credit.className = 'absolute bottom-0.5 right-1 z-10 text-[7px] text-slate-500 truncate max-w-[65%]';
         credit.target = '_blank';
         credit.rel = 'noopener noreferrer';
         card.appendChild(credit);
@@ -730,11 +721,17 @@ function setIdentityHeaderState(id, active) {
   const chevron = document.querySelector(`[data-identity-chevron="${id}"]`);
   if (!btn) return;
 
-  btn.classList.remove('bg-brand-accent/10', 'border-brand-accent/40', 'text-brand-accent', 'bg-brand-mint/10', 'border-brand-mint/40', 'text-brand-mint', 'bg-brand-black/40', 'border-brand-border/60', 'text-slate-300');
+  btn.classList.remove(
+    'bg-brand-accent/10', 'border-brand-accent/40', 'text-brand-accent',
+    'bg-brand-mint/10', 'border-brand-mint/40', 'text-brand-mint',
+    'bg-brand-gold/10', 'border-gold-soft', 'text-brand-gold',
+    'bg-brand-black/40', 'border-brand-border/60', 'text-slate-300',
+    'bg-transparent', 'border-hairline', 'text-slate-400'
+  );
   if (active) {
-    btn.classList.add('bg-brand-accent/10', 'border-brand-accent/40', 'text-brand-accent');
+    btn.classList.add('bg-brand-gold/10', 'border-gold-soft', 'text-brand-gold');
   } else {
-    btn.classList.add('bg-brand-black/40', 'border-brand-border/60', 'text-slate-300');
+    btn.classList.add('bg-transparent', 'border-hairline', 'text-slate-400');
   }
 
   if (chevron) {
@@ -750,17 +747,27 @@ function renderModeNav(mode) {
   if (!container || !config) return;
 
   container.innerHTML = config.items.map((item) => {
-    const color = item.highlight ? 'text-amber-400 font-semibold hover:text-amber-300' : 'text-slate-400 hover:text-slate-200';
+    const color = item.highlight ? 'text-brand-gold font-semibold hover:text-amber-300' : 'text-slate-400 hover:text-slate-200';
     const badge = item.premium
-      ? '<span class="text-[7px] bg-brand-gold/15 text-brand-gold border border-brand-gold/40 px-1 py-0.5 rounded uppercase tracking-wide">Premium</span>'
+      ? '<span class="text-[7px] bg-brand-gold/10 text-brand-gold border border-gold-soft px-1 py-0.5 rounded uppercase tracking-wide">Premium</span>'
       : '';
     return `
-      <button type="button" onclick="switchTab('${item.id}')" class="sub-nav-btn ${color} flex items-center justify-between gap-1 w-full text-left py-1 px-2 rounded">
+      <button type="button" data-nav-id="${item.id}" onclick="switchTab('${item.id}')" class="sub-nav-btn ${color} flex items-center justify-between gap-1 w-full text-left py-1.5 px-2 rounded-md transition-colors">
         <span class="inline-flex items-center gap-1.5">${item.icon ? `<i class="fa-solid ${item.icon} text-[10px] w-3 text-center"></i>` : ''}${item.label}</span>
         ${badge}
       </button>
     `;
   }).join('');
+  if (typeof markActiveSubNav === 'function' && window.__dimadActiveTab) {
+    markActiveSubNav(window.__dimadActiveTab);
+  }
+}
+
+function markActiveSubNav(tabId) {
+  window.__dimadActiveTab = tabId;
+  document.querySelectorAll('.sub-nav-btn').forEach((btn) => {
+    btn.classList.toggle('is-active', btn.getAttribute('data-nav-id') === tabId);
+  });
 }
 
 function openSalesRevenue() {
@@ -829,6 +836,7 @@ function switchIdentity(id) {
 }
 
 function switchTab(tabId) {
+  if (typeof markActiveSubNav === 'function') markActiveSubNav(tabId);
   if (tabId === 'settings') {
     openSettingsVaultNav('dim-wallet');
     return;
@@ -1589,6 +1597,221 @@ function closeDimadAiNav() {
   panel.classList.add('hidden');
   panel.classList.remove('flex');
 }
+
+const CC_DIMAD_AI_FLOAT = {
+  messages: [
+    { role: 'ai', text: 'Dimad AI online. Ask anything — or expand for the full floating chat.' }
+  ],
+  dockCollapsed: false,
+  dragBound: false,
+  dragging: false,
+  offsetX: 0,
+  offsetY: 0,
+
+  ensure() {
+    const win = document.getElementById('cc-dimad-ai-float');
+    if (!win) return null;
+    if (!this.dragBound) {
+      this.dragBound = true;
+      const handle = document.getElementById('cc-dimad-ai-float-drag');
+      if (handle) {
+        handle.addEventListener('pointerdown', (event) => this.startDrag(event));
+      }
+      window.addEventListener('pointermove', (event) => this.onDrag(event));
+      window.addEventListener('pointerup', () => this.endDrag());
+      window.addEventListener('pointercancel', () => this.endDrag());
+    }
+    return win;
+  },
+
+  paint() {
+    const root = document.getElementById('cc-dimad-ai-float-msgs');
+    if (!root) return;
+    root.innerHTML = this.messages.map((msg) => {
+      if (msg.role === 'user') {
+        return `<div class="flex justify-end"><div class="max-w-[85%] rounded-2xl px-3 py-2 bg-sky-300/85 text-slate-950 font-medium">${escapeAiHtml(msg.text)}</div></div>`;
+      }
+      return `<div class="flex justify-start"><div class="max-w-[90%] rounded-2xl px-3 py-2 bg-sky-950/35 border border-sky-100/20 text-sky-50"><span class="block text-[9px] font-mono uppercase tracking-wide text-sky-200/80 mb-1">Dimad AI</span>${escapeAiHtml(msg.text)}</div></div>`;
+    }).join('');
+    root.scrollTop = root.scrollHeight;
+  },
+
+  syncChrome() {
+    const dock = document.getElementById('cc-dimad-ai-form');
+    const logo = document.getElementById('cc-dimad-ai-logo');
+    const floatOpen = this.isOpen();
+    if (dock) dock.classList.toggle('hidden', floatOpen || this.dockCollapsed);
+    if (logo) logo.classList.toggle('hidden', floatOpen || !this.dockCollapsed);
+  },
+
+  setDockVisible(show) {
+    if (show) this.dockCollapsed = false;
+    this.syncChrome();
+  },
+
+  collapseDock() {
+    if (this.isOpen()) this.close(false);
+    this.dockCollapsed = true;
+    this.syncChrome();
+  },
+
+  restoreDock() {
+    this.dockCollapsed = false;
+    if (this.isOpen()) {
+      const win = document.getElementById('cc-dimad-ai-float');
+      if (win) {
+        win.classList.add('hidden');
+        win.setAttribute('aria-hidden', 'true');
+      }
+      this.endDrag();
+    }
+    this.syncChrome();
+    const input = document.getElementById('cc-dimad-ai-input');
+    if (input) input.focus();
+  },
+
+  placeDefault() {
+    const win = document.getElementById('cc-dimad-ai-float');
+    if (!win) return;
+    const margin = 16;
+    const width = Math.min(440, Math.max(280, window.innerWidth - margin * 2));
+    const height = Math.min(560, Math.max(320, window.innerHeight - margin * 2));
+    win.style.width = `${width}px`;
+    win.style.height = `${height}px`;
+    win.style.maxWidth = `${Math.max(0, window.innerWidth - margin * 2)}px`;
+    win.style.maxHeight = `${Math.max(0, window.innerHeight - margin * 2)}px`;
+    win.style.left = `${Math.max(margin, window.innerWidth - width - margin)}px`;
+    win.style.top = `${margin}px`;
+    win.style.right = 'auto';
+    win.style.bottom = 'auto';
+  },
+
+  open() {
+    const win = this.ensure();
+    if (!win) return;
+    win.classList.remove('hidden');
+    win.setAttribute('aria-hidden', 'false');
+    this.dockCollapsed = false;
+    this.syncChrome();
+    this.placeDefault();
+    this.paint();
+    const input = document.getElementById('cc-dimad-ai-float-input');
+    if (input) input.focus();
+  },
+
+  close(restoreDock = true) {
+    const win = document.getElementById('cc-dimad-ai-float');
+    if (!win) return;
+    win.classList.add('hidden');
+    win.setAttribute('aria-hidden', 'true');
+    this.endDrag();
+    if (restoreDock) {
+      this.dockCollapsed = false;
+      this.syncChrome();
+    } else {
+      this.syncChrome();
+    }
+  },
+
+  isOpen() {
+    const win = document.getElementById('cc-dimad-ai-float');
+    return !!(win && !win.classList.contains('hidden'));
+  },
+
+  push(role, text) {
+    this.messages.push({ role, text });
+    if (this.messages.length > 80) this.messages = this.messages.slice(-80);
+    this.paint();
+  },
+
+  reply(userText) {
+    this.push('ai', `Working on: “${userText}”. Expand stays floating — drag the header to move this chat anywhere.`);
+  },
+
+  startDrag(event) {
+    if (event.button != null && event.button !== 0) return;
+    if (event.target && event.target.closest && event.target.closest('button')) return;
+    const win = this.ensure();
+    if (!win) return;
+    const box = win.getBoundingClientRect();
+    this.dragging = true;
+    this.offsetX = event.clientX - box.left;
+    this.offsetY = event.clientY - box.top;
+    const handle = document.getElementById('cc-dimad-ai-float-drag');
+    if (handle) handle.classList.add('is-dragging');
+    try { win.setPointerCapture(event.pointerId); } catch (err) { /* ignore */ }
+    event.preventDefault();
+  },
+
+  onDrag(event) {
+    if (!this.dragging) return;
+    const win = document.getElementById('cc-dimad-ai-float');
+    if (!win) return;
+    const width = win.offsetWidth || 440;
+    const height = win.offsetHeight || 560;
+    const maxLeft = Math.max(8, window.innerWidth - width - 8);
+    const maxTop = Math.max(8, window.innerHeight - height - 8);
+    const left = Math.min(maxLeft, Math.max(8, event.clientX - this.offsetX));
+    const top = Math.min(maxTop, Math.max(8, event.clientY - this.offsetY));
+    win.style.left = `${left}px`;
+    win.style.top = `${top}px`;
+  },
+
+  endDrag() {
+    if (!this.dragging) return;
+    this.dragging = false;
+    const handle = document.getElementById('cc-dimad-ai-float-drag');
+    if (handle) handle.classList.remove('is-dragging');
+  }
+};
+
+function ccDimadAiExpand() {
+  CC_DIMAD_AI_FLOAT.open();
+}
+
+function ccDimadAiMinimize() {
+  CC_DIMAD_AI_FLOAT.close(true);
+}
+
+function ccDimadAiCollapseDock() {
+  CC_DIMAD_AI_FLOAT.collapseDock();
+}
+
+function ccDimadAiRestoreDock() {
+  CC_DIMAD_AI_FLOAT.restoreDock();
+}
+
+function ccDimadAiSend() {
+  const ccInput = document.getElementById('cc-dimad-ai-input');
+  if (!ccInput) return;
+  const text = (ccInput.value || '').trim();
+  if (!text) {
+    CC_DIMAD_AI_FLOAT.open();
+    return;
+  }
+  ccInput.value = '';
+  CC_DIMAD_AI_FLOAT.open();
+  CC_DIMAD_AI_FLOAT.push('user', text);
+  window.setTimeout(() => CC_DIMAD_AI_FLOAT.reply(text), 280);
+}
+
+function ccDimadAiFloatSend() {
+  const input = document.getElementById('cc-dimad-ai-float-input');
+  if (!input) return;
+  const text = (input.value || '').trim();
+  if (!text) return;
+  input.value = '';
+  CC_DIMAD_AI_FLOAT.push('user', text);
+  window.setTimeout(() => CC_DIMAD_AI_FLOAT.reply(text), 280);
+}
+
+window.ccDimadAiExpand = ccDimadAiExpand;
+window.ccDimadAiMinimize = ccDimadAiMinimize;
+window.ccDimadAiCollapseDock = ccDimadAiCollapseDock;
+window.ccDimadAiRestoreDock = ccDimadAiRestoreDock;
+window.ccDimadAiSend = ccDimadAiSend;
+window.ccDimadAiFloatSend = ccDimadAiFloatSend;
+window.CC_DIMAD_AI_FLOAT = CC_DIMAD_AI_FLOAT;
 
 function switchAiMode(modeKey) {
   const config = DIMAD_AI_STATE.modes[modeKey];
@@ -3319,20 +3542,22 @@ const DIMAD_GOALS = {
   },
 
   renderDash() {
-    const chips = document.getElementById('cc-goals-horizons');
+    const select = document.getElementById('cc-goals-horizon');
     const list = document.getElementById('cc-goals-list');
-    if (!chips && !list) return;
-    const horizon = this.horizons.some((h) => h.id === this._dashHorizon) ? this._dashHorizon : 'daily';
+    if (!select && !list) return;
+    const fromSelect = select && this.horizons.some((h) => h.id === select.value) ? select.value : '';
+    const horizon = this.horizons.some((h) => h.id === this._dashHorizon)
+      ? this._dashHorizon
+      : (fromSelect || 'daily');
     this._dashHorizon = horizon;
+    if (select && select.value !== horizon) select.value = horizon;
     const now = new Date();
     const key = this.periodStart(horizon, now);
     const items = this.itemsFor(horizon, now);
     const sc = this.score(horizon);
     const pct = sc.entered ? Math.round((sc.complete / sc.entered) * 100) : 0;
-    const period = document.getElementById('cc-goals-period');
     const pctEl = document.getElementById('cc-goals-pct');
     const bar = document.getElementById('cc-goals-bar');
-    if (period) period.textContent = this.periodLabel(horizon, key);
     if (pctEl) pctEl.textContent = sc.entered ? pct + '%' : '—';
     const dueEl = document.getElementById('cc-goals-due');
     if (dueEl) {
@@ -3342,12 +3567,6 @@ const DIMAD_GOALS = {
     if (bar) {
       bar.style.width = (sc.entered ? pct : 0) + '%';
       bar.className = `h-full ${pct === 100 && sc.entered ? 'bg-brand-mint' : 'bg-brand-gold'}`;
-    }
-    if (chips) {
-      chips.innerHTML = this.horizons.map((h) => {
-        const on = h.id === horizon;
-        return `<button type="button" onclick="DIMAD_GOALS.setDashHorizon('${h.id}')" class="px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wide border ${on ? 'bg-amber-500 text-slate-950 border-amber-500' : 'bg-slate-950 text-slate-400 border-slate-800 hover:border-brand-gold/40 hover:text-white'}">${this.escape(h.label)}</button>`;
-      }).join('');
     }
     if (list) {
       const empty = `<p class="text-[10px] text-slate-500 py-1">No ${this.escape(horizon)} goals this period.</p>`;
@@ -3633,8 +3852,8 @@ const FOCUS_TIMER = {
     btn.classList.remove('hidden');
     btn.textContent = isTimerRunning ? 'Clock Out' : 'Clock In';
     btn.className = isTimerRunning
-      ? 'bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 px-2 py-0.5 rounded text-[9px] font-bold border border-rose-500/40 transition-all whitespace-nowrap'
-      : 'bg-amber-500/15 hover:bg-amber-500/25 text-brand-gold px-2 py-0.5 rounded text-[9px] font-bold border border-amber-500/40 transition-all whitespace-nowrap';
+      ? 'bg-transparent hover:bg-rose-500/10 text-rose-300 px-2 py-0.5 rounded-full text-[9px] font-semibold border border-rose-400/35 transition-all whitespace-nowrap'
+      : 'bg-transparent hover:bg-brand-gold/10 text-brand-gold px-2 py-0.5 rounded-full text-[9px] font-semibold border border-gold-soft transition-all whitespace-nowrap';
   },
 
   render() {
@@ -3781,9 +4000,15 @@ const DAILY_QUOTE = {
   },
 
   paint() {
-    const html = this.html();
+    const q = this.pick();
+    const text = q.quote || q.text || '';
     const el = document.getElementById('cc-quote-text');
-    if (el) el.innerHTML = html;
+    if (el) el.textContent = `"${text}"`;
+    const authorEl = document.getElementById('cc-quote-author');
+    if (authorEl) authorEl.textContent = q.author ? `— ${q.author}` : '';
+    const contextEl = document.getElementById('cc-quote-context');
+    if (contextEl) contextEl.textContent = q.context || '';
+    const html = this.html();
     const welcome = document.getElementById('welcome-quote');
     if (welcome) welcome.innerHTML = html;
     const clockIn = document.getElementById('clock-in-quote');
@@ -10956,6 +11181,40 @@ const PIPELINE = {
     `).join('');
   },
 
+  renderDash() {
+    const root = document.getElementById('cc-pipeline-list');
+    if (!root) return;
+    const status = document.getElementById('cc-pipeline-status')?.value || 'all';
+    let rows = this.load();
+    if (status === 'all') rows = rows.filter((row) => this.openStatuses.includes(row.status));
+    else rows = rows.filter((row) => row.status === status);
+    rows = this.sorted(rows).slice(0, 8);
+    if (!rows.length) {
+      root.innerHTML = `<p class="text-slate-500 px-1 py-2">${status === 'Closed' ? 'No closed deals.' : 'No pipeline deals for this status.'}</p>`;
+      return;
+    }
+    root.innerHTML = rows.map((row) => `
+      <button type="button" onclick="PIPELINE.openFromDash(${Number(row.id)})" class="w-full flex items-start justify-between gap-2 bg-brand-nested/70 border border-hairline rounded-lg px-2 py-1.5 text-left hover:border-gold-soft transition">
+        <span class="min-w-0">
+          <span class="block text-[11px] font-semibold text-slate-100 leading-snug break-words">${this.escape(row.name)}</span>
+          <span class="block text-[9px] text-slate-500 leading-snug break-words">${this.escape(row.sector || row.contact || '—')}</span>
+        </span>
+        <span class="text-right shrink-0">
+          <span class="block text-[9px] font-bold text-brand-mint">${this.escape(row.status)}</span>
+          <span class="block text-[9px] text-brand-gold font-mono tabular-nums">${this.escape(row.profit || '')}</span>
+        </span>
+      </button>
+    `).join('');
+  },
+
+  openFromDash(id) {
+    if (typeof switchTab === 'function') switchTab('creator-pipeline');
+    window.setTimeout(() => {
+      if (typeof this.mount === 'function') this.mount();
+      this.openDetail(id);
+    }, 80);
+  },
+
   pipelineValue(brands) {
     return brands.reduce((acc, curr) => acc + (parseInt(String(curr.profit || '').replace(/[^0-9]/g, ''), 10) || 0), 0);
   },
@@ -11095,53 +11354,55 @@ const PIPELINE = {
 
   render() {
     const body = document.getElementById('pl-rows');
-    const total = document.getElementById('pl-total');
     const metrics = document.getElementById('pl-metrics');
-    if (!body) return;
     const all = this.load();
     const openRows = all.filter((row) => row.status !== 'Closed');
     const closedRows = all.filter((row) => row.status === 'Closed');
-    this.fillFilters(all);
-    const rows = this.sorted(this.filtered());
-    this.syncSortMarks();
-    const heading = document.getElementById('pl-heading');
-    const subhead = document.getElementById('pl-subhead');
-    const closedBtn = document.getElementById('pl-closed-btn');
-    if (heading) heading.textContent = this.showClosed ? 'Closed Outreach' : 'Brand Outreach & Content Pipeline';
-    if (subhead) {
-      subhead.textContent = this.showClosed
-        ? 'Closed folder. Change status on a record to move it back into the live pipeline.'
-        : 'Spreadsheet view. Click a business to open the full pitch record.';
+    if (body) {
+      this.fillFilters(all);
+      const rows = this.sorted(this.filtered());
+      this.syncSortMarks();
+      const heading = document.getElementById('pl-heading');
+      const subhead = document.getElementById('pl-subhead');
+      const closedBtn = document.getElementById('pl-closed-btn');
+      if (heading) heading.textContent = this.showClosed ? 'Closed Outreach' : 'Brand Outreach & Content Pipeline';
+      if (subhead) {
+        subhead.textContent = this.showClosed
+          ? 'Closed folder. Change status on a record to move it back into the live pipeline.'
+          : 'Spreadsheet view. Click a business to open the full pitch record.';
+      }
+      if (closedBtn) {
+        closedBtn.textContent = this.showClosed ? 'Back to Pipeline' : `View Closed${closedRows.length ? ` (${closedRows.length})` : ''}`;
+      }
+      if (metrics) {
+        const metricRows = this.showClosed ? closedRows : openRows;
+        const statusHtml = (this.showClosed ? ['Closed'] : this.openStatuses).map((status) => {
+          const n = all.filter((row) => row.status === status).length;
+          return `<div class="border-l border-slate-800 pl-5">
+            <span class="block text-slate-400">${this.escape(status)}</span>
+            <span class="text-base font-semibold text-white">${n}</span>
+          </div>`;
+        }).join('');
+        metrics.innerHTML = `<div>
+              <span class="block text-slate-400">${this.showClosed ? 'Closed Value' : 'Total Pipeline'}</span>
+              <span id="pl-total" class="text-base font-semibold text-amber-400">$${this.pipelineValue(metricRows).toLocaleString()}</span>
+            </div>${statusHtml}`;
+      }
+      if (!rows.length) {
+        body.innerHTML = `<tr><td colspan="3" class="px-4 py-10 text-center text-slate-500 text-xs">${this.showClosed ? 'No closed outreach yet.' : 'No businesses match these filters.'}</td></tr>`;
+      } else {
+        body.innerHTML = rows.map((row, i) => {
+          const zebra = i % 2 ? 'bg-slate-900' : 'bg-slate-950';
+          return `<tr onclick="PIPELINE.openDetail(${Number(row.id)})" class="${zebra} hover:bg-amber-950/30 cursor-pointer border-b border-slate-800">
+            <td class="px-4 py-2.5 text-white font-medium whitespace-nowrap">${this.escape(row.name)}</td>
+            <td class="px-4 py-2.5 text-amber-400 whitespace-nowrap">${this.escape(row.status)}</td>
+            <td class="px-4 py-2.5 text-slate-300 whitespace-nowrap font-mono text-[12px]">${this.escape(this.formatPitchDate(row.pitchDate))}</td>
+          </tr>`;
+        }).join('');
+      }
     }
-    if (closedBtn) {
-      closedBtn.textContent = this.showClosed ? 'Back to Pipeline' : `View Closed${closedRows.length ? ` (${closedRows.length})` : ''}`;
-    }
-    if (metrics) {
-      const metricRows = this.showClosed ? closedRows : openRows;
-      const statusHtml = (this.showClosed ? ['Closed'] : this.openStatuses).map((status) => {
-        const n = all.filter((row) => row.status === status).length;
-        return `<div class="border-l border-slate-800 pl-5">
-          <span class="block text-slate-400">${this.escape(status)}</span>
-          <span class="text-base font-semibold text-white">${n}</span>
-        </div>`;
-      }).join('');
-      metrics.innerHTML = `<div>
-            <span class="block text-slate-400">${this.showClosed ? 'Closed Value' : 'Total Pipeline'}</span>
-            <span id="pl-total" class="text-base font-semibold text-amber-400">$${this.pipelineValue(metricRows).toLocaleString()}</span>
-          </div>${statusHtml}`;
-    }
-    if (!rows.length) {
-      body.innerHTML = `<tr><td colspan="3" class="px-4 py-10 text-center text-slate-500 text-xs">${this.showClosed ? 'No closed outreach yet.' : 'No businesses match these filters.'}</td></tr>`;
-      return;
-    }
-    body.innerHTML = rows.map((row, i) => {
-      const zebra = i % 2 ? 'bg-slate-900' : 'bg-slate-950';
-      return `<tr onclick="PIPELINE.openDetail(${Number(row.id)})" class="${zebra} hover:bg-amber-950/30 cursor-pointer border-b border-slate-800">
-        <td class="px-4 py-2.5 text-white font-medium whitespace-nowrap">${this.escape(row.name)}</td>
-        <td class="px-4 py-2.5 text-amber-400 whitespace-nowrap">${this.escape(row.status)}</td>
-        <td class="px-4 py-2.5 text-slate-300 whitespace-nowrap font-mono text-[12px]">${this.escape(this.formatPitchDate(row.pitchDate))}</td>
-      </tr>`;
-    }).join('');
+    if (typeof this.renderDash === 'function') this.renderDash();
+    if (typeof this.renderStudio === 'function') this.renderStudio();
   },
 
   fillForm(row) {
@@ -15772,7 +16033,7 @@ const DIMAD_CAL = {
       const key = this.dateKey(d);
       const inMonth = d.getMonth() === now.getMonth();
       const isToday = key === todayKey;
-      return `<button type="button" onclick="DIMAD_CAL.openFromCommandCenter({dateKey:'${key}',mode:'hourly'})" class="p-1 rounded ${isToday ? 'bg-brand-mint/20 border border-brand-mint text-brand-mint font-bold' : 'bg-brand-black/40'} ${inMonth ? 'text-slate-200' : 'text-slate-500'}">${d.getDate()}</button>`;
+      return `<button type="button" onclick="DIMAD_CAL.openFromCommandCenter({dateKey:'${key}',mode:'hourly'})" class="p-1 rounded-lg tabular-nums ${isToday ? 'ring-1 ring-[#f5b942] bg-brand-gold/10 text-brand-gold font-bold' : 'bg-brand-nested/60 border border-hairline'} ${inMonth ? 'text-slate-200' : 'text-slate-500'}">${d.getDate()}</button>`;
     }).join('');
     root.innerHTML = heads + cells;
   }
@@ -16193,26 +16454,26 @@ const CALENDAR_NAV = {
 
   openSlotHtml(time) {
     return `
-      <div data-cal-slot="${time}" onclick="CALENDAR_NAV.clickSlot('${time}')" class="group h-5 flex items-center gap-2 px-0.5 cursor-pointer">
-        <span class="text-[10px] font-mono text-slate-500 w-[42px] flex-shrink-0">${time}</span>
-        <span class="flex-1 border-t border-dashed border-slate-700 group-hover:border-amber-500/50 transition"></span>
-        <span class="text-[9px] text-slate-500 group-hover:text-amber-400 transition flex-shrink-0">add event</span>
+      <div data-cal-slot="${time}" onclick="CALENDAR_NAV.clickSlot('${time}')" class="group h-5 flex items-center gap-2 px-0.5 cursor-pointer rounded hover:bg-white/[0.03]">
+        <span class="text-[10px] font-mono tabular-nums text-slate-500 w-[42px] flex-shrink-0">${time}</span>
+        <span class="flex-1 border-t border-dashed border-white/10 group-hover:border-brand-gold/40 transition"></span>
+        <span class="text-[9px] text-slate-600 group-hover:text-brand-gold transition flex-shrink-0 opacity-0 group-hover:opacity-100">+ Add</span>
       </div>`;
   },
 
   bookedSlotHtml(time, title, source, tone, span = 1) {
     const palette = tone === 'indigo'
-      ? { wrap: 'bg-slate-800/60 border-slate-700', time: 'text-slate-400', source: 'text-slate-500', badge: 'bg-slate-800 text-slate-400', badgeText: 'Locked' }
-      : { wrap: 'bg-amber-500/10 border-amber-500/30', time: 'text-amber-400', source: 'text-amber-300/80', badge: 'bg-amber-500/20 text-amber-300', badgeText: 'Active' };
+      ? { wrap: 'bg-brand-nested border-hairline', time: 'text-slate-400', source: 'text-slate-500', badge: 'bg-white/5 text-slate-400', badgeText: 'Locked' }
+      : { wrap: 'bg-brand-gold/10 border-gold-soft', time: 'text-brand-gold', source: 'text-amber-200/80', badge: 'bg-brand-gold/20 text-brand-gold', badgeText: 'Active' };
     const sourceAttr = tone === 'indigo' ? ' data-cal-locked-source' : '';
     return `
-      <div class="${palette.wrap} border px-1 rounded-md flex items-start justify-between gap-1.5 min-h-0" style="grid-row: span ${span}">
+      <div class="${palette.wrap} border px-1.5 rounded-lg flex items-start justify-between gap-1.5 min-h-0" style="grid-row: span ${span}">
         <div class="flex items-start gap-2 min-w-0 pt-0.5">
-          <span class="text-[10px] font-mono ${palette.time} w-[42px] flex-shrink-0">${time}</span>
-          <h5 class="text-[10px] font-semibold text-slate-200 truncate leading-tight">${title}</h5>
+          <span class="text-[10px] font-mono tabular-nums ${palette.time} w-[42px] flex-shrink-0">${time}</span>
+          <h5 class="text-[10px] font-semibold text-slate-100 truncate leading-tight">${title}</h5>
           <span class="text-[8px] ${palette.source} font-mono hidden xl:inline truncate"${sourceAttr}>${source}</span>
         </div>
-        <span class="text-[8px] font-mono ${palette.badge} px-1 py-px rounded flex-shrink-0 mt-0.5">${palette.badgeText}</span>
+        <span class="text-[8px] font-mono ${palette.badge} px-1.5 py-px rounded-full flex-shrink-0 mt-0.5">${palette.badgeText}</span>
       </div>`;
   },
 
@@ -16220,6 +16481,7 @@ const CALENDAR_NAV = {
     this.mode = mode === 'weekly' || mode === 'monthly' ? mode : 'hourly';
     calendarClickCount = 0;
     this.syncNavLabel();
+    this.syncCcScheduleToggle();
     this.render();
   },
 
@@ -16228,6 +16490,25 @@ const CALENDAR_NAV = {
     calendarClickCount = 0;
     if (typeof dimadCal !== 'undefined' && dimadCal) {
       dimadCal.currentDate = new Date();
+      dimadCal.render();
+    }
+    this.render();
+  },
+
+  shiftMonth(dir) {
+    const step = dir < 0 ? -1 : 1;
+    const d = this.anchorDate();
+    const day = d.getDate();
+    d.setDate(1);
+    d.setMonth(d.getMonth() + step);
+    const maxDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    d.setDate(Math.min(day, maxDay));
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    this.dayOffset = Math.round((d - today) / 86400000);
+    calendarClickCount = this.dayOffset === 0 ? 0 : 1;
+    if (typeof dimadCal !== 'undefined' && dimadCal) {
+      dimadCal.currentDate = d;
       dimadCal.render();
     }
     this.render();
@@ -16268,6 +16549,22 @@ const CALENDAR_NAV = {
     return this.mode === 'weekly' ? 'weekly' : 'monthly';
   },
 
+  syncCcScheduleToggle() {
+    const mode = this.mode === 'weekly' ? 'weekly' : 'hourly';
+    document.querySelectorAll('[data-cc-schedule-mode]').forEach((btn) => {
+      const on = btn.getAttribute('data-cc-schedule-mode') === mode;
+      btn.classList.toggle('bg-brand-gold/15', on);
+      btn.classList.toggle('text-brand-gold', on);
+      btn.classList.toggle('text-slate-400', !on);
+    });
+  },
+
+  syncCcMonthTitle() {
+    const el = document.getElementById('cc-month-title');
+    if (!el) return;
+    el.textContent = this.anchorDate().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  },
+
   syncCondenseBtn() {
     document.querySelectorAll('[data-cal-layout]').forEach((el) => {
       el.value = this.condensed ? 'multi' : 'full';
@@ -16275,8 +16572,10 @@ const CALENDAR_NAV = {
     this.surfaces().forEach((surface) => {
       const wrap = document.getElementById(surface.dual);
       const side = document.getElementById(surface.side);
-      if (wrap) wrap.classList.toggle('cal-dual-condensed', this.condensed);
-      if (side) side.classList.toggle('hidden', !this.condensed);
+      const isCc = surface.main === 'hourly-slots-container';
+      if (wrap) wrap.classList.toggle('cal-dual-condensed', !isCc && this.condensed);
+      if (side && !isCc) side.classList.toggle('hidden', !this.condensed);
+      if (side && isCc) side.classList.remove('hidden');
     });
   },
 
@@ -16324,25 +16623,42 @@ const CALENDAR_NAV = {
     const surfaces = this.surfaces().filter((surface) => document.getElementById(surface.main));
     if (!surfaces.length) return;
     this.syncCondenseBtn();
-    let html;
-    let companionHtml = '';
-    if (this.condensed) {
-      const dayTitle = this.anchorDate().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
-      html = `<div class="text-[11px] font-semibold text-white mb-1.5">${this.escape(dayTitle)}</div>
-        <div class="text-[10px] font-mono text-slate-500 mb-2">24-hour overview — click an event to view or edit; click an open hour to add.</div>
-        ${this.dayHtml()}`;
-      const companion = this.companionMode();
-      companionHtml = companion === 'weekly'
-        ? this.weeksStackHtml()
-        : `<div class="text-[9px] font-mono text-slate-400 mb-1.5">${this.anchorDate().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</div>${this.monthHtml({ companion: true })}`;
-    } else if (this.mode === 'weekly') {
-      html = this.weekGridHtml();
-    } else if (this.mode === 'monthly') {
-      html = this.monthHtml();
-    } else {
-      html = this.dayHtml();
-    }
-    surfaces.forEach((surface) => this.paintSurface(surface, html, this.condensed ? companionHtml : ''));
+    this.syncCcScheduleToggle();
+    this.syncCcMonthTitle();
+
+    surfaces.forEach((surface) => {
+      const isCc = surface.main === 'hourly-slots-container';
+      if (isCc) {
+        // Command Center: static month on top + Daily/Weekly schedule below (no Multiview)
+        const scheduleMode = this.mode === 'weekly' ? 'weekly' : 'hourly';
+        const scheduleHtml = scheduleMode === 'weekly'
+          ? this.ccWeekHtml()
+          : `<div class="h-full min-h-0 overflow-auto">${this.dayHtml()}</div>`;
+        const monthHtml = this.monthHtml({ companion: true });
+        this.paintSurface(surface, `<div class="cc-schedule-pane">${scheduleHtml}</div>`, monthHtml);
+        return;
+      }
+
+      let html;
+      let companionHtml = '';
+      if (this.condensed) {
+        const dayTitle = this.anchorDate().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+        html = `<div class="text-[11px] font-semibold text-white mb-1.5">${this.escape(dayTitle)}</div>
+          <div class="text-[10px] font-mono text-slate-500 mb-2">24-hour overview — click an event to view or edit; click an open hour to add.</div>
+          ${this.dayHtml()}`;
+        const companion = this.companionMode();
+        companionHtml = companion === 'weekly'
+          ? this.weeksStackHtml()
+          : `<div class="text-[9px] font-mono text-slate-400 mb-1.5">${this.anchorDate().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</div>${this.monthHtml({ companion: true })}`;
+      } else if (this.mode === 'weekly') {
+        html = this.weekGridHtml();
+      } else if (this.mode === 'monthly') {
+        html = this.monthHtml();
+      } else {
+        html = this.dayHtml();
+      }
+      this.paintSurface(surface, html, this.condensed ? companionHtml : '');
+    });
     this.updateChromeForMode();
   },
 
@@ -16454,6 +16770,51 @@ const CALENDAR_NAV = {
       </div>`;
   },
 
+  /** Command Center weekly: vertical day stack that fills the schedule pane. */
+  ccWeekHtml(fromDate) {
+    const start = this.weekStart(fromDate || this.anchorDate());
+    const days = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      return d;
+    });
+    const todayKey = this.dateKey(new Date());
+    const selectedKey = this.dateKey(this.anchorDate());
+    return `
+      <div class="flex flex-col gap-1 h-full min-h-0">
+        ${days.map((d) => {
+          const key = this.dateKey(d);
+          const booked = this.bookedForDay(d);
+          const times = Object.keys(booked).sort();
+          const items = times.slice(0, 4).map((time) => {
+            const ev = booked[time];
+            const tone = ev.tone === 'sky' || ev.type === 'content'
+              ? 'bg-sky-500/15 text-sky-200'
+              : ev.tone === 'indigo' ? 'bg-brand-gold/15 text-amber-200' : 'bg-amber-500/15 text-amber-200';
+            return `<span ${typeof DIMAD_CAL !== 'undefined' ? DIMAD_CAL.eventPointerAttrs(ev.id || '') : ''} class="${tone} rounded px-1.5 py-0.5 text-[8px] leading-tight truncate max-w-[46%] ${ev.cancelled ? 'line-through opacity-60' : ''}">${time} ${this.escape(ev.title)}</span>`;
+          }).join('');
+          const more = times.length > 4 ? `<span class="text-[8px] font-mono text-slate-500">+${times.length - 4}</span>` : '';
+          const isToday = key === todayKey;
+          const isSelected = key === selectedKey;
+          const ring = isSelected
+            ? 'border-brand-gold/50 bg-brand-gold/10'
+            : isToday
+              ? 'border-brand-gold/35 bg-brand-gold/5'
+              : 'border-hairline bg-brand-nested/50 hover:border-gold-soft';
+          return `
+            <button type="button" onclick="CALENDAR_NAV.openDayFromGrid('${key}')" class="flex-1 min-h-[2.25rem] w-full text-left rounded-lg border ${ring} px-2.5 py-1.5 flex items-center gap-2.5 transition">
+              <div class="w-10 shrink-0 text-center leading-tight">
+                <div class="text-[8px] font-mono uppercase tracking-wide text-slate-500">${d.toLocaleDateString('en-US', { weekday: 'short' })}</div>
+                <div class="text-[12px] font-semibold tabular-nums ${isToday || isSelected ? 'text-brand-gold' : 'text-slate-100'}">${d.getDate()}</div>
+              </div>
+              <div class="min-w-0 flex-1 flex items-center gap-1 flex-wrap content-center">
+                ${items || '<span class="text-[9px] text-slate-600 italic">open</span>'}${more}
+              </div>
+            </button>`;
+        }).join('')}
+      </div>`;
+  },
+
   renderWeek() {
     this.mode = 'weekly';
     this.render();
@@ -16489,10 +16850,13 @@ const CALENDAR_NAV = {
           const click = companion
             ? `CALENDAR_NAV.openDayFromGrid('${key}')`
             : `DIMAD_CAL.openFromCommandCenter({dateKey:'${key}',mode:'hourly'})`;
+          const ring = isSelected || isToday
+            ? 'ring-1 ring-[#f5b942] border-transparent bg-brand-gold/10'
+            : 'border-hairline bg-brand-nested/60 hover:border-gold-soft';
           return `
-            <button type="button" onclick="${click}" class="h-12 rounded-md border text-left px-1.5 py-1 ${isSelected ? 'border-amber-500/50 bg-amber-500/10' : isToday ? 'border-amber-500/40 bg-amber-500/10' : 'border-slate-800 bg-slate-950/40'} ${inMonth ? '' : 'opacity-40'} hover:border-amber-500/30 transition">
-              <div class="text-[11px] font-semibold ${isToday || isSelected ? 'text-amber-400' : 'text-slate-200'}">${d.getDate()}</div>
-              <div class="text-[8px] font-mono ${count ? 'text-amber-400/80' : 'text-slate-600'}">${count ? count + ' evt' : ''}</div>
+            <button type="button" onclick="${click}" class="h-12 rounded-lg border text-left px-1.5 py-1 ${ring} ${inMonth ? '' : 'opacity-40'} transition">
+              <div class="text-[11px] font-semibold tabular-nums ${isToday || isSelected ? 'text-brand-gold' : 'text-slate-200'}">${d.getDate()}</div>
+              <div class="mt-1 flex justify-center">${count ? '<span class="w-1 h-1 rounded-full bg-brand-gold/80"></span>' : ''}</div>
             </button>`;
         }).join('')}
       </div>`;
@@ -16610,10 +16974,10 @@ const MARKET_STRIP = {
       const up = Number.isFinite(pct) ? pct >= 0 : true;
       const pctText = Number.isFinite(pct) ? (up && pct > 0 ? '+' : '') + pct.toFixed(2) + '%' : '—';
       const pxText = Number.isFinite(px) ? px.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—';
-      const tone = up ? 'text-brand-mint' : 'text-brand-alert';
+      const tone = up ? 'text-[#34d399]' : 'text-[#fb7185]';
       const arrow = up ? '▲' : '▼';
-      const safe = String(symbol).replace(/[<>&]/g, '');
-      return '<span class="inline-flex items-center gap-1 shrink-0">' + safe + ' <span class="' + tone + '">' + pxText + ' ' + arrow + ' ' + pctText + '</span></span>';
+      const safe = String(symbol).replace(/[<>&']/g, '');
+      return '<span class="inline-flex items-center gap-1.5 shrink-0 text-slate-300"><span class="font-semibold tracking-wide">' + safe + '</span> <span class="tabular-nums ' + tone + '">' + pxText + ' ' + arrow + ' ' + pctText + '</span></span>';
     }).join('');
   },
 
@@ -17066,27 +17430,82 @@ const TASK_MANAGER = {
       this.commitEdit(this.editId, input ? input.value : '');
       return;
     }
+    this.menuPoint = null;
     this.menuId = this.menuId === id ? '' : id;
     this.render();
     if (this.menuId) this.placeMenu(this.menuId);
   },
 
+  openContextMenu(event, id) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (this.editId && this.editId !== id) {
+      const input = this.visibleEditInput(this.editId);
+      this.commitEdit(this.editId, input ? input.value : '');
+    }
+    this.menuPoint = { x: event.clientX, y: event.clientY };
+    this.menuId = id;
+    this.editId = '';
+    this.render();
+    if (this.menuId) this.placeMenu(this.menuId);
+  },
+
+  clearMenuPortals() {
+    document.querySelectorAll('body > [data-tm-menu]').forEach((el) => el.remove());
+  },
+
   placeMenu(id) {
-    document.querySelectorAll(`[data-tm-menu="${id}"]`).forEach((menu) => {
-      const btn = menu.parentElement && menu.parentElement.querySelector(`[data-tm-menu-btn="${id}"]`);
-      if (!btn) return;
-      const box = btn.getBoundingClientRect();
-      if (!box.width && !box.height) return;
-      menu.style.position = 'fixed';
-      menu.style.top = `${Math.min(box.bottom + 4, window.innerHeight - menu.offsetHeight - 8)}px`;
-      menu.style.right = `${Math.max(8, window.innerWidth - box.right)}px`;
+    const menus = [...document.querySelectorAll(`[data-tm-menu="${id}"]`)];
+    if (!menus.length) return;
+    const menu = menus.find((node) => node.closest('[data-tm-row]')) || menus[0];
+    menus.filter((node) => node !== menu).forEach((node) => node.remove());
+    const row = menu.closest('[data-tm-row]') || document.querySelector(`[data-tm-row="${id}"]`);
+    const btn = row && row.querySelector(`[data-tm-menu-btn="${id}"]`);
+    const anchor = this.menuPoint
+      ? null
+      : btn
+        ? btn.getBoundingClientRect()
+        : row
+          ? row.getBoundingClientRect()
+          : null;
+    if (menu.parentElement !== document.body) document.body.appendChild(menu);
+    menu.classList.remove('hidden');
+    menu.style.position = 'fixed';
+    menu.style.zIndex = '9999';
+    const width = menu.offsetWidth || (this.editId === id ? 288 : 176);
+    const height = menu.offsetHeight || (this.editId === id ? 220 : 160);
+    if (this.menuPoint) {
+      const left = Math.min(this.menuPoint.x, window.innerWidth - width - 8);
+      const top = Math.min(this.menuPoint.y, window.innerHeight - height - 8);
+      menu.style.top = `${Math.max(8, top)}px`;
+      menu.style.left = `${Math.max(8, left)}px`;
+      menu.style.right = 'auto';
+      return;
+    }
+    if (!anchor || (!anchor.width && !anchor.height)) return;
+    if (btn) {
+      menu.style.top = `${Math.min(anchor.bottom + 4, window.innerHeight - height - 8)}px`;
+      menu.style.right = `${Math.max(8, window.innerWidth - anchor.right)}px`;
       menu.style.left = 'auto';
-    });
+      return;
+    }
+    const left = Math.min(anchor.left, window.innerWidth - width - 8);
+    const top = Math.min(Math.max(8, anchor.top), window.innerHeight - height - 8);
+    menu.style.top = `${top}px`;
+    menu.style.left = `${Math.max(8, left)}px`;
+    menu.style.right = 'auto';
   },
 
   startEdit(id) {
     this.menuId = id;
     this.editId = id;
+    if (!this.menuPoint) {
+      const row = document.querySelector(`[data-tm-row="${id}"]`);
+      if (row) {
+        const box = row.getBoundingClientRect();
+        this.menuPoint = { x: box.left, y: box.bottom + 4 };
+      }
+    }
     this.render();
     requestAnimationFrame(() => {
       this.placeMenu(id);
@@ -17100,12 +17519,14 @@ const TASK_MANAGER = {
   cancelEdit() {
     this.editId = '';
     this.menuId = '';
+    this.menuPoint = null;
+    this.clearMenuPortals();
     this.render();
   },
 
   visibleEditInput(id) {
     const nodes = [...document.querySelectorAll(`[data-tm-edit="${id}"]`)];
-    return nodes.find((el) => el.getBoundingClientRect().width > 0) || nodes[0] || null;
+    return nodes.find((el) => el.getBoundingClientRect().width > 0 && el.offsetParent !== null) || nodes.find((el) => el.getBoundingClientRect().width > 0) || nodes[0] || null;
   },
 
   commitFromOverlay(id) {
@@ -17119,6 +17540,8 @@ const TASK_MANAGER = {
         const node = this.eventNode(event);
         if (node && node.closest && node.closest('[data-tm-menu], [data-tm-menu-btn]')) return;
         this.menuId = '';
+        this.menuPoint = null;
+        this.clearMenuPortals();
         this.render();
       }
       return;
@@ -17142,6 +17565,8 @@ const TASK_MANAGER = {
     const title = String(value || '').trim();
     this.editId = '';
     this.menuId = '';
+    this.menuPoint = null;
+    this.clearMenuPortals();
     if (task && title) task.title = title;
     this.persist();
     this.render();
@@ -17170,42 +17595,42 @@ const TASK_MANAGER = {
     }
     items.push(this.menuItem('Edit', `TASK_MANAGER.startEdit('${task.id}')`));
     items.push(this.menuItem('Delete', `TASK_MANAGER.deleteTask('${task.id}')`));
-    const title = `<span ondblclick="event.preventDefault();event.stopPropagation();TASK_MANAGER.startEdit('${task.id}')" class="${compact ? 'text-[10px]' : 'text-[11px]'} font-medium block truncate cursor-text ${task.completed ? 'line-through text-slate-500' : 'text-slate-200'}">${this.escape(task.title)}</span>`;
+    const title = `<span ondblclick="event.preventDefault();event.stopPropagation();TASK_MANAGER.startEdit('${task.id}')" class="${compact ? 'text-[10px] leading-tight' : 'text-[11px] leading-snug'} font-medium block break-words whitespace-normal cursor-text ${task.completed ? 'line-through text-slate-500' : 'text-slate-200'}">${this.escape(task.title)}</span>`;
     const editPanel = `<div class="p-2 space-y-1.5">
       <p class="text-[9px] font-mono uppercase tracking-wide text-slate-500 px-0.5">Edit task</p>
       <textarea data-tm-edit="${task.id}" rows="4" onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault();TASK_MANAGER.commitEdit('${task.id}', this.value)} if(event.key==='Escape'){event.preventDefault();TASK_MANAGER.cancelEdit()}" class="w-full h-24 resize-none overflow-y-auto bg-brand-black border border-brand-gold rounded-md px-2 py-1.5 text-[11px] text-slate-200 font-mono leading-snug whitespace-pre-wrap break-words focus:outline-none">${this.escape(task.title)}</textarea>
       <button type="button" onclick="event.preventDefault();event.stopPropagation();TASK_MANAGER.commitFromOverlay('${task.id}')" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[10px] py-1.5 rounded-md">Save</button>
     </div>`;
-    const check = `<button type="button" onclick="event.preventDefault();event.stopPropagation();TASK_MANAGER.toggleTask('${task.id}')" class="w-5 h-5 rounded border flex items-center justify-center shrink-0 ${task.completed ? 'bg-brand-mint border-brand-mint text-slate-950' : 'border-slate-600 hover:border-brand-gold'}">${task.completed ? '<i class="fa-solid fa-check text-[10px]"></i>' : ''}</button>`;
-    const meta = history
-      ? `Completed ${this.fmtDate(task.completedAt || task.date)}`
-      : future
-        ? this.fmtDate(task.date)
-        : (task.date < this.todayKey() ? `From ${this.fmtDate(task.date)}` : '');
+    const checkSize = compact ? 'w-3.5 h-3.5 mt-0.5 rounded-sm' : 'w-4 h-4 mt-0.5 rounded';
+    const checkIcon = compact ? 'text-[7px]' : 'text-[9px]';
+    const check = `<button type="button" onclick="event.preventDefault();event.stopPropagation();TASK_MANAGER.toggleTask('${task.id}')" class="${checkSize} border flex items-center justify-center shrink-0 ${task.completed ? 'bg-brand-mint border-brand-mint text-slate-950' : 'border-slate-600 hover:border-brand-gold'}">${task.completed ? `<i class="fa-solid fa-check ${checkIcon}"></i>` : ''}</button>`;
+    const meta = compact
+      ? ''
+      : history || task.completed
+        ? `Completed ${this.fmtDate(task.completedAt || task.date)}`
+        : future
+          ? this.fmtDate(task.date)
+          : (task.date < this.todayKey() ? `From ${this.fmtDate(task.date)}` : '');
     const canDrag = !task.completed && !history && !editing && !this.editId;
-    return `
-      <div data-tm-row="${task.id}" draggable="${canDrag ? 'true' : 'false'}" ondragstart="TASK_MANAGER.onDragStart(event, '${task.id}', '${from}')" ondragover="TASK_MANAGER.onDragOver(event, '${task.id}', '${from}')" ondragleave="TASK_MANAGER.onDragLeave(event)" ondrop="TASK_MANAGER.onDrop(event, '${task.id}', '${from}')" ondragend="TASK_MANAGER.onDragEnd()" class="flex items-start justify-between gap-2 ${compact ? 'p-2' : 'p-3'} rounded-xl bg-brand-black/70 border border-brand-border ${canDrag ? 'select-none' : ''}">
-        <div class="flex items-start gap-2 min-w-0 flex-1">
-          ${check}
-          <div class="min-w-0 flex-1">
-            ${title}
-            ${meta && !compact ? `<span class="text-[9px] font-mono text-slate-500">${meta}</span>` : ''}
-          </div>
-        </div>
-        <div class="relative shrink-0">
-          <button type="button" data-tm-menu-btn="${task.id}" title="Settings" onclick="event.preventDefault();event.stopPropagation();TASK_MANAGER.toggleMenu('${task.id}')" class="w-7 h-7 rounded-md bg-slate-900 hover:bg-slate-800 border border-brand-border text-slate-400 hover:text-brand-gold flex items-center justify-center ${open ? 'text-brand-gold border-brand-gold/40' : ''}">
-            <i class="fa-solid fa-gear text-[11px]"></i>
-          </button>
-          <div data-tm-menu="${task.id}" onclick="event.stopPropagation()" class="${open ? '' : 'hidden'} fixed z-50 ${editing ? 'w-72' : 'w-44'} rounded-lg border border-brand-border bg-slate-950 shadow-2xl ${editing ? '' : 'py-1'}">
+    const menuPanel = `<div data-tm-menu="${task.id}" onclick="event.stopPropagation()" class="${open ? '' : 'hidden'} fixed z-50 ${editing ? 'w-72' : 'w-44'} rounded-lg border border-brand-border bg-slate-950 shadow-2xl ${editing ? '' : 'py-1'}">
             ${editing ? editPanel : items.join('')}
-          </div>
+          </div>`;
+    const rowPad = compact ? 'gap-1.5 py-0.5 px-0.5' : 'gap-2 py-1.5 px-1';
+    return `
+      <div data-tm-row="${task.id}" draggable="${canDrag ? 'true' : 'false'}" oncontextmenu="TASK_MANAGER.openContextMenu(event, '${task.id}')" ondragstart="TASK_MANAGER.onDragStart(event, '${task.id}', '${from}')" ondragover="TASK_MANAGER.onDragOver(event, '${task.id}', '${from}')" ondragleave="TASK_MANAGER.onDragLeave(event)" ondrop="TASK_MANAGER.onDrop(event, '${task.id}', '${from}')" ondragend="TASK_MANAGER.onDragEnd()" class="flex items-start ${rowPad} rounded-md hover:bg-white/[0.04] ${canDrag ? 'select-none' : ''}">
+        ${check}
+        <div class="min-w-0 flex-1">
+          ${title}
+          ${meta ? `<span class="block text-[9px] font-mono text-slate-500 leading-tight">${meta}</span>` : ''}
         </div>
+        ${menuPanel}
       </div>`;
   },
 
   renderPreview() {
     this.ensure();
     this.bind();
+    this.clearMenuPortals();
     const list = document.getElementById('cc-tm-list');
     const limitEl = document.getElementById('cc-tm-limit');
     const input = document.getElementById('cc-tm-new');
@@ -17218,7 +17643,7 @@ const TASK_MANAGER = {
     if (!list) return;
     const rows = this.previewRows();
     const openCount = this.todayOpen().length;
-    list.innerHTML = rows.map((task, index) => this.rowMarkup(task, index, openCount, task.completed ? 'history' : 'cc')).join('') || `<p class="text-[10px] text-slate-500 px-1">No tasks for today.</p>`;
+    list.innerHTML = rows.map((task, index) => this.rowMarkup(task, index, openCount, 'cc')).join('') || `<p class="text-[10px] text-slate-500 px-1">No tasks for today.</p>`;
     if (this.menuId) this.placeMenu(this.menuId);
   },
 
@@ -18036,6 +18461,101 @@ const INVOICES = {
     this.render();
   },
 
+  dashKind: 'invoices',
+
+  onDashKindChange() {
+    const kindEl = document.getElementById('cc-billing-kind');
+    this.dashKind = kindEl && kindEl.value === 'proposals' ? 'proposals' : 'invoices';
+    this.syncDashStatusOptions(true);
+    this.renderDash();
+  },
+
+  syncDashStatusOptions(reset) {
+    const statusEl = document.getElementById('cc-billing-status');
+    if (!statusEl) return;
+    const opts = this.dashKind === 'proposals'
+      ? [
+          { value: 'all', label: 'All' },
+          { value: 'Draft', label: 'Draft' },
+          { value: 'Sent', label: 'Sent' },
+          { value: 'Accepted', label: 'Accepted' },
+          { value: 'Closed', label: 'Closed' }
+        ]
+      : [
+          { value: 'all', label: 'All' },
+          { value: 'Draft', label: 'Draft' },
+          { value: 'Sent', label: 'Sent' },
+          { value: 'Paid', label: 'Paid' },
+          { value: 'Overdue', label: 'Overdue' }
+        ];
+    const keep = reset ? 'all' : statusEl.value;
+    statusEl.innerHTML = opts.map((opt) => `<option value="${opt.value}">${opt.label}</option>`).join('');
+    statusEl.value = opts.some((opt) => opt.value === keep) ? keep : 'all';
+  },
+
+  renderDash() {
+    const list = document.getElementById('cc-billing-list');
+    if (!list) return;
+    if (!this.invoices.length && !this.proposals.length) this.load();
+    const kindEl = document.getElementById('cc-billing-kind');
+    const statusEl = document.getElementById('cc-billing-status');
+    this.dashKind = kindEl && kindEl.value === 'proposals' ? 'proposals' : 'invoices';
+    if (kindEl && kindEl.value !== this.dashKind) kindEl.value = this.dashKind;
+    this.syncDashStatusOptions(false);
+    const status = statusEl ? statusEl.value : 'all';
+    if (this.dashKind === 'proposals') {
+      let rows = this.proposals.slice();
+      if (status !== 'all') rows = rows.filter((row) => row.stage === status);
+      rows = rows.slice(0, 8);
+      if (!rows.length) {
+        list.innerHTML = '<p class="text-slate-500 px-1 py-2">No proposals for this status.</p>';
+        return;
+      }
+      list.innerHTML = rows.map((row) => `
+        <button type="button" onclick='INVOICES.openFromDash("proposals", ${JSON.stringify(String(row.id))})' class="w-full flex items-start justify-between gap-2 bg-brand-nested/70 border border-hairline rounded-lg px-2 py-1.5 text-left hover:border-gold-soft transition">
+          <span class="min-w-0">
+            <span class="block text-[11px] font-semibold text-slate-100 leading-snug break-words">${this.escape(row.clientName)}</span>
+            <span class="block text-[9px] text-slate-500 leading-snug break-words">${this.escape(row.title || row.number || '—')}</span>
+          </span>
+          <span class="text-right shrink-0">
+            <span class="block text-[9px] font-bold text-brand-mint">${this.escape(row.stage || 'Draft')}</span>
+            <span class="block text-[9px] text-brand-gold font-mono tabular-nums">${this.money(row.total, row.currency)}</span>
+          </span>
+        </button>
+      `).join('');
+      return;
+    }
+    let rows = this.invoices.slice();
+    if (status !== 'all') rows = rows.filter((row) => row.status === status);
+    rows = rows.slice(0, 8);
+    if (!rows.length) {
+      list.innerHTML = '<p class="text-slate-500 px-1 py-2">No invoices for this status.</p>';
+      return;
+    }
+    list.innerHTML = rows.map((row) => `
+      <button type="button" onclick='INVOICES.openFromDash("invoices", ${JSON.stringify(String(row.id))})' class="w-full flex items-start justify-between gap-2 bg-brand-nested/70 border border-hairline rounded-lg px-2 py-1.5 text-left hover:border-gold-soft transition">
+        <span class="min-w-0">
+          <span class="block text-[11px] font-semibold text-slate-100 leading-snug break-words">${this.escape(row.clientName)}</span>
+          <span class="block text-[9px] text-slate-500 leading-snug break-words">${this.escape(row.number || row.title || '—')}</span>
+        </span>
+        <span class="text-right shrink-0">
+          <span class="block text-[9px] font-bold text-brand-mint">${this.escape(row.status || 'Draft')}</span>
+          <span class="block text-[9px] text-brand-gold font-mono tabular-nums">${this.money(row.total, row.currency)}</span>
+        </span>
+      </button>
+    `).join('');
+  },
+
+  openFromDash(kind, id) {
+    this.tab = kind === 'proposals' ? 'proposals' : 'invoices';
+    if (typeof switchTab === 'function') switchTab('ent-invoices');
+    window.setTimeout(() => {
+      this.mount();
+      if (kind === 'invoices' && id) this.openInvoiceModal(id);
+      else if (kind === 'proposals' && id) this.preview('proposal', id);
+    }, 80);
+  },
+
   setTab(tab) {
     this.tab = tab;
     this.render();
@@ -18130,6 +18650,7 @@ const INVOICES = {
   },
 
   render() {
+    if (typeof this.renderDash === 'function') this.renderDash();
     if (!document.getElementById('view-ent-invoices')) return;
     this.metrics();
     ['invoices', 'proposals', 'clients'].forEach((tab) => {
@@ -20934,17 +21455,19 @@ window.CREATOR_AI = CREATOR_AI;
 
 const COMMAND_CENTER = {
   storageKey: 'dimad_cc_modules',
-  layoutVersion: 11,
-  retiredApiIds: ['stripe', 'shopify', 'lemon', 'gumroad', 'patreon', 'mailerlite', 'plaid', 'store'],
+  layoutVersion: 15,
+  retiredApiIds: ['stripe', 'shopify', 'lemon', 'gumroad', 'patreon', 'mailerlite', 'plaid', 'store', 'copilot'],
   catalog: [
     { id: 'ticker', label: 'Stock Ticker', group: 'core' },
     { id: 'quote', label: 'Quote of the Day', group: 'core' },
     { id: 'clocks', label: 'World Clocks', group: 'core' },
+    { id: 'dimad-ai', label: 'Dimad AI', group: 'core' },
     { id: 'calendar', label: 'Calendar', group: 'core' },
-    { id: 'copilot', label: 'Business AI Chat', group: 'core' },
     { id: 'notepad', label: 'DIMAD Notepad', group: 'core' },
     { id: 'goals', label: 'Accountability Log', group: 'core' },
-    { id: 'tasks', label: 'Task Manager (To-Do List)', group: 'core' },
+    { id: 'tasks', label: 'Task Manager', group: 'core' },
+    { id: 'pipeline', label: 'Creator Pipeline', group: 'core' },
+    { id: 'billing', label: 'Billing', group: 'core' },
     { id: 'revenue-snapshot', label: 'Revenue Snapshot', group: 'core' },
     { id: 'growth-snapshot', label: 'Growth Snapshot', group: 'core' }
   ],
@@ -20960,8 +21483,8 @@ const COMMAND_CENTER = {
         if (raw.layoutVersion === this.layoutVersion) return raw;
         const retired = new Set(this.retiredApiIds);
         let hidden = raw.hidden.filter((id) => !retired.has(id));
-        // Snapshots default visible on layout bump.
-        hidden = hidden.filter((id) => id !== 'revenue-snapshot' && id !== 'growth-snapshot');
+        // Snapshots + pipeline + billing + Dimad AI bar default visible on layout bump.
+        hidden = hidden.filter((id) => id !== 'revenue-snapshot' && id !== 'growth-snapshot' && id !== 'pipeline' && id !== 'billing' && id !== 'dimad-ai');
         const next = {
           hidden: Array.from(new Set(hidden)),
           collapsed: raw.collapsed.filter((id) => !retired.has(id)),
@@ -20978,7 +21501,7 @@ const COMMAND_CENTER = {
     localStorage.setItem(this.storageKey, JSON.stringify(next));
   },
 
-  lockedOpen: ['copilot', 'notepad'],
+  lockedOpen: ['notepad'],
 
   apply() {
     const { hidden } = this.state();
@@ -20995,6 +21518,15 @@ const COMMAND_CENTER = {
     if (typeof DIMAD_GOALS !== 'undefined' && DIMAD_GOALS.renderDash) DIMAD_GOALS.renderDash();
     if (typeof DIM_ENGINE !== 'undefined' && DIM_ENGINE.renderStreakTrack) DIM_ENGINE.renderStreakTrack();
     if (typeof TASK_MANAGER !== 'undefined') TASK_MANAGER.mount();
+    if (typeof PIPELINE !== 'undefined' && PIPELINE.renderDash) PIPELINE.renderDash();
+    if (typeof INVOICES !== 'undefined' && INVOICES.renderDash) {
+      if (!INVOICES.invoices.length && !INVOICES.proposals.length) INVOICES.load();
+      INVOICES.renderDash();
+    }
+    if (typeof CC_DIMAD_AI_FLOAT !== 'undefined' && CC_DIMAD_AI_FLOAT.syncChrome) {
+      const aiHidden = hidden.includes('dimad-ai');
+      if (!aiHidden) CC_DIMAD_AI_FLOAT.syncChrome();
+    }
   },
 
   toggleCollapse(id) {
