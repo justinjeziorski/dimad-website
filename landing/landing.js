@@ -268,8 +268,8 @@
       slogan: "Run the Numbers",
       desc: "Stop wasting time wondering what's working and what isn't. Our third-party integrations make it easy to understand the numbers behind your ideas.",
       bullets: [
-        ["Sales and expenses.", "Sync from Stripe, your storefronts and bank accounts into one feed."],
-        ["Invoices and proposals.", "Create, send and track with clear payment status."],
+        ["Sales and expenses.", "Sync from Stripe, your storefronts, and bank accounts into one feed."],
+        ["Invoices and proposals.", "Create, send, and track with clear payment status."],
         ["P&L Maintenance.", "Watch cash flow clearly and use our AI features to stay on top of your P&L without manual bookkeeping."]
       ]
     },
@@ -292,7 +292,7 @@
       label: "Book",
       step: "04 / Book",
       slogan: "Because You Can",
-      desc: "Real human connection is rare in a productivity dashboard these days. We decided to keep it. So, whether you're traveling for business or leisure, our team takes care of the details. Automate your tasks, not your life.",
+      desc: "Real human connection is rare in a productive platform these days. But we believe technology should make life easier, not less personal. That's why we chose to keep the human element alive. Whether you're traveling for work or leisure, our team is here to make your experience seamless.",
       bullets: [
         ["Curated experiences.", "Our professional team handles end-to-end travel services from inquiries to booking from flights, to accommodations, to dining."],
         ["Research.", "Leave the research to us. Whether you're looking for the cheapest flights or the most luxurious hotels. You pick your preferences. We'll handle the rest."],
