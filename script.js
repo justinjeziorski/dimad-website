@@ -90,7 +90,7 @@ async function loadViews() {
   const container = document.getElementById('view-container');
   try {
     const fragments = await Promise.all(VIEW_FILES.map(async (id) => {
-      const res = await fetch(new URL(`../views/${id}.html?v=rev-theme-fix-2`, window.location.href), { cache: 'no-store' });
+      const res = await fetch(new URL(`../views/${id}.html?v=yerevan-header-5`, window.location.href), { cache: 'no-store' });
       if (!res.ok) throw new Error(`Failed to load views/${id}.html (${res.status})`);
       return res.text();
     }));
@@ -107,6 +107,72 @@ async function loadViews() {
     throw err;
   }
 }
+
+/** Native React City Header island (replaces slow iframe). */
+const YEREVAN_HEADER_BUNDLE = '/embeds/yerevan-header.js?v=5';
+let _yerevanHeaderScriptPromise = null;
+
+function ensureYerevanHeaderBundle() {
+  if (typeof window.__DIMAD_MOUNT_YEREVAN_HEADER === 'function') {
+    return Promise.resolve();
+  }
+  if (_yerevanHeaderScriptPromise) return _yerevanHeaderScriptPromise;
+  _yerevanHeaderScriptPromise = new Promise((resolve, reject) => {
+    const existing = document.querySelector('script[data-yerevan-header-bundle]');
+    if (existing) {
+      if (typeof window.__DIMAD_MOUNT_YEREVAN_HEADER === 'function') {
+        resolve();
+        return;
+      }
+      existing.addEventListener('load', () => resolve(), { once: true });
+      existing.addEventListener('error', () => reject(new Error('yerevan_header_bundle_failed')), { once: true });
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = YEREVAN_HEADER_BUNDLE;
+    script.async = true;
+    script.dataset.yerevanHeaderBundle = '1';
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('yerevan_header_bundle_failed'));
+    document.head.appendChild(script);
+  });
+  return _yerevanHeaderScriptPromise;
+}
+
+/** Kick off bundle download ASAP (do not wait for views). */
+function prefetchYerevanHeaderBundle() {
+  try {
+    if (!document.querySelector('link[data-yerevan-header-preload]')) {
+      const link = document.createElement('link');
+      link.rel = 'preload';
+      link.as = 'script';
+      link.href = YEREVAN_HEADER_BUNDLE;
+      link.dataset.yerevanHeaderPreload = '1';
+      document.head.appendChild(link);
+    }
+  } catch (_) { /* ignore */ }
+  void ensureYerevanHeaderBundle().catch(() => {});
+}
+
+async function mountYerevanHeader() {
+  const el = document.getElementById('yerevan-header-root');
+  if (!el || el.dataset.reactMounted === '1') return;
+  try {
+    await ensureYerevanHeaderBundle();
+    if (typeof window.__DIMAD_MOUNT_YEREVAN_HEADER === 'function') {
+      window.__DIMAD_MOUNT_YEREVAN_HEADER(el);
+      el.dataset.reactMounted = '1';
+    } else if (window.DimadYerevanHeader && typeof window.DimadYerevanHeader.mount === 'function') {
+      window.DimadYerevanHeader.mount(el);
+      el.dataset.reactMounted = '1';
+    }
+  } catch (err) {
+    console.warn('City header mount failed', err);
+  }
+}
+
+/* Start downloading the city-header bundle as soon as this script parses. */
+prefetchYerevanHeaderBundle();
 
 function toggleSidebar() {
   const sidebar = document.getElementById('main-sidebar');
@@ -1227,6 +1293,12 @@ const WORLD_CLOCKS = {
     });
   },
 
+  notifyCityHeader() {
+    try {
+      window.dispatchEvent(new CustomEvent('dimad:world-clocks'));
+    } catch (_) { /* ignore */ }
+  },
+
   toggleCity(id, on) {
     let ids = this.selectedIds();
     if (on) {
@@ -1237,6 +1309,7 @@ const WORLD_CLOCKS = {
     }
     this.persist(ids);
     this.render();
+    this.notifyCityHeader();
   }
 };
 
@@ -22548,15 +22621,11 @@ window.CREATOR_AI = CREATOR_AI;
 
 const COMMAND_CENTER = {
   storageKey: 'dimad_cc_modules',
-  layoutVersion: 17,
-  retiredApiIds: ['stripe', 'shopify', 'lemon', 'gumroad', 'patreon', 'mailerlite', 'plaid', 'store', 'copilot', 'your-city'],
+  layoutVersion: 20,
+  retiredApiIds: ['stripe', 'shopify', 'lemon', 'gumroad', 'patreon', 'mailerlite', 'plaid', 'store', 'copilot', 'your-city', 'quote', 'clocks', 'emergency', 'logistics', 'weather'],
   catalog: [
     { id: 'ticker', label: 'Stock Ticker', group: 'core' },
-    { id: 'quote', label: 'Quote of the Day', group: 'core' },
-    { id: 'clocks', label: 'World Clocks', group: 'core' },
-    { id: 'emergency', label: 'Emergency Services', group: 'core' },
-    { id: 'logistics', label: 'Logistics', group: 'core' },
-    { id: 'weather', label: 'Weather', group: 'core' },
+    { id: 'yerevan-header', label: 'City Header', group: 'core' },
     { id: 'dimad-ai', label: 'Dimad AI', group: 'core' },
     { id: 'calendar', label: 'Calendar', group: 'core' },
     { id: 'notepad', label: 'dimPad', group: 'core' },
@@ -22579,8 +22648,8 @@ const COMMAND_CENTER = {
         if (raw.layoutVersion === this.layoutVersion) return raw;
         const retired = new Set(this.retiredApiIds);
         let hidden = raw.hidden.filter((id) => !retired.has(id));
-        // Snapshots + pipeline + billing + Dimad AI + city widgets default visible on layout bump.
-        hidden = hidden.filter((id) => id !== 'revenue-snapshot' && id !== 'growth-snapshot' && id !== 'pipeline' && id !== 'billing' && id !== 'dimad-ai' && id !== 'emergency' && id !== 'logistics' && id !== 'weather');
+        // Snapshots + pipeline + billing + Dimad AI + city header default visible on layout bump.
+        hidden = hidden.filter((id) => id !== 'revenue-snapshot' && id !== 'growth-snapshot' && id !== 'pipeline' && id !== 'billing' && id !== 'dimad-ai' && id !== 'yerevan-header');
         const next = {
           hidden: Array.from(new Set(hidden)),
           collapsed: raw.collapsed.filter((id) => !retired.has(id)),
@@ -23121,6 +23190,8 @@ window.onload = async function() {
   loadAiChats();
   if (typeof DIMAD_WELCOME !== 'undefined' && DIMAD_WELCOME.active) DIMAD_WELCOME.setStatus('Loading workspace views…');
   await loadViews();
+  /* Bundle was prefetched at parse-time; mount as soon as the root exists. */
+  void mountYerevanHeader();
   if (typeof DIMAD_WELCOME !== 'undefined' && DIMAD_WELCOME.active) DIMAD_WELCOME.setStatus('Preparing clocks, goals, and modules…');
   if (typeof WORLD_CLOCKS !== 'undefined') WORLD_CLOCKS.render();
   if (typeof DIMAD_GEO !== 'undefined') DIMAD_GEO.init();

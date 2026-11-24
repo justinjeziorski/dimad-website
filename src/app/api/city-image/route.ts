@@ -98,10 +98,26 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ cached: false, ...emptyPayload });
     }
 
+    const rawRegular = topResult.urls?.regular || topResult.urls?.full || null;
+    let optimizedUrl: string | null = rawRegular;
+    if (rawRegular) {
+      try {
+        const u = new URL(rawRegular);
+        u.searchParams.set("auto", "format");
+        u.searchParams.set("fit", "crop");
+        u.searchParams.set("w", "1200");
+        u.searchParams.set("q", "75");
+        u.searchParams.set("fm", "webp");
+        optimizedUrl = u.toString();
+      } catch {
+        optimizedUrl = rawRegular;
+      }
+    }
+
     const payload: CityBackgroundRecord = {
       city,
       cityKey,
-      imageUrl: topResult.urls?.regular || null,
+      imageUrl: optimizedUrl,
       thumbUrl: topResult.urls?.small || null,
       photographerName: topResult.user?.name || null,
       photographerUrl: topResult.user?.links?.html || null,

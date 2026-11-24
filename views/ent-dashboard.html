@@ -12,173 +12,80 @@
     </div>
   </div>
 
-  <!-- QUOTE + WORLD CLOCKS (50 / 50; lone module spans full when the other is hidden) -->
-  <div data-cc-top-grid class="grid grid-cols-1 md:grid-cols-2 gap-3 w-full items-stretch">
-    <div data-cc-module="quote" class="relative overflow-hidden surface-card rounded-xl px-2.5 py-2 flex flex-col h-full">
-      <span aria-hidden="true" class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 select-none font-serif leading-none text-[5.5rem] text-brand-gold/[0.1]">&ldquo;</span>
-      <div class="relative z-10 flex items-center justify-between mb-1.5 gap-2 shrink-0">
-        <a href="/dashboard/quotes" class="inline-flex items-center gap-1.5 text-[10px] font-semibold text-slate-100 tracking-wide hover:text-brand-gold transition" title="Open Daily Quotes">
-          <span aria-hidden="true" class="text-[10px] leading-none">📖</span>
-          Quote of the Day
-        </a>
-      </div>
-      <div data-cc-body class="relative z-10 flex flex-col flex-1 min-h-0">
-        <p id="cc-quote-text" class="flex-1 flex items-center text-[13px] md:text-[14px] text-slate-100 italic leading-snug font-serif m-0"></p>
-        <div class="shrink-0 border-t border-hairline pt-1.5 flex items-baseline justify-between gap-3">
-          <span id="cc-quote-author" class="text-[10px] font-semibold text-brand-gold whitespace-nowrap"></span>
-          <span id="cc-quote-context" class="text-[8px] font-mono text-slate-500 text-right truncate"></span>
+  <!-- CITY HEADER — native React island. Skeleton paints instantly; React hydrates over it. -->
+  <div data-cc-module="yerevan-header" class="relative w-full">
+    <div
+      id="yerevan-header-root"
+      data-yerevan-header-root
+      class="w-full"
+      style="min-height:290px;background:#0b0f17;border-radius:1rem;border:1px solid rgba(30,41,59,0.9);overflow:hidden;box-sizing:border-box"
+    >
+      <!-- Instant skeleton (replaced when React mounts) — 3 columns, inline styles only -->
+      <div data-ydh-skeleton style="position:relative;display:flex;flex-direction:row;flex-wrap:nowrap;align-items:stretch;gap:24px;min-height:290px;padding:24px 32px;box-sizing:border-box;width:100%;">
+        <div style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;justify-content:space-between;">
+          <div style="display:inline-flex;align-items:center;gap:8px;width:fit-content;padding:4px 12px;border-radius:999px;background:rgba(2,6,23,0.6);border:1px solid rgba(255,255,255,0.1);">
+            <span style="display:flex;flex-direction:column;width:16px;height:12px;border-radius:2px;overflow:hidden;flex-shrink:0;">
+              <span style="height:4px;background:#D90012;"></span>
+              <span style="height:4px;background:#0033A0;"></span>
+              <span style="height:4px;background:#F2A800;"></span>
+            </span>
+            <span style="font-size:12px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:#e2e8f0;">Yerevan, Armenia</span>
+          </div>
+          <div style="padding-top:12px;">
+            <div style="font-family:Georgia,serif;font-size:2.75rem;font-weight:700;line-height:1.05;color:#f59e0b;">
+              <span style="font-style:italic;display:block;font-weight:600;">Barev,</span>
+              <span style="display:block;">Yerevan</span>
+            </div>
+          </div>
+          <div style="font-family:ui-monospace,monospace;font-size:11px;color:#94a3b8;display:flex;align-items:center;gap:12px;padding-top:8px;">
+            <span>40.1872° N, 44.5152° E</span>
+            <span style="color:#475569;">•</span>
+            <span style="color:#34d399;display:inline-flex;align-items:center;gap:6px;">
+              <span style="width:6px;height:6px;border-radius:999px;background:#34d399;"></span>
+              Local Systems Nominal
+            </span>
+          </div>
+        </div>
+        <div style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;justify-content:center;">
+          <div style="border-radius:12px;background:rgba(2,6,23,0.55);border:1px solid rgba(255,255,255,0.1);padding:20px;">
+            <p style="font-family:Georgia,serif;font-size:1.125rem;font-style:italic;color:#f1f5f9;margin:0;line-height:1.5;">Loading quote…</p>
+            <div style="margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.1);">
+              <span style="font-size:12px;font-weight:600;color:#fbbf24;">—</span>
+            </div>
+          </div>
+        </div>
+        <div style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;justify-content:space-between;gap:12px;">
+          <div style="display:flex;justify-content:flex-end;gap:8px;">
+            <div style="min-width:140px;height:36px;border-radius:12px;background:rgba(14,19,31,0.9);border:1px solid rgba(251,191,36,0.35);"></div>
+            <div style="width:64px;height:36px;border-radius:12px;background:rgba(14,19,31,0.9);border:1px solid rgba(51,65,85,0.7);"></div>
+          </div>
+          <div style="display:grid;grid-template-columns:5fr 7fr;gap:10px;">
+            <div style="border-radius:12px;background:rgba(13,18,29,0.85);border:1px solid rgba(255,255,255,0.1);padding:14px;min-height:88px;"></div>
+            <div style="border-radius:12px;background:rgba(13,18,29,0.85);border:1px solid rgba(251,191,36,0.3);padding:14px;min-height:88px;"></div>
+            <div style="grid-column:1 / -1;border-radius:12px;background:rgba(13,18,29,0.8);border:1px solid rgba(255,255,255,0.1);height:40px;"></div>
+          </div>
         </div>
       </div>
     </div>
-
-    <div data-cc-module="clocks" class="relative min-w-0 surface-card rounded-xl px-2.5 py-2 flex flex-col">
-      <div class="flex items-center justify-between mb-1.5 gap-2">
-        <span class="text-[10px] font-semibold text-slate-100 tracking-wide flex items-center gap-1.5">
-          <i class="fa-regular fa-clock text-brand-gold text-[9px]"></i>
-          World Clocks
-        </span>
-        <button type="button" onclick="WORLD_CLOCKS.togglePicker()" class="text-[9px] font-mono text-slate-500 hover:text-brand-gold transition">+ Select cities</button>
-      </div>
-      <div id="world-clocks-picker" class="hidden absolute right-2 top-8 z-40 w-80 surface-card rounded-xl shadow-xl overflow-hidden">
-        <div class="p-2 border-b border-hairline bg-brand-nested">
-          <div class="flex items-center gap-2 bg-brand-black border border-gold-soft rounded-lg px-2">
-            <i class="fa-solid fa-magnifying-glass text-brand-gold text-[10px]"></i>
-            <input id="world-clocks-search" type="text" placeholder="Search cities or timezones..." oninput="WORLD_CLOCKS.filterCities(this.value)" class="flex-1 bg-transparent outline-none py-2 text-[12px] text-slate-100">
-          </div>
-          <div id="world-clocks-picker-count" class="text-[9px] font-mono text-slate-500 px-0.5 pt-1">Pick up to 3 cities</div>
-        </div>
-        <div id="world-clocks-picker-list" class="max-h-60 overflow-y-auto p-2"></div>
-      </div>
-      <div data-cc-body class="min-h-0">
-        <div id="world-clocks-grid" class="grid grid-cols-3 gap-1.5"></div>
-      </div>
+    <!-- Legacy weather anchors for CC_YOUR_CITY unit/geo sync -->
+    <div class="hidden" aria-hidden="true">
+      <span id="cc-city-title">Yerevan</span>
+      <div id="cc-city-weather"></div>
+      <select id="cc-city-weather-view"><option value="current" selected>Current</option></select>
+      <button type="button" id="cc-city-unit-c"></button>
+      <button type="button" id="cc-city-unit-f"></button>
+      <div id="world-clocks-grid"></div>
     </div>
-  </div>
-
-  <!-- CITY ROW: one combined module — Weather | Logistics | Emergency -->
-  <div data-cc-city-band class="w-full">
-    <div id="cc-module-your-city" class="surface-card rounded-xl p-3 cc-city-combo">
-      <div data-cc-city-combo-grid class="cc-city-combo-grid">
-<section data-cc-module="weather" id="cc-module-weather" class="cc-city-pane min-w-0 min-h-0 flex flex-col gap-2">
-          <h3 class="border-b border-hairline pb-1.5 flex items-center justify-between gap-2 shrink-0">
-            <button type="button" onclick="switchTab('nomad-city')" class="inline-flex items-center gap-1.5 text-[10px] font-semibold text-slate-100 tracking-wide hover:text-brand-gold transition min-w-0">
-              <i class="fa-solid fa-cloud-sun text-brand-gold text-[9px]"></i>
-              <span>Weather</span>
-              <span id="cc-city-title" class="text-[9px] font-mono text-slate-500 font-normal truncate">Yerevan</span>
-            </button>
-            <div class="flex items-center gap-1 shrink-0">
-              <label class="sr-only" for="cc-city-weather-view">Weather view</label>
-              <select id="cc-city-weather-view" onchange="CC_YOUR_CITY.setWeatherView(this.value)" class="text-[9px] font-mono bg-brand-nested text-slate-300 border border-hairline px-1.5 py-0 rounded-full outline-none cursor-pointer hover:text-brand-gold hover:border-gold-soft max-w-[5.25rem] leading-4 h-4">
-                <option value="current" selected>Current</option>
-                <option value="hourly">Hourly</option>
-                <option value="weekly">Weekly</option>
-              </select>
-              <div class="inline-flex items-center rounded-full border border-hairline overflow-hidden p-0.5 bg-brand-black/40" role="group" aria-label="Temperature unit">
-                <button type="button" id="cc-city-unit-c" onclick="CC_YOUR_CITY.setUnit('C')" class="px-1.5 py-0 text-[9px] font-mono font-bold rounded-full text-slate-400 leading-4">°C</button>
-                <button type="button" id="cc-city-unit-f" onclick="CC_YOUR_CITY.setUnit('F')" class="px-1.5 py-0 text-[9px] font-mono font-bold rounded-full text-slate-400 leading-4">°F</button>
-              </div>
-              <button type="button" onclick="CC_YOUR_CITY.refresh(true)" title="Refresh weather" class="w-4 h-4 rounded-full border border-hairline text-slate-400 hover:text-brand-gold hover:border-gold-soft flex items-center justify-center transition" aria-label="Refresh weather">
-                <i class="fa-solid fa-rotate-right text-[8px]"></i>
-              </button>
-            </div>
-          </h3>
-          <div data-cc-body class="cc-quad-body flex flex-col min-h-0 flex-1 overflow-hidden">
-            <div id="cc-city-weather" class="text-[10px] text-slate-400 min-h-0 flex-1 overflow-hidden">Loading forecast…</div>
-          </div>
-        </section>
-
-<section data-cc-module="logistics" id="cc-module-logistics" class="cc-city-pane min-w-0 min-h-0 flex flex-col gap-2">
-          <h3 class="border-b border-hairline pb-1.5 flex items-center justify-between gap-2 shrink-0">
-            <button type="button" onclick="switchTab('nomad-city')" class="inline-flex items-center gap-1.5 text-[10px] font-semibold text-slate-100 tracking-wide hover:text-brand-gold transition">
-              <i class="fa-solid fa-truck-fast text-brand-mint text-[9px]"></i> Logistics
-            </button>
-          </h3>
-          <div data-cc-body class="cc-quad-body grid grid-cols-2 gap-1.5 text-[10px] content-start min-h-0 flex-1 overflow-auto">
-            <a href="https://go.yandex/en_am/" target="_blank" rel="noopener noreferrer" class="bg-brand-black/40 p-2 rounded-md border border-hairline hover:border-gold-soft transition flex items-center justify-between gap-1.5">
-              <span class="min-w-0">
-                <span class="font-bold text-slate-200 block truncate">Rideshare</span>
-                <span class="text-slate-500 text-[9px]">YandexGo</span>
-              </span>
-              <i class="fa-solid fa-car text-brand-gold text-sm shrink-0"></i>
-            </a>
-            <a href="https://eats.yandex.com/" target="_blank" rel="noopener noreferrer" class="bg-brand-black/40 p-2 rounded-md border border-hairline hover:border-gold-soft transition flex items-center justify-between gap-1.5">
-              <span class="min-w-0">
-                <span class="font-bold text-slate-200 block truncate">Food Delivery</span>
-                <span class="text-slate-500 text-[9px]">YandexEats</span>
-              </span>
-              <i class="fa-solid fa-utensils text-brand-gold text-sm shrink-0"></i>
-            </a>
-            <a href="https://eats.yandex.com/" target="_blank" rel="noopener noreferrer" class="bg-brand-black/40 p-2 rounded-md border border-hairline hover:border-gold-soft transition flex items-center justify-between gap-1.5">
-              <span class="min-w-0">
-                <span class="font-bold text-slate-200 block truncate">Grocery Delivery</span>
-                <span class="text-slate-500 text-[9px]">YandexEats</span>
-              </span>
-              <i class="fa-solid fa-cart-shopping text-brand-gold text-sm shrink-0"></i>
-            </a>
-            <a href="https://yandex.com/metro/yerevan" target="_blank" rel="noopener noreferrer" class="bg-brand-black/40 p-2 rounded-md border border-hairline hover:border-gold-soft transition flex items-center justify-between gap-1.5">
-              <span class="min-w-0">
-                <span class="font-bold text-slate-200 block truncate">Public Transit</span>
-                <span class="text-slate-500 text-[9px]">Metro &amp; Bus</span>
-              </span>
-              <i class="fa-solid fa-train-subway text-brand-gold text-sm shrink-0"></i>
-            </a>
-            <a href="https://nordvpn.com/" target="_blank" rel="noopener noreferrer" class="bg-brand-black/40 p-2 rounded-md border border-hairline hover:border-gold-soft transition flex items-center justify-between gap-1.5">
-              <span class="min-w-0">
-                <span class="font-bold text-slate-200 block truncate">VPN</span>
-                <span class="text-slate-500 text-[9px]">NordVPN</span>
-              </span>
-              <i class="fa-solid fa-shield-halved text-brand-gold text-sm shrink-0"></i>
-            </a>
-            <a href="https://www.airalo.com/" target="_blank" rel="noopener noreferrer" class="bg-brand-black/40 p-2 rounded-md border border-hairline hover:border-gold-soft transition flex items-center justify-between gap-1.5">
-              <span class="min-w-0">
-                <span class="font-bold text-slate-200 block truncate">eSIM</span>
-                <span class="text-slate-500 text-[9px]">Airalo</span>
-              </span>
-              <i class="fa-solid fa-sim-card text-brand-gold text-sm shrink-0"></i>
-            </a>
-          </div>
-        </section>
-
-<section data-cc-module="emergency" id="cc-module-emergency" class="cc-city-pane min-w-0 min-h-0 flex flex-col gap-2">
-          <h3 class="border-b border-hairline pb-1.5 flex items-center justify-between gap-2 shrink-0">
-            <button type="button" onclick="switchTab('nomad-city')" class="inline-flex items-center gap-1.5 text-[10px] font-semibold text-slate-100 tracking-wide hover:text-brand-gold transition">
-              <i class="fa-solid fa-kit-medical text-brand-alert text-[9px]"></i> Emergency Services
-            </button>
-          </h3>
-          <div data-cc-body class="cc-quad-body grid grid-cols-1 gap-1.5 text-[10px] content-start min-h-0 flex-1 overflow-auto">
-            <a href="tel:112" class="bg-brand-black/40 p-2 rounded-md border border-hairline hover:border-gold-soft transition flex items-center justify-between gap-1.5">
-              <span class="min-w-0">
-                <span class="font-bold text-slate-200 block truncate">General Emergency</span>
-                <span class="text-slate-500 text-[9px]">Police / Ambulance</span>
-              </span>
-              <span class="font-bold font-mono text-brand-alert whitespace-nowrap shrink-0">112 / 103</span>
-            </a>
-            <a href="tel:+37410318000" class="bg-brand-black/40 p-2 rounded-md border border-hairline hover:border-gold-soft transition flex items-center justify-between gap-1.5">
-              <span class="min-w-0">
-                <span class="font-bold text-slate-200 block truncate">City Hospital</span>
-                <span class="text-slate-500 text-[9px]">Armenia Medical Center</span>
-              </span>
-              <span class="font-bold font-mono text-brand-mint whitespace-nowrap shrink-0">+374 10 318000</span>
-            </a>
-            <div class="grid grid-cols-2 gap-1.5">
-              <a href="https://safetywing.com/" target="_blank" rel="noopener noreferrer" class="bg-brand-black/40 p-2 rounded-md border border-hairline hover:border-gold-soft transition flex items-center justify-between gap-1.5">
-                <span class="min-w-0">
-                  <span class="font-bold text-slate-200 block truncate">Travel Insurance</span>
-                  <span class="text-slate-500 text-[9px]">SafetyWing</span>
-                </span>
-                <i class="fa-solid fa-heart-pulse text-brand-gold text-sm shrink-0"></i>
-              </a>
-              <a href="https://www.embassypages.com/" target="_blank" rel="noopener noreferrer" class="bg-brand-black/40 p-2 rounded-md border border-hairline hover:border-gold-soft transition flex items-center justify-between gap-1.5">
-                <span class="min-w-0">
-                  <span class="font-bold text-slate-200 block truncate">Embassies and Consulates</span>
-                  <span class="text-slate-500 text-[9px]">EmbassyPages</span>
-                </span>
-                <i class="fa-solid fa-landmark-flag text-brand-gold text-sm shrink-0"></i>
-              </a>
-            </div>
-          </div>
-        </section>
+    <!-- City picker opened from header "Cities" control via WORLD_CLOCKS.togglePicker() -->
+    <div id="world-clocks-picker" class="hidden absolute right-3 top-3 z-40 w-80 surface-card rounded-xl shadow-xl overflow-hidden">
+      <div class="p-2 border-b border-hairline bg-brand-nested">
+        <div class="flex items-center gap-2 bg-brand-black border border-gold-soft rounded-lg px-2">
+          <i class="fa-solid fa-magnifying-glass text-brand-gold text-[10px]"></i>
+          <input id="world-clocks-search" type="text" placeholder="Search cities or timezones..." oninput="WORLD_CLOCKS.filterCities(this.value)" class="flex-1 bg-transparent outline-none py-2 text-[12px] text-slate-100">
+        </div>
+        <div id="world-clocks-picker-count" class="text-[9px] font-mono text-slate-500 px-0.5 pt-1">Pick up to 3 cities</div>
       </div>
+      <div id="world-clocks-picker-list" class="max-h-60 overflow-y-auto p-2"></div>
     </div>
   </div>
 
