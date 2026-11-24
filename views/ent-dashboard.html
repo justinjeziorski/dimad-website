@@ -1,7 +1,7 @@
 <!-- TAB 1: ENTREPRENEUR COMMAND CENTER -->
 <div id="view-ent-dashboard" class="tab-view space-y-3 w-full">
   <div class="flex items-center justify-between gap-2">
-    <span class="micro-label text-[9px]">Command Center</span>
+    <span class="micro-label text-[9px]">Dashboard</span>
     <div class="flex items-center gap-2">
       <div class="relative">
         <button type="button" onclick="COMMAND_CENTER.toggleFilter('core')" class="text-[10px] font-medium text-slate-400 hover:text-brand-gold border border-hairline bg-brand-panel/80 px-2.5 py-1 rounded-full transition">
@@ -12,8 +12,8 @@
     </div>
   </div>
 
-  <!-- QUOTE + WORLD CLOCKS (50 / 50) -->
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-3 w-full items-stretch">
+  <!-- QUOTE + WORLD CLOCKS (50 / 50; lone module spans full when the other is hidden) -->
+  <div data-cc-top-grid class="grid grid-cols-1 md:grid-cols-2 gap-3 w-full items-stretch">
     <div data-cc-module="quote" class="relative overflow-hidden surface-card rounded-xl px-2.5 py-2 flex flex-col h-full">
       <span aria-hidden="true" class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 select-none font-serif leading-none text-[5.5rem] text-brand-gold/[0.1]">&ldquo;</span>
       <div class="relative z-10 flex items-center justify-between mb-1.5 gap-2 shrink-0">
@@ -55,14 +55,141 @@
     </div>
   </div>
 
-  <!-- MAIN LOWER: Quad (Revenue / Growth / Accountability / Tasks) | Calendar -->
-  <div class="grid grid-cols-1 lg:grid-cols-12 gap-3 w-full items-stretch">
-    <div class="min-w-0 lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-3 h-full cc-quad-grid">
+  <!-- CITY ROW: one combined module — Weather | Logistics | Emergency -->
+  <div data-cc-city-band class="w-full">
+    <div id="cc-module-your-city" class="surface-card rounded-xl p-3 cc-city-combo">
+      <div data-cc-city-combo-grid class="cc-city-combo-grid">
+<section data-cc-module="weather" id="cc-module-weather" class="cc-city-pane min-w-0 min-h-0 flex flex-col gap-2">
+          <h3 class="border-b border-hairline pb-1.5 flex items-center justify-between gap-2 shrink-0">
+            <button type="button" onclick="switchTab('nomad-city')" class="inline-flex items-center gap-1.5 text-[10px] font-semibold text-slate-100 tracking-wide hover:text-brand-gold transition min-w-0">
+              <i class="fa-solid fa-cloud-sun text-brand-gold text-[9px]"></i>
+              <span>Weather</span>
+              <span id="cc-city-title" class="text-[9px] font-mono text-slate-500 font-normal truncate">Yerevan</span>
+            </button>
+            <div class="flex items-center gap-1 shrink-0">
+              <label class="sr-only" for="cc-city-weather-view">Weather view</label>
+              <select id="cc-city-weather-view" onchange="CC_YOUR_CITY.setWeatherView(this.value)" class="text-[9px] font-mono bg-brand-nested text-slate-300 border border-hairline px-1.5 py-0 rounded-full outline-none cursor-pointer hover:text-brand-gold hover:border-gold-soft max-w-[5.25rem] leading-4 h-4">
+                <option value="current" selected>Current</option>
+                <option value="hourly">Hourly</option>
+                <option value="weekly">Weekly</option>
+              </select>
+              <div class="inline-flex items-center rounded-full border border-hairline overflow-hidden p-0.5 bg-brand-black/40" role="group" aria-label="Temperature unit">
+                <button type="button" id="cc-city-unit-c" onclick="CC_YOUR_CITY.setUnit('C')" class="px-1.5 py-0 text-[9px] font-mono font-bold rounded-full text-slate-400 leading-4">°C</button>
+                <button type="button" id="cc-city-unit-f" onclick="CC_YOUR_CITY.setUnit('F')" class="px-1.5 py-0 text-[9px] font-mono font-bold rounded-full text-slate-400 leading-4">°F</button>
+              </div>
+              <button type="button" onclick="CC_YOUR_CITY.refresh(true)" title="Refresh weather" class="w-4 h-4 rounded-full border border-hairline text-slate-400 hover:text-brand-gold hover:border-gold-soft flex items-center justify-center transition" aria-label="Refresh weather">
+                <i class="fa-solid fa-rotate-right text-[8px]"></i>
+              </button>
+            </div>
+          </h3>
+          <div data-cc-body class="cc-quad-body flex flex-col min-h-0 flex-1 overflow-hidden">
+            <div id="cc-city-weather" class="text-[10px] text-slate-400 min-h-0 flex-1 overflow-hidden">Loading forecast…</div>
+          </div>
+        </section>
+
+<section data-cc-module="logistics" id="cc-module-logistics" class="cc-city-pane min-w-0 min-h-0 flex flex-col gap-2">
+          <h3 class="border-b border-hairline pb-1.5 flex items-center justify-between gap-2 shrink-0">
+            <button type="button" onclick="switchTab('nomad-city')" class="inline-flex items-center gap-1.5 text-[10px] font-semibold text-slate-100 tracking-wide hover:text-brand-gold transition">
+              <i class="fa-solid fa-truck-fast text-brand-mint text-[9px]"></i> Logistics
+            </button>
+          </h3>
+          <div data-cc-body class="cc-quad-body grid grid-cols-2 gap-1.5 text-[10px] content-start min-h-0 flex-1 overflow-auto">
+            <a href="https://go.yandex/en_am/" target="_blank" rel="noopener noreferrer" class="bg-brand-black/40 p-2 rounded-md border border-hairline hover:border-gold-soft transition flex items-center justify-between gap-1.5">
+              <span class="min-w-0">
+                <span class="font-bold text-slate-200 block truncate">Rideshare</span>
+                <span class="text-slate-500 text-[9px]">YandexGo</span>
+              </span>
+              <i class="fa-solid fa-car text-brand-gold text-sm shrink-0"></i>
+            </a>
+            <a href="https://eats.yandex.com/" target="_blank" rel="noopener noreferrer" class="bg-brand-black/40 p-2 rounded-md border border-hairline hover:border-gold-soft transition flex items-center justify-between gap-1.5">
+              <span class="min-w-0">
+                <span class="font-bold text-slate-200 block truncate">Food Delivery</span>
+                <span class="text-slate-500 text-[9px]">YandexEats</span>
+              </span>
+              <i class="fa-solid fa-utensils text-brand-gold text-sm shrink-0"></i>
+            </a>
+            <a href="https://eats.yandex.com/" target="_blank" rel="noopener noreferrer" class="bg-brand-black/40 p-2 rounded-md border border-hairline hover:border-gold-soft transition flex items-center justify-between gap-1.5">
+              <span class="min-w-0">
+                <span class="font-bold text-slate-200 block truncate">Grocery Delivery</span>
+                <span class="text-slate-500 text-[9px]">YandexEats</span>
+              </span>
+              <i class="fa-solid fa-cart-shopping text-brand-gold text-sm shrink-0"></i>
+            </a>
+            <a href="https://yandex.com/metro/yerevan" target="_blank" rel="noopener noreferrer" class="bg-brand-black/40 p-2 rounded-md border border-hairline hover:border-gold-soft transition flex items-center justify-between gap-1.5">
+              <span class="min-w-0">
+                <span class="font-bold text-slate-200 block truncate">Public Transit</span>
+                <span class="text-slate-500 text-[9px]">Metro &amp; Bus</span>
+              </span>
+              <i class="fa-solid fa-train-subway text-brand-gold text-sm shrink-0"></i>
+            </a>
+            <a href="https://nordvpn.com/" target="_blank" rel="noopener noreferrer" class="bg-brand-black/40 p-2 rounded-md border border-hairline hover:border-gold-soft transition flex items-center justify-between gap-1.5">
+              <span class="min-w-0">
+                <span class="font-bold text-slate-200 block truncate">VPN</span>
+                <span class="text-slate-500 text-[9px]">NordVPN</span>
+              </span>
+              <i class="fa-solid fa-shield-halved text-brand-gold text-sm shrink-0"></i>
+            </a>
+            <a href="https://www.airalo.com/" target="_blank" rel="noopener noreferrer" class="bg-brand-black/40 p-2 rounded-md border border-hairline hover:border-gold-soft transition flex items-center justify-between gap-1.5">
+              <span class="min-w-0">
+                <span class="font-bold text-slate-200 block truncate">eSIM</span>
+                <span class="text-slate-500 text-[9px]">Airalo</span>
+              </span>
+              <i class="fa-solid fa-sim-card text-brand-gold text-sm shrink-0"></i>
+            </a>
+          </div>
+        </section>
+
+<section data-cc-module="emergency" id="cc-module-emergency" class="cc-city-pane min-w-0 min-h-0 flex flex-col gap-2">
+          <h3 class="border-b border-hairline pb-1.5 flex items-center justify-between gap-2 shrink-0">
+            <button type="button" onclick="switchTab('nomad-city')" class="inline-flex items-center gap-1.5 text-[10px] font-semibold text-slate-100 tracking-wide hover:text-brand-gold transition">
+              <i class="fa-solid fa-kit-medical text-brand-alert text-[9px]"></i> Emergency Services
+            </button>
+          </h3>
+          <div data-cc-body class="cc-quad-body grid grid-cols-1 gap-1.5 text-[10px] content-start min-h-0 flex-1 overflow-auto">
+            <a href="tel:112" class="bg-brand-black/40 p-2 rounded-md border border-hairline hover:border-gold-soft transition flex items-center justify-between gap-1.5">
+              <span class="min-w-0">
+                <span class="font-bold text-slate-200 block truncate">General Emergency</span>
+                <span class="text-slate-500 text-[9px]">Police / Ambulance</span>
+              </span>
+              <span class="font-bold font-mono text-brand-alert whitespace-nowrap shrink-0">112 / 103</span>
+            </a>
+            <a href="tel:+37410318000" class="bg-brand-black/40 p-2 rounded-md border border-hairline hover:border-gold-soft transition flex items-center justify-between gap-1.5">
+              <span class="min-w-0">
+                <span class="font-bold text-slate-200 block truncate">City Hospital</span>
+                <span class="text-slate-500 text-[9px]">Armenia Medical Center</span>
+              </span>
+              <span class="font-bold font-mono text-brand-mint whitespace-nowrap shrink-0">+374 10 318000</span>
+            </a>
+            <div class="grid grid-cols-2 gap-1.5">
+              <a href="https://safetywing.com/" target="_blank" rel="noopener noreferrer" class="bg-brand-black/40 p-2 rounded-md border border-hairline hover:border-gold-soft transition flex items-center justify-between gap-1.5">
+                <span class="min-w-0">
+                  <span class="font-bold text-slate-200 block truncate">Travel Insurance</span>
+                  <span class="text-slate-500 text-[9px]">SafetyWing</span>
+                </span>
+                <i class="fa-solid fa-heart-pulse text-brand-gold text-sm shrink-0"></i>
+              </a>
+              <a href="https://www.embassypages.com/" target="_blank" rel="noopener noreferrer" class="bg-brand-black/40 p-2 rounded-md border border-hairline hover:border-gold-soft transition flex items-center justify-between gap-1.5">
+                <span class="min-w-0">
+                  <span class="font-bold text-slate-200 block truncate">Embassies and Consulates</span>
+                  <span class="text-slate-500 text-[9px]">EmbassyPages</span>
+                </span>
+                <i class="fa-solid fa-landmark-flag text-brand-gold text-sm shrink-0"></i>
+              </a>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN LOWER: Quad modules | Calendar — odd last cell spans 2; notepad in grid -->
+  <div data-cc-main-band class="grid grid-cols-1 lg:grid-cols-12 gap-3 w-full items-stretch">
+    <div data-cc-quad-wrap class="min-w-0 lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-3 h-full cc-quad-grid">
       <div data-cc-module="revenue-snapshot" id="module-revenue-snapshot" class="min-w-0 w-full cc-quad-card rounded-xl overflow-hidden">
-        <iframe data-revenue-snapshot-frame title="Revenue Snapshot" src="/integrations/revenue-snapshot" class="block w-full h-full min-h-[226px] rounded-xl border border-hairline" style="height:100%;min-height:226px;border:0;overflow:hidden;background:#0c1220" scrolling="no"></iframe>
+        <iframe data-revenue-snapshot-frame title="Revenue Snapshot" src="/integrations/revenue-snapshot?theme=dark" class="block w-full h-full min-h-[226px] rounded-xl border border-hairline" style="height:100%;min-height:226px;border:0;overflow:hidden;background:var(--bg-nav)" scrolling="no"></iframe>
       </div>
       <div data-cc-module="growth-snapshot" id="module-growth-snapshot" class="min-w-0 w-full cc-quad-card rounded-xl overflow-hidden">
-        <iframe data-growth-snapshot-frame title="Growth Snapshot" src="/integrations/growth-snapshot" class="block w-full h-full min-h-[226px] rounded-xl border border-hairline" style="height:100%;min-height:226px;border:0;overflow:hidden;background:#0c1220" scrolling="no"></iframe>
+        <iframe data-growth-snapshot-frame title="Growth Snapshot" src="/integrations/growth-snapshot?theme=dark" class="block w-full h-full min-h-[226px] rounded-xl border border-hairline" style="height:100%;min-height:226px;border:0;overflow:hidden;background:var(--bg-nav)" scrolling="no"></iframe>
       </div>
 
       <div data-cc-module="goals" class="surface-card p-3 rounded-xl space-y-2 min-w-0 cc-quad-card">
@@ -95,10 +222,15 @@
       </div>
 
       <div data-cc-module="tasks" class="surface-card p-3 rounded-xl space-y-2 min-w-0 cc-quad-card">
-        <h3 class="border-b border-hairline pb-1.5 flex items-center justify-between shrink-0">
+        <h3 class="border-b border-hairline pb-1.5 flex items-center justify-between gap-2 shrink-0">
           <button type="button" onclick="switchTab('ent-tasks')" class="inline-flex items-center gap-1.5 text-[10px] font-semibold text-slate-100 tracking-wide hover:text-brand-gold transition">
             <i class="fa-solid fa-list-check text-brand-gold text-[9px]"></i> Task Manager
           </button>
+          <label class="sr-only" for="cc-tm-scope">Task scope</label>
+          <select id="cc-tm-scope" onchange="TASK_MANAGER.setDashView(this.value)" class="text-[9px] font-mono bg-brand-nested text-slate-300 border border-hairline px-2 py-0.5 rounded-full outline-none cursor-pointer hover:text-brand-gold hover:border-gold-soft max-w-[5.5rem]">
+            <option value="today" selected>Today</option>
+            <option value="future">Future</option>
+          </select>
         </h3>
         <div data-cc-body class="cc-quad-body space-y-1 text-[10px]">
           <form id="cc-tm-add-form" class="relative shrink-0">
@@ -155,50 +287,76 @@
           <div id="cc-billing-list" class="space-y-1.5"></div>
         </div>
       </div>
+
+      <div data-cc-module="notepad" class="surface-card p-3 rounded-xl space-y-2 min-w-0 cc-quad-card">
+        <h3 class="border-b border-hairline pb-1.5 flex items-center justify-between gap-2 shrink-0">
+          <span class="flex items-center gap-1.5 min-w-0">
+            <button type="button" onclick="DIMAD_NOTEPAD.openTab()" class="inline-flex items-center gap-1.5 shrink-0 text-[10px] font-semibold text-slate-100 tracking-wide hover:text-brand-gold transition">
+              <i class="fa-solid fa-note-sticky text-brand-gold text-[9px]"></i> dimPad
+            </button>
+            <span class="relative">
+              <button type="button" onclick="DIMAD_NOTEPAD.toggleHelp(event, 'cc')" aria-label="About dimPad" class="w-4 h-4 rounded-full border border-hairline text-[9px] leading-none text-slate-400 hover:text-brand-gold hover:border-gold-soft">?</button>
+              <div id="cc-notepad-help" class="hidden absolute left-0 top-full mt-1 z-30 w-56 rounded-lg surface-card shadow-xl p-2.5 text-[10px] font-normal leading-relaxed text-slate-300">Cloud-based notepad. Autosaves directly to dimDrive. Think it. Jot it. Save it.</div>
+            </span>
+          </span>
+          <span class="flex flex-wrap items-center justify-end gap-1.5 shrink-0">
+            <span class="relative">
+              <button type="button" onclick="DIMAD_NOTEPAD.toggleRecent(event)" class="text-[9px] font-semibold text-slate-300 hover:text-brand-gold border border-hairline bg-transparent px-2 py-0.5 rounded-full transition">Recent</button>
+              <div id="cc-notepad-recent" class="hidden absolute right-0 top-full mt-1 z-30 w-48 max-h-56 overflow-y-auto rounded-lg surface-card shadow-xl py-0.5"></div>
+            </span>
+            <button type="button" onclick="DIMAD_NOTEPAD.createFromDash()" class="text-[9px] font-semibold text-brand-gold hover:text-amber-300 border border-gold-soft bg-brand-gold/10 px-2 py-0.5 rounded-full transition">+ New Note</button>
+          </span>
+        </h3>
+        <div data-cc-body class="cc-quad-body flex flex-col gap-2 min-h-0">
+          <div class="shrink-0">
+            <button type="button" id="cc-notepad-title" ondblclick="DIMAD_NOTEPAD.beginTitleEdit(event, 'dash')" title="Double-click to rename" class="w-full text-left text-[11px] font-semibold text-slate-100 truncate px-0.5 hover:text-brand-gold cursor-text">Untitled</button>
+            <input id="cc-notepad-title-input" type="text" class="hidden w-full surface-nested border border-gold-soft rounded-md px-2 py-1 text-[11px] font-semibold text-slate-100 outline-none" onkeydown="DIMAD_NOTEPAD.titleKey(event)" onblur="DIMAD_NOTEPAD.commitTitleEdit()" onclick="event.stopPropagation()">
+            <p id="cc-notepad-stamp" class="text-[8px] text-slate-500 px-0.5 mt-0.5">Created —</p>
+          </div>
+          <textarea id="cc-notepad-body" rows="5" placeholder="Save your thoughts here..." oninput="DIMAD_NOTEPAD.markDirty('dash')" class="cc-quad-textarea w-full flex-1 min-h-[5rem] surface-nested p-2.5 rounded-lg text-[11px] leading-relaxed text-slate-200 placeholder:text-slate-600 outline-none focus:border-gold-soft resize-none font-sans border border-hairline"></textarea>
+          <div class="flex items-center justify-between gap-2 shrink-0">
+            <p id="cc-notepad-status" class="text-[9px] text-slate-500">Autosaves to dimPad.</p>
+            <button type="button" id="cc-notepad-save" onclick="DIMAD_NOTEPAD.saveDash()" class="text-[9px] font-semibold text-slate-300 hover:text-brand-gold border border-hairline bg-transparent px-2 py-0.5 rounded-full transition">Save</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div data-cc-module="calendar" class="min-w-0 lg:col-span-5 flex flex-col h-full">
       <div data-cc-body class="surface-card rounded-xl p-3 space-y-3 flex-1 flex flex-col min-h-0">
-        <!-- Static monthly calendar -->
-        <div class="space-y-2">
-          <div class="grid grid-cols-[auto_1fr_auto] items-center gap-2">
-            <button type="button" onclick="CALENDAR_NAV.shiftMonth(-1)" class="bg-brand-nested hover:bg-white/5 text-slate-300 px-2.5 py-1 text-[10px] font-medium rounded-lg border border-hairline">Prev</button>
-            <p id="cc-month-title" class="text-[11px] font-semibold text-slate-100 font-mono text-center truncate">November 2026</p>
-            <div class="inline-flex items-center rounded-lg border border-hairline overflow-hidden">
-              <button type="button" onclick="CALENDAR_NAV.goToday()" class="bg-brand-nested hover:bg-white/5 text-slate-200 px-2.5 py-1 text-[10px] font-semibold border-r border-hairline">Today</button>
-              <button type="button" onclick="CALENDAR_NAV.shiftMonth(1)" class="bg-brand-nested hover:bg-white/5 text-slate-300 px-2.5 py-1 text-[10px] font-medium">Next</button>
-            </div>
+        <div class="flex items-center flex-wrap justify-between gap-2 shrink-0">
+          <div class="inline-flex items-center rounded-full border border-hairline overflow-hidden p-0.5 bg-brand-nested">
+            <button type="button" data-cc-schedule-mode="hourly" onclick="CALENDAR_NAV.setMode('hourly')" class="px-3 py-1 text-[10px] font-semibold rounded-full text-slate-400 hover:text-slate-200 transition">Daily</button>
+            <button type="button" data-cc-schedule-mode="weekly" onclick="CALENDAR_NAV.setMode('weekly')" class="px-3 py-1 text-[10px] font-semibold rounded-full text-slate-400 hover:text-slate-200 transition">Weekly</button>
           </div>
-          <div id="cal-companion-container" class="min-w-0"></div>
+          <div class="flex items-center flex-wrap gap-1.5">
+            <label class="flex items-center gap-1.5 text-[10px] font-medium text-slate-400 cursor-pointer select-none px-2 py-1 rounded-full border border-hairline hover:border-gold-soft transition">
+              <input id="cal-show-content" type="checkbox" checked onchange="DIMAD_CAL.setShowContent(this.checked)" class="accent-brand-gold">
+              Content schedule
+            </label>
+            <button type="button" onclick="CAL_SETTINGS.open()" title="Calendar settings" class="text-slate-500 hover:text-brand-gold px-1.5 py-1 border border-hairline rounded-full bg-transparent"><i class="fa-solid fa-gear text-[10px]"></i></button>
+            <button type="button" onclick="DIMAD_CAL.openComposer({ date: CALENDAR_NAV.dateKey(CALENDAR_NAV.anchorDate()) })" class="bg-brand-gold hover:bg-amber-400 text-brand-black text-[10px] font-bold px-3 py-1.5 rounded-full transition shadow-lg shadow-brand-gold/10">+ New Event</button>
+          </div>
         </div>
-
-        <!-- Daily / Weekly schedule — grows to fill remaining module height -->
-        <div class="border-t border-hairline pt-3 flex-1 flex flex-col min-h-0 gap-2.5">
-          <div class="flex items-center flex-wrap justify-between gap-2 shrink-0">
-            <div class="inline-flex items-center rounded-full border border-hairline overflow-hidden p-0.5 bg-brand-nested">
-              <button type="button" data-cc-schedule-mode="hourly" onclick="CALENDAR_NAV.setMode('hourly')" class="px-3 py-1 text-[10px] font-semibold rounded-full text-slate-400 hover:text-slate-200 transition">Daily</button>
-              <button type="button" data-cc-schedule-mode="weekly" onclick="CALENDAR_NAV.setMode('weekly')" class="px-3 py-1 text-[10px] font-semibold rounded-full text-slate-400 hover:text-slate-200 transition">Weekly</button>
+        <h3 class="text-sm font-semibold text-slate-100 font-sans shrink-0" id="cal-view-title">Thursday, Nov 5</h3>
+        <p class="hidden" id="cal-view-hint"></p>
+        <div id="cal-dual" class="flex-1 min-h-0 flex flex-col gap-3 items-stretch">
+          <aside class="min-w-0 shrink-0 space-y-2">
+            <div class="grid grid-cols-[auto_1fr_auto] items-center gap-1">
+              <button type="button" onclick="CALENDAR_NAV.shiftMonth(-1)" class="bg-brand-nested hover:bg-white/5 text-slate-300 px-1.5 py-0.5 text-[9px] font-medium rounded-md border border-hairline">◀</button>
+              <p id="cc-month-title" class="text-[10px] font-semibold text-slate-100 font-mono text-center truncate">November 2026</p>
+              <button type="button" onclick="CALENDAR_NAV.shiftMonth(1)" class="bg-brand-nested hover:bg-white/5 text-slate-300 px-1.5 py-0.5 text-[9px] font-medium rounded-md border border-hairline">▶</button>
             </div>
-            <div class="flex items-center flex-wrap gap-1.5">
-              <label class="flex items-center gap-1.5 text-[10px] font-medium text-slate-400 cursor-pointer select-none px-2 py-1 rounded-full border border-hairline hover:border-gold-soft transition">
-                <input id="cal-show-content" type="checkbox" checked onchange="DIMAD_CAL.setShowContent(this.checked)" class="accent-brand-gold">
-                Content schedule
-              </label>
-              <button type="button" onclick="CAL_SETTINGS.open()" title="Calendar settings" class="text-slate-500 hover:text-brand-gold px-1.5 py-1 border border-hairline rounded-full bg-transparent"><i class="fa-solid fa-gear text-[10px]"></i></button>
-              <button type="button" onclick="DIMAD_CAL.openComposer({ date: CALENDAR_NAV.dateKey(CALENDAR_NAV.anchorDate()) })" class="bg-brand-gold hover:bg-amber-400 text-brand-black text-[10px] font-bold px-3 py-1.5 rounded-full transition shadow-lg shadow-brand-gold/10">+ New Event</button>
-            </div>
-          </div>
-          <h3 class="text-sm font-semibold text-slate-100 font-sans shrink-0" id="cal-view-title">Thursday, Nov 5</h3>
-          <p class="hidden" id="cal-view-hint"></p>
-          <div id="cal-dual" class="flex-1 min-h-0 flex flex-col">
-            <div class="min-w-0 flex-1 min-h-0 flex flex-col" id="hourly-slots-container"></div>
-          </div>
+            <button type="button" onclick="CALENDAR_NAV.goToday()" class="w-full bg-brand-nested hover:bg-white/5 text-slate-200 px-2 py-0.5 text-[9px] font-semibold rounded-md border border-hairline">Today</button>
+            <div id="cal-companion-container" class="min-w-0"></div>
+          </aside>
+          <div class="min-w-0 flex-1 min-h-0 flex flex-col" id="hourly-slots-container"></div>
         </div>
 
         <div class="shrink-0 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500 border-t border-hairline pt-2.5">
           <span id="calendar-timezone-label" class="font-mono text-[10px]">Timezone: Auto-detected</span>
           <div class="relative inline-flex" data-account-wrap>
-            <button type="button" id="calendar-source-status" title="Connect Gmail or Outlook to sync calendar into Command Center and DIMAD Calendar." onclick="event.preventDefault(); (window.DIMAD_AURINKO && window.DIMAD_AURINKO.connect ? window.DIMAD_AURINKO.connect() : (window.location.href='/api/auth/aurinko'))" class="bg-transparent border-0 text-[11px] font-semibold text-brand-gold hover:text-amber-300 px-0 py-0.5 transition inline-flex items-center gap-1.5">
+            <button type="button" id="calendar-source-status" title="Connect Gmail or Outlook to sync calendar into Dashboard and DIMAD Calendar." onclick="event.preventDefault(); (window.DIMAD_AURINKO && window.DIMAD_AURINKO.connect ? window.DIMAD_AURINKO.connect() : (window.location.href='/api/auth/aurinko'))" class="bg-transparent border-0 text-[11px] font-semibold text-brand-gold hover:text-amber-300 px-0 py-0.5 transition inline-flex items-center gap-1.5">
               Connect Gmail / Outlook
             </button>
             <div id="calendar-account-menu" data-account-menu class="hidden absolute right-0 bottom-full mb-1 z-50 min-w-[7.5rem] rounded-md border border-hairline bg-brand-nested shadow-xl">
@@ -210,35 +368,6 @@
             </div>
           </div>
         </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- NOTEPAD -->
-  <div data-cc-module="notepad" class="surface-card p-3.5 rounded-xl space-y-2">
-    <h3 class="border-b border-hairline pb-1.5 flex items-center justify-between gap-2">
-      <span class="flex items-center gap-1.5 min-w-0">
-        <button type="button" onclick="DIMAD_NOTEPAD.openTab()" class="inline-flex items-center gap-1.5 shrink-0 text-[10px] font-semibold text-slate-100 tracking-wide hover:text-brand-gold transition">
-          <i class="fa-solid fa-note-sticky text-brand-gold text-[9px]"></i> Dimad Notepad
-        </button>
-        <span class="relative">
-          <button type="button" onclick="DIMAD_NOTEPAD.toggleHelp(event, 'cc')" aria-label="About DIMAD Notepad" class="w-4 h-4 rounded-full border border-hairline text-[9px] leading-none text-slate-400 hover:text-brand-gold hover:border-gold-soft">?</button>
-          <div id="cc-notepad-help" class="hidden absolute left-0 top-full mt-1 z-30 w-56 rounded-lg surface-card shadow-xl p-2.5 text-[10px] font-normal leading-relaxed text-slate-300">Cloud-based notepad. Autosaves directly to dimDrive. Think it. Jot it. Save it.</div>
-        </span>
-      </span>
-      <span class="flex flex-wrap items-center justify-end gap-1.5">
-        <span class="relative">
-          <button type="button" onclick="DIMAD_NOTEPAD.toggleRecent(event)" class="text-[9px] font-semibold text-slate-300 hover:text-brand-gold border border-hairline bg-transparent px-2 py-0.5 rounded-full transition">Recent</button>
-          <div id="cc-notepad-recent" class="hidden absolute right-0 top-full mt-1 z-30 w-52 rounded-lg surface-card shadow-xl py-1"></div>
-        </span>
-        <button type="button" onclick="DIMAD_NOTEPAD.createFromDash()" class="text-[9px] font-semibold text-brand-gold hover:text-amber-300 border border-gold-soft bg-brand-gold/10 px-2 py-0.5 rounded-full transition">+ New Note</button>
-      </span>
-    </h3>
-    <div data-cc-body class="space-y-2">
-      <textarea id="cc-notepad-body" rows="5" placeholder="Save your thoughts here..." oninput="DIMAD_NOTEPAD.markDirty('dash')" class="w-full min-h-[5rem] surface-nested p-2.5 rounded-lg text-[11px] leading-relaxed text-slate-200 placeholder:text-slate-600 outline-none focus:border-gold-soft resize-none font-sans border border-hairline"></textarea>
-      <div class="flex items-center justify-between gap-2">
-        <p id="cc-notepad-status" class="text-[9px] text-slate-500">Autosaves to DIMAD Notepad.</p>
-        <button type="button" id="cc-notepad-save" onclick="DIMAD_NOTEPAD.saveDash()" class="text-[9px] font-semibold text-slate-300 hover:text-brand-gold border border-hairline bg-transparent px-2 py-0.5 rounded-full transition">Save</button>
       </div>
     </div>
   </div>

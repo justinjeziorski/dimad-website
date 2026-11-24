@@ -41,7 +41,6 @@ const MODE_NAV = {
   entrepreneur: {
     defaultTab: 'ent-dashboard',
     items: [
-      { id: 'ent-dashboard', label: 'Command Center', highlight: true },
       { id: 'ent-ai-business', label: '⚡ Business AI' },
       { id: 'ent-crm', label: 'Revenue' },
       { id: 'ent-growth', label: 'Growth' },
@@ -52,9 +51,8 @@ const MODE_NAV = {
     ]
   },
   creator: {
-    defaultTab: 'creator-studio',
+    defaultTab: 'creator-ai',
     items: [
-      { id: 'creator-studio', label: 'Dimad Studio', highlight: true },
       { id: 'creator-ai', label: '⚡ Creator AI' },
       { id: 'creator-writespace', label: 'WriteSpace' },
       { id: 'creator-design', label: 'Design Suite' },
@@ -92,7 +90,7 @@ async function loadViews() {
   const container = document.getElementById('view-container');
   try {
     const fragments = await Promise.all(VIEW_FILES.map(async (id) => {
-      const res = await fetch(new URL(`../views/${id}.html?v=rev-notepad-placeholder-1`, window.location.href), { cache: 'no-store' });
+      const res = await fetch(new URL(`../views/${id}.html?v=rev-city-swap-1`, window.location.href), { cache: 'no-store' });
       if (!res.ok) throw new Error(`Failed to load views/${id}.html (${res.status})`);
       return res.text();
     }));
@@ -247,6 +245,9 @@ const DIMAD_GEO = {
       icon.className = 'fa-solid fa-city';
       heading.append(icon, document.createTextNode(' YOUR CITY: ' + String(city).toUpperCase()));
     }
+    const dashTitle = document.getElementById('cc-city-title');
+    if (dashTitle) dashTitle.textContent = city;
+    if (typeof CC_YOUR_CITY !== 'undefined' && CC_YOUR_CITY.onCityLabel) CC_YOUR_CITY.onCityLabel(city);
   },
 
   modal() {
@@ -398,6 +399,9 @@ const DIMAD_GEO = {
     if (!city) return;
     this.setLabel(city);
     this.writeCache(city);
+    if (typeof CC_YOUR_CITY !== 'undefined' && CC_YOUR_CITY.writeLastLoc) {
+      CC_YOUR_CITY.writeLastLoc({ lat, lon, city });
+    }
   },
 
   async reverse(lat, lon) {
@@ -416,6 +420,530 @@ const DIMAD_GEO = {
     }
   }
 };
+
+function openYourCityDash() {
+  if (typeof switchTab === 'function') switchTab('ent-dashboard');
+  const go = () => {
+    const el = document.getElementById('cc-module-emergency')
+      || document.getElementById('cc-module-weather')
+      || document.getElementById('cc-module-logistics');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+  requestAnimationFrame(() => setTimeout(go, 60));
+}
+
+const CC_YOUR_CITY = {
+  unitKey: 'dimad_city_temp_unit',
+  locKey: 'dimad_weather_last_loc',
+  viewKey: 'dimad_city_weather_view',
+  sessionCacheKey: 'dimad_weather_cache_v3',
+  sunCacheKey: 'dimad_weather_sun_v1',
+  ttlMs: 15 * 60 * 1000,
+  sunTtlMs: 12 * 60 * 60 * 1000,
+  unit: 'C',
+  weatherView: 'current',
+  hourlyPage: 0,
+  data: null,
+  sun: null,
+  error: '',
+  loading: false,
+  memCache: {},
+  sunMemCache: {},
+  coords: { lat: 40.18, lon: 44.5, city: 'Yerevan' },
+
+  defaultUnit() {
+    try {
+      const locale = (Intl.DateTimeFormat().resolvedOptions().locale || navigator.language || 'en').toLowerCase();
+      if (locale === 'en-us' || locale.endsWith('-us') || locale === 'en-lr' || locale === 'en-mm') return 'F';
+    } catch (_) { /* ignore */ }
+    return 'C';
+  },
+
+  init() {
+    try {
+      const stored = localStorage.getItem(this.unitKey);
+      this.unit = stored === 'F' || stored === 'C' ? stored : this.defaultUnit();
+      const view = localStorage.getItem(this.viewKey);
+      this.weatherView = view === 'hourly' || view === 'weekly' ? view : 'current';
+    } catch (_) {
+      this.unit = this.defaultUnit();
+      this.weatherView = 'current';
+    }
+    const last = this.readLastLoc();
+    if (last) this.coords = last;
+    this.hourlyPage = 0;
+    this.syncUnitButtons();
+    this.syncWeatherViewSelect();
+    this.render();
+  },
+
+  roundCoord(value) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return 0;
+    return Math.round(n * 100) / 100;
+  },
+
+  localDayKey(date) {
+    const d = date instanceof Date ? date : new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  },
+
+  cacheKey(lat, lon, unit) {
+    return `${this.roundCoord(lat)},${this.roundCoord(lon)}:${unit === 'F' ? 'F' : 'C'}`;
+  },
+
+  sunKey(lat, lon) {
+    return `${this.roundCoord(lat)},${this.roundCoord(lon)}:${this.localDayKey()}`;
+  },
+
+  readLastLoc() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(this.locKey) || '');
+      if (!raw || !Number.isFinite(Number(raw.lat)) || !Number.isFinite(Number(raw.lon))) return null;
+      return {
+        lat: Number(raw.lat),
+        lon: Number(raw.lon),
+        city: String(raw.city || 'Your City')
+      };
+    } catch (_) {
+      return null;
+    }
+  },
+
+  writeLastLoc(loc) {
+    if (!loc || !Number.isFinite(Number(loc.lat)) || !Number.isFinite(Number(loc.lon))) return;
+    const nextLoc = {
+      lat: Number(loc.lat),
+      lon: Number(loc.lon),
+      city: String(loc.city || this.coords.city || 'Your City'),
+      at: Date.now()
+    };
+    this.coords = { lat: nextLoc.lat, lon: nextLoc.lon, city: nextLoc.city };
+    try { localStorage.setItem(this.locKey, JSON.stringify(nextLoc)); } catch (_) { /* ignore */ }
+    const title = document.getElementById('cc-city-title');
+    if (title) title.textContent = nextLoc.city;
+  },
+
+  readSessionCache(key) {
+    try {
+      return JSON.parse(sessionStorage.getItem(key) || '{}') || {};
+    } catch (_) {
+      return {};
+    }
+  },
+
+  writeSessionCache(key, map) {
+    try { sessionStorage.setItem(key, JSON.stringify(map)); } catch (_) { /* ignore */ }
+  },
+
+  getCached(key) {
+    const mem = this.memCache[key];
+    if (mem && Date.now() - mem.fetchedAt < this.ttlMs) return mem;
+    const map = this.readSessionCache(this.sessionCacheKey);
+    const row = map[key];
+    if (row && row.payload && Date.now() - Number(row.fetchedAt || 0) < this.ttlMs) {
+      this.memCache[key] = row;
+      return row;
+    }
+    return null;
+  },
+
+  setCached(key, city, payload) {
+    const row = { fetchedAt: Date.now(), city, payload };
+    this.memCache[key] = row;
+    const map = this.readSessionCache(this.sessionCacheKey);
+    map[key] = row;
+    this.writeSessionCache(this.sessionCacheKey, map);
+  },
+
+  extractSun(payload) {
+    const daily = payload && payload.daily;
+    if (!daily) return null;
+    return {
+      sunrise: daily.sunrise && daily.sunrise[0],
+      sunset: daily.sunset && daily.sunset[0],
+      daylight: daily.daylight_duration && daily.daylight_duration[0],
+      day: this.localDayKey()
+    };
+  },
+
+  getSunCached(lat, lon) {
+    const key = this.sunKey(lat, lon);
+    const mem = this.sunMemCache[key];
+    if (mem && Date.now() - mem.fetchedAt < this.sunTtlMs) return mem.sun;
+    const map = this.readSessionCache(this.sunCacheKey);
+    const row = map[key];
+    if (row && row.sun && Date.now() - Number(row.fetchedAt || 0) < this.sunTtlMs) {
+      this.sunMemCache[key] = row;
+      return row.sun;
+    }
+    return null;
+  },
+
+  setSunCached(lat, lon, sun) {
+    if (!sun) return;
+    const key = this.sunKey(lat, lon);
+    const row = { fetchedAt: Date.now(), sun };
+    this.sunMemCache[key] = row;
+    const map = this.readSessionCache(this.sunCacheKey);
+    map[key] = row;
+    this.writeSessionCache(this.sunCacheKey, map);
+    this.sun = sun;
+  },
+
+  onCityLabel(city) {
+    if (!city) return;
+    const hub = (typeof DIMAD_GEO !== 'undefined' && DIMAD_GEO.hubs)
+      ? DIMAD_GEO.hubs.find((h) => h.city.toLowerCase() === String(city).toLowerCase())
+      : null;
+    if (hub) {
+      this.writeLastLoc({ lat: hub.lat, lon: hub.lon, city: hub.city });
+      this.refresh(true);
+      return;
+    }
+    this.coords = { ...this.coords, city };
+    const title = document.getElementById('cc-city-title');
+    if (title) title.textContent = city;
+  },
+
+  setUnit(unit) {
+    this.unit = unit === 'F' ? 'F' : 'C';
+    try { localStorage.setItem(this.unitKey, this.unit); } catch (_) { /* ignore */ }
+    this.syncUnitButtons();
+    this.refresh(false);
+  },
+
+  setWeatherView(view) {
+    this.weatherView = view === 'hourly' || view === 'weekly' ? view : 'current';
+    this.hourlyPage = 0;
+    try { localStorage.setItem(this.viewKey, this.weatherView); } catch (_) { /* ignore */ }
+    this.syncWeatherViewSelect();
+    this.paintWeather();
+  },
+
+  syncWeatherViewSelect() {
+    const select = document.getElementById('cc-city-weather-view');
+    if (select) select.value = this.weatherView;
+  },
+
+  setHourlyPage(page) {
+    this.hourlyPage = page === 1 ? 1 : 0;
+    this.paintWeather();
+  },
+
+  syncUnitButtons() {
+    const cBtn = document.getElementById('cc-city-unit-c');
+    const fBtn = document.getElementById('cc-city-unit-f');
+    const on = 'px-1.5 py-0 text-[9px] font-mono font-bold rounded-full bg-brand-gold/15 text-brand-gold leading-4';
+    const off = 'px-1.5 py-0 text-[9px] font-mono font-bold rounded-full text-slate-400 hover:text-slate-200 leading-4';
+    if (cBtn) cBtn.className = this.unit === 'C' ? on : off;
+    if (fBtn) fBtn.className = this.unit === 'F' ? on : off;
+  },
+
+  weatherLabel(code) {
+    const n = Number(code);
+    if (n === 0) return { text: 'Clear', icon: 'fa-sun' };
+    if (n === 1) return { text: 'Mainly clear', icon: 'fa-sun' };
+    if (n === 2) return { text: 'Partly cloudy', icon: 'fa-cloud-sun' };
+    if (n === 3) return { text: 'Overcast', icon: 'fa-cloud' };
+    if (n <= 48) return { text: 'Fog', icon: 'fa-smog' };
+    if (n <= 57) return { text: 'Drizzle', icon: 'fa-cloud-rain' };
+    if (n <= 67) return { text: 'Rain', icon: 'fa-cloud-showers-heavy' };
+    if (n <= 77) return { text: 'Snow', icon: 'fa-snowflake' };
+    if (n <= 82) return { text: 'Showers', icon: 'fa-cloud-rain' };
+    if (n <= 86) return { text: 'Snow showers', icon: 'fa-snowflake' };
+    if (n <= 99) return { text: 'Thunder', icon: 'fa-bolt' };
+    return { text: 'Weather', icon: 'fa-cloud' };
+  },
+
+  formatTemp(value) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return '—';
+    return `${Math.round(n)}°${this.unit}`;
+  },
+
+  formatWind(value) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return '—';
+    return `${Math.round(n)} ${this.unit === 'F' ? 'mph' : 'km/h'}`;
+  },
+
+  formatSun(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    if (!Number.isFinite(d.getTime())) return '—';
+    return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  },
+
+  formatDaylight(seconds) {
+    const n = Number(seconds);
+    if (!Number.isFinite(n) || n < 0) return '—';
+    const h = Math.floor(n / 3600);
+    const m = Math.round((n % 3600) / 60);
+    return `${h}h ${String(m).padStart(2, '0')}m`;
+  },
+
+  escape(value) {
+    return String(value || '').replace(/[&<>"']/g, (ch) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[ch]));
+  },
+
+  setStatus(kind, message) {
+    const root = document.getElementById('cc-city-weather');
+    if (!root) return;
+    if (kind === 'loading') {
+      root.innerHTML = `<p class="text-slate-500 px-0.5 py-2">Loading forecast…</p>`;
+      return;
+    }
+    if (kind === 'empty') {
+      root.innerHTML = `<p class="text-slate-500 px-0.5 py-2">${this.escape(message || 'No forecast loaded.')}</p>`;
+      return;
+    }
+    if (kind === 'error') {
+      root.innerHTML = `<div class="px-0.5 py-2 space-y-1">
+        <p class="text-slate-400">${this.escape(message || 'Weather unavailable right now.')}</p>
+        <button type="button" onclick="CC_YOUR_CITY.refresh(true)" class="text-[9px] font-semibold text-brand-gold hover:text-amber-300">Retry</button>
+      </div>`;
+    }
+  },
+
+  resolveLocation() {
+    const last = this.readLastLoc();
+    const fallback = last || { lat: 40.18, lon: 44.5, city: 'Yerevan' };
+    if (!navigator.geolocation) return Promise.resolve(fallback);
+    return new Promise((resolve) => {
+      let settled = false;
+      const finish = (loc) => {
+        if (settled) return;
+        settled = true;
+        resolve(loc);
+      };
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          const lat = pos.coords.latitude;
+          const lon = pos.coords.longitude;
+          let city = fallback.city;
+          try {
+            if (typeof DIMAD_GEO !== 'undefined') {
+              city = DIMAD_GEO.hubCity(lat, lon) || (await DIMAD_GEO.reverse(lat, lon)) || fallback.city;
+            }
+          } catch (_) { /* keep fallback city */ }
+          const loc = { lat, lon, city };
+          this.writeLastLoc(loc);
+          finish(loc);
+        },
+        () => finish(fallback),
+        { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }
+      );
+    });
+  },
+
+  async fetchForecast(lat, lon, force) {
+    const key = this.cacheKey(lat, lon, this.unit);
+    const cachedSun = this.getSunCached(lat, lon);
+    if (cachedSun) this.sun = cachedSun;
+    if (!force) {
+      const cached = this.getCached(key);
+      if (cached && cached.payload) {
+        this.data = cached.payload;
+        this.error = '';
+        if (cached.city) this.coords.city = cached.city;
+        const fromPayload = this.extractSun(cached.payload);
+        if (fromPayload && (fromPayload.sunrise || fromPayload.sunset)) {
+          this.setSunCached(lat, lon, fromPayload);
+        } else if (cachedSun) {
+          this.sun = cachedSun;
+        }
+        return cached.payload;
+      }
+    }
+    const tempUnit = this.unit === 'F' ? 'fahrenheit' : 'celsius';
+    const windUnit = this.unit === 'F' ? 'mph' : 'kmh';
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${encodeURIComponent(this.roundCoord(lat))}&longitude=${encodeURIComponent(this.roundCoord(lon))}&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m,relative_humidity_2m&hourly=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,daylight_duration&temperature_unit=${tempUnit}&wind_speed_unit=${windUnit}&timezone=auto&forecast_days=5`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('weather_http_' + res.status);
+    const payload = await res.json();
+    if (!payload || !payload.current) throw new Error('weather_empty');
+    this.data = payload;
+    this.error = '';
+    this.setCached(key, this.coords.city, payload);
+    const sun = this.extractSun(payload);
+    if (sun && (sun.sunrise || sun.sunset)) this.setSunCached(lat, lon, sun);
+    else if (cachedSun) this.sun = cachedSun;
+    return payload;
+  },
+
+  async refresh(force) {
+    const root = document.getElementById('cc-city-weather');
+    if (!root) return;
+    if (this.loading) return;
+    this.loading = true;
+    this.setStatus('loading');
+    try {
+      const loc = await this.resolveLocation();
+      this.coords = {
+        lat: loc.lat,
+        lon: loc.lon,
+        city: loc.city || this.coords.city || 'Your City'
+      };
+      const title = document.getElementById('cc-city-title');
+      if (title) title.textContent = this.coords.city;
+      await this.fetchForecast(this.coords.lat, this.coords.lon, !!force);
+      this.paintWeather();
+    } catch (err) {
+      this.error = 'Weather unavailable right now.';
+      const key = this.cacheKey(this.coords.lat, this.coords.lon, this.unit);
+      const stale = this.memCache[key] || this.readSessionCache(this.sessionCacheKey)[key];
+      if (stale && stale.payload) {
+        this.data = stale.payload;
+        if (stale.city) this.coords.city = stale.city;
+        const sun = this.getSunCached(this.coords.lat, this.coords.lon) || this.extractSun(stale.payload);
+        if (sun) this.sun = sun;
+        this.paintWeather();
+      } else {
+        this.setStatus('error', this.error);
+      }
+    } finally {
+      this.loading = false;
+    }
+  },
+
+  nextHours(limit) {
+    const data = this.data;
+    const hourlyTimes = (data && data.hourly && data.hourly.time) || [];
+    const hourlyTemps = (data && data.hourly && data.hourly.temperature_2m) || [];
+    const hourlyCodes = (data && data.hourly && data.hourly.weather_code) || [];
+    const nowMs = Date.now();
+    const hourly = [];
+    const max = Math.max(1, Number(limit) || 24);
+    for (let i = 0; i < hourlyTimes.length && hourly.length < max; i += 1) {
+      const t = new Date(hourlyTimes[i]).getTime();
+      if (!Number.isFinite(t) || t < nowMs - 45 * 60 * 1000) continue;
+      const stamp = new Date(hourlyTimes[i]);
+      hourly.push({
+        label: stamp.toLocaleTimeString([], { hour: 'numeric' }),
+        temp: this.formatTemp(hourlyTemps[i]),
+        icon: this.weatherLabel(hourlyCodes[i]).icon
+      });
+    }
+    return hourly;
+  },
+
+  fiveDay() {
+    const data = this.data;
+    const days = (data && data.daily && data.daily.time) || [];
+    const maxes = (data && data.daily && data.daily.temperature_2m_max) || [];
+    const mins = (data && data.daily && data.daily.temperature_2m_min) || [];
+    const dayCodes = (data && data.daily && data.daily.weather_code) || [];
+    return days.slice(0, 5).map((day, i) => {
+      const d = new Date(`${day}T12:00:00`);
+      return {
+        label: i === 0 ? 'Today' : d.toLocaleDateString([], { weekday: 'short' }),
+        hi: this.formatTemp(maxes[i]),
+        lo: this.formatTemp(mins[i]),
+        icon: this.weatherLabel(dayCodes[i]).icon
+      };
+    });
+  },
+
+  paintWeather() {
+    const root = document.getElementById('cc-city-weather');
+    if (!root) return;
+    this.syncUnitButtons();
+    this.syncWeatherViewSelect();
+    const data = this.data;
+    if (!data || !data.current) {
+      this.setStatus(this.error ? 'error' : 'empty', this.error || 'No forecast loaded.');
+      return;
+    }
+    const current = data.current;
+    const meta = this.weatherLabel(current.weather_code);
+    const now = this.formatTemp(current.temperature_2m);
+    const feels = this.formatTemp(current.apparent_temperature);
+    const humidity = current.relative_humidity_2m != null ? `${current.relative_humidity_2m}%` : '—';
+    const wind = this.formatWind(current.wind_speed_10m);
+    const hi = this.formatTemp(data.daily && data.daily.temperature_2m_max && data.daily.temperature_2m_max[0]);
+    const lo = this.formatTemp(data.daily && data.daily.temperature_2m_min && data.daily.temperature_2m_min[0]);
+    const sun = this.sun || this.extractSun(data) || {};
+    const sunrise = this.formatSun(sun.sunrise);
+    const sunset = this.formatSun(sun.sunset);
+
+    if (this.weatherView === 'hourly') {
+      const allHours = this.nextHours(24);
+      const page = this.hourlyPage === 1 ? 1 : 0;
+      const pageHours = allHours.slice(page * 12, page * 12 + 12);
+      const canPrev = page > 0;
+      const canNext = allHours.length > 12 && page < 1;
+      root.innerHTML = `<div class="h-full min-h-0 flex flex-col gap-1 overflow-hidden">
+        <div class="flex items-center justify-between gap-1 shrink-0">
+          <button type="button" onclick="CC_YOUR_CITY.setHourlyPage(0)" ${canPrev ? '' : 'disabled'} class="w-4 h-4 rounded border border-hairline flex items-center justify-center text-slate-400 hover:text-brand-gold disabled:opacity-30" aria-label="Previous 12 hours"><i class="fa-solid fa-chevron-left text-[7px]"></i></button>
+          <span class="text-[8px] font-mono text-slate-500">${page === 0 ? 'Next 12h' : 'Following 12h'}</span>
+          <button type="button" onclick="CC_YOUR_CITY.setHourlyPage(1)" ${canNext ? '' : 'disabled'} class="w-4 h-4 rounded border border-hairline flex items-center justify-center text-slate-400 hover:text-brand-gold disabled:opacity-30" aria-label="Next 12 hours"><i class="fa-solid fa-chevron-right text-[7px]"></i></button>
+        </div>
+        <div class="grid grid-cols-4 grid-rows-3 gap-1 flex-1 min-h-0">
+          ${pageHours.map((h) => `<div class="rounded-md border border-hairline bg-brand-black/30 px-0.5 py-0.5 text-center min-w-0 flex flex-col items-center justify-center overflow-hidden">
+            <div class="text-[7px] text-slate-500 truncate w-full">${this.escape(h.label)}</div>
+            <i class="fa-solid ${h.icon} text-brand-gold text-[8px] my-0.5"></i>
+            <div class="text-[8px] font-mono text-slate-200 truncate w-full">${this.escape(h.temp)}</div>
+          </div>`).join('') || '<span class="col-span-4 text-slate-500">No hourly data</span>'}
+        </div>
+      </div>`;
+      return;
+    }
+
+    if (this.weatherView === 'weekly') {
+      const days = this.fiveDay();
+      root.innerHTML = `<div class="h-full min-h-0 flex flex-col gap-1 overflow-hidden">
+        ${days.map((d) => `<div class="flex items-center justify-between gap-2 rounded-md border border-hairline bg-brand-black/30 px-2 py-1 min-h-0 flex-1">
+          <span class="w-9 text-[9px] font-mono text-slate-400">${this.escape(d.label)}</span>
+          <i class="fa-solid ${d.icon} text-brand-gold text-[10px]"></i>
+          <span class="text-[9px] font-mono text-slate-300 tabular-nums">${this.escape(d.lo)} / ${this.escape(d.hi)}</span>
+        </div>`).join('') || '<span class="text-slate-500">No weekly data</span>'}
+      </div>`;
+      return;
+    }
+
+    const nextSix = this.nextHours(6);
+    root.innerHTML = `
+      <div class="flex flex-col gap-1.5 h-full min-h-0">
+        <div class="flex items-start justify-between gap-2 bg-brand-black/40 border border-hairline rounded-md px-2 py-1.5 shrink-0">
+          <div class="min-w-0">
+            <p class="text-[16px] font-bold font-mono text-slate-100 leading-none">${this.escape(now)}</p>
+            <p class="text-[9px] font-mono text-slate-500 mt-0.5">Feels ${this.escape(feels)}</p>
+            <p class="text-[9px] text-slate-400 mt-1 flex items-center gap-1 min-w-0"><i class="fa-solid ${meta.icon} text-brand-gold shrink-0"></i><span class="truncate">${this.escape(meta.text)}</span></p>
+            <p class="text-[9px] font-mono text-slate-500 mt-0.5">H ${this.escape(hi)} · L ${this.escape(lo)}</p>
+          </div>
+          <div class="text-right text-[8px] font-mono text-slate-500 space-y-0.5 shrink-0">
+            <div>Humidity ${this.escape(humidity)}</div>
+            <div>Wind ${this.escape(wind)}</div>
+            <div>Sunrise ${this.escape(sunrise)}</div>
+            <div>Sunset ${this.escape(sunset)}</div>
+          </div>
+        </div>
+        <div class="grid grid-cols-6 gap-1 shrink-0">
+          ${nextSix.map((h) => `<div class="rounded-md border border-hairline bg-brand-black/30 px-0.5 py-0.5 text-center min-w-0">
+            <div class="text-[7px] text-slate-500 truncate">${this.escape(h.label)}</div>
+            <i class="fa-solid ${h.icon} text-brand-gold text-[8px] my-0.5"></i>
+            <div class="text-[8px] font-mono text-slate-200 truncate">${this.escape(h.temp)}</div>
+          </div>`).join('') || '<span class="col-span-6 text-slate-500 text-center">No hourly data</span>'}
+        </div>
+      </div>`;
+  },
+
+  render() {
+    const title = document.getElementById('cc-city-title');
+    if (title && this.coords.city) title.textContent = this.coords.city;
+    this.syncUnitButtons();
+    this.syncWeatherViewSelect();
+    this.refresh(false);
+  }
+};
+window.CC_YOUR_CITY = CC_YOUR_CITY;
+window.openYourCityDash = openYourCityDash;
 
 const WORLD_CLOCKS = {
   storageKey: 'dimad_world_clocks',
@@ -888,7 +1416,13 @@ function switchTab(tabId) {
     COMMAND_CENTER.apply();
     if (typeof DIMAD_CAL !== 'undefined' && typeof CALENDAR_NAV !== 'undefined') {
       CALENDAR_NAV.dayOffset = DIMAD_CAL.dayOffset || 0;
-      CALENDAR_NAV.mode = DIMAD_CAL.mode === 'week' ? 'weekly' : DIMAD_CAL.mode === 'month' ? 'monthly' : 'hourly';
+      CALENDAR_NAV.mode = DIMAD_CAL.mode === 'week'
+        ? 'weekly'
+        : DIMAD_CAL.mode === 'month'
+          ? 'monthly'
+          : DIMAD_CAL.mode === 'year'
+            ? 'yearly'
+            : 'hourly';
       CALENDAR_NAV.render();
     }
   }
@@ -902,7 +1436,13 @@ function switchTab(tabId) {
   if (tabId === 'dimad-calendar' && typeof DIMAD_CAL !== 'undefined') {
     if (typeof CALENDAR_NAV !== 'undefined') {
       DIMAD_CAL.dayOffset = CALENDAR_NAV.dayOffset || 0;
-      DIMAD_CAL.mode = CALENDAR_NAV.mode === 'weekly' ? 'week' : CALENDAR_NAV.mode === 'monthly' ? 'month' : 'day';
+      DIMAD_CAL.mode = CALENDAR_NAV.mode === 'weekly'
+        ? 'week'
+        : CALENDAR_NAV.mode === 'monthly'
+          ? 'month'
+          : CALENDAR_NAV.mode === 'yearly'
+            ? 'year'
+            : 'day';
     }
     DIMAD_CAL.renderFull();
   }
@@ -1382,6 +1922,122 @@ const DIM_ENGINE = {
 
 window.DIM_ENGINE = DIM_ENGINE;
 
+const DIMAD_THEME = {
+  KEY: 'dimad_theme',
+  get() {
+    try {
+      return localStorage.getItem(this.KEY) === 'light' ? 'light' : 'dark';
+    } catch (_) {
+      return 'dark';
+    }
+  },
+  apply(theme, { persist = true } = {}) {
+    const next = theme === 'light' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    if (persist) {
+      try {
+        localStorage.setItem(this.KEY, next);
+      } catch (_) { /* ignore quota / private mode */ }
+    }
+    this.syncAppearanceUI(next);
+    this.broadcast(next);
+    return next;
+  },
+  set(theme) {
+    return this.apply(theme, { persist: true });
+  },
+  toggle() {
+    return this.set(this.get() === 'light' ? 'dark' : 'light');
+  },
+  syncAppearanceUI(theme) {
+    const mode = theme || this.get();
+    const darkBtn = document.getElementById('theme-choice-dark');
+    const lightBtn = document.getElementById('theme-choice-light');
+    if (darkBtn) darkBtn.setAttribute('aria-pressed', mode === 'dark' ? 'true' : 'false');
+    if (lightBtn) lightBtn.setAttribute('aria-pressed', mode === 'light' ? 'true' : 'false');
+  },
+  themedSrc(url) {
+    try {
+      const u = new URL(url, window.location.origin);
+      u.searchParams.set('theme', this.get());
+      return u.pathname + u.search + u.hash;
+    } catch (_) {
+      const join = String(url).includes('?') ? '&' : '?';
+      return `${url}${join}theme=${this.get()}`;
+    }
+  },
+  syncFrameSrc(frame) {
+    if (!frame?.getAttribute) return;
+    const raw = frame.getAttribute('src');
+    if (!raw || raw.startsWith('about:')) return;
+    const next = this.themedSrc(raw);
+    if (next !== raw) frame.setAttribute('src', next);
+  },
+  paintFrame(frame, theme) {
+    const next = theme === 'light' ? 'light' : 'dark';
+    const payload = { type: 'dimad-theme', theme: next };
+    // Only set data-theme — never mutate iframe body styles (causes React hydration mismatches).
+    try {
+      const doc = frame.contentDocument;
+      if (doc?.documentElement) doc.documentElement.setAttribute('data-theme', next);
+    } catch (_) { /* cross-origin */ }
+    try {
+      frame.contentWindow?.postMessage(payload, '*');
+    } catch (_) { /* cross-origin */ }
+    try {
+      frame.style.background = next === 'light' ? '#e8ecf2' : 'var(--bg-canvas, #060911)';
+    } catch (_) { /* ignore */ }
+    this.syncFrameSrc(frame);
+  },
+  broadcast(theme) {
+    const next = theme === 'light' ? 'light' : 'dark';
+    document.querySelectorAll('iframe').forEach((frame) => this.paintFrame(frame, next));
+    try {
+      window.dispatchEvent(new CustomEvent('dimad-theme-change', { detail: { theme: next } }));
+    } catch (_) { /* ignore */ }
+    if (typeof FOCUS_LOG !== 'undefined' && FOCUS_LOG.render) {
+      FOCUS_LOG.lastChartAt = 0;
+      FOCUS_LOG.render();
+    }
+  },
+  init() {
+    this.apply(this.get(), { persist: true });
+    window.addEventListener('storage', (event) => {
+      if (event.key === this.KEY) this.apply(event.newValue === 'light' ? 'light' : 'dark', { persist: false });
+    });
+    window.addEventListener('message', (event) => {
+      if (event?.data?.type === 'dimad-theme-request') {
+        const theme = this.get();
+        try {
+          event.source?.postMessage({ type: 'dimad-theme', theme }, '*');
+        } catch (_) { /* ignore */ }
+      }
+    });
+    document.querySelectorAll('iframe').forEach((frame) => {
+      frame.addEventListener('load', () => this.paintFrame(frame, this.get()));
+    });
+    const mo = typeof MutationObserver !== 'undefined'
+      ? new MutationObserver((records) => {
+          records.forEach((record) => {
+            record.addedNodes.forEach((node) => {
+              if (node?.tagName === 'IFRAME') {
+                node.addEventListener('load', () => this.paintFrame(node, this.get()));
+                this.paintFrame(node, this.get());
+              } else if (node?.querySelectorAll) {
+                node.querySelectorAll('iframe').forEach((frame) => {
+                  frame.addEventListener('load', () => this.paintFrame(frame, this.get()));
+                  this.paintFrame(frame, this.get());
+                });
+              }
+            });
+          });
+        })
+      : null;
+    if (mo) mo.observe(document.documentElement, { childList: true, subtree: true });
+  }
+};
+window.DIMAD_THEME = DIMAD_THEME;
+
 function openSettingsVaultNav(defaultTab) {
   const panel = document.getElementById('settings-vault-panel');
   if (!panel) return;
@@ -1415,6 +2071,7 @@ function switchVaultTab(tabName) {
     targetBtn.classList.add('text-amber-400', 'bg-amber-500/10', 'border', 'border-amber-500/20', 'font-bold');
   }
   if (tabName === 'subscription' && typeof DIMAD_AI_USAGE !== 'undefined') DIMAD_AI_USAGE.paint();
+  if (tabName === 'appearance' && window.DIMAD_THEME) DIMAD_THEME.syncAppearanceUI();
 }
 
 const DIMAD_INTEGRATIONS = {
@@ -1631,7 +2288,7 @@ const CC_DIMAD_AI_FLOAT = {
       if (msg.role === 'user') {
         return `<div class="flex justify-end"><div class="max-w-[85%] rounded-2xl px-3 py-2 bg-sky-300/85 text-slate-950 font-medium">${escapeAiHtml(msg.text)}</div></div>`;
       }
-      return `<div class="flex justify-start"><div class="max-w-[90%] rounded-2xl px-3 py-2 bg-sky-950/35 border border-sky-100/20 text-sky-50"><span class="block text-[9px] font-mono uppercase tracking-wide text-sky-200/80 mb-1">Dimad AI</span>${escapeAiHtml(msg.text)}</div></div>`;
+      return `<div class="flex justify-start"><div class="cc-dimad-ai-msg-ai max-w-[90%] rounded-2xl px-3 py-2"><span class="block text-[9px] font-mono uppercase tracking-wide opacity-70 mb-1">Dimad AI</span>${escapeAiHtml(msg.text)}</div></div>`;
     }).join('');
     root.scrollTop = root.scrollHeight;
   },
@@ -1639,7 +2296,8 @@ const CC_DIMAD_AI_FLOAT = {
   syncChrome() {
     const dock = document.getElementById('cc-dimad-ai-form');
     const logo = document.getElementById('cc-dimad-ai-logo');
-    const floatOpen = this.isOpen();
+    const padOpen = typeof CC_DIMPAD !== 'undefined' && CC_DIMPAD.isOpen && CC_DIMPAD.isOpen();
+    const floatOpen = this.isOpen() || padOpen;
     if (dock) dock.classList.toggle('hidden', floatOpen || this.dockCollapsed);
     if (logo) logo.classList.toggle('hidden', floatOpen || !this.dockCollapsed);
   },
@@ -1665,6 +2323,9 @@ const CC_DIMAD_AI_FLOAT = {
       }
       this.endDrag();
     }
+    if (typeof CC_DIMPAD !== 'undefined' && CC_DIMPAD.isOpen && CC_DIMPAD.isOpen()) {
+      CC_DIMPAD.close(false);
+    }
     this.syncChrome();
     const input = document.getElementById('cc-dimad-ai-input');
     if (input) input.focus();
@@ -1687,6 +2348,9 @@ const CC_DIMAD_AI_FLOAT = {
   },
 
   open() {
+    if (typeof CC_DIMPAD !== 'undefined' && CC_DIMPAD.isOpen && CC_DIMPAD.isOpen()) {
+      CC_DIMPAD.close(false);
+    }
     const win = this.ensure();
     if (!win) return;
     win.classList.remove('hidden');
@@ -1780,6 +2444,210 @@ function ccDimadAiCollapseDock() {
 function ccDimadAiRestoreDock() {
   CC_DIMAD_AI_FLOAT.restoreDock();
 }
+
+const CC_DIMPAD = {
+  dragBound: false,
+  dragging: false,
+  resizing: false,
+  offsetX: 0,
+  offsetY: 0,
+  startW: 0,
+  startH: 0,
+  startX: 0,
+  startY: 0,
+  savedW: 0,
+  savedH: 0,
+  minW: 220,
+  minH: 200,
+
+  ensure() {
+    const win = document.getElementById('cc-dimpad');
+    if (!win) return null;
+    if (!this.dragBound) {
+      this.dragBound = true;
+      const handle = document.getElementById('cc-dimpad-drag');
+      if (handle) handle.addEventListener('pointerdown', (event) => this.startDrag(event));
+      const resize = document.getElementById('cc-dimpad-resize');
+      if (resize) resize.addEventListener('pointerdown', (event) => this.startResize(event));
+      window.addEventListener('pointermove', (event) => {
+        this.onDrag(event);
+        this.onResize(event);
+      });
+      window.addEventListener('pointerup', () => {
+        this.endDrag();
+        this.endResize();
+      });
+      window.addEventListener('pointercancel', () => {
+        this.endDrag();
+        this.endResize();
+      });
+    }
+    return win;
+  },
+
+  isOpen() {
+    const win = document.getElementById('cc-dimpad');
+    return !!(win && !win.classList.contains('hidden'));
+  },
+
+  clampSize(width, height, left, top) {
+    const maxW = Math.max(this.minW, window.innerWidth - Math.max(8, left || 8) - 8);
+    const maxH = Math.max(this.minH, window.innerHeight - Math.max(8, top || 8) - 8);
+    return {
+      width: Math.min(maxW, Math.max(this.minW, width)),
+      height: Math.min(maxH, Math.max(this.minH, height))
+    };
+  },
+
+  placeDefault() {
+    const win = document.getElementById('cc-dimpad');
+    if (!win) return;
+    const margin = 16;
+    const fallback = Math.min(360, Math.max(280, Math.min(window.innerWidth, window.innerHeight) - margin * 2));
+    const left = Math.max(margin, window.innerWidth - (this.savedW || fallback) - margin);
+    const top = margin;
+    const sized = this.clampSize(this.savedW || fallback, this.savedH || fallback, left, top);
+    win.style.width = `${sized.width}px`;
+    win.style.height = `${sized.height}px`;
+    win.style.maxWidth = `${Math.max(0, window.innerWidth - 16)}px`;
+    win.style.maxHeight = `${Math.max(0, window.innerHeight - 16)}px`;
+    win.style.left = `${left}px`;
+    win.style.top = `${top}px`;
+    win.style.right = 'auto';
+    win.style.bottom = 'auto';
+  },
+
+  rememberSize() {
+    const win = document.getElementById('cc-dimpad');
+    if (!win) return;
+    this.savedW = win.offsetWidth || this.savedW;
+    this.savedH = win.offsetHeight || this.savedH;
+  },
+
+  open() {
+    if (typeof CC_DIMAD_AI_FLOAT !== 'undefined') {
+      if (CC_DIMAD_AI_FLOAT.isOpen()) CC_DIMAD_AI_FLOAT.close(false);
+      CC_DIMAD_AI_FLOAT.dockCollapsed = false;
+    }
+    const win = this.ensure();
+    if (!win) return;
+    win.classList.remove('hidden');
+    win.setAttribute('aria-hidden', 'false');
+    this.placeDefault();
+    if (typeof CC_DIMAD_AI_FLOAT !== 'undefined' && CC_DIMAD_AI_FLOAT.syncChrome) {
+      CC_DIMAD_AI_FLOAT.syncChrome();
+    }
+    if (typeof DIMAD_NOTEPAD !== 'undefined') {
+      DIMAD_NOTEPAD._editSource = 'dp';
+      DIMAD_NOTEPAD.renderDash();
+    }
+    const body = document.getElementById('dp-notepad-body');
+    if (body) setTimeout(() => body.focus(), 40);
+  },
+
+  close(restoreDock = true) {
+    if (typeof DIMAD_NOTEPAD !== 'undefined' && DIMAD_NOTEPAD.dirty && DIMAD_NOTEPAD._editSource === 'dp') {
+      DIMAD_NOTEPAD.save({ silent: true, keepOpen: true });
+    }
+    this.rememberSize();
+    const win = document.getElementById('cc-dimpad');
+    if (!win) return;
+    win.classList.add('hidden');
+    win.setAttribute('aria-hidden', 'true');
+    this.endDrag();
+    this.endResize();
+    if (typeof DIMAD_NOTEPAD !== 'undefined') DIMAD_NOTEPAD.closeRecent();
+    if (typeof CC_DIMAD_AI_FLOAT !== 'undefined') {
+      if (restoreDock) CC_DIMAD_AI_FLOAT.dockCollapsed = false;
+      CC_DIMAD_AI_FLOAT.syncChrome();
+    }
+  },
+
+  startDrag(event) {
+    if (event.button != null && event.button !== 0) return;
+    if (event.target && event.target.closest && event.target.closest('button')) return;
+    const win = this.ensure();
+    if (!win) return;
+    const box = win.getBoundingClientRect();
+    this.dragging = true;
+    this.resizing = false;
+    this.offsetX = event.clientX - box.left;
+    this.offsetY = event.clientY - box.top;
+    const handle = document.getElementById('cc-dimpad-drag');
+    if (handle) handle.classList.add('is-dragging');
+    try { win.setPointerCapture(event.pointerId); } catch (err) { /* ignore */ }
+    event.preventDefault();
+  },
+
+  onDrag(event) {
+    if (!this.dragging || this.resizing) return;
+    const win = document.getElementById('cc-dimpad');
+    if (!win) return;
+    const width = win.offsetWidth || 360;
+    const height = win.offsetHeight || 360;
+    const maxLeft = Math.max(8, window.innerWidth - width - 8);
+    const maxTop = Math.max(8, window.innerHeight - height - 8);
+    const left = Math.min(maxLeft, Math.max(8, event.clientX - this.offsetX));
+    const top = Math.min(maxTop, Math.max(8, event.clientY - this.offsetY));
+    win.style.left = `${left}px`;
+    win.style.top = `${top}px`;
+  },
+
+  endDrag() {
+    if (!this.dragging) return;
+    this.dragging = false;
+    const handle = document.getElementById('cc-dimpad-drag');
+    if (handle) handle.classList.remove('is-dragging');
+  },
+
+  startResize(event) {
+    if (event.button != null && event.button !== 0) return;
+    const win = this.ensure();
+    if (!win) return;
+    event.preventDefault();
+    event.stopPropagation();
+    this.resizing = true;
+    this.dragging = false;
+    this.startW = win.offsetWidth;
+    this.startH = win.offsetHeight;
+    this.startX = event.clientX;
+    this.startY = event.clientY;
+    const grip = document.getElementById('cc-dimpad-resize');
+    if (grip) grip.classList.add('is-resizing');
+    try { grip.setPointerCapture(event.pointerId); } catch (err) { /* ignore */ }
+  },
+
+  onResize(event) {
+    if (!this.resizing) return;
+    const win = document.getElementById('cc-dimpad');
+    if (!win) return;
+    const left = parseFloat(win.style.left) || win.getBoundingClientRect().left;
+    const top = parseFloat(win.style.top) || win.getBoundingClientRect().top;
+    const nextW = this.startW + (event.clientX - this.startX);
+    const nextH = this.startH + (event.clientY - this.startY);
+    const sized = this.clampSize(nextW, nextH, left, top);
+    win.style.width = `${sized.width}px`;
+    win.style.height = `${sized.height}px`;
+  },
+
+  endResize() {
+    if (!this.resizing) return;
+    this.resizing = false;
+    this.rememberSize();
+    const grip = document.getElementById('cc-dimpad-resize');
+    if (grip) grip.classList.remove('is-resizing');
+  }
+};
+
+function ccDimPadOpen() {
+  CC_DIMPAD.open();
+}
+
+function ccDimPadMinimize() {
+  CC_DIMPAD.close(true);
+}
+
+window.CC_DIMPAD = CC_DIMPAD;
 
 function ccDimadAiSend() {
   const ccInput = document.getElementById('cc-dimad-ai-input');
@@ -2476,7 +3344,7 @@ const DIMAD_GOALS = {
 
   defaults() {
     return {
-      brand: 'DIMAD is the dark-gold command center for operators who build companies with their own hands — one OS, one voice, no split attention.',
+      brand: 'DIMAD is the dark-gold dashboard for operators who build companies with their own hands — one OS, one voice, no split attention.',
       purpose: 'To turn focused hours into shipped work, clean books, and geographic freedom. Execution is the brand. Distraction is the enemy.',
       vision: 'A generation of sovereign founders who run product, finance, and travel from one room in the world — and still out-ship the studio down the street.',
       activeHorizon: 'daily',
@@ -4155,7 +5023,7 @@ const DIMAD_WELCOME = {
         ? 'All systems synced'
         : status === 'partial'
           ? 'Metrics partially synced'
-          : 'Synchronizing Command Center…');
+          : 'Synchronizing Dashboard…');
   },
 
   setPlatformProgress(progress) {
@@ -4172,7 +5040,7 @@ const DIMAD_WELCOME = {
     const data = event.data;
     if (!data) return;
     if (data.type === 'dimad-platform-sync') {
-      const detail = data.detail || 'Synchronizing Command Center…';
+      const detail = data.detail || 'Synchronizing Dashboard…';
       if (typeof DIMAD_WELCOME.setStatus === 'function' && DIMAD_WELCOME.active && !DIMAD_WELCOME.ready) {
         DIMAD_WELCOME.setStatus(detail);
       }
@@ -4277,15 +5145,15 @@ const DIMAD_WELCOME = {
     this.startWorkspacePreload();
 
     if (this.needsClockIn) {
-      if (sub) sub.textContent = 'Clock in and review today\'s targets before you enter Command Center.';
-      if (btn) btn.textContent = this.dueGoals.length ? 'Clock In & Enter' : 'Clock In & Enter Command Center';
+      if (sub) sub.textContent = 'Clock in and review today\'s targets before you enter Dashboard.';
+      if (btn) btn.textContent = this.dueGoals.length ? 'Clock In & Enter' : 'Clock In & Enter Dashboard';
     } else {
       if (sub) {
         sub.textContent = this.dueGoals.length
-          ? 'You are already clocked in. Review today\'s targets, then enter Command Center.'
-          : 'Command Center is ready.';
+          ? 'You are already clocked in. Review today\'s targets, then enter Dashboard.'
+          : 'Dashboard is ready.';
       }
-      if (btn) btn.textContent = 'Enter Command Center';
+      if (btn) btn.textContent = 'Enter Dashboard';
     }
   },
 
@@ -4679,10 +5547,12 @@ const FOCUS_LOG = {
       const top = i % 2 === 1;
       const above = top ? (major ? 18 : mid ? 12 : 8) : (major ? 6 : 3);
       const below = top ? (major ? 6 : 3) : (major ? 16 : mid ? 11 : 8);
-      const stroke = on ? '#FCD34D' : current ? '#F59E0B' : '#64748B';
-      const fillDot = on ? '#F59E0B' : current ? '#B45309' : '#0B0F17';
-      const dayFill = on ? '#FDE68A' : current ? '#F59E0B' : '#94A3B8';
-      const dimFill = on ? '#F59E0B' : current ? '#D97706' : '#64748B';
+      const light = document.documentElement.getAttribute('data-theme') === 'light';
+      const stroke = on ? '#FCD34D' : current ? '#F59E0B' : (light ? '#94A3B8' : '#64748B');
+      const fillDot = on ? '#F59E0B' : current ? '#B45309' : (light ? '#E8ECF2' : '#0B0F17');
+      // Next milestone stays gold; all other labels go black in light mode for contrast.
+      const dayFill = current ? '#F59E0B' : (light ? '#000000' : (on ? '#FDE68A' : '#94A3B8'));
+      const dimFill = current ? '#D97706' : (light ? '#000000' : (on ? '#F59E0B' : '#64748B'));
       const weight = major ? '2.2' : mid ? '1.6' : '1.15';
       const dimLabel = `${m.baseReward.toLocaleString()} $DIM`;
       const labelY = top ? y - 22 : y + barH + 16;
@@ -4742,8 +5612,8 @@ const FOCUS_LOG = {
       const on = claimed.has(m.days) || days >= m.days;
       const current = days < m.days && !DIM_ENGINE.streakMilestones.some((other) => other.days > days && other.days < m.days);
       return `<div class="rounded-lg border px-2 py-1.5 text-center ${on ? 'border-emerald-500/40 bg-emerald-500/10' : current ? 'border-amber-500/40 bg-amber-500/10' : 'border-slate-800 bg-slate-950'}">
-        <div class="text-[10px] font-black ${on ? 'text-emerald-400' : current ? 'text-amber-400' : 'text-slate-500'}">${m.days}d</div>
-        <div class="text-[9px] font-mono ${on || current ? 'text-amber-400' : 'text-slate-600'}">${m.baseReward.toLocaleString()} $DIM</div>
+        <div class="text-[10px] font-black ${current ? 'text-amber-400' : on ? 'text-emerald-400' : 'text-slate-500'}">${m.days}d</div>
+        <div class="text-[9px] font-mono ${current ? 'text-amber-400' : on ? 'text-amber-400' : 'text-slate-500'}">${m.baseReward.toLocaleString()} $DIM</div>
       </div>`;
     }).join('');
   }
@@ -5049,6 +5919,7 @@ const CONNECT_MODULARS = {
       if (!frame.src) return;
       const url = new URL(frame.src, window.location.origin);
       url.searchParams.set('t', String(Date.now()));
+      if (typeof DIMAD_THEME !== 'undefined') url.searchParams.set('theme', DIMAD_THEME.get());
       frame.src = url.toString();
     });
   },
@@ -5335,6 +6206,24 @@ const DIMAD_NOTEPAD = {
     return stamp.toLocaleString();
   },
 
+  formatNoteStamp(note) {
+    const created = Number(note.createdAt || 0);
+    const updated = Number(note.updatedAt || created || Date.now());
+    const edited = updated && created && updated !== created;
+    const stamp = new Date(edited ? updated : (created || updated));
+    const label = edited ? 'Edited' : 'Created';
+    try {
+      return label + ' ' + stamp.toLocaleString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit'
+      });
+    } catch (_) {
+      return label + ' ' + stamp.toLocaleString();
+    }
+  },
+
   bindUi() {
     if (this.bound) return;
     this.bound = true;
@@ -5379,25 +6268,29 @@ const DIMAD_NOTEPAD = {
             <input id="notepad-rename-input" type="text" value="${this.escape(this.displayTitle(note))}"
               onkeydown="DIMAD_NOTEPAD.renameKey(event)" onblur="DIMAD_NOTEPAD.commitRename()"
               class="w-full bg-slate-900 border border-amber-500/40 rounded px-2 py-1 text-[12px] text-slate-100 outline-none">
-            <div class="text-[10px] text-slate-500 mt-1">Created ${this.escape(this.createdLabel(note))}</div>
+            <div class="text-[10px] text-slate-500 mt-1">${this.escape(this.formatNoteStamp(note))}</div>
           </div>`;
       }
       return `
         <button type="button" onclick="DIMAD_NOTEPAD.select('${note.id}')" oncontextmenu="DIMAD_NOTEPAD.openCtx(event, '${note.id}')" class="w-full text-left px-2.5 py-2 rounded-lg border ${selected} transition">
           <div class="text-[12px] font-semibold truncate">${this.escape(this.displayTitle(note))}</div>
-          <div class="text-[10px] text-slate-500 mt-0.5">Created ${this.escape(this.createdLabel(note))}</div>
+          <div class="text-[10px] text-slate-500 mt-0.5">${this.escape(this.formatNoteStamp(note))}</div>
         </button>`;
     }).join('');
 
     if (!active) {
       bodyEl.value = '';
       if (metaEl) metaEl.textContent = 'No note selected';
+      const emptyStamp = document.getElementById('notepad-stamp');
+      if (emptyStamp) emptyStamp.textContent = '';
       this.dirty = false;
       this.syncSaveButton();
       return;
     }
     if (!this.dirty) bodyEl.value = active.body || '';
-    if (metaEl) metaEl.textContent = `Created ${this.createdLabel(active)} · dimDrive`;
+    if (metaEl) metaEl.textContent = `${this.formatNoteStamp(active)} · dimDrive`;
+    const stampFull = document.getElementById('notepad-stamp');
+    if (stampFull) stampFull.textContent = this.formatNoteStamp(active);
     const fullTitle = document.getElementById('notepad-title');
     if (fullTitle && !(this._editingTitle && this._titleWhere === 'full')) {
       fullTitle.textContent = this.displayTitle(active);
@@ -5439,7 +6332,7 @@ const DIMAD_NOTEPAD = {
   },
 
   createFromDash(prefix) {
-    this._editSource = prefix === 'cs' ? 'cs' : 'dash';
+    this._editSource = prefix === 'cs' ? 'cs' : prefix === 'dp' ? 'dp' : 'dash';
     if (this.dirty) this.save({ silent: true });
     const notes = this.load();
     const now = Date.now();
@@ -5450,23 +6343,27 @@ const DIMAD_NOTEPAD = {
     this.persist(notes);
     this.renderDash();
     if (document.getElementById('notepad-list')) this.render();
-    const dash = document.getElementById(this._editSource === 'cs' ? 'cs-notepad-body' : 'cc-notepad-body');
+    const bodyId = this._editSource === 'cs' ? 'cs-notepad-body' : this._editSource === 'dp' ? 'dp-notepad-body' : 'cc-notepad-body';
+    const dash = document.getElementById(bodyId);
     if (dash) {
       dash.value = '';
       dash.focus();
     }
-    const status = document.getElementById(this._editSource === 'cs' ? 'cs-notepad-status' : 'cc-notepad-status');
+    const statusId = this._editSource === 'cs' ? 'cs-notepad-status' : this._editSource === 'dp' ? 'dp-notepad-status' : 'cc-notepad-status';
+    const status = document.getElementById(statusId);
     if (status) status.textContent = 'New note — start writing.';
   },
 
   editorEl() {
     const studio = document.getElementById('cs-notepad-body');
     const dash = document.getElementById('cc-notepad-body');
+    const pad = document.getElementById('dp-notepad-body');
     const full = document.getElementById('notepad-body');
     if (this._editSource === 'cs' && studio) return studio;
+    if (this._editSource === 'dp' && pad) return pad;
     if (this._editSource === 'dash' && dash) return dash;
     if (this._editSource === 'full' && full) return full;
-    return dash || studio || full;
+    return pad || dash || studio || full;
   },
 
   ensureActive() {
@@ -5484,12 +6381,19 @@ const DIMAD_NOTEPAD = {
   },
 
   markDirty(source) {
-    if (source) this._editSource = source === 'cs' ? 'cs' : source;
+    if (source === 'cs' || source === 'dp' || source === 'dash' || source === 'full') this._editSource = source;
+    else if (source) this._editSource = source === 'cs' ? 'cs' : source;
     this.dirty = true;
     this.syncSaveButton();
-    const statusId = this._editSource === 'cs' ? 'cs-notepad-status' : 'cc-notepad-status';
+    const statusId = this._editSource === 'cs'
+      ? 'cs-notepad-status'
+      : this._editSource === 'dp'
+        ? 'dp-notepad-status'
+        : 'cc-notepad-status';
     const status = document.getElementById(statusId);
-    if (status && (this._editSource === 'dash' || this._editSource === 'cs')) status.textContent = 'Saving…';
+    if (status && (this._editSource === 'dash' || this._editSource === 'cs' || this._editSource === 'dp')) {
+      status.textContent = 'Saving…';
+    }
     clearTimeout(this.autoTimer);
     this.autoTimer = setTimeout(() => this.save({ silent: true }), 700);
   },
@@ -5500,16 +6404,18 @@ const DIMAD_NOTEPAD = {
       btn.textContent = 'Quick Save';
       btn.classList.toggle('opacity-80', !this.dirty);
     }
-    ['cc-notepad-save', 'cs-notepad-save'].forEach((id) => {
+    ['cc-notepad-save', 'cs-notepad-save', 'dp-notepad-save'].forEach((id) => {
       const dashBtn = document.getElementById(id);
       if (dashBtn && !this.saveFlash) dashBtn.textContent = 'Save';
     });
   },
 
   saveDash(prefix) {
-    this._editSource = prefix === 'cs' ? 'cs' : 'dash';
+    this._editSource = prefix === 'cs' ? 'cs' : prefix === 'dp' ? 'dp' : 'dash';
     this.save({ silent: true, keepOpen: true });
-    const dashBtn = document.getElementById(prefix === 'cs' ? 'cs-notepad-save' : 'cc-notepad-save');
+    const dashBtn = document.getElementById(
+      prefix === 'cs' ? 'cs-notepad-save' : prefix === 'dp' ? 'dp-notepad-save' : 'cc-notepad-save'
+    );
     if (dashBtn) {
       dashBtn.textContent = 'Saved';
       this.saveFlash = setTimeout(() => {
@@ -5534,9 +6440,11 @@ const DIMAD_NOTEPAD = {
     const fullEl = document.getElementById('notepad-body');
     const dashEl = document.getElementById('cc-notepad-body');
     const studioEl = document.getElementById('cs-notepad-body');
+    const padEl = document.getElementById('dp-notepad-body');
     if (fullEl && fullEl !== source) fullEl.value = body;
     if (dashEl && dashEl !== source) dashEl.value = body;
     if (studioEl && studioEl !== source) studioEl.value = body;
+    if (padEl && padEl !== source) padEl.value = body;
     if (!opts.silent) {
       const btn = document.getElementById('notepad-quick-save');
       if (btn) {
@@ -5548,11 +6456,11 @@ const DIMAD_NOTEPAD = {
         }, 1100);
       }
     }
-    ['cc-notepad-status', 'cs-notepad-status'].forEach((id) => {
+    ['cc-notepad-status', 'cs-notepad-status', 'dp-notepad-status'].forEach((id) => {
       const status = document.getElementById(id);
-      if (status) status.textContent = 'Saved to DIMAD Notepad.';
+      if (status) status.textContent = 'Saved to dimPad.';
     });
-    if (opts.keepOpen || this._editSource === 'dash' || this._editSource === 'cs') {
+    if (opts.keepOpen || this._editSource === 'dash' || this._editSource === 'cs' || this._editSource === 'dp') {
       this.renderDash();
       return;
     }
@@ -5583,10 +6491,33 @@ const DIMAD_NOTEPAD = {
     this.closeCtx();
     if (!id) return;
     if (action === 'rename') {
-      this.renamingId = id;
-      this.render();
+      if (document.getElementById('notepad-list')) {
+        this.renamingId = id;
+        this.render();
+      } else {
+        this.renamePrompt(id);
+      }
+      return;
     }
     if (action === 'delete') this.remove(id);
+  },
+
+  renamePrompt(id) {
+    const notes = this.load();
+    const note = notes.find((n) => n.id === id);
+    if (!note) return;
+    const next = window.prompt('Rename note', this.displayTitle(note));
+    if (next == null) return;
+    const name = String(next).trim();
+    const updated = notes.map((n) => {
+      if (n.id !== id) return n;
+      if (!name) return { ...n, customTitle: false, title: this.titleFromBody(n.body), updatedAt: Date.now() };
+      return { ...n, title: name, customTitle: true, updatedAt: Date.now() };
+    });
+    this.persist(updated);
+    this.renderDash();
+    this.renderRecentMenu();
+    if (document.getElementById('notepad-list')) this.render();
   },
 
   renameKey(event) {
@@ -5627,7 +6558,9 @@ const DIMAD_NOTEPAD = {
       this.activeId = notes[0] ? notes[0].id : null;
       this.dirty = false;
     }
-    this.render();
+    if (document.getElementById('notepad-list')) this.render();
+    this.renderDash();
+    this.renderRecentMenu();
   },
 
   escape(value) {
@@ -5642,23 +6575,33 @@ const DIMAD_NOTEPAD = {
     return this.load()
       .slice()
       .sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0))
-      .slice(0, 3);
+      .slice(0, 5);
   },
 
   renderRecentMenu() {
     const recent = this.recentNotes();
-    const html = !recent.length
-      ? '<p class="px-3 py-2 text-[10px] text-slate-500">No saved notes yet.</p>'
-      : recent.map((note) => {
+    const buildHtml = (tone) => {
+      if (!recent.length) {
+        return `<p class="px-2.5 py-1.5 text-[9px] ${tone === 'cream' ? 'text-[#1a1408]/55' : 'text-slate-500'}">No saved notes yet.</p>`;
+      }
+      return recent.map((note) => {
         const on = note.id === this.activeId;
-        return `<button type="button" onclick="DIMAD_NOTEPAD.openRecent('${note.id}')" class="w-full text-left px-3 py-1.5 ${on ? 'bg-amber-500/10 text-amber-100' : 'text-slate-200 hover:bg-slate-900'}">
-        <div class="text-[11px] font-semibold truncate">${this.escape(this.displayTitle(note))}</div>
-        <div class="text-[9px] text-slate-500 truncate">${this.escape((note.body || '').replace(/\s+/g, ' ').trim().slice(0, 48) || 'Empty note')}</div>
+        const row = tone === 'cream'
+          ? (on ? 'bg-[#1a1408]/10 text-[#1a1408]' : 'text-[#1a1408] hover:bg-[#1a1408]/8')
+          : (on ? 'bg-amber-500/10 text-amber-100' : 'text-slate-200 hover:bg-slate-900');
+        const sub = tone === 'cream' ? 'text-[#1a1408]/55' : 'text-slate-500';
+        return `<button type="button" onclick="DIMAD_NOTEPAD.openRecent('${note.id}')" oncontextmenu="DIMAD_NOTEPAD.openCtx(event,'${note.id}')" class="w-full text-left px-2.5 py-1 leading-tight ${row}">
+        <div class="text-[10px] font-semibold truncate">${this.escape(this.displayTitle(note))}</div>
+        <div class="text-[8px] ${sub} truncate">${this.escape(this.formatNoteStamp(note))}</div>
       </button>`;
       }).join('');
-    ['cc-notepad-recent', 'cs-notepad-recent'].forEach((id) => {
+    };
+    ['cc-notepad-recent', 'cs-notepad-recent', 'dp-notepad-recent'].forEach((id) => {
       const menu = document.getElementById(id);
-      if (menu) menu.innerHTML = html;
+      if (!menu) return;
+      menu.innerHTML = buildHtml(id === 'dp-notepad-recent' ? 'cream' : 'dark');
+      menu.classList.add('py-0.5');
+      menu.classList.remove('py-1');
     });
   },
 
@@ -5668,7 +6611,8 @@ const DIMAD_NOTEPAD = {
       event.stopPropagation();
     }
     this.bindUi();
-    const menu = document.getElementById(`${prefix === 'cs' ? 'cs' : 'cc'}-notepad-recent`);
+    const key = prefix === 'cs' ? 'cs' : prefix === 'dp' ? 'dp' : 'cc';
+    const menu = document.getElementById(`${key}-notepad-recent`);
     if (!menu) return;
     const open = menu.classList.contains('hidden');
     this.closeRecent();
@@ -5679,7 +6623,7 @@ const DIMAD_NOTEPAD = {
   },
 
   closeRecent() {
-    ['cc-notepad-recent', 'cs-notepad-recent'].forEach((id) => {
+    ['cc-notepad-recent', 'cs-notepad-recent', 'dp-notepad-recent'].forEach((id) => {
       const menu = document.getElementById(id);
       if (menu) menu.classList.add('hidden');
     });
@@ -5710,8 +6654,12 @@ const DIMAD_NOTEPAD = {
     if (this.dirty) this.save({ silent: true });
     this.activeId = id;
     this.dirty = false;
-    const studio = document.getElementById('view-creator-studio');
-    this._editSource = (studio && !studio.classList.contains('hidden')) ? 'cs' : 'dash';
+    if (typeof CC_DIMPAD !== 'undefined' && CC_DIMPAD.isOpen && CC_DIMPAD.isOpen()) {
+      this._editSource = 'dp';
+    } else {
+      const studio = document.getElementById('view-creator-studio');
+      this._editSource = (studio && !studio.classList.contains('hidden')) ? 'cs' : 'dash';
+    }
     this.renderDash();
     if (document.getElementById('notepad-list')) this.render();
   },
@@ -5729,6 +6677,12 @@ const DIMAD_NOTEPAD = {
         input: document.getElementById('cs-notepad-title-input')
       };
     }
+    if (where === 'dp') {
+      return {
+        label: document.getElementById('dp-notepad-title'),
+        input: document.getElementById('dp-notepad-title-input')
+      };
+    }
     return {
       label: document.getElementById('cc-notepad-title'),
       input: document.getElementById('cc-notepad-title-input')
@@ -5744,7 +6698,7 @@ const DIMAD_NOTEPAD = {
     const notes = this.load();
     const active = notes.find((n) => n.id === this.activeId) || notes[0];
     if (!active) return;
-    this._titleWhere = where === 'full' ? 'full' : (where === 'cs' ? 'cs' : 'dash');
+    this._titleWhere = where === 'full' ? 'full' : where === 'cs' ? 'cs' : where === 'dp' ? 'dp' : 'dash';
     this._editingTitle = true;
     const { label, input } = this.titleFields(this._titleWhere);
     if (!label || !input) return;
@@ -5769,11 +6723,11 @@ const DIMAD_NOTEPAD = {
   },
 
   hideTitleInputs() {
-    ['cc-notepad-title', 'cs-notepad-title', 'notepad-title'].forEach((id) => {
+    ['cc-notepad-title', 'cs-notepad-title', 'dp-notepad-title', 'notepad-title'].forEach((id) => {
       const el = document.getElementById(id);
       if (el) el.classList.remove('hidden');
     });
-    ['cc-notepad-title-input', 'cs-notepad-title-input', 'notepad-title-input'].forEach((id) => {
+    ['cc-notepad-title-input', 'cs-notepad-title-input', 'dp-notepad-title-input', 'notepad-title-input'].forEach((id) => {
       const el = document.getElementById(id);
       if (el) el.classList.add('hidden');
     });
@@ -5808,15 +6762,17 @@ const DIMAD_NOTEPAD = {
     const notes = this.load();
     const active = notes.find((n) => n.id === this.activeId) || notes[0];
     let found = false;
-    ['cc', 'cs'].forEach((prefix) => {
+    ['cc', 'cs', 'dp'].forEach((prefix) => {
       const titleEl = document.getElementById(`${prefix}-notepad-title`);
       const dashEl = document.getElementById(`${prefix}-notepad-body`);
+      const stampEl = document.getElementById(`${prefix}-notepad-stamp`);
       if (!titleEl && !dashEl) return;
       found = true;
-      const where = prefix === 'cs' ? 'cs' : 'dash';
+      const where = prefix === 'cs' ? 'cs' : prefix === 'dp' ? 'dp' : 'dash';
       if (!active) {
         if (titleEl && !(this._editingTitle && this._titleWhere === where)) titleEl.textContent = 'No notes yet';
         if (dashEl && !this.dirty) dashEl.value = '';
+        if (stampEl) stampEl.textContent = '';
         return;
       }
       this.activeId = active.id;
@@ -5825,6 +6781,7 @@ const DIMAD_NOTEPAD = {
         titleEl.classList.remove('hidden');
       }
       if (dashEl && !(this.dirty && this._editSource === where)) dashEl.value = active.body || '';
+      if (stampEl) stampEl.textContent = this.formatNoteStamp(active);
     });
     if (!found) return;
     this.renderRecentMenu();
@@ -7853,7 +8810,7 @@ const DIMDRIVE = {
     }
     panel.classList.remove('hidden');
     const canOpen = selected.type === 'writespace' || selected.type === 'sheet' || selected.type === 'notepad';
-    const openLabel = selected.type === 'sheet' ? 'Open in Revenue' : selected.type === 'notepad' ? 'Open in DIMAD Notepad' : 'Open in WriteSpace';
+    const openLabel = selected.type === 'sheet' ? 'Open in Revenue' : selected.type === 'notepad' ? 'Open in dimPad' : 'Open in WriteSpace';
     const openFn = selected.type === 'sheet'
       ? `DIMDRIVE.openInSheet('${selected.id}')`
       : selected.type === 'notepad'
@@ -12145,10 +13102,7 @@ const SCHEDULER = {
       : '24-hour posting grid — click an hour to schedule.';
     return `<div class="space-y-2">
       <div class="text-[10px] font-mono text-slate-500">${hint}</div>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
-        <div>${DIMAD_CAL.renderHourColumn(dateStr, hours.slice(0, 12), events, { slotFn })}</div>
-        <div>${DIMAD_CAL.renderHourColumn(dateStr, hours.slice(12), events, { slotFn })}</div>
-      </div>
+      <div class="max-w-xl">${DIMAD_CAL.renderHourColumn(dateStr, hours, events, { slotFn })}</div>
     </div>`;
   },
 
@@ -15670,13 +16624,19 @@ const DIMAD_CAL = {
       this.dayOffset = CALENDAR_NAV.dayOffset || 0;
     }
     const incoming = options.mode || (typeof CALENDAR_NAV !== 'undefined' ? CALENDAR_NAV.mode : 'day');
-    this.mode = incoming === 'hourly' ? 'day' : incoming === 'weekly' ? 'week' : incoming === 'monthly' ? 'month' : incoming;
+    this.mode = incoming === 'hourly' ? 'day' : incoming === 'weekly' ? 'week' : incoming === 'monthly' ? 'month' : incoming === 'yearly' ? 'year' : incoming;
     if (typeof switchTab === 'function') switchTab('dimad-calendar');
     else this.renderFull();
   },
 
   setMode(mode) {
-    this.mode = mode === 'week' || mode === 'weekly' ? 'week' : mode === 'month' || mode === 'monthly' ? 'month' : 'day';
+    this.mode = mode === 'week' || mode === 'weekly'
+      ? 'week'
+      : mode === 'month' || mode === 'monthly'
+        ? 'month'
+        : mode === 'year' || mode === 'yearly'
+          ? 'year'
+          : 'day';
     this.renderFull();
   },
 
@@ -15686,13 +16646,19 @@ const DIMAD_CAL = {
   },
 
   shift(dir) {
-    if (this.mode === 'monthly') {
+    if (this.mode === 'monthly' || this.mode === 'month') {
       const d = this.anchorDate();
       d.setMonth(d.getMonth() + dir);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       this.dayOffset = Math.round((d - today) / 86400000);
-    } else if (this.mode === 'weekly') {
+    } else if (this.mode === 'yearly' || this.mode === 'year') {
+      const d = this.anchorDate();
+      d.setFullYear(d.getFullYear() + dir);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      this.dayOffset = Math.round((d - today) / 86400000);
+    } else if (this.mode === 'weekly' || this.mode === 'week') {
       this.dayOffset += dir * 7;
     } else {
       this.dayOffset += dir;
@@ -15709,7 +16675,13 @@ const DIMAD_CAL = {
     ensureDimadCalendar();
     if (typeof dimadCal !== 'undefined' && dimadCal) {
       dimadCal.currentDate = this.anchorDate();
-      dimadCal.currentView = this.mode === 'week' || this.mode === 'weekly' ? 'week' : this.mode === 'month' || this.mode === 'monthly' ? 'month' : 'day';
+      dimadCal.currentView = this.mode === 'week' || this.mode === 'weekly'
+        ? 'week'
+        : this.mode === 'month' || this.mode === 'monthly'
+          ? 'month'
+          : this.mode === 'year' || this.mode === 'yearly'
+            ? 'year'
+            : 'day';
       dimadCal.syncFromStore();
       dimadCal.render();
     }
@@ -15733,7 +16705,7 @@ const DIMAD_CAL = {
         <span class="text-[9px] text-slate-500 group-hover:text-amber-400">add event</span>
       </button>`;
     }).join('');
-    return `<div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4"><div>${col(CALENDAR_HOURS.slice(0, 12))}</div><div>${col(CALENDAR_HOURS.slice(12))}</div></div>`;
+    return `<div class="max-w-xl">${col(CALENDAR_HOURS)}</div>`;
   },
 
   weekHtml(start) {
@@ -16082,10 +17054,16 @@ class DimadCalendar {
   }
 
   changeView(view) {
-    this.currentView = view;
-    DIMAD_CAL.mode = view;
+    this.currentView = view === 'week' || view === 'month' || view === 'year' ? view : 'day';
+    DIMAD_CAL.mode = this.currentView;
     if (typeof CALENDAR_NAV !== 'undefined') {
-      CALENDAR_NAV.mode = view === 'week' ? 'weekly' : view === 'month' ? 'monthly' : 'hourly';
+      CALENDAR_NAV.mode = this.currentView === 'week'
+        ? 'weekly'
+        : this.currentView === 'month'
+          ? 'monthly'
+          : this.currentView === 'year'
+            ? 'yearly'
+            : 'hourly';
     }
     this.render();
   }
@@ -16093,6 +17071,7 @@ class DimadCalendar {
   navigate(direction) {
     if (this.currentView === 'day') this.currentDate.setDate(this.currentDate.getDate() + direction);
     else if (this.currentView === 'week') this.currentDate.setDate(this.currentDate.getDate() + direction * 7);
+    else if (this.currentView === 'year') this.currentDate.setFullYear(this.currentDate.getFullYear() + direction);
     else this.currentDate.setMonth(this.currentDate.getMonth() + direction);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -16106,6 +17085,11 @@ class DimadCalendar {
     const options = { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' };
     if (this.currentView === 'day') return this.currentDate.toLocaleDateString('en-US', options);
     if (this.currentView === 'month') return this.currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    if (this.currentView === 'year') {
+      const start = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth(), 1);
+      const end = new Date(start.getFullYear(), start.getMonth() + 11, 1);
+      return `${start.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })} – ${end.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`;
+    }
     const start = CALENDAR_NAV.weekStart(this.currentDate);
     const end = new Date(start);
     end.setDate(start.getDate() + 6);
@@ -16115,8 +17099,9 @@ class DimadCalendar {
   render() {
     if (!this.container) return;
     this.syncFromStore();
-    const condensed = typeof CALENDAR_NAV !== 'undefined' && CALENDAR_NAV.condensed;
-    const viewVal = this.currentView === 'week' ? 'week' : this.currentView === 'month' ? 'month' : 'day';
+    const viewVal = this.currentView === 'week' || this.currentView === 'month' || this.currentView === 'year'
+      ? this.currentView
+      : 'day';
     const contentOn = typeof DIMAD_CAL !== 'undefined' && DIMAD_CAL.showContentSchedule();
     this.container.innerHTML = `
       <div class="space-y-4">
@@ -16130,25 +17115,29 @@ class DimadCalendar {
           <div class="flex items-center flex-wrap gap-2">
             <label class="sr-only" for="dimad-cal-mode-select">Calendar view</label>
             <select id="dimad-cal-mode-select" onchange="dimadCal.changeView(this.value)" class="text-[10px] font-mono bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded outline-none cursor-pointer hover:bg-amber-500/20">
-              <option value="day" ${viewVal === 'day' ? 'selected' : ''}>Hourly</option>
+              <option value="day" ${viewVal === 'day' ? 'selected' : ''}>Daily</option>
               <option value="week" ${viewVal === 'week' ? 'selected' : ''}>Weekly</option>
               <option value="month" ${viewVal === 'month' ? 'selected' : ''}>Monthly</option>
+              <option value="year" ${viewVal === 'year' ? 'selected' : ''}>Yearly</option>
             </select>
             <label class="flex items-center gap-1 text-[10px] font-semibold text-slate-400 cursor-pointer select-none">
               <input type="checkbox" ${contentOn ? 'checked' : ''} onchange="DIMAD_CAL.setShowContent(this.checked)" class="accent-amber-500">
               Content schedule
             </label>
-            <label class="sr-only" for="dimad-cal-layout-select">Calendar layout</label>
-            <select id="dimad-cal-layout-select" data-cal-layout onchange="CALENDAR_NAV.setLayout(this.value)" class="text-[10px] font-mono bg-slate-950 text-slate-300 border border-slate-700 px-2 py-0.5 rounded outline-none cursor-pointer hover:text-amber-400 hover:border-amber-500/30">
-              <option value="full" ${condensed ? '' : 'selected'}>Full view</option>
-              <option value="multi" ${condensed ? 'selected' : ''}>Multiview</option>
-            </select>
             <button type="button" onclick="CAL_SETTINGS.open()" title="Calendar settings" class="text-slate-400 hover:text-amber-400 px-1.5 py-0.5 border border-slate-700 rounded-lg bg-slate-950"><i class="fa-solid fa-gear text-[10px]"></i></button>
             <button type="button" onclick="dimadCal.openQuickCreateModal()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold px-4 py-2 rounded-xl transition shadow-lg shadow-amber-500/10">＋ New Event</button>
           </div>
         </div>
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 overflow-x-auto min-h-[280px]">
-          ${this.renderViewContent()}
+        <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_13.5rem] gap-3 items-start">
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 overflow-x-auto min-h-[280px]">
+            ${this.renderViewContent()}
+          </div>
+          <aside class="flex flex-col gap-3 min-w-0">
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-2.5">
+              ${this.renderSideMiniMonth()}
+            </div>
+            <div id="dimad-cal-side-nav" class="bg-slate-900 border border-slate-800 rounded-2xl min-h-[10rem] p-2.5" aria-hidden="true"></div>
+          </aside>
         </div>
       </div>`;
     DIMAD_CAL.renderAgenda();
@@ -16161,25 +17150,33 @@ class DimadCalendar {
   }
 
   renderViewContent() {
-    if (typeof CALENDAR_NAV !== 'undefined' && CALENDAR_NAV.condensed) return this.renderMultiview();
+    if (this.currentView === 'year') return this.renderYearGridView();
     if (this.currentView === 'month') return this.renderMonthGridView();
     if (this.currentView === 'week') return this.renderWeekGridView();
     return this.renderHourlyGridView();
   }
 
-  renderMultiview() {
-    const dayTitle = this.currentDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
-    const weekly = this.currentView === 'week';
-    const companion = weekly
-      ? CALENDAR_NAV.weeksStackHtml(this.currentDate)
-      : `<div class="text-[9px] font-mono text-slate-400 mb-1.5">${this.currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</div>${this.renderMonthGridView()}`;
-    return `<div class="cal-dual-condensed">
-      <div class="min-w-0">
-        <div class="text-[11px] font-semibold text-white mb-1.5">${DIMAD_CAL.escape(dayTitle)}</div>
-        ${this.renderHourlyGridView()}
+  renderSideMiniMonth() {
+    if (typeof CALENDAR_NAV === 'undefined') return '';
+    const label = this.currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    return `<div class="space-y-1.5">
+      <div class="flex items-center justify-between gap-1">
+        <button type="button" onclick="dimadCal.shiftSideMonth(-1)" class="text-[9px] font-semibold text-slate-400 hover:text-amber-400 px-1.5 py-0.5 rounded border border-slate-700">◀</button>
+        <p class="text-[10px] font-semibold text-slate-200 font-mono truncate">${DIMAD_CAL.escape(label)}</p>
+        <button type="button" onclick="dimadCal.shiftSideMonth(1)" class="text-[9px] font-semibold text-slate-400 hover:text-amber-400 px-1.5 py-0.5 rounded border border-slate-700">▶</button>
       </div>
-      <div class="min-w-0 overflow-x-auto">${companion}</div>
+      ${CALENDAR_NAV.monthHtml({ companion: true, compact: true, date: this.currentDate })}
     </div>`;
+  }
+
+  shiftSideMonth(dir) {
+    this.currentDate.setMonth(this.currentDate.getMonth() + (dir < 0 ? -1 : 1));
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const cursor = new Date(this.currentDate);
+    cursor.setHours(0, 0, 0, 0);
+    DIMAD_CAL.dayOffset = Math.round((cursor - today) / 86400000);
+    this.render();
   }
 
   eventsOn(dateStr) {
@@ -16196,10 +17193,7 @@ class DimadCalendar {
     return `
       <div class="space-y-2">
         <div class="text-[10px] font-mono text-slate-500">24-hour overview — click an event to view or edit; click an open hour to add.</div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
-          <div>${DIMAD_CAL.renderHourColumn(dateStr, this.hours.slice(0, 12), events)}</div>
-          <div>${DIMAD_CAL.renderHourColumn(dateStr, this.hours.slice(12), events)}</div>
-        </div>
+        <div class="max-w-xl">${DIMAD_CAL.renderHourColumn(dateStr, this.hours, events)}</div>
       </div>`;
   }
 
@@ -16245,6 +17239,46 @@ class DimadCalendar {
       </button>`;
     }).join('');
     return `<div class="grid grid-cols-7 gap-1">${weekday}${cells}</div>`;
+  }
+
+  renderYearGridView() {
+    const mtd = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth(), 1);
+    const todayKey = this.formatDateKey(new Date());
+    const months = Array.from({ length: 12 }, (_, i) => {
+      const first = new Date(mtd.getFullYear(), mtd.getMonth() + i, 1);
+      const year = first.getFullYear();
+      const month = first.getMonth();
+      const start = CALENDAR_NAV.weekStart(first);
+      const weekday = CALENDAR_NAV.weekdayLabels('letter').map((n) =>
+        `<div class="text-center text-[8px] font-mono text-slate-500">${n}</div>`
+      ).join('');
+      const cells = Array.from({ length: 42 }, (_, idx) => {
+        const d = new Date(start);
+        d.setDate(start.getDate() + idx);
+        const key = this.formatDateKey(d);
+        const inMonth = d.getMonth() === month;
+        const isToday = key === todayKey;
+        const count = this.eventsOn(key).length;
+        return `<button type="button" onclick="dimadCal.openMonthDay('${key}')" class="h-5 rounded text-[9px] tabular-nums ${isToday ? 'bg-amber-500/20 text-amber-300 font-semibold' : inMonth ? 'text-slate-300 hover:bg-white/5' : 'text-slate-600'}">${d.getDate()}${count && inMonth ? '<span class="block mx-auto mt-px w-1 h-1 rounded-full bg-amber-400/80"></span>' : ''}</button>`;
+      }).join('');
+      const label = first.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+      return `<div class="rounded-xl border border-slate-800 bg-slate-950/40 p-2 space-y-1">
+        <button type="button" onclick="dimadCal.openMonthFromYear(${year},${month})" class="text-[10px] font-semibold text-slate-200 hover:text-amber-300">${DIMAD_CAL.escape(label)}</button>
+        <div class="grid grid-cols-7 gap-px">${weekday}${cells}</div>
+      </div>`;
+    }).join('');
+    return `<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5">${months}</div>`;
+  }
+
+  openMonthDay(key) {
+    const [y, m, d] = key.split('-').map(Number);
+    this.currentDate = new Date(y, m - 1, d);
+    this.changeView('day');
+  }
+
+  openMonthFromYear(year, month) {
+    this.currentDate = new Date(year, month, 1);
+    this.changeView('month');
   }
 
   promptQuickSlot(date, time) {
@@ -16478,11 +17512,15 @@ const CALENDAR_NAV = {
   },
 
   setMode(mode) {
-    this.mode = mode === 'weekly' || mode === 'monthly' ? mode : 'hourly';
+    this.mode = mode === 'weekly' || mode === 'monthly' || mode === 'yearly' ? mode : 'hourly';
     calendarClickCount = 0;
     this.syncNavLabel();
     this.syncCcScheduleToggle();
     this.render();
+    if (typeof dimadCal !== 'undefined' && dimadCal) {
+      dimadCal.currentView = this.mode === 'weekly' ? 'week' : this.mode === 'monthly' ? 'month' : this.mode === 'yearly' ? 'year' : 'day';
+      dimadCal.render();
+    }
   },
 
   goToday() {
@@ -16517,7 +17555,13 @@ const CALENDAR_NAV = {
   shiftCursor(dir) {
     const step = dir < 0 ? -1 : 1;
     if (this.mode === 'weekly') this.dayOffset += step * 7;
-    else if (this.mode === 'monthly') {
+    else if (this.mode === 'yearly') {
+      const d = this.anchorDate();
+      d.setFullYear(d.getFullYear() + step);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      this.dayOffset = Math.round((d - today) / 86400000);
+    } else if (this.mode === 'monthly') {
       const d = this.anchorDate();
       d.setMonth(d.getMonth() + step);
       const today = new Date();
@@ -16527,6 +17571,7 @@ const CALENDAR_NAV = {
     calendarClickCount = this.dayOffset === 0 ? 0 : 1;
     if (typeof dimadCal !== 'undefined' && dimadCal && dimadCal.currentDate) {
       if (this.mode === 'weekly') dimadCal.currentDate.setDate(dimadCal.currentDate.getDate() + step * 7);
+      else if (this.mode === 'yearly') dimadCal.currentDate.setFullYear(dimadCal.currentDate.getFullYear() + step);
       else if (this.mode === 'monthly') dimadCal.currentDate.setMonth(dimadCal.currentDate.getMonth() + step);
       else dimadCal.currentDate.setDate(dimadCal.currentDate.getDate() + step);
       dimadCal.render();
@@ -16535,18 +17580,18 @@ const CALENDAR_NAV = {
   },
 
   toggleCondense() {
-    this.setLayout(this.condensed ? 'full' : 'multi');
+    /* Multiview removed — mini calendar is always shown. */
   },
 
-  setLayout(layout) {
-    this.condensed = layout === 'multi';
-    try { localStorage.setItem('dimad_cal_condensed', this.condensed ? '1' : '0'); } catch (err) { /* ignore */ }
+  setLayout() {
+    this.condensed = false;
+    try { localStorage.setItem('dimad_cal_condensed', '0'); } catch (err) { /* ignore */ }
     this.render();
     if (typeof dimadCal !== 'undefined' && dimadCal) dimadCal.render();
   },
 
   companionMode() {
-    return this.mode === 'weekly' ? 'weekly' : 'monthly';
+    return 'monthly';
   },
 
   syncCcScheduleToggle() {
@@ -16566,16 +17611,16 @@ const CALENDAR_NAV = {
   },
 
   syncCondenseBtn() {
-    document.querySelectorAll('[data-cal-layout]').forEach((el) => {
-      el.value = this.condensed ? 'multi' : 'full';
-    });
+    this.condensed = false;
     this.surfaces().forEach((surface) => {
       const wrap = document.getElementById(surface.dual);
       const side = document.getElementById(surface.side);
       const isCc = surface.main === 'hourly-slots-container';
-      if (wrap) wrap.classList.toggle('cal-dual-condensed', !isCc && this.condensed);
-      if (side && !isCc) side.classList.toggle('hidden', !this.condensed);
-      if (side && isCc) side.classList.remove('hidden');
+      if (wrap) {
+        wrap.classList.toggle('cal-dual-rail', !isCc);
+        wrap.classList.remove('cal-dual-condensed');
+      }
+      if (side) side.classList.remove('hidden');
     });
   },
 
@@ -16588,6 +17633,7 @@ const CALENDAR_NAV = {
     }
     if (this.mode === 'weekly') navLabel.innerText = 'Next Week >';
     else if (this.mode === 'monthly') navLabel.innerText = 'Next Month >';
+    else if (this.mode === 'yearly') navLabel.innerText = 'Next Year >';
     else navLabel.innerText = 'Tomorrow >';
   },
 
@@ -16616,10 +17662,7 @@ const CALENDAR_NAV = {
   },
 
   render() {
-    try {
-      if (localStorage.getItem('dimad_cal_condensed') === '1') this.condensed = true;
-      if (localStorage.getItem('dimad_cal_condensed') === '0') this.condensed = false;
-    } catch (err) { /* keep in-memory */ }
+    this.condensed = false;
     const surfaces = this.surfaces().filter((surface) => document.getElementById(surface.main));
     if (!surfaces.length) return;
     this.syncCondenseBtn();
@@ -16628,36 +17671,22 @@ const CALENDAR_NAV = {
 
     surfaces.forEach((surface) => {
       const isCc = surface.main === 'hourly-slots-container';
+      const monthHtml = this.monthHtml({ companion: true, compact: true });
       if (isCc) {
-        // Command Center: static month on top + Daily/Weekly schedule below (no Multiview)
         const scheduleMode = this.mode === 'weekly' ? 'weekly' : 'hourly';
         const scheduleHtml = scheduleMode === 'weekly'
-          ? this.ccWeekHtml()
+          ? this.weekGridHtml()
           : `<div class="h-full min-h-0 overflow-auto">${this.dayHtml()}</div>`;
-        const monthHtml = this.monthHtml({ companion: true });
         this.paintSurface(surface, `<div class="cc-schedule-pane">${scheduleHtml}</div>`, monthHtml);
         return;
       }
 
       let html;
-      let companionHtml = '';
-      if (this.condensed) {
-        const dayTitle = this.anchorDate().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
-        html = `<div class="text-[11px] font-semibold text-white mb-1.5">${this.escape(dayTitle)}</div>
-          <div class="text-[10px] font-mono text-slate-500 mb-2">24-hour overview — click an event to view or edit; click an open hour to add.</div>
-          ${this.dayHtml()}`;
-        const companion = this.companionMode();
-        companionHtml = companion === 'weekly'
-          ? this.weeksStackHtml()
-          : `<div class="text-[9px] font-mono text-slate-400 mb-1.5">${this.anchorDate().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</div>${this.monthHtml({ companion: true })}`;
-      } else if (this.mode === 'weekly') {
-        html = this.weekGridHtml();
-      } else if (this.mode === 'monthly') {
-        html = this.monthHtml();
-      } else {
-        html = this.dayHtml();
-      }
-      this.paintSurface(surface, html, this.condensed ? companionHtml : '');
+      if (this.mode === 'weekly') html = this.weekGridHtml();
+      else if (this.mode === 'monthly') html = this.monthHtml();
+      else if (this.mode === 'yearly') html = this.yearHtml();
+      else html = this.dayHtml();
+      this.paintSurface(surface, html, monthHtml);
     });
     this.updateChromeForMode();
   },
@@ -16670,6 +17699,12 @@ const CALENDAR_NAV = {
     }
     if (this.mode === 'monthly') {
       this.updateChrome(date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }), '');
+      return;
+    }
+    if (this.mode === 'yearly') {
+      const start = new Date(date.getFullYear(), date.getMonth(), 1);
+      const end = new Date(start.getFullYear(), start.getMonth() + 11, 1);
+      this.updateChrome(`${start.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })} – ${end.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`, '');
       return;
     }
     this.updateChrome(date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' }), '');
@@ -16690,14 +17725,8 @@ const CALENDAR_NAV = {
       startTime: ev.startTime || ev.time,
       endTime: ev.endTime || DIMAD_CAL.calculateEndTime(ev.startTime || ev.time)
     }));
-    const morningHours = Array.from({ length: 12 }, (_, i) => i);
-    const eveningHours = Array.from({ length: 12 }, (_, i) => i + 12);
-    const cols = this.condensed ? 'grid-cols-2' : 'grid-cols-1 sm:grid-cols-2';
-    return `
-      <div class="grid ${cols} gap-x-3 gap-y-1">
-        <div>${DIMAD_CAL.renderHourColumn(dateKey, morningHours, list)}</div>
-        <div>${DIMAD_CAL.renderHourColumn(dateKey, eveningHours, list)}</div>
-      </div>`;
+    const hours = Array.from({ length: 24 }, (_, i) => i);
+    return `<div class="max-w-xl">${DIMAD_CAL.renderHourColumn(dateKey, hours, list)}</div>`;
   },
 
   weekGridHtml(fromDate) {
@@ -16770,7 +17799,7 @@ const CALENDAR_NAV = {
       </div>`;
   },
 
-  /** Command Center weekly: vertical day stack that fills the schedule pane. */
+  /** Dashboard weekly: vertical day stack that fills the schedule pane. */
   ccWeekHtml(fromDate) {
     const start = this.weekStart(fromDate || this.anchorDate());
     const days = Array.from({ length: 7 }, (_, i) => {
@@ -16822,7 +17851,8 @@ const CALENDAR_NAV = {
 
   monthHtml(opts) {
     const companion = !!(opts && opts.companion);
-    const date = this.anchorDate();
+    const compact = !!(opts && opts.compact);
+    const date = (opts && opts.date instanceof Date) ? opts.date : this.anchorDate();
     const year = date.getFullYear();
     const month = date.getMonth();
     const first = new Date(year, month, 1);
@@ -16833,10 +17863,13 @@ const CALENDAR_NAV = {
       return d;
     });
     const todayKey = this.dateKey(new Date());
-    const selectedKey = this.dateKey(date);
-    const weekday = this.weekdayLabels().map((n) =>
-      `<div class="text-center text-[9px] font-mono text-slate-500 py-1">${n}</div>`
+    const selectedKey = this.dateKey(this.anchorDate());
+    const weekday = this.weekdayLabels(compact ? 'letter' : undefined).map((n) =>
+      `<div class="text-center text-[${compact ? '8' : '9'}px] font-mono text-slate-500 ${compact ? '' : 'py-1'}">${n}</div>`
     ).join('');
+    const cellH = compact ? 'h-6' : 'h-12';
+    const cellPad = compact ? 'px-0.5 py-0.5' : 'px-1.5 py-1';
+    const daySize = compact ? 'text-[9px]' : 'text-[11px]';
     return `
       <div class="grid grid-cols-7 gap-1">
         ${weekday}
@@ -16854,12 +17887,44 @@ const CALENDAR_NAV = {
             ? 'ring-1 ring-[#f5b942] border-transparent bg-brand-gold/10'
             : 'border-hairline bg-brand-nested/60 hover:border-gold-soft';
           return `
-            <button type="button" onclick="${click}" class="h-12 rounded-lg border text-left px-1.5 py-1 ${ring} ${inMonth ? '' : 'opacity-40'} transition">
-              <div class="text-[11px] font-semibold tabular-nums ${isToday || isSelected ? 'text-brand-gold' : 'text-slate-200'}">${d.getDate()}</div>
-              <div class="mt-1 flex justify-center">${count ? '<span class="w-1 h-1 rounded-full bg-brand-gold/80"></span>' : ''}</div>
+            <button type="button" onclick="${click}" class="${cellH} rounded-lg border text-left ${cellPad} ${ring} ${inMonth ? '' : 'opacity-40'} transition">
+              <div class="${daySize} font-semibold tabular-nums ${isToday || isSelected ? 'text-brand-gold' : 'text-slate-200'}">${d.getDate()}</div>
+              ${compact ? '' : `<div class="mt-1 flex justify-center">${count ? '<span class="w-1 h-1 rounded-full bg-brand-gold/80"></span>' : ''}</div>`}
             </button>`;
         }).join('')}
       </div>`;
+  },
+
+  yearHtml(fromDate) {
+    const anchor = fromDate || this.anchorDate();
+    const mtd = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
+    const todayKey = this.dateKey(new Date());
+    const selectedKey = this.dateKey(this.anchorDate());
+    const months = Array.from({ length: 12 }, (_, i) => {
+      const first = new Date(mtd.getFullYear(), mtd.getMonth() + i, 1);
+      const year = first.getFullYear();
+      const month = first.getMonth();
+      const start = this.weekStart(first);
+      const weekday = this.weekdayLabels('letter').map((n) =>
+        `<div class="text-center text-[8px] font-mono text-slate-500">${n}</div>`
+      ).join('');
+      const cells = Array.from({ length: 42 }, (_, idx) => {
+        const d = new Date(start);
+        d.setDate(start.getDate() + idx);
+        const key = this.dateKey(d);
+        const inMonth = d.getMonth() === month;
+        const isToday = key === todayKey;
+        const isSelected = key === selectedKey;
+        const count = Object.keys(this.bookedForDay(d)).length;
+        return `<button type="button" onclick="CALENDAR_NAV.openDayFromGrid('${key}')" class="h-5 rounded text-[9px] tabular-nums ${isToday || isSelected ? 'bg-amber-500/20 text-amber-300 font-semibold' : inMonth ? 'text-slate-300 hover:bg-white/5' : 'text-slate-600'}">${d.getDate()}${count && inMonth ? '<span class="block mx-auto mt-px w-1 h-1 rounded-full bg-amber-400/80"></span>' : ''}</button>`;
+      }).join('');
+      const label = first.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+      return `<div class="rounded-xl border border-slate-800 bg-slate-950/40 p-2 space-y-1">
+        <div class="text-[10px] font-semibold text-slate-200">${this.escape(label)}</div>
+        <div class="grid grid-cols-7 gap-px">${weekday}${cells}</div>
+      </div>`;
+    }).join('');
+    return `<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5">${months}</div>`;
   },
 
   renderMonth() {
@@ -16873,10 +17938,11 @@ const CALENDAR_NAV = {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     this.dayOffset = Math.round((target - today) / 86400000);
-    if (!this.condensed) this.mode = 'hourly';
+    if (this.mode === 'monthly' || this.mode === 'yearly') this.mode = 'hourly';
     calendarClickCount = this.dayOffset === 0 ? 0 : 1;
     if (typeof dimadCal !== 'undefined' && dimadCal) {
       dimadCal.currentDate = target;
+      dimadCal.currentView = 'day';
       dimadCal.render();
     }
     this.render();
@@ -16926,7 +17992,7 @@ const CALENDAR_NAV = {
     if (!taskName) return;
     const key = this.dateKey(this.anchorDate());
     if (!this.extraEvents[key]) this.extraEvents[key] = {};
-    this.extraEvents[key][timeString] = { title: String(taskName), source: 'Command Center', tone: 'amber' };
+    this.extraEvents[key][timeString] = { title: String(taskName), source: 'Dashboard', tone: 'amber' };
     this.render();
   },
 
@@ -17045,6 +18111,7 @@ const TASK_MANAGER = {
   bound: false,
   state: null,
   view: 'today',
+  dashView: 'today',
   dragId: '',
   dragFrom: '',
 
@@ -17147,8 +18214,17 @@ const TASK_MANAGER = {
     return this.state.tasks.filter((task) => !task.completed && task.date <= today);
   },
 
+  futureOpen() {
+    this.ensure();
+    const today = this.todayKey();
+    return this.state.tasks
+      .filter((task) => !task.completed && task.date > today)
+      .sort((a, b) => String(a.date).localeCompare(String(b.date)));
+  },
+
   previewRows() {
     this.ensure();
+    if (this.dashView === 'future') return this.futureOpen();
     const today = this.todayKey();
     const open = this.todayOpen();
     const done = this.state.tasks.filter((task) => task.completed && (task.completedAt || task.date) === today);
@@ -17161,7 +18237,7 @@ const TASK_MANAGER = {
       return this.state.tasks.filter((task) => task.completed).sort((a, b) => String(b.completedAt || b.date).localeCompare(String(a.completedAt || a.date)));
     }
     if (this.view === 'future') {
-      return this.state.tasks.filter((task) => !task.completed && task.date > today);
+      return this.futureOpen();
     }
     return this.todayOpen();
   },
@@ -17169,6 +18245,13 @@ const TASK_MANAGER = {
   setView(view) {
     this.view = view === 'history' || view === 'future' ? view : 'today';
     this.render();
+  },
+
+  setDashView(view) {
+    this.dashView = view === 'future' ? 'future' : 'today';
+    const select = document.getElementById('cc-tm-scope');
+    if (select) select.value = this.dashView;
+    this.renderPreview();
   },
 
   addTask(source) {
@@ -17274,6 +18357,7 @@ const TASK_MANAGER = {
   sortableTasks(from) {
     if (from === 'history') return [];
     if (from === 'cc') return this.todayOpen();
+    if (from === 'cc-future') return this.futureOpen();
     return this.filtered().filter((task) => !task.completed);
   },
 
@@ -17573,12 +18657,12 @@ const TASK_MANAGER = {
   },
 
   rowMarkup(task, index, total, from) {
-    const compact = from === 'cc';
+    const compact = from === 'cc' || from === 'cc-future';
     const history = from === 'history';
-    const future = from === 'future';
+    const future = from === 'future' || from === 'cc-future';
     const editing = this.editId === task.id;
     const open = this.menuId === task.id || editing;
-    const fromArg = from === 'cc' ? ", 'cc'" : '';
+    const fromArg = compact ? `, '${from}'` : '';
     const items = [];
     if (history || task.completed) {
       items.push(this.menuItem('Re-open', `TASK_MANAGER.reopenTask('${task.id}')`));
@@ -17605,7 +18689,7 @@ const TASK_MANAGER = {
     const checkIcon = compact ? 'text-[7px]' : 'text-[9px]';
     const check = `<button type="button" onclick="event.preventDefault();event.stopPropagation();TASK_MANAGER.toggleTask('${task.id}')" class="${checkSize} border flex items-center justify-center shrink-0 ${task.completed ? 'bg-brand-mint border-brand-mint text-slate-950' : 'border-slate-600 hover:border-brand-gold'}">${task.completed ? `<i class="fa-solid fa-check ${checkIcon}"></i>` : ''}</button>`;
     const meta = compact
-      ? ''
+      ? (future ? this.fmtDate(task.date) : '')
       : history || task.completed
         ? `Completed ${this.fmtDate(task.completedAt || task.date)}`
         : future
@@ -17634,16 +18718,25 @@ const TASK_MANAGER = {
     const list = document.getElementById('cc-tm-list');
     const limitEl = document.getElementById('cc-tm-limit');
     const input = document.getElementById('cc-tm-new');
+    const form = document.getElementById('cc-tm-add-form');
+    const scope = document.getElementById('cc-tm-scope');
+    const showFuture = this.dashView === 'future';
     const atLimit = this.todayOpen().length >= this.maxToday;
-    if (limitEl) limitEl.classList.toggle('hidden', !atLimit);
+    if (scope) scope.value = showFuture ? 'future' : 'today';
+    if (form) form.classList.toggle('hidden', showFuture);
+    if (limitEl) limitEl.classList.toggle('hidden', showFuture || !atLimit);
     if (input) {
       input.disabled = atLimit;
       input.placeholder = atLimit ? 'Complete or Delete tasks to add more' : 'Type a task and hit Enter…';
     }
     if (!list) return;
     const rows = this.previewRows();
-    const openCount = this.todayOpen().length;
-    list.innerHTML = rows.map((task, index) => this.rowMarkup(task, index, openCount, 'cc')).join('') || `<p class="text-[10px] text-slate-500 px-1">No tasks for today.</p>`;
+    const from = showFuture ? 'cc-future' : 'cc';
+    const sortable = showFuture ? rows.length : this.todayOpen().length;
+    const empty = showFuture
+      ? 'No future tasks. Snooze or move one ahead.'
+      : 'No tasks for today.';
+    list.innerHTML = rows.map((task, index) => this.rowMarkup(task, index, sortable, from)).join('') || `<p class="text-[10px] text-slate-500 px-1">${empty}</p>`;
     if (this.menuId) this.placeMenu(this.menuId);
   },
 
@@ -19154,7 +20247,7 @@ const BUSINESS_AI = {
           archived: false,
           thread: [
             { id: 'bs-u1', sender: 'user', timestamp: '11:04 AM', text: 'Draft a 7-message outbound sequence for boutique agency owners.', threadId: 'thread-sales' },
-            { id: 'bs-a1', sender: 'ai', timestamp: '11:04 AM', type: 'hooks', threadId: 'thread-sales', text: 'Seven-touch sequence, one ask per message.', hooks: [{ tag: '1 · Pattern interrupt', text: 'Still building invoices in three tabs at 11pm?' }, { tag: '2 · Proof', text: 'Operators on Premium close the books from one Command Center.' }] }
+            { id: 'bs-a1', sender: 'ai', timestamp: '11:04 AM', type: 'hooks', threadId: 'thread-sales', text: 'Seven-touch sequence, one ask per message.', hooks: [{ tag: '1 · Pattern interrupt', text: 'Still building invoices in three tabs at 11pm?' }, { tag: '2 · Proof', text: 'Operators on Premium close the books from one Dashboard.' }] }
           ]
         },
         {
@@ -19352,7 +20445,7 @@ const BUSINESS_AI = {
     } else if (/offer|stack|position|guarantee/.test(lower)) {
       msg = {
         id: 'res-' + Date.now(), sender: 'ai', timestamp: stamp, threadId, type: 'plan',
-        text: `Offer stack: one promise, three proof points, one guarantee. Promise: an execution OS that turns focus hours into $DIM and shipped work. Proof: Command Center, invoices, Creator AI. Guarantee: 14-day operator trial on Explore before Premium.`
+        text: `Offer stack: one promise, three proof points, one guarantee. Promise: an execution OS that turns focus hours into $DIM and shipped work. Proof: Dashboard, invoices, Creator AI. Guarantee: 14-day operator trial on Explore before Premium.`
       };
     } else if (/sales|outreach|script|sequence|inbound/.test(lower)) {
       msg = {
@@ -19360,7 +20453,7 @@ const BUSINESS_AI = {
         text: 'Seven-touch sequence, one ask per message.',
         hooks: [
           { tag: '1 · Pattern interrupt', text: 'Still building invoices in three tabs at 11pm?' },
-          { tag: '2 · Proof', text: 'Operators on Premium close the books from one Command Center.' },
+          { tag: '2 · Proof', text: 'Operators on Premium close the books from one Dashboard.' },
           { tag: '5 · Soft ask', text: 'Want a 12-minute walkthrough of the $59 seat this week?' }
         ]
       };
@@ -19791,7 +20884,7 @@ const NOMAD_AI = {
           archived: false,
           thread: [
             { id: 'bs-u1', sender: 'user', timestamp: '11:04 AM', text: 'Draft a 7-message outbound sequence for boutique agency owners.', threadId: 'thread-sales' },
-            { id: 'bs-a1', sender: 'ai', timestamp: '11:04 AM', type: 'hooks', threadId: 'thread-sales', text: 'Seven-touch sequence, one ask per message.', hooks: [{ tag: '1 · Pattern interrupt', text: 'Still building invoices in three tabs at 11pm?' }, { tag: '2 · Proof', text: 'Operators on Premium close the books from one Command Center.' }] }
+            { id: 'bs-a1', sender: 'ai', timestamp: '11:04 AM', type: 'hooks', threadId: 'thread-sales', text: 'Seven-touch sequence, one ask per message.', hooks: [{ tag: '1 · Pattern interrupt', text: 'Still building invoices in three tabs at 11pm?' }, { tag: '2 · Proof', text: 'Operators on Premium close the books from one Dashboard.' }] }
           ]
         },
         {
@@ -19989,7 +21082,7 @@ const NOMAD_AI = {
     } else if (/offer|stack|position|guarantee/.test(lower)) {
       msg = {
         id: 'res-' + Date.now(), sender: 'ai', timestamp: stamp, threadId, type: 'plan',
-        text: `Offer stack: one promise, three proof points, one guarantee. Promise: an execution OS that turns focus hours into $DIM and shipped work. Proof: Command Center, invoices, Creator AI. Guarantee: 14-day operator trial on Explore before Premium.`
+        text: `Offer stack: one promise, three proof points, one guarantee. Promise: an execution OS that turns focus hours into $DIM and shipped work. Proof: Dashboard, invoices, Creator AI. Guarantee: 14-day operator trial on Explore before Premium.`
       };
     } else if (/sales|outreach|script|sequence|inbound/.test(lower)) {
       msg = {
@@ -19997,7 +21090,7 @@ const NOMAD_AI = {
         text: 'Seven-touch sequence, one ask per message.',
         hooks: [
           { tag: '1 · Pattern interrupt', text: 'Still building invoices in three tabs at 11pm?' },
-          { tag: '2 · Proof', text: 'Operators on Premium close the books from one Command Center.' },
+          { tag: '2 · Proof', text: 'Operators on Premium close the books from one Dashboard.' },
           { tag: '5 · Soft ask', text: 'Want a 12-minute walkthrough of the $59 seat this week?' }
         ]
       };
@@ -21455,15 +22548,18 @@ window.CREATOR_AI = CREATOR_AI;
 
 const COMMAND_CENTER = {
   storageKey: 'dimad_cc_modules',
-  layoutVersion: 15,
-  retiredApiIds: ['stripe', 'shopify', 'lemon', 'gumroad', 'patreon', 'mailerlite', 'plaid', 'store', 'copilot'],
+  layoutVersion: 17,
+  retiredApiIds: ['stripe', 'shopify', 'lemon', 'gumroad', 'patreon', 'mailerlite', 'plaid', 'store', 'copilot', 'your-city'],
   catalog: [
     { id: 'ticker', label: 'Stock Ticker', group: 'core' },
     { id: 'quote', label: 'Quote of the Day', group: 'core' },
     { id: 'clocks', label: 'World Clocks', group: 'core' },
+    { id: 'emergency', label: 'Emergency Services', group: 'core' },
+    { id: 'logistics', label: 'Logistics', group: 'core' },
+    { id: 'weather', label: 'Weather', group: 'core' },
     { id: 'dimad-ai', label: 'Dimad AI', group: 'core' },
     { id: 'calendar', label: 'Calendar', group: 'core' },
-    { id: 'notepad', label: 'DIMAD Notepad', group: 'core' },
+    { id: 'notepad', label: 'dimPad', group: 'core' },
     { id: 'goals', label: 'Accountability Log', group: 'core' },
     { id: 'tasks', label: 'Task Manager', group: 'core' },
     { id: 'pipeline', label: 'Creator Pipeline', group: 'core' },
@@ -21483,8 +22579,8 @@ const COMMAND_CENTER = {
         if (raw.layoutVersion === this.layoutVersion) return raw;
         const retired = new Set(this.retiredApiIds);
         let hidden = raw.hidden.filter((id) => !retired.has(id));
-        // Snapshots + pipeline + billing + Dimad AI bar default visible on layout bump.
-        hidden = hidden.filter((id) => id !== 'revenue-snapshot' && id !== 'growth-snapshot' && id !== 'pipeline' && id !== 'billing' && id !== 'dimad-ai');
+        // Snapshots + pipeline + billing + Dimad AI + city widgets default visible on layout bump.
+        hidden = hidden.filter((id) => id !== 'revenue-snapshot' && id !== 'growth-snapshot' && id !== 'pipeline' && id !== 'billing' && id !== 'dimad-ai' && id !== 'emergency' && id !== 'logistics' && id !== 'weather');
         const next = {
           hidden: Array.from(new Set(hidden)),
           collapsed: raw.collapsed.filter((id) => !retired.has(id)),
@@ -21513,6 +22609,7 @@ const COMMAND_CENTER = {
       const body = el.querySelector('[data-cc-body]');
       if (body) body.classList.remove('hidden');
     });
+    this.balanceLayout();
     this.renderFilter();
     if (typeof DIMAD_NOTEPAD !== 'undefined' && DIMAD_NOTEPAD.renderDash) DIMAD_NOTEPAD.renderDash();
     if (typeof DIMAD_GOALS !== 'undefined' && DIMAD_GOALS.renderDash) DIMAD_GOALS.renderDash();
@@ -21526,6 +22623,48 @@ const COMMAND_CENTER = {
     if (typeof CC_DIMAD_AI_FLOAT !== 'undefined' && CC_DIMAD_AI_FLOAT.syncChrome) {
       const aiHidden = hidden.includes('dimad-ai');
       if (!aiHidden) CC_DIMAD_AI_FLOAT.syncChrome();
+    }
+    if (typeof CC_YOUR_CITY !== 'undefined' && !hidden.includes('weather') && CC_YOUR_CITY.render) {
+      CC_YOUR_CITY.render();
+    }
+  },
+
+  /** Stretch lone / odd-row modules so filtered dashboards don't leave empty cells. */
+  balanceLayout() {
+    const top = document.querySelector('#view-ent-dashboard [data-cc-top-grid]');
+    if (top) {
+      const modules = Array.from(top.querySelectorAll(':scope > [data-cc-module]'));
+      modules.forEach((el) => el.classList.remove('cc-top-span-2'));
+      const visible = modules.filter((el) => !el.classList.contains('hidden'));
+      if (visible.length === 1) visible[0].classList.add('cc-top-span-2');
+    }
+
+    const cityBand = document.querySelector('#view-ent-dashboard [data-cc-city-band]');
+    const cityCombo = document.getElementById('cc-module-your-city');
+    if (cityBand && cityCombo) {
+      const panes = Array.from(cityCombo.querySelectorAll(':scope > [data-cc-city-combo-grid] > [data-cc-module], :scope > .cc-city-combo-grid > [data-cc-module]'));
+      const visiblePanes = panes.filter((el) => !el.classList.contains('hidden'));
+      cityCombo.classList.toggle('hidden', visiblePanes.length === 0);
+      cityBand.classList.toggle('hidden', visiblePanes.length === 0);
+      panes.forEach((pane) => {
+        pane.classList.toggle('cc-city-pane-last', false);
+      });
+      if (visiblePanes.length) visiblePanes[visiblePanes.length - 1].classList.add('cc-city-pane-last');
+    }
+
+    const quadWrap = document.querySelector('#view-ent-dashboard [data-cc-quad-wrap]');
+    const calendar = document.querySelector('#view-ent-dashboard [data-cc-module="calendar"]');
+    if (quadWrap && calendar) {
+      quadWrap.classList.toggle('cc-quad-full', calendar.classList.contains('hidden'));
+    }
+
+    const grid = document.querySelector('#view-ent-dashboard .cc-quad-grid');
+    if (!grid) return;
+    const cards = Array.from(grid.querySelectorAll(':scope > [data-cc-module]'));
+    cards.forEach((el) => el.classList.remove('cc-quad-span-2'));
+    const visible = cards.filter((el) => !el.classList.contains('hidden'));
+    if (visible.length % 2 === 1) {
+      visible[visible.length - 1].classList.add('cc-quad-span-2');
     }
   },
 
@@ -21741,7 +22880,7 @@ const DIMAD_STUDIO = {
   catalog: [
     { id: 'inspo', label: 'Daily Inspo', group: 'core' },
     { id: 'creator-ai', label: 'Creator AI Chat', group: 'core' },
-    { id: 'notepad', label: 'DIMAD Notepad', group: 'core' },
+    { id: 'notepad', label: 'dimPad', group: 'core' },
     { id: 'journal', label: 'Daily Journal', group: 'core' },
     { id: 'scheduler', label: 'Content Scheduler', group: 'core' },
     { id: 'pipeline', label: 'Creator Pipeline', group: 'core' }
@@ -21978,12 +23117,14 @@ window.onload = async function() {
     const nextQuery = bootParams.toString();
     history.replaceState({}, '', window.location.pathname + (nextQuery ? '?' + nextQuery : '') + window.location.hash);
   }
+  if (typeof DIMAD_THEME !== 'undefined') DIMAD_THEME.init();
   loadAiChats();
   if (typeof DIMAD_WELCOME !== 'undefined' && DIMAD_WELCOME.active) DIMAD_WELCOME.setStatus('Loading workspace views…');
   await loadViews();
   if (typeof DIMAD_WELCOME !== 'undefined' && DIMAD_WELCOME.active) DIMAD_WELCOME.setStatus('Preparing clocks, goals, and modules…');
   if (typeof WORLD_CLOCKS !== 'undefined') WORLD_CLOCKS.render();
   if (typeof DIMAD_GEO !== 'undefined') DIMAD_GEO.init();
+  if (typeof CC_YOUR_CITY !== 'undefined') CC_YOUR_CITY.init();
   if (typeof DIMAD_AI_USAGE !== 'undefined') DIMAD_AI_USAGE.paint();
   updateClocks();
   setInterval(updateClocks, 1000);

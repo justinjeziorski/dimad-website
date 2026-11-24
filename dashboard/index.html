@@ -6,6 +6,12 @@
   <title>DIMADOS</title>
   <script>
     (function () {
+      try {
+        var theme = localStorage.getItem('dimad_theme');
+        document.documentElement.setAttribute('data-theme', theme === 'light' ? 'light' : 'dark');
+      } catch (e) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
       var params = new URLSearchParams(window.location.search);
       var savedMail = false;
       try { savedMail = JSON.parse(localStorage.getItem('dimad_aurinko') || 'null') && JSON.parse(localStorage.getItem('dimad_aurinko')).connected; } catch (e) { savedMail = false; }
@@ -20,6 +26,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0;400;0;600;0;700;1;400&family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/theme.css?v=light-ink-1">
 
   <script>
     tailwind.config = {
@@ -32,14 +39,14 @@
           },
           colors: {
             brand: {
-              black: '#060911',
-              panel: '#0c1220',
-              nested: '#080c16',
-              border: '#141c2b',
-              accent: '#38bdf8',
-              mint: '#34d399',
-              gold: '#f5b942',
-              alert: '#fb7185'
+              black: 'rgb(var(--brand-ink-rgb) / <alpha-value>)',
+              panel: 'rgb(var(--bg-card-rgb) / <alpha-value>)',
+              nested: 'rgb(var(--bg-nested-rgb) / <alpha-value>)',
+              border: 'rgb(var(--border-subtle-rgb) / <alpha-value>)',
+              accent: 'rgb(var(--accent-sky-rgb) / <alpha-value>)',
+              mint: 'rgb(var(--accent-mint-rgb) / <alpha-value>)',
+              gold: 'rgb(var(--accent-gold-rgb) / <alpha-value>)',
+              alert: 'rgb(var(--status-alert-rgb) / <alpha-value>)'
             }
           }
         }
@@ -76,15 +83,15 @@
          0  2px 0 #000;
     }
 
-    html, body { width: 100%; height: 100%; margin: 0; padding: 0; background-color: #060911; overflow: hidden; }
+    html, body { width: 100%; height: 100%; margin: 0; padding: 0; background-color: var(--bg-canvas); overflow: hidden; }
 
     .dimad-app-root {
       font-family: Inter, ui-sans-serif, system-ui, sans-serif;
       background:
-        radial-gradient(ellipse 90% 55% at 50% -8%, rgba(56, 189, 248, 0.07), transparent 55%),
-        radial-gradient(ellipse 70% 40% at 80% 0%, rgba(245, 185, 66, 0.05), transparent 50%),
-        #060911;
-      color: #f1f5f9;
+        radial-gradient(ellipse 90% 55% at 50% -8%, var(--canvas-glow-sky), transparent 55%),
+        radial-gradient(ellipse 70% 40% at 80% 0%, var(--canvas-glow-gold), transparent 50%),
+        var(--bg-canvas);
+      color: var(--text-primary);
       width: 100vw;
       height: 100vh;
       position: absolute;
@@ -98,9 +105,9 @@
     }
 
     .dimad-app-root ::-webkit-scrollbar { width: 4px; height: 4px; }
-    .dimad-app-root ::-webkit-scrollbar-track { background: #060911; }
-    .dimad-app-root ::-webkit-scrollbar-thumb { background: #1a2233; border-radius: 2px; }
-    .dimad-app-root ::-webkit-scrollbar-thumb:hover { background: #38bdf8; }
+    .dimad-app-root ::-webkit-scrollbar-track { background: var(--scrollbar-track); }
+    .dimad-app-root ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 2px; }
+    .dimad-app-root ::-webkit-scrollbar-thumb:hover { background: var(--accent-sky); }
 
     .tabular-nums, .font-mono.tabular-live {
       font-variant-numeric: tabular-nums;
@@ -111,46 +118,89 @@
       font-size: 10px;
       letter-spacing: 0.08em;
       text-transform: uppercase;
-      color: #64748b;
+      font-weight: 700;
+      color: var(--text-muted);
+    }
+    /* Workspace page titles — gold, uppercase, consistent across themes */
+    .page-title {
+      font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+      font-size: 0.875rem;
+      line-height: 1.25;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--accent-gold) !important;
+      margin: 0;
+    }
+    .page-subtitle {
+      font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+      font-size: 11px;
+      line-height: 1.45;
+      font-weight: 500;
+      text-transform: none;
+      letter-spacing: normal;
+      color: var(--text-secondary);
+      margin: 0.2rem 0 0;
     }
     .surface-card {
-      background: rgba(12, 18, 32, 0.85);
+      background: var(--card-surface);
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
-      border: 1px solid rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border-hairline);
+    }
+    :root[data-theme="light"] .surface-card {
+      background: #ffffff;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      box-shadow: var(--shadow-elevated);
+    }
+    :root[data-theme="light"] .bg-brand-panel,
+    :root[data-theme="light"] .tab-view {
+      background-color: var(--bg-nav) !important;
+    }
+    :root[data-theme="light"] .glass-bar {
+      background: var(--bg-canvas);
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
     }
     .surface-nested {
-      background: #080c16;
-      border: 1px solid rgba(255, 255, 255, 0.04);
+      background: var(--bg-nested);
+      border: 1px solid var(--border-hairline);
     }
-    .border-hairline { border-color: rgba(255, 255, 255, 0.06) !important; }
-    .border-gold-soft { border-color: rgba(245, 185, 66, 0.35) !important; }
+    .border-hairline { border-color: var(--border-hairline) !important; }
+    .border-gold-soft { border-color: var(--accent-gold-border) !important; }
     .glass-bar {
-      background: rgba(12, 18, 32, 0.78);
+      background: var(--nav-surface);
       backdrop-filter: blur(14px);
       -webkit-backdrop-filter: blur(14px);
     }
     .sub-nav-btn.is-active {
-      background: rgba(245, 185, 66, 0.1);
-      color: #f1f5f9 !important;
-      border-left: 2px solid #f5b942;
+      background: var(--accent-gold-soft);
+      color: var(--text-primary) !important;
+      border-left: 2px solid var(--accent-gold);
       padding-left: 6px;
       font-weight: 600;
     }
     .nav-quick-ai {
-      box-shadow: 0 0 0 1px rgba(245, 185, 66, 0.28), 0 0 18px rgba(56, 189, 248, 0.12);
+      box-shadow: 0 0 0 1px var(--accent-gold-border), 0 0 20px color-mix(in srgb, var(--accent-gold) 22%, transparent);
     }
     .status-dot-pulse {
-      box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.55);
+      box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent-sky) 55%, transparent);
       animation: status-dot-pulse 1.8s ease-out infinite;
     }
     @keyframes status-dot-pulse {
-      0% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.5); }
-      70% { box-shadow: 0 0 0 6px rgba(56, 189, 248, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0); }
+      0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent-sky) 50%, transparent); }
+      70% { box-shadow: 0 0 0 6px transparent; }
+      100% { box-shadow: 0 0 0 0 transparent; }
     }
     .milestone-progress-fill {
-      background: linear-gradient(90deg, rgba(245, 185, 66, 0.35), rgba(245, 185, 66, 0.75));
+      background: linear-gradient(90deg, color-mix(in srgb, var(--accent-gold) 35%, transparent), color-mix(in srgb, var(--accent-gold) 75%, transparent));
+    }
+
+    .theme-choice-btn[aria-pressed="true"] {
+      border-color: var(--accent-gold-border) !important;
+      background: var(--accent-gold-soft) !important;
+      box-shadow: inset 0 0 0 1px var(--accent-gold-border);
     }
 
     @keyframes mkt-ticker-scroll {
@@ -418,18 +468,16 @@
 
     .cc-rail-card { width: fit-content; max-width: 100%; }
     .cc-rail-card.cc-rail-open { width: 100%; }
-    .cal-dual-condensed, #cs-cal-dual.cal-dual-condensed {
+    .cal-dual-rail, #cs-cal-dual.cal-dual-rail {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      grid-template-columns: minmax(0, 1fr) minmax(11.5rem, 13.5rem);
       gap: 0.75rem;
       align-items: start;
     }
-    /* Command Center Multiview: stack hourly + mini calendar vertically */
-    #cal-dual.cal-dual-condensed {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr);
-      gap: 0.75rem;
-      align-items: start;
+    @media (max-width: 1023px) {
+      .cal-dual-rail, #cs-cal-dual.cal-dual-rail {
+        grid-template-columns: minmax(0, 1fr);
+      }
     }
     /* Schedule pane fills remaining calendar height (no dead space) */
     .cc-schedule-pane {
@@ -451,7 +499,7 @@
       display: flex;
       flex-direction: column;
     }
-    /* Equal-size Command Center quad modules — stretch with calendar column */
+    /* Equal-size Dashboard quad modules — stretch with calendar column */
     .cc-quad-grid {
       grid-auto-rows: 1fr;
       align-content: stretch;
@@ -463,6 +511,52 @@
       display: flex;
       flex-direction: column;
     }
+    /* Your City: one full-width combo module with Emergency | Logistics | Weather panes */
+    [data-cc-city-band] {
+      width: 100%;
+    }
+    [data-cc-city-band] .cc-city-combo {
+      height: 226px;
+      max-height: 226px;
+      min-height: 226px;
+      box-sizing: border-box;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    [data-cc-city-band] .cc-city-combo-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      min-height: 0;
+      flex: 1 1 auto;
+      height: 100%;
+    }
+    [data-cc-city-band] .cc-city-pane {
+      min-width: 0;
+      min-height: 0;
+      flex: 1 1 0;
+    }
+    @media (min-width: 1024px) {
+      [data-cc-city-band] .cc-city-combo-grid {
+        flex-direction: row;
+        align-items: stretch;
+        gap: 0;
+      }
+      [data-cc-city-band] .cc-city-pane {
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+        border-right: 1px solid var(--border-hairline, rgba(148, 163, 184, 0.18));
+      }
+      [data-cc-city-band] .cc-city-pane:first-child {
+        padding-left: 0;
+      }
+      [data-cc-city-band] .cc-city-pane.cc-city-pane-last,
+      [data-cc-city-band] .cc-city-pane:last-child {
+        border-right: 0;
+        padding-right: 0;
+      }
+    }
     .cc-quad-card > [data-cc-body],
     .cc-quad-card > .cc-quad-body {
       flex: 1 1 auto;
@@ -473,6 +567,25 @@
       flex: 1 1 auto;
       min-height: 226px;
       height: 100% !important;
+    }
+    .cc-quad-card .cc-quad-textarea {
+      flex: 1 1 auto;
+      min-height: 5rem;
+      height: auto;
+    }
+    /* Last visible quad cell / lone top module span full row (fills dead space) */
+    .cc-quad-grid > [data-cc-module].cc-quad-span-2 {
+      grid-column: 1 / -1;
+    }
+    @media (min-width: 768px) {
+      [data-cc-top-grid] > [data-cc-module].cc-top-span-2 {
+        grid-column: 1 / -1;
+      }
+    }
+    @media (min-width: 1024px) {
+      [data-cc-quad-wrap].cc-quad-full {
+        grid-column: span 12 / span 12;
+      }
     }
     /* Floating Dimad AI footer dock + expandable window */
     .cc-dimad-ai-dock {
@@ -493,12 +606,28 @@
       max-width: calc(100vw - 32px);
       height: min(560px, calc(100vh - 32px));
       max-height: calc(100vh - 32px);
-      background: rgba(110, 170, 220, 0.18);
+      background: rgba(70, 120, 165, 0.72);
       border: 1px solid rgba(186, 230, 253, 0.42);
       backdrop-filter: blur(18px);
       -webkit-backdrop-filter: blur(18px);
       box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
       color: #e8f4ff;
+    }
+    .cc-dimad-ai-msg-ai {
+      background: rgba(8, 28, 48, 0.82);
+      border: 1px solid rgba(224, 242, 254, 0.22);
+      color: #e8f4ff;
+    }
+    :root[data-theme="light"] .cc-dimad-ai-float {
+      background: rgba(232, 236, 242, 0.94);
+      border-color: rgba(148, 163, 184, 0.45);
+      box-shadow: 0 18px 40px rgba(17, 22, 34, 0.14);
+      color: #000000;
+    }
+    :root[data-theme="light"] .cc-dimad-ai-msg-ai {
+      background: rgba(255, 255, 255, 0.96);
+      border-color: rgba(148, 163, 184, 0.4);
+      color: #000000;
     }
     .cc-dimad-ai-float-drag {
       cursor: grab;
@@ -508,6 +637,56 @@
     .cc-dimad-ai-float-drag.is-dragging {
       cursor: grabbing;
     }
+    /* Floating dimPad — gold square post-it */
+    .cc-dimpad {
+      width: min(360px, calc(100vw - 32px));
+      height: min(360px, calc(100vh - 32px));
+      min-width: 220px;
+      min-height: 200px;
+      max-width: calc(100vw - 16px);
+      max-height: calc(100vh - 16px);
+      background: linear-gradient(160deg, #ffe9a8 0%, #f5c84a 42%, #e0a820 100%);
+      border: 1px solid rgba(160, 110, 12, 0.55);
+      box-shadow:
+        0 22px 48px rgba(0, 0, 0, 0.38),
+        inset 0 1px 0 rgba(255, 255, 255, 0.45),
+        inset 0 -10px 24px rgba(160, 100, 0, 0.12);
+      color: #1a1408;
+      border-radius: 6px;
+    }
+    .cc-dimpad-drag {
+      cursor: grab;
+      user-select: none;
+      touch-action: none;
+      background: rgba(160, 100, 0, 0.14);
+      border-bottom: 1px solid rgba(120, 80, 0, 0.22);
+    }
+    .cc-dimpad-drag.is-dragging { cursor: grabbing; }
+    .cc-dimpad-resize {
+      position: absolute;
+      right: 2px;
+      bottom: 2px;
+      width: 18px;
+      height: 18px;
+      cursor: nwse-resize;
+      touch-action: none;
+      z-index: 5;
+      border: 0;
+      padding: 0;
+      background:
+        linear-gradient(135deg, transparent 0 46%, rgba(26, 20, 8, 0.35) 46% 54%, transparent 54%) 10px 4px / 8px 8px no-repeat,
+        linear-gradient(135deg, transparent 0 46%, rgba(26, 20, 8, 0.55) 46% 54%, transparent 54%) 6px 8px / 8px 8px no-repeat;
+      opacity: 0.85;
+    }
+    .cc-dimpad-resize:hover,
+    .cc-dimpad-resize.is-resizing { opacity: 1; }
+    .cc-dimpad textarea {
+      background: rgba(255, 248, 220, 0.55);
+      border: 1px solid rgba(120, 80, 0, 0.2);
+      color: #1a1408;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+    }
+    .cc-dimpad textarea::placeholder { color: rgba(26, 20, 8, 0.45); }
     .cc-dimad-ai-logo {
       position: fixed;
       right: 18px;
@@ -532,6 +711,32 @@
       transform: scale(1.05);
       background: rgba(147, 197, 253, 0.38);
     }
+    :root[data-theme="light"] .cc-dimad-ai-dock,
+    :root[data-theme="light"] .cc-dimad-ai-float {
+      color: #000000;
+    }
+    :root[data-theme="light"] .cc-dimad-ai-dock .text-sky-50,
+    :root[data-theme="light"] .cc-dimad-ai-dock .text-sky-100,
+    :root[data-theme="light"] .cc-dimad-ai-dock .text-sky-200,
+    :root[data-theme="light"] .cc-dimad-ai-dock .hover\:text-sky-200:hover,
+    :root[data-theme="light"] .cc-dimad-ai-dock i,
+    :root[data-theme="light"] .cc-dimad-ai-float .text-sky-50,
+    :root[data-theme="light"] .cc-dimad-ai-float .text-sky-100,
+    :root[data-theme="light"] .cc-dimad-ai-float .text-sky-200,
+    :root[data-theme="light"] .cc-dimad-ai-float i {
+      color: #000000 !important;
+    }
+    :root[data-theme="light"] #cc-dimad-ai-input,
+    :root[data-theme="light"] #cc-dimad-ai-float-input {
+      color: #000000 !important;
+    }
+    :root[data-theme="light"] #cc-dimad-ai-input::placeholder,
+    :root[data-theme="light"] #cc-dimad-ai-float-input::placeholder,
+    :root[data-theme="light"] #cc-dimad-ai-input.placeholder-sky-100\/50::placeholder,
+    :root[data-theme="light"] #cc-dimad-ai-float-input.placeholder-sky-100\/50::placeholder {
+      color: #000000 !important;
+      opacity: 1;
+    }
     .cc-dimad-ai-logo img {
       width: 28px;
       height: 28px;
@@ -553,7 +758,7 @@
       <div class="welcome-card">
         <p class="welcome-kicker">Welcome</p>
         <h2 id="welcome-greeting">Have a good day.</h2>
-        <p class="welcome-copy" id="welcome-subcopy">Clock in and review today’s targets before you enter Command Center.</p>
+        <p class="welcome-copy" id="welcome-subcopy">Clock in and review today’s targets before you enter Dashboard.</p>
         <div class="welcome-quote">
           <span class="label">Quote of the day</span>
           <p id="welcome-quote"></p>
@@ -634,7 +839,7 @@
   </header>
 
   <!-- FINANCIAL & CURRENCY TICKER STRIP -->
-  <div data-cc-module="ticker" class="h-8 bg-brand-nested/90 border-b border-hairline flex items-center gap-3 px-3 text-[9px] font-mono whitespace-nowrap">
+  <div data-cc-module="ticker" class="h-8 border-b border-hairline flex items-center gap-3 px-3 text-[9px] font-mono whitespace-nowrap" style="background:color-mix(in srgb, var(--bg-nav) 90%, transparent)">
     <button type="button" onclick="openStocksFromTicker()" title="Open Financial Markets" class="shrink-0 text-slate-500 hover:text-brand-gold font-bold tracking-wider uppercase flex items-center gap-1.5 transition">
       <i class="fa-solid fa-chart-simple text-brand-gold"></i> Markets
     </button>
@@ -651,7 +856,7 @@
   <div class="flex-1 flex overflow-hidden w-full">
 
     <!-- NAVIGATION PANEL (COLLAPSIBLE SIDEBAR) -->
-    <nav id="main-sidebar" class="w-[230px] border-r border-hairline bg-brand-nested flex flex-col justify-between py-3 select-none flex-shrink-0 text-[10px] overflow-y-auto transition-all duration-300">
+    <nav id="main-sidebar" class="w-[185px] border-r border-hairline flex flex-col justify-between py-3 select-none flex-shrink-0 text-[10px] overflow-y-auto transition-all duration-300" style="background:var(--bg-nav)">
 
       <div class="flex flex-col space-y-3 w-full px-2">
 
@@ -665,6 +870,16 @@
 
         <!-- GLOBAL SHARED HUBS -->
         <div class="space-y-1">
+          <button onclick="switchTab('ent-dashboard')" title="Dashboard" class="nav-item-btn w-full bg-transparent hover:bg-white/5 border border-hairline text-slate-200 py-2 px-2.5 rounded-lg font-medium flex items-center gap-2 transition-all">
+            <i class="fa-solid fa-table-columns text-brand-gold text-xs"></i>
+            <span class="nav-text-label">Dashboard</span>
+          </button>
+
+          <button onclick="openYourCityDash()" title="Your City" class="nav-item-btn w-full bg-transparent hover:bg-white/5 border border-hairline text-slate-200 py-2 px-2.5 rounded-lg font-medium flex items-center gap-2 transition-all">
+            <i class="fa-solid fa-city text-brand-gold text-xs"></i>
+            <span class="nav-text-label">Your City</span>
+          </button>
+
           <button onclick="switchTab('ent-email')" title="Inbox" class="nav-item-btn w-full bg-transparent hover:bg-white/5 border border-hairline text-slate-200 py-2 px-2.5 rounded-lg font-medium flex items-center gap-2 transition-all">
             <i class="fa-solid fa-inbox text-brand-gold text-xs"></i>
             <span class="nav-text-label">Inbox</span>
@@ -675,14 +890,14 @@
             <span class="nav-text-label">Dimad Calendar</span>
           </button>
 
-          <button onclick="switchTab('dimad-notepad')" title="DIMAD Notepad" class="nav-item-btn w-full bg-transparent hover:bg-white/5 border border-hairline text-slate-200 py-2 px-2.5 rounded-lg font-medium flex items-center gap-2 transition-all">
-            <i class="fa-solid fa-note-sticky text-brand-gold text-xs"></i>
-            <span class="nav-text-label">Dimad Notepad</span>
-          </button>
-
           <button onclick="switchTab('dimad-dimdrive')" title="dimDrive" class="nav-item-btn w-full bg-transparent hover:bg-white/5 border border-hairline text-slate-200 py-2 px-2.5 rounded-lg font-medium flex items-center gap-2 transition-all">
             <span class="text-sm leading-none">☁️</span>
             <span class="nav-text-label">dimDrive</span>
+          </button>
+
+          <button onclick="switchTab('dimad-notepad')" title="dimPad" class="nav-item-btn w-full bg-transparent hover:bg-white/5 border border-hairline text-slate-200 py-2 px-2.5 rounded-lg font-medium flex items-center gap-2 transition-all">
+            <i class="fa-solid fa-note-sticky text-brand-gold text-xs"></i>
+            <span class="nav-text-label">dimPad</span>
           </button>
 
           <button onclick="openDimadAiNav()" title="DIMAD AI" class="nav-item-btn nav-quick-ai w-full bg-gradient-to-r from-brand-gold/15 to-brand-accent/15 hover:from-brand-gold/25 hover:to-brand-accent/25 border border-gold-soft text-slate-100 py-2 px-2.5 rounded-lg font-semibold flex items-center gap-2 transition-all group">
@@ -736,7 +951,6 @@
             <span class="flex items-center gap-2 min-w-0">
               <i class="fa-solid fa-users text-xs text-brand-gold"></i>
               <span class="nav-text-label">DIMAD CLUB</span>
-              <span class="nav-text-label text-[7px] bg-brand-gold/10 text-brand-gold border border-gold-soft px-1 py-0.5 rounded uppercase tracking-wide">Premium</span>
             </span>
             <i data-identity-chevron="community" class="fa-solid fa-chevron-right text-[9px] text-slate-500 nav-text-label"></i>
           </button>
@@ -771,6 +985,9 @@
   </button>
   <input id="cc-dimad-ai-input" type="text" placeholder="Ask Dimad AI…" class="flex-1 min-w-0 bg-sky-950/20 border border-sky-200/25 rounded-lg px-2.5 py-1.5 text-[11px] text-sky-50 placeholder-sky-100/50 focus:outline-none focus:border-sky-200/55">
   <button type="submit" class="shrink-0 bg-sky-300/90 hover:bg-sky-200 text-slate-950 font-bold text-[10px] px-3 py-1.5 rounded-lg transition">Send</button>
+  <button type="button" onclick="ccDimPadOpen()" title="Open dimPad" class="shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-lg border border-amber-400/45 bg-amber-500/20 text-amber-200 hover:bg-amber-400/30 hover:text-amber-50 transition" aria-label="Open dimPad">
+    <i class="fa-solid fa-note-sticky text-[12px]"></i>
+  </button>
   <button type="button" onclick="ccDimadAiCollapseDock()" title="Minimize to logo" class="shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-lg border border-sky-200/30 bg-sky-950/25 text-sky-100 hover:bg-sky-300/20 transition" aria-label="Minimize Dimad AI">
     <i class="fa-solid fa-minus text-[10px]"></i>
   </button>
@@ -798,6 +1015,39 @@
     <input id="cc-dimad-ai-float-input" type="text" placeholder="Ask Dimad AI…" class="flex-1 min-w-0 bg-sky-950/25 border border-sky-200/25 rounded-lg px-2.5 py-1.5 text-[11px] text-sky-50 placeholder-sky-100/50 focus:outline-none focus:border-sky-200/55">
     <button type="submit" class="shrink-0 bg-sky-300/90 hover:bg-sky-200 text-slate-950 font-bold text-[10px] px-3 py-1.5 rounded-lg transition">Send</button>
   </form>
+</div>
+
+<!-- Floating dimPad (gold post-it) — same notepad store as Dashboard -->
+<div id="cc-dimpad" class="cc-dimpad hidden fixed z-[250] overflow-hidden flex flex-col" aria-hidden="true">
+  <div id="cc-dimpad-drag" class="cc-dimpad-drag flex items-center justify-between gap-2 px-3 py-2 shrink-0">
+    <button type="button" onclick="DIMAD_NOTEPAD.openTab()" class="inline-flex items-center gap-1.5 text-[11px] font-bold tracking-wide text-[#1a1408] hover:opacity-80 transition" title="Open dimPad">
+      <i class="fa-solid fa-note-sticky text-[11px]"></i>
+      dimPad
+    </button>
+    <span class="flex items-center gap-1.5">
+      <span class="relative">
+        <button type="button" onclick="DIMAD_NOTEPAD.toggleRecent(event, 'dp')" class="text-[9px] font-semibold text-[#1a1408]/90 hover:text-[#1a1408] border border-[#1a1408]/25 bg-[#1a1408]/5 px-2 py-0.5 rounded-full transition">Recent</button>
+        <div id="dp-notepad-recent" class="hidden absolute right-0 top-full mt-1 z-30 w-48 max-h-56 overflow-y-auto rounded-lg bg-[#fff8dc] border border-[#c9a227]/50 shadow-xl py-0.5"></div>
+      </span>
+      <button type="button" onclick="DIMAD_NOTEPAD.createFromDash('dp')" class="text-[9px] font-semibold text-[#1a1408] border border-[#1a1408]/30 bg-[#1a1408]/10 px-2 py-0.5 rounded-full transition hover:bg-[#1a1408]/15">+ New</button>
+      <button type="button" onclick="ccDimPadMinimize()" title="Minimize" class="w-7 h-7 rounded-lg border border-[#1a1408]/25 bg-[#1a1408]/8 text-[#1a1408] hover:bg-[#1a1408]/15 flex items-center justify-center transition" aria-label="Minimize dimPad">
+        <i class="fa-solid fa-minus text-[10px]"></i>
+      </button>
+    </span>
+  </div>
+  <div class="flex-1 min-h-0 flex flex-col gap-2 p-3 pb-5">
+    <div class="shrink-0">
+      <button type="button" id="dp-notepad-title" ondblclick="DIMAD_NOTEPAD.beginTitleEdit(event, 'dp')" title="Double-click to rename" class="w-full text-left text-[12px] font-bold text-[#1a1408] truncate px-0.5 hover:opacity-80 cursor-text">Untitled</button>
+      <input id="dp-notepad-title-input" type="text" class="hidden w-full rounded-md px-2 py-1 text-[12px] font-bold text-[#1a1408] outline-none border border-[#1a1408]/25 bg-[rgba(255,248,220,0.85)]" onkeydown="DIMAD_NOTEPAD.titleKey(event)" onblur="DIMAD_NOTEPAD.commitTitleEdit()" onclick="event.stopPropagation()">
+      <p id="dp-notepad-stamp" class="text-[8px] text-[#1a1408]/55 px-0.5 mt-0.5">Edited —</p>
+    </div>
+    <textarea id="dp-notepad-body" rows="8" placeholder="Save your thoughts here..." oninput="DIMAD_NOTEPAD.markDirty('dp')" class="w-full flex-1 min-h-0 rounded-md p-2.5 text-[12px] leading-relaxed outline-none resize-none font-sans"></textarea>
+    <div class="flex items-center justify-between gap-2 shrink-0">
+      <p id="dp-notepad-status" class="text-[9px] text-[#1a1408]/70">Autosaves to dimPad.</p>
+      <button type="button" id="dp-notepad-save" onclick="DIMAD_NOTEPAD.saveDash('dp')" class="text-[9px] font-semibold text-[#1a1408] border border-[#1a1408]/30 bg-[#1a1408]/8 px-2 py-0.5 rounded-full transition hover:bg-[#1a1408]/15">Save</button>
+    </div>
+  </div>
+  <button type="button" id="cc-dimpad-resize" class="cc-dimpad-resize" title="Drag to resize" aria-label="Resize dimPad"></button>
 </div>
 
 <div id="dimad-ai-panel" class="hidden fixed inset-0 z-[200] min-h-screen bg-slate-950 text-slate-100 flex-col md:flex-row">
@@ -979,17 +1229,17 @@
 </div>
 
 <!-- SETTINGS & VAULT SUB-NAVIGATION PANEL (HIDDEN BY DEFAULT) -->
-<div id="settings-vault-panel" class="hidden fixed inset-0 z-[500] min-h-screen bg-slate-950 text-slate-100 flex-col md:flex-row">
+<div id="settings-vault-panel" class="hidden fixed inset-0 z-[500] min-h-screen flex-col md:flex-row" style="background:var(--bg-canvas);color:var(--text-primary)">
 
   <!-- LEFT SUB-NAV SIDEBAR -->
-  <aside class="w-full md:w-64 bg-slate-900 border-r border-slate-800 p-5 space-y-6 flex-shrink-0">
+  <aside class="w-full md:w-64 p-5 space-y-6 flex-shrink-0" style="background:var(--bg-nav);border-right:1px solid var(--border-subtle)">
 
-    <button type="button" onclick="closeSettingsVaultNav()" class="w-full flex items-center justify-center space-x-2 bg-slate-950 hover:bg-slate-800 border border-slate-700/60 text-slate-300 text-xs font-semibold py-2.5 px-4 rounded-xl transition shadow-sm group">
+    <button type="button" onclick="closeSettingsVaultNav()" class="w-full flex items-center justify-center space-x-2 text-xs font-semibold py-2.5 px-4 rounded-xl transition shadow-sm group" style="background:var(--bg-canvas);border:1px solid var(--border-subtle);color:var(--text-secondary)">
       <span class="group-hover:-translate-x-1 transition-transform">←</span>
       <span>Back to Dashboard</span>
     </button>
 
-    <div class="h-px bg-slate-800/80"></div>
+    <div class="h-px" style="background:var(--border-subtle)"></div>
 
     <nav class="space-y-1.5 text-xs font-medium">
       <button type="button" onclick="switchVaultTab('profile')" class="vault-tab-btn w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 transition" data-tab="profile">
@@ -1017,6 +1267,10 @@
 
       <button type="button" onclick="switchVaultTab('integrations')" class="vault-tab-btn w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 transition" data-tab="integrations">
         <span>🔌</span> <span>Integrations</span>
+      </button>
+
+      <button type="button" onclick="switchVaultTab('appearance')" class="vault-tab-btn w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 transition" data-tab="appearance">
+        <span>🎨</span> <span>Appearance</span>
       </button>
 
       <button type="button" onclick="switchVaultTab('settings')" class="vault-tab-btn w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 transition" data-tab="settings">
@@ -1237,8 +1491,59 @@
       ></iframe>
     </div>
 
+    <div id="vault-tab-appearance" class="vault-tab-content hidden space-y-6 max-w-xl">
+      <div>
+        <h2 class="text-xl font-bold" style="color:var(--text-primary)">Appearance</h2>
+        <p class="text-xs mt-1" style="color:var(--text-secondary)">Choose Dark (default charcoal-slate) or Light (warm editorial). Your preference is saved on this device.</p>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" role="radiogroup" aria-label="Color theme">
+        <button type="button" id="theme-choice-dark" class="theme-choice-btn text-left rounded-2xl p-4 transition border" style="background:var(--bg-card);border-color:var(--border-subtle)" onclick="DIMAD_THEME.set('dark')" aria-pressed="true">
+          <div class="flex items-center justify-between gap-2 mb-3">
+            <span class="text-sm font-bold" style="color:var(--text-primary)">Dark</span>
+            <span class="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full" style="background:var(--accent-gold-soft);color:var(--accent-gold);border:1px solid var(--accent-gold-border)">Default</span>
+          </div>
+          <div class="h-16 rounded-xl overflow-hidden border" style="border-color:#141c2b;background:#060911">
+            <div class="h-3" style="background:#080c16;border-bottom:1px solid #141c2b"></div>
+            <div class="p-2 flex gap-1.5">
+              <div class="w-8 h-10 rounded" style="background:#080c16;border:1px solid #141c2b"></div>
+              <div class="flex-1 space-y-1">
+                <div class="h-2.5 rounded" style="background:#0c1220;border:1px solid #141c2b"></div>
+                <div class="h-2.5 w-2/3 rounded" style="background:#0c1220;border:1px solid #141c2b"></div>
+                <div class="h-1.5 w-1/3 rounded" style="background:#f5b942"></div>
+              </div>
+            </div>
+          </div>
+          <p class="text-[11px] mt-3 leading-relaxed" style="color:var(--text-muted)">Charcoal-slate canvas with warm gold accents.</p>
+        </button>
+
+        <button type="button" id="theme-choice-light" class="theme-choice-btn text-left rounded-2xl p-4 transition border" style="background:var(--bg-card);border-color:var(--border-subtle)" onclick="DIMAD_THEME.set('light')" aria-pressed="false">
+          <div class="flex items-center justify-between gap-2 mb-3">
+            <span class="text-sm font-bold" style="color:var(--text-primary)">Light</span>
+            <span class="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full" style="background:rgba(184,125,20,0.12);color:#9E690E;border:1px solid rgba(184,125,20,0.35)">Editorial</span>
+          </div>
+          <div class="h-16 rounded-xl overflow-hidden border" style="border-color:#E2E6EE;background:#E8ECF2">
+            <div class="h-3" style="background:#E8ECF2;border-bottom:1px solid #E2E6EE"></div>
+            <div class="p-2 flex gap-1.5">
+              <div class="w-8 h-10 rounded" style="background:#E8ECF2;border:1px solid #E2E6EE"></div>
+              <div class="flex-1 space-y-1">
+                <div class="h-2.5 rounded" style="background:#FFFFFF;border:1px solid #E2E6EE"></div>
+                <div class="h-2.5 w-2/3 rounded" style="background:#FFFFFF;border:1px solid #E2E6EE"></div>
+                <div class="h-1.5 w-1/3 rounded" style="background:#B87D14"></div>
+              </div>
+            </div>
+          </div>
+          <p class="text-[11px] mt-3 leading-relaxed" style="color:var(--text-muted)">Warm alabaster surfaces with antique gold.</p>
+        </button>
+      </div>
+    </div>
+
     <div id="vault-tab-settings" class="vault-tab-content hidden">
       <h2 class="text-xl font-bold text-white">Workspace Settings</h2>
+      <p class="text-xs text-slate-400 mt-1">Theme controls live under Appearance.</p>
+      <button type="button" onclick="switchVaultTab('appearance')" class="mt-4 text-xs font-semibold px-3 py-2 rounded-xl border border-gold-soft text-brand-gold hover:bg-brand-gold/10 transition">
+        Open Appearance
+      </button>
     </div>
 
   </main>
@@ -1370,8 +1675,8 @@
 </div>
 
 <div id="notepad-ctx" onclick="event.stopPropagation()" class="hidden fixed z-[340] min-w-[160px] bg-slate-950 border border-slate-700 rounded-xl overflow-hidden shadow-2xl font-mono text-[11px]">
-  <button type="button" onclick="DIMAD_NOTEPAD.ctxAction('rename')" class="w-full text-left px-3 py-2 text-slate-200 hover:bg-slate-900">Rename</button>
-  <button type="button" onclick="DIMAD_NOTEPAD.ctxAction('delete')" class="w-full text-left px-3 py-2 text-rose-400 hover:bg-slate-900">Delete</button>
+  <button type="button" onclick="DIMAD_NOTEPAD.ctxAction('rename')" class="w-full text-left px-2.5 py-1.5 text-[11px] text-slate-200 hover:bg-slate-900">Rename</button>
+  <button type="button" onclick="DIMAD_NOTEPAD.ctxAction('delete')" class="w-full text-left px-2.5 py-1.5 text-[11px] text-rose-400 hover:bg-slate-900">Delete</button>
 </div>
 
 <div id="dimad-cal-ctx" onclick="event.stopPropagation()" class="hidden fixed z-[340] min-w-[160px] bg-slate-950 border border-slate-700 rounded-xl overflow-hidden shadow-2xl font-mono text-[11px]">
@@ -1397,7 +1702,7 @@
       <h3 class="text-sm font-bold text-brand-gold">Calendar settings</h3>
       <button type="button" onclick="CAL_SETTINGS.close()" class="text-slate-400 hover:text-white">✕</button>
     </div>
-    <p class="text-[11px] text-slate-400 leading-relaxed">Customize how Command Center and DIMAD Calendar display weeks and days.</p>
+    <p class="text-[11px] text-slate-400 leading-relaxed">Customize how Dashboard and DIMAD Calendar display weeks and days.</p>
     <div class="space-y-2">
       <div class="text-[10px] font-semibold text-slate-300">Week starts on</div>
       <label class="flex items-center gap-2 text-[12px] text-slate-200 cursor-pointer">
@@ -1448,6 +1753,6 @@
 <script type="module" src="../auth/dimdrive.js?v=dimdrive-cloud"></script>
 <script type="module" src="../auth/aurinko-status.js?v=aurinko-disconnect"></script>
 <script type="module" src="../auth/email.js?v=mail-nav-case"></script>
-<script src="../script.js?v=rev-notepad-placeholder-1"></script>
+<script src="../script.js?v=rev-city-swap-1"></script>
 </body>
 </html>
