@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { SNAPSHOT_CSS, SNAPSHOT_RANGES, type SnapshotRange } from "@/lib/snapshots/theme";
 import type { SnapshotMetric, SourceContribution } from "@/lib/snapshots/aggregate";
+import { applyDocumentTheme, resolveThemeFromLocation } from "@/lib/theme/bootstrap";
 
 type Props = {
   kicker: string;
@@ -36,6 +37,13 @@ export default function SnapshotChrome({
   const isEmpty = !loading && connected.length === 0;
 
   useEffect(() => {
+    // Ensure embed picks up parent/shell theme immediately (iframe localStorage can lag).
+    // Query ?theme= wins over storage so parent toggles don't get stuck on light.
+    try {
+      applyDocumentTheme(resolveThemeFromLocation());
+    } catch {
+      /* ignore */
+    }
     const onDoc = (event: MouseEvent) => {
       if (!wrapRef.current?.contains(event.target as Node)) {
         setOpenConnected(false);
