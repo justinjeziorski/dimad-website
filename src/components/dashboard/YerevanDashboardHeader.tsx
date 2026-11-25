@@ -34,8 +34,13 @@ import {
   type TempUnit
 } from "@/lib/city/weather";
 import type { CityClockRow, CityQuote } from "@/hooks/useCityDashboardState";
+import { getLocalGreeting } from "@/lib/city/localGreeting";
 import CityHeaderBackdrop from "@/components/dashboard/CityHeaderBackdrop";
 import LiveClock from "@/components/dashboard/LiveClock";
+import WorldClockDisc from "@/components/dashboard/WorldClockDisc";
+import WorldCitiesPicker from "@/components/dashboard/WorldCitiesPicker";
+import LocalCityPicker from "@/components/dashboard/LocalCityPicker";
+import CityHeaderSettings from "@/components/dashboard/CityHeaderSettings";
 
 type UtilityTab = "overview" | "logistics" | "emergency" | "weather";
 
@@ -43,15 +48,24 @@ export type YerevanDashboardHeaderProps = {
   tempUnit: TempUnit;
   onTempUnitChange: (unit: TempUnit) => void;
   coords: CityCoords;
+  /** Current-location clock (separate from world clock picker). */
+  localClock: CityClockRow;
   weather: CityWeatherSnapshot | null;
   quote: CityQuote;
+  /** Up to 3 additional world clocks (excludes local). */
   clocks: CityClockRow[];
   onOpenCities?: () => void;
-  onOpenSettings?: () => void;
+  onCitiesChange?: () => void;
   onOpenCityGuide?: () => void;
-  /** Resolved backdrop URL (blob: / http / local). Empty = gradient only until ready. */
+  needsManualCity?: boolean;
+  manualCityOpen?: boolean;
+  onManualCityOpenChange?: (open: boolean) => void;
+  onPinCity?: (query: string) => Promise<boolean> | boolean;
+  locationServicesEnabled?: boolean;
+  onLocationServicesChange?: (on: boolean) => void | Promise<void>;
+  permissionState?: PermissionState | "unsupported" | "unknown";
+  onRefreshLocation?: () => void | Promise<void>;
   backdropSrc?: string;
-  /** next/font className for Playfair Display */
   fontClassName?: string;
 };
 
@@ -78,18 +92,31 @@ export default function YerevanDashboardHeader({
   tempUnit,
   onTempUnitChange,
   coords,
+  localClock,
   weather,
   quote,
   clocks,
   onOpenCities,
-  onOpenSettings,
+  onCitiesChange,
   onOpenCityGuide,
+  needsManualCity = false,
+  manualCityOpen = false,
+  onManualCityOpenChange,
+  onPinCity,
+  locationServicesEnabled = true,
+  onLocationServicesChange,
+  permissionState = "unknown",
+  onRefreshLocation,
   backdropSrc = "",
   fontClassName = ""
 }: YerevanDashboardHeaderProps) {
   const [activeTab, setActiveTab] = useState<UtilityTab>("overview");
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [citiesOpen, setCitiesOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const greetingAnchorRef = useRef<HTMLDivElement>(null);
+  const settingsBtnRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -109,10 +136,12 @@ export default function YerevanDashboardHeader({
   ];
 
   const currentOption = menuOptions.find((m) => m.id === activeTab)!;
-  const primaryClock = clocks[0] || { id: "yerevan", city: "Yerevan", tz: "Asia/Yerevan", utcLabel: "UTC+4" };
-  const secondaryClocks = clocks.slice(1);
-  const cityName = coords.city || "Yerevan";
-  const greetingCity = cityName.split(",")[0]?.trim() || "Yerevan";
+  const primaryClock = localClock;
+  const worldClocks = clocks;
+  const countryLabel = String(coords.country || "").trim();
+  const greeting = getLocalGreeting(coords.city, coords.country);
+  const cityName = greeting.city || coords.city || "Your City";
+  const placeBadge = countryLabel ? `${cityName}, ${countryLabel}` : cityName;
 
   const playfairStyle = fontClassName
     ? undefined
@@ -122,7 +151,7 @@ export default function YerevanDashboardHeader({
   const shellStyle: React.CSSProperties = {
     position: "relative",
     width: "100%",
-    minHeight: 290,
+    minHeight: 300,
     borderRadius: 16,
     overflow: "hidden",
     border: "1px solid rgba(30, 41, 59, 0.9)",
@@ -136,17 +165,21 @@ export default function YerevanDashboardHeader({
     flexDirection: "row",
     flexWrap: "nowrap",
     alignItems: "stretch",
-    gap: 24,
-    minHeight: 290,
-    padding: "24px 32px",
+    gap: 28,
+    minHeight: 300,
+    padding: "22px 28px",
     boxSizing: "border-box",
     width: "100%"
   };
   const colStyle: React.CSSProperties = {
-    flex: "1 1 0",
     minWidth: 0,
     display: "flex",
     flexDirection: "column"
+  };
+  /** Matches controls row so quote/weather share the same vertical band. */
+  const toolbarSpacerStyle: React.CSSProperties = {
+    height: 44,
+    flexShrink: 0
   };
 
   return (
@@ -177,7 +210,14 @@ export default function YerevanDashboardHeader({
         />
 
         <div style={gridStyle}>
-          <div style={{ ...colStyle, justifyContent: "space-between" }}>
+          <div
+            style={{
+              ...colStyle,
+              flex: activeTab === "overview" ? "1.05 1 0" : "1.2 1 0",
+              justifyContent: "space-between",
+              gap: 14
+            }}
+          >
             <button
               type="button"
               onClick={onOpenCityGuide}
@@ -189,61 +229,140 @@ export default function YerevanDashboardHeader({
                 <span className="h-1 bg-[#F2A800]" />
               </span>
               <span className="text-xs font-semibold tracking-wider uppercase text-slate-200">
-                {cityName}, Armenia
+                {placeBadge}
               </span>
             </button>
 
-            <div className="my-auto pt-3">
+            <div
+              ref={greetingAnchorRef}
+              style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 8 }}
+            >
               <h1
                 style={playfairStyle}
                 className="text-5xl xl:text-[3.65rem] font-bold leading-[1.03] tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-[#fde68a] via-[#f59e0b] to-[#d97706] drop-shadow-[0_4px_24px_rgba(0,0,0,0.65)]"
               >
-                <span className="italic font-semibold block">Barev,</span>
-                <span className="block">{greetingCity}</span>
+                <span className="italic font-semibold block">{greeting.word},</span>
+                <span className="block">{cityName}</span>
               </h1>
-            </div>
-
-            <div className="flex items-center gap-3 text-[11px] font-mono text-slate-400 pt-2">
-              <span>
-                {Number.isFinite(coords.lat) ? coords.lat.toFixed(4) : "40.1872"}° N,{" "}
-                {Number.isFinite(coords.lon) ? coords.lon.toFixed(4) : "44.5152"}° E
-              </span>
-              <span className="text-slate-600">•</span>
-              <span className="text-emerald-400 flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Local Systems Nominal
-              </span>
+              {needsManualCity ? (
+                <button
+                  type="button"
+                  onClick={() => onManualCityOpenChange?.(true)}
+                  style={{
+                    alignSelf: "flex-start",
+                    background: "transparent",
+                    border: "none",
+                    padding: 0,
+                    margin: 0,
+                    cursor: "pointer",
+                    textAlign: "left",
+                    fontSize: 11,
+                    lineHeight: 1.4,
+                    color: "#94a3b8",
+                    maxWidth: 280
+                  }}
+                >
+                  Please enable location services or{" "}
+                  <span style={{ color: "#fbbf24", textDecoration: "underline" }}>select your city manually</span>.
+                </button>
+              ) : null}
+              <LocalCityPicker
+                open={manualCityOpen}
+                onOpenChange={(v) => onManualCityOpenChange?.(v)}
+                onPick={async (q) => Boolean(await onPinCity?.(q))}
+                anchorRef={greetingAnchorRef}
+              />
             </div>
           </div>
 
-          <div style={{ ...colStyle, justifyContent: "center" }}>
-            <a
-              href="/dashboard/quotes"
-              target="_top"
-              className="relative rounded-xl bg-slate-950/55 backdrop-blur-md border border-white/10 p-5 shadow-inner block hover:border-amber-400/30 transition"
-            >
-              <span
-                style={playfairStyle}
-                className="absolute -top-4 left-4 text-5xl text-amber-400/80 leading-none select-none"
-              >
-                “
-              </span>
-              <blockquote
-                style={playfairStyle}
-                className="text-lg xl:text-[1.22rem] italic leading-relaxed text-slate-100 pt-1"
-              >
-                “{quote.quote}”
-              </blockquote>
-              <div className="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between gap-2">
-                <span className="text-xs font-semibold text-amber-400 tracking-wide">— {quote.author}</span>
-                <span className="text-[11px] font-mono text-slate-400 truncate">{quote.context}</span>
+          {activeTab === "overview" ? (
+            <div style={{ ...colStyle, flex: "1.15 1 0", justifyContent: "space-between", gap: 12 }}>
+              <div style={toolbarSpacerStyle} aria-hidden="true" />
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", minWidth: 0 }}>
+                <a
+                  href="/dashboard/quotes"
+                  target="_top"
+                  className="relative rounded-xl bg-slate-950/55 backdrop-blur-md border border-white/10 p-5 shadow-inner block hover:border-amber-400/30 transition"
+                  style={{ maxWidth: "100%", minWidth: 0 }}
+                >
+                  <span
+                    style={playfairStyle}
+                    className="absolute -top-4 left-4 text-5xl text-amber-400/80 leading-none select-none"
+                  >
+                    “
+                  </span>
+                  <blockquote
+                    style={{
+                      ...playfairStyle,
+                      fontSize: "clamp(0.95rem, 1.05vw + 0.55rem, 1.22rem)",
+                      fontStyle: "italic",
+                      lineHeight: 1.45,
+                      color: "#f1f5f9",
+                      paddingTop: 4,
+                      margin: 0,
+                      overflowWrap: "anywhere",
+                      wordBreak: "normal",
+                      whiteSpace: "normal"
+                    }}
+                  >
+                    “{quote.quote}”
+                  </blockquote>
+                  <div
+                    style={{
+                      marginTop: 12,
+                      paddingTop: 10,
+                      borderTop: "1px solid rgba(255,255,255,0.1)",
+                      display: "grid",
+                      gridTemplateColumns: quote.context ? "minmax(0, 0.9fr) minmax(0, 1.1fr)" : "1fr",
+                      gap: 10,
+                      alignItems: "start",
+                      minWidth: 0
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: "#fbbf24",
+                        letterSpacing: "0.02em",
+                        whiteSpace: "normal",
+                        overflowWrap: "anywhere",
+                        lineHeight: 1.35
+                      }}
+                    >
+                      — {quote.author}
+                    </span>
+                    {quote.context ? (
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+                          color: "#94a3b8",
+                          lineHeight: 1.35,
+                          whiteSpace: "normal",
+                          overflowWrap: "anywhere",
+                          textAlign: "right"
+                        }}
+                      >
+                        {quote.context}
+                      </span>
+                    ) : null}
+                  </div>
+                </a>
               </div>
-            </a>
-          </div>
+            </div>
+          ) : null}
 
-          <div style={{ ...colStyle, justifyContent: "space-between", gap: 12 }}>
-            <div className="flex items-center justify-end gap-2 flex-wrap">
-              <div ref={dropdownRef} className="relative flex-1 sm:flex-initial sm:min-w-[210px]">
+          <div
+            style={{
+              ...colStyle,
+              flex: activeTab === "overview" ? "1.35 1 0" : "1.6 1 0",
+              justifyContent: "space-between",
+              gap: 12
+            }}
+          >
+            <div className="flex items-center justify-end gap-2 flex-wrap" style={{ minHeight: 44 }}>
+              <div ref={dropdownRef} className="relative" style={{ minWidth: 168, flex: "1 1 auto", maxWidth: 220 }}>
                 <button
                   type="button"
                   onClick={() => setDropdownOpen((prev) => !prev)}
@@ -282,11 +401,6 @@ export default function YerevanDashboardHeader({
                             {item.icon}
                             {item.label}
                           </span>
-                          {isSelected && (
-                            <span className="text-[10px] uppercase tracking-wider text-amber-400/90 font-mono">
-                              Active
-                            </span>
-                          )}
                         </button>
                       );
                     })}
@@ -294,144 +408,159 @@ export default function YerevanDashboardHeader({
                 )}
               </div>
 
-              <div className="flex items-center rounded-xl bg-[#0e131f]/90 backdrop-blur-md border border-slate-700/70 p-1 text-xs font-semibold">
-                <button
-                  type="button"
-                  onClick={() => onTempUnitChange("C")}
-                  className={`px-2 py-1 rounded-lg transition-colors ${
-                    tempUnit === "C" ? "bg-amber-400 text-slate-950" : "text-slate-400 hover:text-slate-200"
-                  }`}
-                >
-                  °C
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onTempUnitChange("F")}
-                  className={`px-2 py-1 rounded-lg transition-colors ${
-                    tempUnit === "F" ? "bg-amber-400 text-slate-950" : "text-slate-400 hover:text-slate-200"
-                  }`}
-                >
-                  °F
-                </button>
-              </div>
-
               <button
+                ref={settingsBtnRef}
                 type="button"
-                title="Widget Settings"
-                onClick={onOpenSettings}
-                className="p-2.5 rounded-xl bg-[#0e131f]/90 hover:bg-[#141b2b] backdrop-blur-md border border-slate-700/70 text-slate-400 hover:text-slate-200 transition-colors"
+                title="Location & temperature settings"
+                onClick={() => setSettingsOpen(true)}
+                className={`p-2.5 rounded-xl backdrop-blur-md border transition-colors ${
+                  settingsOpen
+                    ? "bg-amber-400/15 border-amber-400/50 text-amber-300"
+                    : "bg-[#0e131f]/90 hover:bg-[#141b2b] border-slate-700/70 text-slate-400 hover:text-slate-200"
+                }`}
               >
                 <Settings className="w-4 h-4" />
               </button>
+              <CityHeaderSettings
+                open={settingsOpen}
+                onClose={() => setSettingsOpen(false)}
+                anchorRef={settingsBtnRef}
+                city={cityName}
+                country={countryLabel}
+                tzLabel={primaryClock.utcLabel}
+                tempUnit={tempUnit}
+                onTempUnitChange={onTempUnitChange}
+                locationServicesEnabled={locationServicesEnabled}
+                onLocationServicesChange={async (on) => {
+                  await onLocationServicesChange?.(on);
+                }}
+                onRefreshLocation={async () => {
+                  await onRefreshLocation?.();
+                }}
+                onPinCity={async (q) => Boolean(await onPinCity?.(q))}
+                permissionState={permissionState}
+              />
             </div>
 
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 10 }}>
               {activeTab === "overview" && (
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "5fr 7fr",
-                    gap: 10,
-                    width: "100%"
-                  }}
-                >
+                <>
                   <div
-                    className="rounded-xl backdrop-blur-md"
                     style={{
-                      background: "rgba(13,18,29,0.85)",
-                      border: "1px solid rgba(255,255,255,0.1)",
-                      padding: 14,
-                      display: "flex",
-                      flexDirection: "column",
-                      justifyContent: "space-between",
-                      minHeight: 88
+                      display: "grid",
+                      gridTemplateColumns: "minmax(0, 5fr) minmax(0, 7fr)",
+                      gap: 10,
+                      width: "100%"
                     }}
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="text-2xl font-bold text-white tracking-tight">
-                        {displayTemp(weather?.temp, tempUnit)}
-                      </span>
-                      {weatherIcon(weather?.code ?? 2)}
+                    <div
+                      className="rounded-xl backdrop-blur-md"
+                      style={{
+                        background: "rgba(13,18,29,0.85)",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                        padding: 14,
+                        display: "flex",
+                        flexDirection: "column",
+                        justifyContent: "space-between",
+                        minHeight: 92
+                      }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-2xl font-bold text-white tracking-tight">
+                          {displayTemp(weather?.temp, tempUnit)}
+                        </span>
+                        {weatherIcon(weather?.code ?? 2)}
+                      </div>
+                      <div className="mt-2">
+                        <p className="text-xs font-medium text-slate-200">{weather?.label || "Loading…"}</p>
+                        <p className="text-[11px] text-slate-400">
+                          Feels {displayTemp(weather?.feels, tempUnit)} • H {displayTemp(weather?.hi, tempUnit)}
+                        </p>
+                      </div>
                     </div>
-                    <div className="mt-2">
-                      <p className="text-xs font-medium text-slate-200">{weather?.label || "Loading…"}</p>
-                      <p className="text-[11px] text-slate-400">
-                        Feels {displayTemp(weather?.feels, tempUnit)} • H {displayTemp(weather?.hi, tempUnit)}
-                      </p>
+
+                    <div
+                      className="rounded-xl backdrop-blur-md"
+                      style={{
+                        background: "rgba(13,18,29,0.85)",
+                        border: "1px solid rgba(251,191,36,0.3)",
+                        padding: 14,
+                        display: "flex",
+                        flexDirection: "column",
+                        justifyContent: "space-between",
+                        minHeight: 92
+                      }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold tracking-wider uppercase text-slate-300">
+                          {primaryClock.city.toUpperCase()}
+                        </span>
+                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-400/15 text-amber-300 border border-amber-400/30">
+                          {primaryClock.utcLabel || "UTC"}
+                        </span>
+                      </div>
+                      <div className="my-1">
+                        <LiveClock
+                          tz={primaryClock.tz}
+                          mode="time"
+                          className="text-2xl font-mono font-bold text-amber-400 tracking-tight"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between text-[11px] text-slate-400">
+                        <LiveClock tz={primaryClock.tz} mode="date" />
+                        <span className="flex items-center gap-1 text-slate-300">
+                          <Clock className="w-3 h-3 text-amber-400" /> Live
+                        </span>
+                      </div>
                     </div>
                   </div>
 
                   <div
-                    className="rounded-xl backdrop-blur-md"
                     style={{
-                      background: "rgba(13,18,29,0.85)",
-                      border: "1px solid rgba(251,191,36,0.3)",
-                      padding: 14,
-                      display: "flex",
-                      flexDirection: "column",
-                      justifyContent: "space-between",
-                      minHeight: 88
-                    }}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-bold tracking-wider uppercase text-slate-300">
-                        {primaryClock.city.toUpperCase()}
-                      </span>
-                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-400/15 text-amber-300 border border-amber-400/30">
-                        {primaryClock.utcLabel || "UTC"}
-                      </span>
-                    </div>
-                    <div className="my-1">
-                      <LiveClock
-                        tz={primaryClock.tz}
-                        mode="time"
-                        className="text-2xl font-mono font-bold text-amber-400 tracking-tight"
-                      />
-                    </div>
-                    <div className="flex items-center justify-between text-[11px] text-slate-400">
-                      <LiveClock tz={primaryClock.tz} mode="date" />
-                      <span className="flex items-center gap-1 text-slate-300">
-                        <Clock className="w-3 h-3 text-amber-400" /> Live
-                      </span>
-                    </div>
-                  </div>
-
-                  <div
-                    className="rounded-xl backdrop-blur-md"
-                    style={{
-                      gridColumn: "1 / -1",
-                      background: "rgba(13,18,29,0.8)",
-                      border: "1px solid rgba(255,255,255,0.1)",
-                      padding: "8px 14px",
                       display: "flex",
                       alignItems: "center",
-                      justifyContent: "space-between",
                       gap: 8,
-                      fontSize: 12
+                      flexWrap: "wrap",
+                      minWidth: 0
                     }}
                   >
-                    {secondaryClocks.map((c) => (
-                      <div key={c.id} className="flex items-center gap-2 min-w-0">
-                        <span className="text-[10px] font-semibold tracking-wider text-slate-400 truncate">
-                          {c.city.toUpperCase()}
-                        </span>
-                        <LiveClock
-                          tz={c.tz}
-                          mode="time-short"
-                          className="font-mono font-semibold text-slate-100"
-                        />
-                        <span className="text-[10px] text-slate-500">{c.utcLabel}</span>
-                      </div>
+                    {worldClocks.map((c) => (
+                      <WorldClockDisc
+                        key={c.id}
+                        city={c.city}
+                        tz={c.tz}
+                        utcLabel={c.utcLabel}
+                        size={42}
+                        variant="inline"
+                      />
                     ))}
-                    <button
-                      type="button"
-                      onClick={onOpenCities}
-                      className="text-[11px] text-amber-400 hover:text-amber-300 flex items-center gap-0.5 font-medium shrink-0 ml-auto"
+                    <WorldCitiesPicker
+                      open={citiesOpen}
+                      onOpenChange={setCitiesOpen}
+                      onSelectionChange={onCitiesChange}
                     >
-                      <Plus className="w-3 h-3" /> Cities
-                    </button>
+                      <span
+                        aria-hidden="true"
+                        style={{
+                          width: 42,
+                          height: 42,
+                          borderRadius: "999px",
+                          border: "1.5px dashed rgba(251,191,36,0.55)",
+                          background: citiesOpen
+                            ? "rgba(251,191,36,0.12)"
+                            : "rgba(13,18,29,0.75)",
+                          color: "#fbbf24",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          cursor: "pointer"
+                        }}
+                      >
+                        <Plus className="w-4 h-4" />
+                      </span>
+                    </WorldCitiesPicker>
                   </div>
-                </div>
+                </>
               )}
 
               {activeTab === "logistics" && (
@@ -519,7 +648,9 @@ export default function YerevanDashboardHeader({
                       className="flex items-center justify-between px-3 py-2 rounded-xl bg-[#0d121d]/85 backdrop-blur-md border border-white/10 hover:border-amber-400/40 transition"
                     >
                       <div>
-                        <p className="text-xs font-semibold text-slate-100">Embassies</p>
+                        <p className="text-xs font-semibold text-slate-100 leading-snug pr-1">
+                          Embassies and Consulates
+                        </p>
                         <p className="text-[11px] text-slate-400">EmbassyPages</p>
                       </div>
                       <Landmark className="w-4 h-4 text-amber-400" />

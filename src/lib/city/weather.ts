@@ -1,5 +1,7 @@
 /** Shared weather helpers aligned with `CC_YOUR_CITY` in script.js. */
 
+import { WORLD_CLOCK_CITIES } from "@/lib/city/worldClockCities";
+
 export const CITY_TEMP_UNIT_KEY = "dimad_city_temp_unit";
 export const CITY_WEATHER_LOC_KEY = "dimad_weather_last_loc";
 export const CITY_WEATHER_CACHE_KEY = "dimad_weather_cache_v3";
@@ -13,6 +15,8 @@ export type CityCoords = {
   lat: number;
   lon: number;
   city: string;
+  country?: string;
+  tz_id?: string;
 };
 
 export type WeatherHourlySlot = {
@@ -65,20 +69,10 @@ export const DEFAULT_CITY: CityCoords = {
   city: "Yerevan"
 };
 
-export const DEFAULT_WORLD_CLOCK_IDS = ["yerevan", "london", "new-york"] as const;
+/** Additional world clocks only (local/current-city clock is separate). */
+export const DEFAULT_WORLD_CLOCK_IDS = ["london", "new-york"] as const;
 
-export const WORLD_CLOCK_CATALOG: { id: string; city: string; tz: string }[] = [
-  { id: "yerevan", city: "Yerevan", tz: "Asia/Yerevan" },
-  { id: "london", city: "London", tz: "Europe/London" },
-  { id: "new-york", city: "New York", tz: "America/New_York" },
-  { id: "los-angeles", city: "Los Angeles", tz: "America/Los_Angeles" },
-  { id: "dubai", city: "Dubai", tz: "Asia/Dubai" },
-  { id: "tokyo", city: "Tokyo", tz: "Asia/Tokyo" },
-  { id: "singapore", city: "Singapore", tz: "Asia/Singapore" },
-  { id: "paris", city: "Paris", tz: "Europe/Paris" },
-  { id: "berlin", city: "Berlin", tz: "Europe/Berlin" },
-  { id: "tbilisi", city: "Tbilisi", tz: "Asia/Tbilisi" }
-];
+export const WORLD_CLOCK_CATALOG: { id: string; city: string; tz: string }[] = WORLD_CLOCK_CITIES;
 
 export function roundCoord(value: number): number {
   if (!Number.isFinite(value)) return 0;
@@ -244,6 +238,129 @@ export async function fetchOpenMeteo(lat: number, lon: number, unit: TempUnit, f
   return payload;
 }
 
+export type WeatherApiLocation = {
+  name: string;
+  region?: string;
+  country: string;
+  lat: number;
+  lon: number;
+  tz_id: string;
+};
+
+export type WeatherApiResponse = {
+  location?: WeatherApiLocation;
+  current?: {
+    temp_c?: number;
+    temp_f?: number;
+    feelslike_c?: number;
+    feelslike_f?: number;
+    humidity?: number;
+    wind_kph?: number;
+    wind_mph?: number;
+    condition?: { code?: number; text?: string };
+  };
+  forecast?: {
+    forecastday?: Array<{
+      day?: {
+        maxtemp_c?: number;
+        mintemp_c?: number;
+        maxtemp_f?: number;
+        mintemp_f?: number;
+      };
+      astro?: { sunrise?: string; sunset?: string };
+      hour?: Array<{
+        time?: string;
+        temp_c?: number;
+        temp_f?: number;
+        condition?: { code?: number; text?: string };
+      }>;
+    }>;
+  };
+  cached?: boolean;
+  source?: string;
+};
+
+/** Map WeatherAPI (or open-meteo-shaped) payload → CityWeatherSnapshot. */
+export function snapshotFromWeatherApi(
+  payload: WeatherApiResponse,
+  unit: TempUnit
+): CityWeatherSnapshot | null {
+  const cur = payload.current;
+  if (!cur) return null;
+  const day = payload.forecast?.forecastday?.[0]?.day;
+  const astro = payload.forecast?.forecastday?.[0]?.astro;
+  const temp = unit === "F" ? Number(cur.temp_f ?? cur.temp_c) : Number(cur.temp_c ?? cur.temp_f);
+  const feels =
+    unit === "F"
+      ? Number(cur.feelslike_f ?? cur.feelslike_c ?? temp)
+      : Number(cur.feelslike_c ?? cur.feelslike_f ?? temp);
+  if (!Number.isFinite(temp)) return null;
+  const hi =
+    unit === "F"
+      ? Number(day?.maxtemp_f ?? day?.maxtemp_c ?? temp)
+      : Number(day?.maxtemp_c ?? day?.maxtemp_f ?? temp);
+  const lo =
+    unit === "F"
+      ? Number(day?.mintemp_f ?? day?.mintemp_c ?? temp)
+      : Number(day?.mintemp_c ?? day?.mintemp_f ?? temp);
+  const wind = unit === "F" ? Number(cur.wind_mph ?? 0) : Number(cur.wind_kph ?? 0);
+  const code = Number(cur.condition?.code ?? 0);
+  const label = String(cur.condition?.text || "").trim() || weatherLabel(code);
+  const hours = payload.forecast?.forecastday?.[0]?.hour || [];
+  const nowMs = Date.now();
+  const hourly: WeatherHourlySlot[] = [];
+  for (let i = 0; i < hours.length && hourly.length < 6; i += 1) {
+    const h = hours[i];
+    const t = h.time ? new Date(h.time.replace(" ", "T")).getTime() : NaN;
+    if (!Number.isFinite(t) || t < nowMs - 45 * 60 * 1000) continue;
+    const ht = unit === "F" ? Number(h.temp_f ?? h.temp_c) : Number(h.temp_c ?? h.temp_f);
+    hourly.push({
+      label: new Date(t).toLocaleTimeString([], { hour: "numeric" }),
+      temp: ht,
+      code: Number(h.condition?.code ?? 0)
+    });
+  }
+  return {
+    temp,
+    feels,
+    hi,
+    lo,
+    humidity: cur.humidity != null ? Number(cur.humidity) : null,
+    wind,
+    code,
+    label,
+    sunrise: astro?.sunrise || null,
+    sunset: astro?.sunset || null,
+    hourly
+  };
+}
+
+/** Client fetch → `/api/weather` (WeatherAPI location + forecast, cached server-side). */
+export async function fetchWeatherByCoords(
+  lat: number,
+  lon: number,
+  unit: TempUnit = "C"
+): Promise<WeatherApiResponse> {
+  const url =
+    `/api/weather?lat=${encodeURIComponent(String(roundCoord(lat)))}` +
+    `&lon=${encodeURIComponent(String(roundCoord(lon)))}` +
+    `&days=1&unit=${unit === "F" ? "F" : "C"}`;
+  const res = await fetch(url, { credentials: "same-origin", cache: "no-store" });
+  if (!res.ok) throw new Error("weather_proxy_" + res.status);
+  const json = (await res.json()) as WeatherApiResponse;
+  if (!json?.location) throw new Error("weather_no_location");
+  return json;
+}
+
+export async function fetchWeatherByQuery(q: string): Promise<WeatherApiResponse> {
+  const url = `/api/weather?q=${encodeURIComponent(q.trim())}&days=1`;
+  const res = await fetch(url, { credentials: "same-origin", cache: "no-store" });
+  if (!res.ok) throw new Error("weather_proxy_" + res.status);
+  const json = (await res.json()) as WeatherApiResponse;
+  if (!json?.location) throw new Error("weather_no_location");
+  return json;
+}
+
 export function offsetLabel(tz: string, now = new Date()): string {
   try {
     const part = new Intl.DateTimeFormat("en-US", { timeZone: tz, timeZoneName: "shortOffset" })
@@ -259,15 +376,48 @@ export function readSelectedClockIds(): string[] {
   try {
     const ids = JSON.parse(localStorage.getItem(WORLD_CLOCKS_STORAGE_KEY) || "");
     if (Array.isArray(ids) && ids.length) {
-      return ids
+      // Local/current-city clock is separate — drop legacy primary "yerevan".
+      const cleaned = ids
         .map(String)
-        .filter((id) => WORLD_CLOCK_CATALOG.some((c) => c.id === id) || id === "yerevan" || id === "london" || id === "new-york")
+        .filter((id) => id !== "yerevan")
+        .filter((id) => WORLD_CLOCK_CATALOG.some((c) => c.id === id))
         .slice(0, 3);
+      if (cleaned.length) return cleaned;
     }
   } catch {
     /* default */
   }
   return [...DEFAULT_WORLD_CLOCK_IDS];
+}
+
+export function writeSelectedClockIds(ids: string[]): string[] {
+  const next = ids
+    .map(String)
+    .filter((id) => WORLD_CLOCK_CATALOG.some((c) => c.id === id))
+    .slice(0, 3);
+  try {
+    localStorage.setItem(WORLD_CLOCKS_STORAGE_KEY, JSON.stringify(next));
+  } catch {
+    /* ignore */
+  }
+  try {
+    window.dispatchEvent(new CustomEvent("dimad:world-clocks"));
+  } catch {
+    /* ignore */
+  }
+  return next;
+}
+
+/** Toggle a city in the shared world-clock selection (max 3). */
+export function toggleSelectedClockId(id: string, on: boolean): string[] {
+  let ids = readSelectedClockIds();
+  if (on) {
+    if (ids.includes(id) || ids.length >= 3) return ids;
+    ids = [...ids, id];
+  } else {
+    ids = ids.filter((item) => item !== id);
+  }
+  return writeSelectedClockIds(ids);
 }
 
 export function resolveSelectedClocks(

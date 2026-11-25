@@ -90,7 +90,7 @@ async function loadViews() {
   const container = document.getElementById('view-container');
   try {
     const fragments = await Promise.all(VIEW_FILES.map(async (id) => {
-      const res = await fetch(new URL(`../views/${id}.html?v=yerevan-header-5`, window.location.href), { cache: 'no-store' });
+      const res = await fetch(new URL(`../views/${id}.html?v=yerevan-header-20`, window.location.href), { cache: 'no-store' });
       if (!res.ok) throw new Error(`Failed to load views/${id}.html (${res.status})`);
       return res.text();
     }));
@@ -109,7 +109,7 @@ async function loadViews() {
 }
 
 /** Native React City Header island (replaces slow iframe). */
-const YEREVAN_HEADER_BUNDLE = '/embeds/yerevan-header.js?v=5';
+const YEREVAN_HEADER_BUNDLE = '/embeds/yerevan-header.js?v=20';
 let _yerevanHeaderScriptPromise = null;
 
 function ensureYerevanHeaderBundle() {
@@ -1312,6 +1312,11 @@ const WORLD_CLOCKS = {
     this.notifyCityHeader();
   }
 };
+
+try {
+  window.WORLD_CLOCKS = WORLD_CLOCKS;
+  window.WORLD_CLOCK_CITIES = WORLD_CLOCK_CITIES;
+} catch (_) { /* ignore */ }
 
 function updateClocks() {
   if (typeof WORLD_CLOCKS !== 'undefined') WORLD_CLOCKS.tick();
@@ -22621,7 +22626,7 @@ window.CREATOR_AI = CREATOR_AI;
 
 const COMMAND_CENTER = {
   storageKey: 'dimad_cc_modules',
-  layoutVersion: 20,
+  layoutVersion: 21,
   retiredApiIds: ['stripe', 'shopify', 'lemon', 'gumroad', 'patreon', 'mailerlite', 'plaid', 'store', 'copilot', 'your-city', 'quote', 'clocks', 'emergency', 'logistics', 'weather'],
   catalog: [
     { id: 'ticker', label: 'Stock Ticker', group: 'core' },
