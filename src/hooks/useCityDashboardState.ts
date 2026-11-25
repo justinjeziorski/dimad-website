@@ -26,6 +26,42 @@ import {
   type LocalLocation
 } from "@/lib/city/localLocation";
 import { refineLocationDisplay } from "@/lib/city/locationHubs";
+import {
+  isCountryToolkitFallback,
+  resolveCountryToolkit
+} from "@/data/city-toolkit/resolveCountryToolkit";
+import {
+  resolveGeolocationState,
+  resolveManualCity,
+  type ResolvedLocationState
+} from "@/data/cities";
+
+function canonicalizeCountryName(country?: string | null): string {
+  const raw = String(country ?? "").trim();
+  if (!raw) return "";
+  const resolved = resolveCountryToolkit(raw);
+  return isCountryToolkitFallback(resolved) ? raw : resolved.country;
+}
+
+function resolvedToLocal(
+  resolved: ResolvedLocationState,
+  pinned: boolean
+): LocalLocation {
+  const country = canonicalizeCountryName(resolved.country) || resolved.country;
+  return writeLocalLocation({
+    city: resolved.programmedCity,
+    greetingPlaceName: resolved.greetingPlaceName,
+    country,
+    stateOrRegion: resolved.stateOrRegion,
+    tz_id: resolved.timezone,
+    lat: resolved.lat,
+    lon: resolved.lon,
+    curatedCityId: resolved.curatedCityId,
+    helloOverride: resolved.helloOverride,
+    source: resolved.source,
+    pinned
+  });
+}
 
 export type CityQuote = {
   quote: string;
@@ -90,12 +126,14 @@ function locToCoords(loc: LocalLocation): CityCoords {
 
 function applyWeatherApiLocation(
   loc: Awaited<ReturnType<typeof fetchWeatherByCoords>>["location"],
-  pinned = false
+  pinned = false,
+  countryOverride?: string | null
 ): LocalLocation | null {
   if (!loc) return null;
+  const countryRaw = String(countryOverride || loc.country || "").trim();
   const refined = refineLocationDisplay({
     city: String(loc.name || "Your City"),
-    country: String(loc.country || ""),
+    country: canonicalizeCountryName(countryRaw) || countryRaw,
     tz_id: String(loc.tz_id || "UTC"),
     lat: Number(loc.lat),
     lon: Number(loc.lon)
@@ -148,13 +186,33 @@ export function useCityDashboardState(options: UseCityDashboardStateOptions = {}
   const resolveFromCoords = useCallback(
     async (lat: number, lon: number, unit: TempUnit, pinned = false) => {
       const api = await fetchWeatherByCoords(lat, lon, unit);
-      const next = applyWeatherApiLocation(api.location, pinned);
-      if (next) {
-        applyLocal(next);
-        setNeedsManualCity(false);
+      const detected = api.location;
+      const resolved = resolveGeolocationState({
+        detectedCity: detected?.name,
+        detectedCountry: detected?.country,
+        detectedTimezone: detected?.tz_id,
+        lat,
+        lon
+      });
+      const next = resolvedToLocal(resolved, pinned);
+      applyLocal(next);
+      setNeedsManualCity(false);
+
+      const hubMoved =
+        Math.abs(resolved.lat - lat) > 0.02 || Math.abs(resolved.lon - lon) > 0.02;
+      if (hubMoved) {
+        try {
+          const hubApi = await fetchWeatherByCoords(resolved.lat, resolved.lon, unit);
+          const snap = snapshotFromWeatherApi(hubApi, unit);
+          if (snap) setWeather(snap);
+        } catch {
+          const snap = snapshotFromWeatherApi(api, unit);
+          if (snap) setWeather(snap);
+        }
+      } else {
+        const snap = snapshotFromWeatherApi(api, unit);
+        if (snap) setWeather(snap);
       }
-      const snap = snapshotFromWeatherApi(api, unit);
-      if (snap) setWeather(snap);
       return next;
     },
     [applyLocal]
@@ -220,13 +278,10 @@ export function useCityDashboardState(options: UseCityDashboardStateOptions = {}
   const loadWeatherFor = useCallback(
     async (loc: LocalLocation, unit: TempUnit, force = false) => {
       try {
+        // Weather always anchors to programmed hub lat/lon — do not overwrite greeting/hub from reverse-geocode.
         const api = await fetchWeatherByCoords(loc.lat, loc.lon, unit);
         const snap = snapshotFromWeatherApi(api, unit);
         if (snap) setWeather(snap);
-        if (api.location) {
-          const next = applyWeatherApiLocation(api.location, loc.pinned);
-          if (next) applyLocal(next);
-        }
       } catch {
         try {
           const payload = await fetchOpenMeteo(loc.lat, loc.lon, unit, force);
@@ -240,7 +295,7 @@ export function useCityDashboardState(options: UseCityDashboardStateOptions = {}
         setLoading(false);
       }
     },
-    [applyLocal]
+    []
   );
 
   const setTempUnit = useCallback(
@@ -257,22 +312,69 @@ export function useCityDashboardState(options: UseCityDashboardStateOptions = {}
     [loadWeatherFor, localLoc]
   );
 
+  const pinCuratedCity = useCallback(
+    async (cityId: string) => {
+      const id = String(cityId || "").trim();
+      if (!id) return false;
+      const resolved = resolveManualCity(id);
+      const next = resolvedToLocal(resolved, true);
+      applyLocal(next);
+      setNeedsManualCity(false);
+      setManualCityOpen(false);
+      await loadWeatherFor(next, tempUnit, true);
+      return true;
+    },
+    [applyLocal, loadWeatherFor, tempUnit]
+  );
+
+  /** @deprecated Prefer pinCuratedCity — kept for query/country fallback pins. */
   const pinCityByQuery = useCallback(
     async (query: string) => {
       const q = String(query || "").trim();
       if (!q) return false;
+
+      const toolkitHit = resolveCountryToolkit(q);
+      const knownToolkitCountry = !isCountryToolkitFallback(toolkitHit);
+      const geocodeQuery = knownToolkitCountry ? toolkitHit.country : q;
+
+      const forceToolkitCountry = () => {
+        if (!knownToolkitCountry) return false;
+        const current = readLocalLocation();
+        const forced = writeLocalLocation({
+          ...current,
+          country: toolkitHit.country,
+          greetingPlaceName: current.greetingPlaceName || current.city,
+          source: "manual",
+          pinned: true
+        });
+        applyLocal(forced);
+        setNeedsManualCity(false);
+        setManualCityOpen(false);
+        return true;
+      };
+
       try {
-        const api = await fetchWeatherByQuery(q);
-        const next = applyWeatherApiLocation(api.location, true);
-        if (!next) return false;
-        applyLocal(next);
+        const api = await fetchWeatherByQuery(geocodeQuery);
+        const next = applyWeatherApiLocation(
+          api.location,
+          true,
+          knownToolkitCountry ? toolkitHit.country : undefined
+        );
+        if (!next) return forceToolkitCountry();
+        const withGreeting = writeLocalLocation({
+          ...next,
+          greetingPlaceName: next.city,
+          source: "manual",
+          pinned: true
+        });
+        applyLocal(withGreeting);
         setNeedsManualCity(false);
         setManualCityOpen(false);
         const snap = snapshotFromWeatherApi(api, tempUnit);
         if (snap) setWeather(snap);
         return true;
       } catch {
-        return false;
+        return forceToolkitCountry();
       }
     },
     [applyLocal, tempUnit]
@@ -398,11 +500,27 @@ export function useCityDashboardState(options: UseCityDashboardStateOptions = {}
     utcLabel: offsetLabelForTz(localLoc.tz_id || "UTC")
   };
 
+  const greetingPlaceName = localLoc.greetingPlaceName || localLoc.city;
+  const locationState: ResolvedLocationState = {
+    greetingPlaceName,
+    programmedCity: localLoc.city,
+    stateOrRegion: localLoc.stateOrRegion || "",
+    country: localLoc.country,
+    timezone: localLoc.tz_id || "UTC",
+    lat: localLoc.lat,
+    lon: localLoc.lon,
+    curatedCityId: localLoc.curatedCityId ?? null,
+    helloOverride: localLoc.helloOverride ?? null,
+    source: localLoc.source || (localLoc.pinned ? "manual" : "geolocation")
+  };
+
   return {
     tempUnit,
     setTempUnit,
     coords,
     localLoc,
+    locationState,
+    greetingPlaceName,
     localClock,
     weather,
     quote,
@@ -412,6 +530,7 @@ export function useCityDashboardState(options: UseCityDashboardStateOptions = {}
     needsManualCity,
     manualCityOpen,
     setManualCityOpen,
+    pinCuratedCity,
     pinCityByQuery,
     openCitiesPicker,
     openCityGuide,

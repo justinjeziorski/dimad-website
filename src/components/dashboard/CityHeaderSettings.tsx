@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { MapPin, RefreshCw, X } from "lucide-react";
-import { WORLD_CLOCK_CITIES } from "@/lib/city/worldClockCities";
+import { CURATED_CITIES, type CuratedCityEntry } from "@/data/cities";
 import type { TempUnit } from "@/lib/city/weather";
 
 type CityHeaderSettingsProps = {
@@ -18,7 +18,8 @@ type CityHeaderSettingsProps = {
   locationServicesEnabled: boolean;
   onLocationServicesChange: (on: boolean) => void | Promise<void>;
   onRefreshLocation: () => void | Promise<void>;
-  onPinCity: (query: string) => Promise<boolean> | boolean;
+  /** Pins a curated programmed city (resolveManualCity). */
+  onPinCuratedCity: (cityId: string) => Promise<boolean> | boolean;
   permissionState?: PermissionState | "unsupported" | "unknown";
 };
 
@@ -33,7 +34,7 @@ export default function CityHeaderSettings({
   locationServicesEnabled,
   onLocationServicesChange,
   onRefreshLocation,
-  onPinCity,
+  onPinCuratedCity,
   permissionState = "unknown"
 }: CityHeaderSettingsProps) {
   const panelRef = useRef<HTMLDivElement>(null);
@@ -48,16 +49,27 @@ export default function CityHeaderSettings({
     setCityQuery("");
   }, [open]);
 
-  const filtered = useMemo(() => {
+  const filteredCities = useMemo(() => {
     const q = cityQuery.trim().toLowerCase();
-    if (!q) return WORLD_CLOCK_CITIES.slice(0, 50);
-    return WORLD_CLOCK_CITIES.filter(
-      (c) =>
-        c.city.toLowerCase().includes(q) ||
-        c.tz.toLowerCase().includes(q) ||
-        c.group.toLowerCase().includes(q)
-    ).slice(0, 60);
+    if (!q) return CURATED_CITIES;
+    return CURATED_CITIES.filter((entry) => {
+      const hay = [entry.city, entry.stateOrRegion, entry.country, ...entry.aliases]
+        .join(" ")
+        .toLowerCase();
+      return hay.includes(q);
+    });
   }, [cityQuery]);
+
+  const groupedCities = useMemo(() => {
+    const map = new Map<string, CuratedCityEntry[]>();
+    for (const entry of filteredCities) {
+      const key = entry.country || "Other";
+      const list = map.get(key) || [];
+      list.push(entry);
+      map.set(key, list);
+    }
+    return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
+  }, [filteredCities]);
 
   const placeLabel = country ? `${city}, ${country}` : city;
   const denied = permissionState === "denied";
@@ -256,7 +268,7 @@ export default function CityHeaderSettings({
           </p>
         </section>
 
-        {/* Manual city */}
+        {/* Manual City — curated programmed hubs; country toolkit inherits from entry.country */}
         <section style={{ position: "relative" }}>
           <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", color: "#94a3b8", marginBottom: 8 }}>
             MANUAL CITY
@@ -305,40 +317,69 @@ export default function CityHeaderSettings({
                   outline: "none"
                 }}
               />
-              <div style={{ maxHeight: 160, overflowY: "auto" }}>
-                {filtered.map((c) => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    disabled={pinBusy}
-                    onClick={async () => {
-                      setPinBusy(true);
-                      try {
-                        const ok = await onPinCity(c.city);
-                        if (ok) {
-                          setCityOpen(false);
-                          setCityQuery("");
-                        }
-                      } finally {
-                        setPinBusy(false);
-                      }
-                    }}
-                    style={{
-                      display: "block",
-                      width: "100%",
-                      textAlign: "left",
-                      border: "none",
-                      background: "transparent",
-                      padding: "8px 12px",
-                      fontSize: 12,
-                      color: "#e2e8f0",
-                      cursor: "pointer"
-                    }}
-                  >
-                    {c.city}
-                    <span style={{ color: "#64748b", marginLeft: 8, fontSize: 10 }}>{c.group}</span>
-                  </button>
-                ))}
+              <div style={{ maxHeight: 220, overflowY: "auto" }}>
+                {groupedCities.length === 0 ? (
+                  <div style={{ padding: "10px 12px", fontSize: 11, color: "#64748b" }}>
+                    No curated cities match.
+                  </div>
+                ) : (
+                  groupedCities.map(([countryName, cities]) => (
+                    <div key={countryName}>
+                      <div
+                        style={{
+                          padding: "8px 12px 4px",
+                          fontSize: 9,
+                          fontWeight: 700,
+                          letterSpacing: "0.08em",
+                          textTransform: "uppercase",
+                          color: "#94a3b8",
+                          position: "sticky",
+                          top: 0,
+                          background: "rgba(15,23,42,0.98)"
+                        }}
+                      >
+                        {countryName}
+                      </div>
+                      {cities.map((entry) => (
+                        <button
+                          key={entry.id}
+                          type="button"
+                          disabled={pinBusy}
+                          onClick={async () => {
+                            setPinBusy(true);
+                            try {
+                              const ok = await onPinCuratedCity(entry.id);
+                              if (ok) {
+                                setCityOpen(false);
+                                setCityQuery("");
+                              }
+                            } finally {
+                              setPinBusy(false);
+                            }
+                          }}
+                          style={{
+                            display: "block",
+                            width: "100%",
+                            textAlign: "left",
+                            border: "none",
+                            background: "transparent",
+                            padding: "7px 12px",
+                            fontSize: 12,
+                            color: "#e2e8f0",
+                            cursor: pinBusy ? "wait" : "pointer"
+                          }}
+                        >
+                          {entry.city}
+                          {entry.stateOrRegion ? (
+                            <span style={{ color: "#64748b", marginLeft: 8, fontSize: 10 }}>
+                              {entry.stateOrRegion}
+                            </span>
+                          ) : null}
+                        </button>
+                      ))}
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           ) : null}

@@ -5,27 +5,29 @@ import {
   Car,
   ChevronDown,
   ChevronUp,
+  CircleDollarSign,
   Clock,
   CloudSun,
   Droplets,
   HeartPulse,
-  Hospital,
   Landmark,
   LayoutGrid,
   PhoneCall,
+  Plug,
   Plus,
   Settings,
   Shield,
   ShieldAlert,
   ShoppingCart,
   Smartphone,
+  Star,
   Sun,
   Sunrise,
   Sunset,
-  Train,
   Truck,
   Utensils,
-  Wind
+  Wind,
+  type LucideIcon
 } from "lucide-react";
 import {
   formatWind,
@@ -35,7 +37,16 @@ import {
 } from "@/lib/city/weather";
 import type { CityClockRow, CityQuote } from "@/hooks/useCityDashboardState";
 import { getLocalGreeting } from "@/lib/city/localGreeting";
-import CityHeaderBackdrop from "@/components/dashboard/CityHeaderBackdrop";
+import { COUNTRY_TOOLKIT_LIST } from "@/data/city-toolkit/countries";
+import {
+  isCountryToolkitFallback,
+  parseToolkitHello,
+  resolveCountryToolkit,
+  toolkitLinkOrNull
+} from "@/data/city-toolkit/resolveCountryToolkit";
+import CityHeaderBackdrop, {
+  HeaderPhotoCredit
+} from "@/components/dashboard/CityHeaderBackdrop";
 import LiveClock from "@/components/dashboard/LiveClock";
 import WorldClockDisc from "@/components/dashboard/WorldClockDisc";
 import WorldCitiesPicker from "@/components/dashboard/WorldCitiesPicker";
@@ -43,6 +54,32 @@ import LocalCityPicker from "@/components/dashboard/LocalCityPicker";
 import CityHeaderSettings from "@/components/dashboard/CityHeaderSettings";
 
 type UtilityTab = "overview" | "logistics" | "emergency" | "weather";
+
+type MenuOption = {
+  id: UtilityTab | "city-preferred";
+  label: string;
+  icon: React.ReactNode;
+  comingSoon?: boolean;
+};
+
+type LogisticsTile = {
+  title: string;
+  sub: string;
+  href: string | null;
+  icon: LucideIcon;
+  tone?: "emerald" | "sky" | "amber";
+};
+
+const IS_DEV = process.env.NODE_ENV === "development";
+
+const DEV_COUNTRY_PRESETS = [
+  { label: "Armenia", value: "Armenia" },
+  { label: "Thailand", value: "Thailand" },
+  { label: "Spain", value: "Spain" },
+  { label: "Bulgaria", value: "Bulgaria" },
+  { label: "Jamaica", value: "Jamaica" },
+  { label: "Unmapped (Atlantis)", value: "Atlantis" }
+] as const;
 
 export type YerevanDashboardHeaderProps = {
   tempUnit: TempUnit;
@@ -57,26 +94,86 @@ export type YerevanDashboardHeaderProps = {
   onOpenCities?: () => void;
   onCitiesChange?: () => void;
   onOpenCityGuide?: () => void;
+  /** Exact place for the greeting line (may differ from programmed hub under geolocation). */
+  greetingPlaceName?: string;
+  /** Optional curated-city hello override (e.g. Bilbao → Kaixo). */
+  helloOverride?: string | null;
   needsManualCity?: boolean;
   manualCityOpen?: boolean;
   onManualCityOpenChange?: (open: boolean) => void;
   onPinCity?: (query: string) => Promise<boolean> | boolean;
+  onPinCuratedCity?: (cityId: string) => Promise<boolean> | boolean;
   locationServicesEnabled?: boolean;
   onLocationServicesChange?: (on: boolean) => void | Promise<void>;
   permissionState?: PermissionState | "unsupported" | "unknown";
   onRefreshLocation?: () => void | Promise<void>;
+  /** @deprecated Prefer backdropCurrentSrc / backdropIncomingSrc crossfade pair */
   backdropSrc?: string;
+  backdropCurrentSrc?: string;
+  backdropIncomingSrc?: string;
+  onBackdropIncomingLoaded?: (src: string) => void;
+  backdropPhotographerName?: string;
+  backdropPhotographerUrl?: string;
   fontClassName?: string;
 };
 
-const LOGISTICS = [
-  { title: "Rideshare", sub: "YandexGo", href: "https://go.yandex/en_am/", icon: Car },
-  { title: "Food Delivery", sub: "YandexEats", href: "https://eats.yandex.com/", icon: Utensils },
-  { title: "Groceries", sub: "YandexEats", href: "https://eats.yandex.com/", icon: ShoppingCart },
-  { title: "Public Transit", sub: "Metro & Bus", href: "https://yandex.com/metro/yerevan", icon: Train },
-  { title: "VPN", sub: "NordVPN", href: "https://nordvpn.com/", icon: Shield },
-  { title: "eSIM", sub: "Airalo", href: "https://www.airalo.com/", icon: Smartphone }
-] as const;
+function buildLogisticsTiles(toolkit: ReturnType<typeof resolveCountryToolkit>): LogisticsTile[] {
+  const tiles: LogisticsTile[] = [
+    {
+      title: "Rideshare",
+      sub: toolkit.rideshare,
+      href: toolkitLinkOrNull(toolkit.rideshareUrl),
+      icon: Car
+    },
+    {
+      title: "Food Delivery",
+      sub: toolkit.foodDelivery,
+      href: toolkitLinkOrNull(toolkit.foodDeliveryUrl),
+      icon: Utensils
+    },
+    {
+      title: "Groceries",
+      sub: toolkit.groceryDelivery,
+      href: toolkitLinkOrNull(toolkit.groceryDeliveryUrl),
+      icon: ShoppingCart
+    }
+  ];
+
+  if (toolkit.nordVpn) {
+    tiles.push({
+      title: "VPN",
+      sub: "NordVPN",
+      href: "https://nordvpn.com/",
+      icon: Shield
+    });
+  }
+
+  if (toolkit.airalo) {
+    tiles.push({
+      title: "eSIM",
+      sub: "Airalo",
+      href: "https://www.airalo.com/",
+      icon: Smartphone
+    });
+  }
+
+  tiles.push(
+    {
+      title: "Currency",
+      sub: toolkit.currency,
+      href: null,
+      icon: CircleDollarSign
+    },
+    {
+      title: "Power",
+      sub: `Type ${toolkit.plugTypes}`,
+      href: null,
+      icon: Plug
+    }
+  );
+
+  return tiles;
+}
 
 function displayTemp(value: number | null | undefined, unit: TempUnit) {
   if (value == null || !Number.isFinite(value)) return "—";
@@ -99,21 +196,31 @@ export default function YerevanDashboardHeader({
   onOpenCities,
   onCitiesChange,
   onOpenCityGuide,
+  greetingPlaceName,
+  helloOverride = null,
   needsManualCity = false,
   manualCityOpen = false,
   onManualCityOpenChange,
   onPinCity,
+  onPinCuratedCity,
   locationServicesEnabled = true,
   onLocationServicesChange,
   permissionState = "unknown",
   onRefreshLocation,
   backdropSrc = "",
+  backdropCurrentSrc,
+  backdropIncomingSrc = "",
+  onBackdropIncomingLoaded,
+  backdropPhotographerName,
+  backdropPhotographerUrl,
   fontClassName = ""
 }: YerevanDashboardHeaderProps) {
   const [activeTab, setActiveTab] = useState<UtilityTab>("overview");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [citiesOpen, setCitiesOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  /** Dev-only local preview — never triggers geolocation, weather, or Firestore. */
+  const [previewCountry, setPreviewCountry] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const greetingAnchorRef = useRef<HTMLDivElement>(null);
   const settingsBtnRef = useRef<HTMLButtonElement>(null);
@@ -128,20 +235,41 @@ export default function YerevanDashboardHeader({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const menuOptions: { id: UtilityTab; label: string; icon: React.ReactNode }[] = [
-    { id: "overview", label: "Overview", icon: <LayoutGrid className="w-4 h-4 text-amber-400" /> },
-    { id: "logistics", label: "Logistics", icon: <Truck className="w-4 h-4 text-emerald-400" /> },
-    { id: "emergency", label: "Emergency", icon: <ShieldAlert className="w-4 h-4 text-rose-400" /> },
-    { id: "weather", label: "Forecast", icon: <CloudSun className="w-4 h-4 text-sky-400" /> }
+  const menuOptions: MenuOption[] = [
+    { id: "overview", label: "Overview", icon: <LayoutGrid className="w-3.5 h-3.5 text-amber-400" /> },
+    { id: "logistics", label: "Logistics", icon: <Truck className="w-3.5 h-3.5 text-emerald-400" /> },
+    { id: "emergency", label: "Emergency", icon: <ShieldAlert className="w-3.5 h-3.5 text-rose-400" /> },
+    { id: "weather", label: "Forecast", icon: <CloudSun className="w-3.5 h-3.5 text-sky-400" /> },
+    {
+      id: "city-preferred",
+      label: "City Preferred",
+      icon: <Star className="w-3.5 h-3.5 text-violet-300" />,
+      comingSoon: true
+    }
   ];
 
-  const currentOption = menuOptions.find((m) => m.id === activeTab)!;
+  const currentOption = menuOptions.find((m) => m.id === activeTab) ?? menuOptions[0]!;
   const primaryClock = localClock;
   const worldClocks = clocks;
-  const countryLabel = String(coords.country || "").trim();
-  const greeting = getLocalGreeting(coords.city, coords.country);
-  const cityName = greeting.city || coords.city || "Your City";
-  const placeBadge = countryLabel ? `${cityName}, ${countryLabel}` : cityName;
+  const liveCountryLabel = String(coords.country || "").trim();
+  const effectiveCountry = (IS_DEV && previewCountry != null ? previewCountry : liveCountryLabel).trim();
+  const toolkit = resolveCountryToolkit(effectiveCountry);
+  const programmedCity = String(coords.city || "").trim() || "Your City";
+  const greetingCity =
+    String(greetingPlaceName || "").trim() || programmedCity;
+  const cityGreeting = getLocalGreeting(greetingCity, effectiveCountry || liveCountryLabel);
+  const helloSource = helloOverride
+    ? helloOverride
+    : isCountryToolkitFallback(toolkit)
+      ? cityGreeting.word
+      : toolkit.hello;
+  const greetingParts = parseToolkitHello(helloSource);
+  const countryLabel = isCountryToolkitFallback(toolkit)
+    ? effectiveCountry || liveCountryLabel
+    : toolkit.country;
+  const placeBadge = countryLabel ? `${greetingCity}, ${countryLabel}` : greetingCity;
+  const logisticsTiles = buildLogisticsTiles(toolkit);
+  const emergencyTel = toolkit.emergencyNumber.replace(/[^\d+]/g, "") || toolkit.emergencyNumber;
 
   const playfairStyle = fontClassName
     ? undefined
@@ -188,15 +316,20 @@ export default function YerevanDashboardHeader({
       style={{ width: "100%" }}
     >
       <div style={shellStyle}>
-        {/* Instant dark base — photo fades in on top when Cache API / network resolves */}
-        <CityHeaderBackdrop src={backdropSrc} alt="" />
+        {/* Instant dark base — previous photo stays; next city fades in slowly */}
+        <CityHeaderBackdrop
+          currentSrc={backdropCurrentSrc || backdropSrc}
+          incomingSrc={backdropIncomingSrc}
+          onIncomingLoaded={onBackdropIncomingLoaded}
+          alt=""
+        />
         <div
           aria-hidden="true"
           style={{
             position: "absolute",
             inset: 0,
             background:
-              "linear-gradient(to right, rgba(9,13,22,0.95), rgba(9,13,22,0.7), rgba(9,13,22,0.85))"
+              "linear-gradient(to right, rgba(9,13,22,0.95), rgba(9,13,22,0.72), rgba(9,13,22,0.88))"
           }}
         />
         <div
@@ -205,8 +338,12 @@ export default function YerevanDashboardHeader({
             position: "absolute",
             inset: 0,
             background:
-              "linear-gradient(to top, rgba(9,13,22,0.95), transparent, rgba(9,13,22,0.5))"
+              "linear-gradient(to top, rgba(9,13,22,0.96), rgba(9,13,22,0.25), rgba(9,13,22,0.55))"
           }}
+        />
+        <HeaderPhotoCredit
+          photographerName={backdropPhotographerName}
+          photographerUrl={backdropPhotographerUrl}
         />
 
         <div style={gridStyle}>
@@ -218,20 +355,80 @@ export default function YerevanDashboardHeader({
               gap: 14
             }}
           >
-            <button
-              type="button"
-              onClick={onOpenCityGuide}
-              className="inline-flex items-center gap-2.5 w-fit px-3 py-1 rounded-full bg-slate-950/60 backdrop-blur-md border border-white/10 hover:border-amber-400/40 transition"
-            >
-              <span className="flex flex-col w-4 h-3 rounded-[2px] overflow-hidden shrink-0 shadow-sm">
-                <span className="h-1 bg-[#D90012]" />
-                <span className="h-1 bg-[#0033A0]" />
-                <span className="h-1 bg-[#F2A800]" />
-              </span>
-              <span className="text-xs font-semibold tracking-wider uppercase text-slate-200">
-                {placeBadge}
-              </span>
-            </button>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
+              <button
+                type="button"
+                onClick={onOpenCityGuide}
+                className="inline-flex items-center gap-2.5 w-fit px-3 py-1 rounded-full bg-slate-950/60 backdrop-blur-md border border-white/10 hover:border-amber-400/40 transition"
+              >
+                <span className="flex flex-col w-4 h-3 rounded-[2px] overflow-hidden shrink-0 shadow-sm">
+                  <span className="h-1 bg-[#D90012]" />
+                  <span className="h-1 bg-[#0033A0]" />
+                  <span className="h-1 bg-[#F2A800]" />
+                </span>
+                <span className="text-xs font-semibold tracking-wider uppercase text-slate-200">
+                  {placeBadge}
+                </span>
+              </button>
+
+              {IS_DEV ? (
+                <label
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    maxWidth: "100%",
+                    padding: "4px 8px",
+                    borderRadius: 999,
+                    background: "rgba(15, 23, 42, 0.75)",
+                    border: "1px solid rgba(251, 191, 36, 0.35)",
+                    color: "#fbbf24",
+                    fontSize: 10,
+                    fontWeight: 600,
+                    letterSpacing: "0.04em",
+                    textTransform: "uppercase"
+                  }}
+                >
+                  <span style={{ whiteSpace: "nowrap" }}>Dev country</span>
+                  <select
+                    aria-label="Dev country toolkit preview"
+                    value={previewCountry ?? ""}
+                    onChange={(e) => {
+                      // Local preview only — no geolocation, weather, or Firestore.
+                      setPreviewCountry(e.target.value || null);
+                    }}
+                    style={{
+                      maxWidth: 160,
+                      background: "rgba(2, 6, 23, 0.9)",
+                      color: "#e2e8f0",
+                      border: "1px solid rgba(148, 163, 184, 0.35)",
+                      borderRadius: 6,
+                      fontSize: 11,
+                      fontWeight: 500,
+                      letterSpacing: "normal",
+                      textTransform: "none",
+                      padding: "2px 4px"
+                    }}
+                  >
+                    <option value="">Live location</option>
+                    <optgroup label="Presets">
+                      {DEV_COUNTRY_PRESETS.map((preset) => (
+                        <option key={preset.value} value={preset.value}>
+                          {preset.label}
+                        </option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="All toolkit countries">
+                      {COUNTRY_TOOLKIT_LIST.map((entry) => (
+                        <option key={entry.id} value={entry.country}>
+                          {entry.country}
+                        </option>
+                      ))}
+                    </optgroup>
+                  </select>
+                </label>
+              ) : null}
+            </div>
 
             <div
               ref={greetingAnchorRef}
@@ -241,8 +438,22 @@ export default function YerevanDashboardHeader({
                 style={playfairStyle}
                 className="text-5xl xl:text-[3.65rem] font-bold leading-[1.03] tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-[#fde68a] via-[#f59e0b] to-[#d97706] drop-shadow-[0_4px_24px_rgba(0,0,0,0.65)]"
               >
-                <span className="italic font-semibold block">{greeting.word},</span>
-                <span className="block">{cityName}</span>
+                {greetingParts.nativeScript ? (
+                  <span
+                    className="block not-italic font-semibold tracking-wide"
+                    style={{
+                      fontSize: "0.38em",
+                      lineHeight: 1.2,
+                      marginBottom: "0.18em",
+                      opacity: 0.88,
+                      letterSpacing: "0.02em"
+                    }}
+                  >
+                    {greetingParts.nativeScript}
+                  </span>
+                ) : null}
+                <span className="italic font-semibold block">{greetingParts.primary},</span>
+                <span className="block">{greetingCity}</span>
               </h1>
               {needsManualCity ? (
                 <button
@@ -269,7 +480,11 @@ export default function YerevanDashboardHeader({
               <LocalCityPicker
                 open={manualCityOpen}
                 onOpenChange={(v) => onManualCityOpenChange?.(v)}
-                onPick={async (q) => Boolean(await onPinCity?.(q))}
+                onPick={async (cityId) => {
+                  setPreviewCountry(null);
+                  if (onPinCuratedCity) return Boolean(await onPinCuratedCity(cityId));
+                  return Boolean(await onPinCity?.(cityId));
+                }}
                 anchorRef={greetingAnchorRef}
               />
             </div>
@@ -362,45 +577,68 @@ export default function YerevanDashboardHeader({
             }}
           >
             <div className="flex items-center justify-end gap-2 flex-wrap" style={{ minHeight: 44 }}>
-              <div ref={dropdownRef} className="relative" style={{ minWidth: 168, flex: "1 1 auto", maxWidth: 220 }}>
+              <div ref={dropdownRef} className="relative" style={{ minWidth: 168, flex: "1 1 auto", maxWidth: 240 }}>
                 <button
                   type="button"
                   onClick={() => setDropdownOpen((prev) => !prev)}
-                  className="w-full flex items-center justify-between gap-3 px-3.5 py-2 rounded-xl bg-[#0e131f]/90 hover:bg-[#141b2b] backdrop-blur-md border border-amber-400/40 text-sm font-medium text-slate-100 shadow-lg transition-all"
+                  className="w-full flex items-center justify-between gap-3 px-3.5 py-2 rounded-xl bg-[#0e131f]/90 hover:bg-[#141b2b] backdrop-blur-md border border-amber-400/40 text-xs font-medium text-slate-100 shadow-lg transition-all"
                 >
                   <span className="flex items-center gap-2">
                     {currentOption.icon}
                     <span>{currentOption.label}</span>
                   </span>
                   {dropdownOpen ? (
-                    <ChevronUp className="w-4 h-4 text-slate-400" />
+                    <ChevronUp className="w-3.5 h-3.5 text-slate-400" />
                   ) : (
-                    <ChevronDown className="w-4 h-4 text-slate-400" />
+                    <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
                   )}
                 </button>
 
                 {dropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-full min-w-[220px] rounded-xl bg-[#0d121d]/95 backdrop-blur-xl border border-slate-700/80 shadow-2xl py-1.5 z-50">
+                  <div className="absolute right-0 mt-2 w-full min-w-[240px] rounded-xl bg-[#0d121d]/95 backdrop-blur-xl border border-slate-700/80 shadow-2xl py-1.5 z-50">
                     {menuOptions.map((item) => {
-                      const isSelected = activeTab === item.id;
+                      const isSelected = !item.comingSoon && activeTab === item.id;
                       return (
                         <button
                           type="button"
                           key={item.id}
+                          disabled={item.comingSoon}
                           onClick={() => {
+                            if (item.comingSoon || item.id === "city-preferred") return;
                             setActiveTab(item.id);
                             setDropdownOpen(false);
                           }}
-                          className={`w-full flex items-center justify-between px-3.5 py-2.5 text-sm transition-colors ${
-                            isSelected
-                              ? "bg-amber-500/15 text-amber-300 font-medium border-l-2 border-amber-400"
-                              : "text-slate-300 hover:bg-white/5"
+                          className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-xs transition-colors ${
+                            item.comingSoon
+                              ? "text-slate-500 cursor-default"
+                              : isSelected
+                                ? "bg-amber-500/15 text-amber-300 font-medium border-l-2 border-amber-400"
+                                : "text-slate-300 hover:bg-white/5"
                           }`}
                         >
-                          <span className="flex items-center gap-2.5">
+                          <span className="flex items-center gap-2 min-w-0">
                             {item.icon}
-                            {item.label}
+                            <span className="truncate">{item.label}</span>
                           </span>
+                          {item.comingSoon ? (
+                            <span
+                              style={{
+                                flexShrink: 0,
+                                fontSize: 9,
+                                fontWeight: 700,
+                                letterSpacing: "0.06em",
+                                textTransform: "uppercase",
+                                color: "#fbbf24",
+                                background: "rgba(251,191,36,0.12)",
+                                border: "1px solid rgba(251,191,36,0.35)",
+                                borderRadius: 999,
+                                padding: "2px 6px",
+                                lineHeight: 1.2
+                              }}
+                            >
+                              Coming Soon
+                            </span>
+                          ) : null}
                         </button>
                       );
                     })}
@@ -425,7 +663,7 @@ export default function YerevanDashboardHeader({
                 open={settingsOpen}
                 onClose={() => setSettingsOpen(false)}
                 anchorRef={settingsBtnRef}
-                city={cityName}
+                city={programmedCity}
                 country={countryLabel}
                 tzLabel={primaryClock.utcLabel}
                 tempUnit={tempUnit}
@@ -437,7 +675,10 @@ export default function YerevanDashboardHeader({
                 onRefreshLocation={async () => {
                   await onRefreshLocation?.();
                 }}
-                onPinCity={async (q) => Boolean(await onPinCity?.(q))}
+                onPinCuratedCity={async (cityId) => {
+                  setPreviewCountry(null);
+                  return Boolean(await onPinCuratedCity?.(cityId));
+                }}
                 permissionState={permissionState}
               />
             </div>
@@ -518,10 +759,12 @@ export default function YerevanDashboardHeader({
                   <div
                     style={{
                       display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                      flexWrap: "wrap",
-                      minWidth: 0
+                      flexDirection: "row",
+                      flexWrap: "nowrap",
+                      alignItems: "flex-start",
+                      gap: 10,
+                      minWidth: 0,
+                      overflowX: "auto"
                     }}
                   >
                     {worldClocks.map((c) => (
@@ -531,7 +774,7 @@ export default function YerevanDashboardHeader({
                         tz={c.tz}
                         utcLabel={c.utcLabel}
                         size={42}
-                        variant="inline"
+                        variant="stack"
                       />
                     ))}
                     <WorldCitiesPicker
@@ -541,6 +784,7 @@ export default function YerevanDashboardHeader({
                     >
                       <span
                         aria-hidden="true"
+                        title="Add world clock"
                         style={{
                           width: 42,
                           height: 42,
@@ -553,7 +797,8 @@ export default function YerevanDashboardHeader({
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          cursor: "pointer"
+                          cursor: "pointer",
+                          flexShrink: 0
                         }}
                       >
                         <Plus className="w-4 h-4" />
@@ -565,32 +810,45 @@ export default function YerevanDashboardHeader({
 
               {activeTab === "logistics" && (
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                  {LOGISTICS.map((item) => {
+                  {logisticsTiles.map((item) => {
                     const Icon = item.icon;
-                    return (
-                      <a
-                        key={item.title}
-                        href={item.href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center justify-between px-3 py-2 rounded-xl bg-[#0d121d]/85 hover:bg-[#151c2c] backdrop-blur-md border border-white/10 hover:border-amber-400/40 transition-all group"
-                      >
+                    const iconClass = "w-4 h-4 text-amber-400";
+                    const body = (
+                      <>
                         <div>
                           <p className="text-xs font-semibold text-slate-100 group-hover:text-amber-300 transition-colors">
                             {item.title}
                           </p>
                           <p className="text-[11px] text-slate-400">{item.sub}</p>
                         </div>
-                        <Icon
-                          className={`w-4 h-4 ${
-                            item.title === "VPN"
-                              ? "text-emerald-400"
-                              : item.title === "eSIM"
-                                ? "text-sky-400"
-                                : "text-amber-400"
-                          }`}
-                        />
-                      </a>
+                        <Icon className={iconClass} />
+                      </>
+                    );
+                    const sharedClass =
+                      "flex items-center justify-between px-3 py-2 rounded-xl bg-[#0d121d]/85 backdrop-blur-md border border-white/10 transition-all group";
+
+                    if (item.href) {
+                      return (
+                        <a
+                          key={item.title}
+                          href={item.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={`${sharedClass} hover:bg-[#151c2c] hover:border-amber-400/40`}
+                        >
+                          {body}
+                        </a>
+                      );
+                    }
+
+                    return (
+                      <div
+                        key={item.title}
+                        className={sharedClass}
+                        style={{ cursor: "default", opacity: item.sub === "None" ? 0.72 : 1 }}
+                      >
+                        {body}
+                      </div>
                     );
                   })}
                 </div>
@@ -599,7 +857,7 @@ export default function YerevanDashboardHeader({
               {activeTab === "emergency" && (
                 <div className="flex flex-col gap-2">
                   <a
-                    href="tel:112"
+                    href={`tel:${emergencyTel}`}
                     className="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-[#0d121d]/90 backdrop-blur-md border border-rose-500/30 hover:border-rose-400/50 transition"
                   >
                     <div className="flex items-center gap-2.5">
@@ -610,37 +868,25 @@ export default function YerevanDashboardHeader({
                       </div>
                     </div>
                     <span className="font-mono text-xs font-bold text-rose-400 bg-rose-500/10 px-2.5 py-1 rounded-lg border border-rose-500/20">
-                      112 / 103
+                      {toolkit.emergencyNumber}
                     </span>
                   </a>
 
-                  <a
-                    href="tel:+37410318000"
-                    className="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-[#0d121d]/90 backdrop-blur-md border border-emerald-500/30 hover:border-emerald-400/50 transition"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <Hospital className="w-4 h-4 text-emerald-400" />
-                      <div>
-                        <p className="text-xs font-semibold text-slate-100">City Hospital</p>
-                        <p className="text-[11px] text-slate-400">Armenia Medical Center</p>
-                      </div>
-                    </div>
-                    <span className="font-mono text-xs font-semibold text-emerald-400">+374 10 318000</span>
-                  </a>
-
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                    <a
-                      href="https://safetywing.com/"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-between px-3 py-2 rounded-xl bg-[#0d121d]/85 backdrop-blur-md border border-white/10 hover:border-amber-400/40 transition"
-                    >
-                      <div>
-                        <p className="text-xs font-semibold text-slate-100">Travel Insurance</p>
-                        <p className="text-[11px] text-slate-400">SafetyWing</p>
-                      </div>
-                      <HeartPulse className="w-4 h-4 text-amber-400" />
-                    </a>
+                    {toolkit.safetyWing ? (
+                      <a
+                        href="https://safetywing.com/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-between px-3 py-2 rounded-xl bg-[#0d121d]/85 backdrop-blur-md border border-white/10 hover:border-amber-400/40 transition"
+                      >
+                        <div>
+                          <p className="text-xs font-semibold text-slate-100">Travel Insurance</p>
+                          <p className="text-[11px] text-slate-400">SafetyWing</p>
+                        </div>
+                        <HeartPulse className="w-4 h-4 text-amber-400" />
+                      </a>
+                    ) : null}
                     <a
                       href="https://www.embassypages.com/"
                       target="_blank"

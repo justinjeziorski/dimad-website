@@ -59,7 +59,11 @@ await esbuild.build({
   sourcemap: false,
   treeShaking: true,
   define: {
-    "process.env.NODE_ENV": JSON.stringify("production")
+    "process.env.NODE_ENV": JSON.stringify("production"),
+    // Avoid bare `process` references in the browser embed (throws → sticky fallback photo).
+    "process.env.NEXT_PUBLIC_UNSPLASH_ACCESS_KEY": JSON.stringify(
+      process.env.NEXT_PUBLIC_UNSPLASH_ACCESS_KEY || ""
+    )
   },
   plugins: [aliasPlugin],
   loader: {

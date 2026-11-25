@@ -75,10 +75,10 @@ function partsInZone(now: Date, tz: string) {
   }
 }
 
-function shortCityLabel(city: string) {
+function shortCityLabel(city: string, maxChars = 9) {
   const raw = String(city || "").trim();
-  if (raw.length <= 9) return raw.toUpperCase();
-  return `${raw.slice(0, 7).toUpperCase()}…`;
+  if (raw.length <= maxChars) return raw.toUpperCase();
+  return `${raw.slice(0, Math.max(1, maxChars - 1)).toUpperCase()}…`;
 }
 
 /**
@@ -247,41 +247,6 @@ export default function WorldClockDisc({
     </div>
   );
 
-  const meta = (
-    <div style={{ minWidth: 0, lineHeight: 1.15 }}>
-      <div
-        style={{
-          fontSize: 9,
-          fontWeight: 700,
-          letterSpacing: "0.06em",
-          color: "#e2e8f0",
-          whiteSpace: "nowrap",
-          overflow: "hidden",
-          textOverflow: "ellipsis"
-        }}
-      >
-        {shortCityLabel(city)}
-      </div>
-      <div
-        suppressHydrationWarning
-        style={{
-          fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
-          fontSize: 12,
-          fontWeight: 700,
-          color: "#f8fafc",
-          fontVariantNumeric: "tabular-nums"
-        }}
-      >
-        {hands.digital}
-      </div>
-      {utcLabel ? (
-        <div style={{ fontSize: 8, fontFamily: "ui-monospace, monospace", color: "#94a3b8" }}>
-          {utcLabel}
-        </div>
-      ) : null}
-    </div>
-  );
-
   if (variant === "inline") {
     return (
       <div
@@ -298,24 +263,91 @@ export default function WorldClockDisc({
         title={`${city} · ${utcLabel || ""}`.trim()}
       >
         {face}
-        {meta}
+        <div style={{ minWidth: 0, lineHeight: 1.15 }}>
+          <div
+            style={{
+              fontSize: 9,
+              fontWeight: 700,
+              letterSpacing: "0.06em",
+              color: "#e2e8f0",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis"
+            }}
+          >
+            {shortCityLabel(city, 9)}
+          </div>
+          <div
+            suppressHydrationWarning
+            style={{
+              fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+              fontSize: 12,
+              fontWeight: 700,
+              color: "#f8fafc",
+              fontVariantNumeric: "tabular-nums"
+            }}
+          >
+            {hands.digital}
+          </div>
+          {utcLabel ? (
+            <div style={{ fontSize: 8, fontFamily: "ui-monospace, monospace", color: "#94a3b8" }}>
+              {utcLabel}
+            </div>
+          ) : null}
+        </div>
       </div>
     );
   }
 
+  // stack: city under the dial so longer names (e.g. Los Angeles) fit
   return (
     <div
       style={{
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        gap: 4,
-        minWidth: size
+        gap: 3,
+        width: Math.max(size, 72),
+        flexShrink: 0
       }}
       title={`${city} · ${utcLabel || ""}`.trim()}
     >
       {face}
-      <div style={{ textAlign: "center", maxWidth: size + 12 }}>{meta}</div>
+      <div
+        suppressHydrationWarning
+        style={{
+          fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+          fontSize: 11,
+          fontWeight: 700,
+          color: "#f8fafc",
+          fontVariantNumeric: "tabular-nums",
+          lineHeight: 1.1
+        }}
+      >
+        {hands.digital}
+      </div>
+      <div
+        style={{
+          fontSize: 9,
+          fontWeight: 700,
+          letterSpacing: "0.04em",
+          color: "#e2e8f0",
+          textAlign: "center",
+          lineHeight: 1.15,
+          maxWidth: "100%",
+          overflowWrap: "anywhere",
+          wordBreak: "normal"
+        }}
+      >
+        {String(city || "")
+          .trim()
+          .toUpperCase()}
+      </div>
+      {utcLabel ? (
+        <div style={{ fontSize: 8, fontFamily: "ui-monospace, monospace", color: "#94a3b8", lineHeight: 1 }}>
+          {utcLabel}
+        </div>
+      ) : null}
     </div>
   );
 }

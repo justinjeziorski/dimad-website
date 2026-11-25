@@ -109,7 +109,7 @@ async function loadViews() {
 }
 
 /** Native React City Header island (replaces slow iframe). */
-const YEREVAN_HEADER_BUNDLE = '/embeds/yerevan-header.js?v=20';
+const YEREVAN_HEADER_BUNDLE = '/embeds/yerevan-header.js?v=29';
 let _yerevanHeaderScriptPromise = null;
 
 function ensureYerevanHeaderBundle() {

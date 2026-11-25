@@ -23,11 +23,18 @@ export function writeLocationServicesEnabled(on: boolean): void {
 }
 
 export type LocalLocation = {
+  /** Programmed/canonical hub city for weather, clock, toolkit anchors */
   city: string;
+  /** Exact place shown in the greeting (may differ from hub under geolocation) */
+  greetingPlaceName?: string;
   country: string;
+  stateOrRegion?: string;
   tz_id: string;
   lat: number;
   lon: number;
+  curatedCityId?: string | null;
+  helloOverride?: string | null;
+  source?: "geolocation" | "manual";
   /** true when user manually pinned a city */
   pinned?: boolean;
   updatedAt?: number;
@@ -61,10 +68,21 @@ export function readLocalLocation(): LocalLocation {
     ) {
       return {
         city: String(raw.city).trim(),
+        greetingPlaceName: String(raw.greetingPlaceName || raw.city || "").trim() || undefined,
         country: String(raw.country || "").trim(),
+        stateOrRegion: String(raw.stateOrRegion || "").trim() || undefined,
         tz_id: String(raw.tz_id || browserTimeZone()).trim() || browserTimeZone(),
         lat: Number(raw.lat),
         lon: Number(raw.lon),
+        curatedCityId:
+          raw.curatedCityId == null || raw.curatedCityId === ""
+            ? null
+            : String(raw.curatedCityId),
+        helloOverride:
+          raw.helloOverride == null || raw.helloOverride === ""
+            ? null
+            : String(raw.helloOverride),
+        source: raw.source === "manual" || raw.source === "geolocation" ? raw.source : undefined,
         pinned: Boolean(raw.pinned),
         updatedAt: Number(raw.updatedAt || 0) || undefined
       };
@@ -103,12 +121,19 @@ export function readLocalLocation(): LocalLocation {
 }
 
 export function writeLocalLocation(loc: LocalLocation): LocalLocation {
+  const city = String(loc.city || "Your City").trim() || "Your City";
   const next: LocalLocation = {
-    city: String(loc.city || "Your City").trim() || "Your City",
+    city,
+    greetingPlaceName:
+      String(loc.greetingPlaceName || city).trim() || city,
     country: String(loc.country || "").trim(),
+    stateOrRegion: String(loc.stateOrRegion || "").trim() || undefined,
     tz_id: String(loc.tz_id || browserTimeZone()).trim() || browserTimeZone(),
     lat: Number(loc.lat),
     lon: Number(loc.lon),
+    curatedCityId: loc.curatedCityId ?? null,
+    helloOverride: loc.helloOverride ?? null,
+    source: loc.source,
     pinned: Boolean(loc.pinned),
     updatedAt: Date.now()
   };
