@@ -106,7 +106,7 @@ export type YerevanDashboardHeaderProps = {
   locationServicesEnabled?: boolean;
   onLocationServicesChange?: (on: boolean) => void | Promise<void>;
   permissionState?: PermissionState | "unsupported" | "unknown";
-  onRefreshLocation?: () => void | Promise<void>;
+  onRefreshLocation?: () => void | boolean | Promise<void | boolean>;
   /** @deprecated Prefer backdropCurrentSrc / backdropIncomingSrc crossfade pair */
   backdropSrc?: string;
   backdropCurrentSrc?: string;

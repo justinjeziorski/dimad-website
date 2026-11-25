@@ -17,7 +17,7 @@ type CityHeaderSettingsProps = {
   onTempUnitChange: (unit: TempUnit) => void;
   locationServicesEnabled: boolean;
   onLocationServicesChange: (on: boolean) => void | Promise<void>;
-  onRefreshLocation: () => void | Promise<void>;
+  onRefreshLocation: () => void | boolean | Promise<void | boolean>;
   /** Pins a curated programmed city (resolveManualCity). */
   onPinCuratedCity: (cityId: string) => Promise<boolean> | boolean;
   permissionState?: PermissionState | "unsupported" | "unknown";
