@@ -109,7 +109,7 @@ async function loadViews() {
 }
 
 /** Native React City Header island (replaces slow iframe). */
-const YEREVAN_HEADER_BUNDLE = '/embeds/yerevan-header.js?v=41';
+const YEREVAN_HEADER_BUNDLE = '/embeds/yerevan-header.js?v=51';
 let _yerevanHeaderScriptPromise = null;
 
 function ensureYerevanHeaderBundle() {
@@ -5175,9 +5175,10 @@ function openFocusLog() {
 const DAILY_QUOTE = {
   /** Single emergency fallback when Firestore / API has no doc for today (UTC). */
   fallback: {
-    quote: 'Remember, today is the tomorrow you worried about yesterday.',
-    author: 'Dale Carnegie',
-    context: 'Author of How To Win Friends and Influence People'
+    quote:
+      'If you want to understand the entrepreneur, study the juvenile delinquent. The delinquent is saying with his actions, "This sucks. I\'m going to do my own thing."',
+    author: 'Yvon Chouinard',
+    context: 'Founder of Patagonia'
   },
   cached: null,
   loading: null,
@@ -24354,5 +24355,15 @@ window.onload = async function() {
     setInterval(() => DIMAD_CAL.tickReminders(), 15000);
   }
 };
+
+
+
+
+
+
+
+
+
+
 
 

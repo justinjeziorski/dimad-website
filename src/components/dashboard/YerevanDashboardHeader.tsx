@@ -24,6 +24,7 @@ import {
   Sun,
   Sunrise,
   Sunset,
+  TrainFront,
   Truck,
   Utensils,
   Wind,
@@ -53,8 +54,9 @@ import WorldClockDisc from "@/components/dashboard/WorldClockDisc";
 import WorldCitiesPicker from "@/components/dashboard/WorldCitiesPicker";
 import LocalCityPicker from "@/components/dashboard/LocalCityPicker";
 import CityHeaderSettings from "@/components/dashboard/CityHeaderSettings";
+import CurrencyConverterTab from "@/components/dashboard/CurrencyConverterTab";
 
-type UtilityTab = "overview" | "logistics" | "emergency" | "weather";
+type UtilityTab = "overview" | "logistics" | "emergency" | "weather" | "currency";
 
 type MenuOption = {
   id: UtilityTab | "city-preferred";
@@ -69,6 +71,7 @@ type LogisticsTile = {
   href: string | null;
   icon: LucideIcon;
   tone?: "emerald" | "sky" | "amber";
+  comingSoon?: boolean;
 };
 
 const IS_DEV = process.env.NODE_ENV === "development";
@@ -133,10 +136,17 @@ function buildLogisticsTiles(toolkit: ReturnType<typeof resolveCountryToolkit>):
       icon: Utensils
     },
     {
-      title: "Groceries",
+      title: "Grocery Delivery",
       sub: toolkit.groceryDelivery,
       href: toolkitLinkOrNull(toolkit.groceryDeliveryUrl),
       icon: ShoppingCart
+    },
+    {
+      title: "Public Transit",
+      sub: "Coming Soon",
+      href: null,
+      icon: TrainFront,
+      comingSoon: true
     }
   ];
 
@@ -158,20 +168,12 @@ function buildLogisticsTiles(toolkit: ReturnType<typeof resolveCountryToolkit>):
     });
   }
 
-  tiles.push(
-    {
-      title: "Currency",
-      sub: toolkit.currency,
-      href: null,
-      icon: CircleDollarSign
-    },
-    {
-      title: "Power",
-      sub: `Type ${toolkit.plugTypes}`,
-      href: null,
-      icon: Plug
-    }
-  );
+  tiles.push({
+    title: "Power",
+    sub: `Type ${toolkit.plugTypes}`,
+    href: null,
+    icon: Plug
+  });
 
   return tiles;
 }
@@ -307,9 +309,10 @@ export default function YerevanDashboardHeader({
 
   const menuOptions: MenuOption[] = [
     { id: "overview", label: "Overview", icon: <LayoutGrid className="w-3 h-3 text-amber-400" /> },
-    { id: "logistics", label: "Logistics", icon: <Truck className="w-3 h-3 text-emerald-400" /> },
+    { id: "logistics", label: "Getting Around", icon: <Truck className="w-3 h-3 text-emerald-400" /> },
     { id: "emergency", label: "Emergency", icon: <ShieldAlert className="w-3 h-3 text-rose-400" /> },
-    { id: "weather", label: "Forecast", icon: <CloudSun className="w-3 h-3 text-sky-400" /> },
+    { id: "weather", label: "Weather", icon: <CloudSun className="w-3 h-3 text-sky-400" /> },
+    { id: "currency", label: "Currency", icon: <CircleDollarSign className="w-3 h-3 text-amber-300" /> },
     {
       id: "city-preferred",
       label: "City Preferred",
@@ -930,13 +933,31 @@ export default function YerevanDashboardHeader({
                           <p className="text-xs font-semibold text-slate-100 group-hover:text-amber-300 transition-colors">
                             {item.title}
                           </p>
-                          <p className="text-[11px] text-slate-400">{item.sub}</p>
+                          <p
+                            className={`text-[11px] ${
+                              item.comingSoon ? "text-amber-300/90" : "text-slate-400"
+                            }`}
+                          >
+                            {item.sub}
+                          </p>
                         </div>
                         <Icon className={iconClass} />
                       </>
                     );
                     const sharedClass =
                       "flex items-center justify-between px-3 py-2 rounded-xl bg-[#0d121d]/85 backdrop-blur-md border border-white/10 transition-all group";
+
+                    if (item.comingSoon) {
+                      return (
+                        <div
+                          key={item.title}
+                          className={`${sharedClass} opacity-80 cursor-default`}
+                          aria-disabled="true"
+                        >
+                          {body}
+                        </div>
+                      );
+                    }
 
                     if (item.href) {
                       return (
@@ -963,6 +984,14 @@ export default function YerevanDashboardHeader({
                     );
                   })}
                 </div>
+              )}
+
+              {activeTab === "currency" && (
+                <CurrencyConverterTab
+                  countryCode={toolkit.iso2}
+                  countryName={countryLabel || effectiveCountry}
+                  currencyLabel={toolkit.currency}
+                />
               )}
 
               {activeTab === "emergency" && (
