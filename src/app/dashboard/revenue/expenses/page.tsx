@@ -200,7 +200,7 @@ export default function RevenueExpensesPage() {
 }
 
 const panelStyle: CSSProperties = {
-  background: "rgba(17, 34, 64, 0.72)",
+  background: "var(--card-surface)",
   border: `1px solid ${SNAPSHOT_THEME.navyLine}`,
   borderRadius: 16,
   padding: 16
@@ -223,13 +223,13 @@ const rowCard: CSSProperties = {
   border: `1px solid ${SNAPSHOT_THEME.navyLine}`,
   borderRadius: 12,
   padding: "10px 12px",
-  background: "rgba(7,16,31,0.35)"
+  background: "var(--bg-nested)"
 };
 
 const inputStyle: CSSProperties = {
   flex: 1,
   minWidth: 220,
-  background: "#070A0F",
+  background: "var(--bg-card)",
   border: `1px solid ${SNAPSHOT_THEME.navyLine}`,
   borderRadius: 10,
   padding: "8px 10px",

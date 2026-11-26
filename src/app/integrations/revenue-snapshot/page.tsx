@@ -1,11 +1,12 @@
 import RevenueSnapshotCard from "@/components/snapshots/RevenueSnapshotCard";
+import { EMBED_PAGE_STYLE } from "@/lib/theme/embedStyles";
 
 export const dynamic = "force-dynamic";
 
 export default function RevenueSnapshotPage() {
   return (
     <>
-      <style>{`html,body{margin:0;height:100%;overflow:hidden;background:#0A192F;color-scheme:dark}#__next,body>div{height:100%}`}</style>
+      <style>{EMBED_PAGE_STYLE}</style>
       <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" />
       <RevenueSnapshotCard />
     </>

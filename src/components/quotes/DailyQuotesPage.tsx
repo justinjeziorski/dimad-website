@@ -98,7 +98,7 @@ export default function DailyQuotesPage() {
                         key={item.date}
                         style={{
                           ...panelStyle,
-                          borderColor: item.isToday ? "rgba(245, 185, 66, 0.45)" : SNAPSHOT_THEME.navyLine
+                          borderColor: item.isToday ? "var(--accent-gold-border)" : SNAPSHOT_THEME.navyLine
                         }}
                       >
                         <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
@@ -191,7 +191,7 @@ const todayBadge: CSSProperties = {
   fontWeight: 700,
   letterSpacing: "0.08em",
   textTransform: "uppercase",
-  color: SNAPSHOT_THEME.navy,
+  color: "var(--accent-gold-fg)",
   background: SNAPSHOT_THEME.gold,
   borderRadius: 999,
   padding: "2px 8px"

@@ -5,7 +5,7 @@
         <i class="fa-solid fa-note-sticky text-brand-gold text-sm"></i>
       </div>
       <div class="min-w-0">
-        <h2 class="text-sm font-bold text-brand-gold">DIMAD NOTEPAD</h2>
+        <h2 class="page-title">dimPad</h2>
         <p class="text-[10px] text-slate-400">Cloud-based notepad. Autosaves directly to dimDrive. Think it. Jot it. Save it.</p>
       </div>
     </div>
@@ -15,8 +15,9 @@
   </div>
 
   <div class="flex-1 min-h-[560px] border border-slate-800 bg-brand-panel rounded flex flex-col overflow-hidden p-3 space-y-2">
-    <button type="button" id="notepad-title" onclick="DIMAD_NOTEPAD.beginTitleEdit(event, 'full')" title="Click to edit title" class="text-left text-[13px] font-semibold text-slate-100 truncate hover:text-brand-gold cursor-text">Untitled</button>
+    <button type="button" id="notepad-title" ondblclick="DIMAD_NOTEPAD.beginTitleEdit(event, 'full')" title="Double-click to rename" class="text-left text-[13px] font-semibold text-slate-100 truncate hover:text-brand-gold cursor-text">Untitled</button>
     <input id="notepad-title-input" type="text" class="hidden w-full bg-slate-950 border border-amber-500/40 rounded-lg px-2 py-1.5 text-[13px] text-slate-100 outline-none" onkeydown="DIMAD_NOTEPAD.titleKey(event)" onblur="DIMAD_NOTEPAD.commitTitleEdit()">
+    <p id="notepad-stamp" class="text-[9px] text-slate-500 -mt-1">Created —</p>
     <textarea id="notepad-body" placeholder="Save your thoughts here..." oninput="DIMAD_NOTEPAD.markDirty('full')" class="flex-1 min-h-[280px] bg-transparent outline-none text-[13px] leading-relaxed text-slate-300 resize-none font-mono placeholder:text-slate-600"></textarea>
     <div class="flex items-center justify-between gap-3 text-[10px] text-slate-500 pt-1 border-t border-slate-800">
       <span id="notepad-meta">No note selected</span>

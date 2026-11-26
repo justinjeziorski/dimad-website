@@ -538,7 +538,7 @@ const wrap: CSSProperties = {
   padding: "14px 16px 10px",
   borderRadius: 14,
   border: `1px solid ${SNAPSHOT_THEME.navyLine}`,
-  background: "linear-gradient(165deg, rgba(17,34,64,0.95) 0%, rgba(7,16,31,0.98) 100%)"
+  background: "var(--card-surface)"
 };
 
 const toolbar: CSSProperties = {
@@ -566,7 +566,7 @@ const legendBtn: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   gap: 6,
-  background: "rgba(7,16,31,0.5)",
+  background: "var(--bg-nested)",
   color: SNAPSHOT_THEME.ink,
   borderRadius: 999,
   padding: "5px 10px",
@@ -589,7 +589,7 @@ const tooltip: CSSProperties = {
   padding: "8px 10px",
   borderRadius: 10,
   border: `1px solid ${SNAPSHOT_THEME.navyLine}`,
-  background: "rgba(7,16,31,0.96)",
+  background: "var(--card-surface)",
   boxShadow: "0 8px 24px rgba(0,0,0,0.35)",
   fontSize: 12
 };

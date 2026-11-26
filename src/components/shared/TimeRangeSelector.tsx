@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { SNAPSHOT_THEME } from "@/lib/snapshots/theme";
 import {
   DIMAD_TIMEFRAME_LABELS,
   DIMAD_TIMEFRAMES,
@@ -72,8 +73,8 @@ export default function TimeRangeSelector({
             alignItems: "center",
             padding: "8px 10px",
             borderRadius: 12,
-            border: "1px solid rgba(212,175,55,0.28)",
-            background: "rgba(7,16,31,0.55)"
+            border: `1px solid ${SNAPSHOT_THEME.goldBorder}`,
+            background: "var(--bg-nested)"
           }}
         >
           <label style={dateLabel}>
@@ -106,9 +107,9 @@ export default function TimeRangeSelector({
 
 function pill(active: boolean, compact: boolean): CSSProperties {
   return {
-    border: `1px solid ${active ? "#D4AF37" : "rgba(212,175,55,0.22)"}`,
-    background: active ? "#D4AF37" : "transparent",
-    color: active ? "#0A192F" : "#8BA0B8",
+    border: `1px solid ${active ? SNAPSHOT_THEME.gold : SNAPSHOT_THEME.goldBorder}`,
+    background: active ? SNAPSHOT_THEME.gold : "transparent",
+    color: active ? "var(--accent-gold-fg)" : SNAPSHOT_THEME.mute,
     borderRadius: 999,
     padding: compact ? "5px 9px" : "6px 10px",
     fontSize: compact ? 10 : 11,
@@ -123,15 +124,15 @@ const dateLabel: CSSProperties = {
   alignItems: "center",
   gap: 6,
   fontSize: 11,
-  color: "#8BA0B8",
+  color: SNAPSHOT_THEME.mute,
   fontWeight: 600
 };
 
 const dateInput: CSSProperties = {
-  background: "#070A0F",
-  border: "1px solid rgba(212,175,55,0.22)",
+  background: "var(--bg-card)",
+  border: `1px solid ${SNAPSHOT_THEME.goldBorder}`,
   borderRadius: 8,
-  color: "#E8EEF7",
+  color: SNAPSHOT_THEME.ink,
   padding: "5px 8px",
   font: "inherit",
   fontSize: 11

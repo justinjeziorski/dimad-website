@@ -1,10 +1,17 @@
 <div id="view-dimad-dimdrive" class="tab-view hidden fixed inset-0 z-[400] min-h-screen bg-slate-950 text-slate-100 flex-col">
   <style>
-    #view-dimad-dimdrive { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 11px; }
+    #view-dimad-dimdrive { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 11px; background: var(--bg-canvas); color: var(--text-primary); }
     #view-dimad-dimdrive ::-webkit-scrollbar { width: 5px; height: 5px; }
-    #view-dimad-dimdrive ::-webkit-scrollbar-track { background: #0B0F19; }
-    #view-dimad-dimdrive ::-webkit-scrollbar-thumb { background: #1E293B; border-radius: 9999px; }
-    #view-dimad-dimdrive ::-webkit-scrollbar-thumb:hover { background: #F59E0B; }
+    #view-dimad-dimdrive ::-webkit-scrollbar-track { background: var(--scrollbar-track); }
+    #view-dimad-dimdrive ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 9999px; }
+    #view-dimad-dimdrive ::-webkit-scrollbar-thumb:hover { background: var(--accent-gold); }
+    :root[data-theme="light"] #view-dimad-dimdrive .bg-slate-900\/90,
+    :root[data-theme="light"] #view-dimad-dimdrive .bg-slate-900\/60,
+    :root[data-theme="light"] #view-dimad-dimdrive .bg-slate-900\/50,
+    :root[data-theme="light"] #view-dimad-dimdrive .bg-slate-900\/40 {
+      background-color: var(--bg-card) !important;
+      background: var(--bg-card) !important;
+    }
   </style>
 
   <header class="h-11 bg-slate-900 border-b border-slate-800 px-3 flex items-center justify-between shrink-0 z-30 gap-2">
@@ -138,7 +145,7 @@
       </div>
       <div id="dimdrive-note-body" class="flex-1 overflow-y-auto px-4 py-3 text-[13px] leading-relaxed text-slate-200 whitespace-pre-wrap font-sans"></div>
       <div class="px-4 py-3 border-t border-slate-800 flex justify-end">
-        <button type="button" id="dimdrive-note-open" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[11px] px-3 py-1.5 rounded-lg">Open in DIMAD Notepad</button>
+        <button type="button" id="dimdrive-note-open" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[11px] px-3 py-1.5 rounded-lg">Open in dimPad</button>
       </div>
     </div>
   </div>

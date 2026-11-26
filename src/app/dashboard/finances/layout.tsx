@@ -38,22 +38,36 @@ export default function FinancesLayout({ children }: { children: ReactNode }) {
       <style>{`
         html, body {
           margin: 0;
-          background: #0A192F;
-          color-scheme: dark;
+          background: var(--bg-canvas, #060911);
+          color: var(--text-primary, #f1f5f9);
           overflow: hidden !important;
           height: auto !important;
           min-height: 0 !important;
+        }
+        html[data-theme="light"], html[data-theme="light"] body {
+          background: var(--bg-nav, #e8ecf2);
+          color: var(--text-primary, #000000);
+          color-scheme: light;
         }
         #__next, body > div:not(#finances-workspace-root) {
           height: auto !important;
           min-height: 0 !important;
           overflow: visible !important;
         }
+        #finances-workspace-root {
+          background: var(--bg-canvas, #060911);
+          color: var(--text-primary, #f1f5f9);
+        }
+        html[data-theme="light"] #finances-workspace-root {
+          background: var(--bg-nav, #e8ecf2);
+          color: var(--text-primary, #000000);
+        }
       `}</style>
       <div
         id="finances-workspace-root"
-        className="w-full bg-[#0A192F] text-white relative overflow-x-hidden"
+        className="w-full relative overflow-x-hidden"
         style={{ minHeight: 0 }}
+        suppressHydrationWarning
       >
         {children}
       </div>

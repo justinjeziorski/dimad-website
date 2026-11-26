@@ -247,7 +247,7 @@ export default function ManualEntriesPage() {
 }
 
 const panelStyle: CSSProperties = {
-  background: "rgba(17, 34, 64, 0.72)",
+  background: "var(--card-surface)",
   border: `1px solid ${SNAPSHOT_THEME.navyLine}`,
   borderRadius: 16,
   padding: 16
@@ -259,7 +259,7 @@ const tdStyle: CSSProperties = { padding: "10px 6px", color: SNAPSHOT_THEME.ink 
 const inputStyle: CSSProperties = {
   flex: 1,
   minWidth: 220,
-  background: "#070A0F",
+  background: "var(--bg-card)",
   border: `1px solid ${SNAPSHOT_THEME.navyLine}`,
   borderRadius: 10,
   padding: "8px 10px",

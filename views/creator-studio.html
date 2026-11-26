@@ -1,7 +1,7 @@
-<!-- TAB: DIMAD STUDIO (Creator Command Center) -->
+<!-- TAB: DIMAD STUDIO (Creator Dashboard) -->
 <div id="view-creator-studio" class="tab-view hidden space-y-3 w-full">
   <div class="flex items-center justify-between gap-2">
-    <span class="text-[9px] font-bold text-slate-500 tracking-wider uppercase">Dimad Studio</span>
+    <span class="micro-label text-[9px]">Dimad Studio</span>
     <div class="flex items-center gap-2">
       <div class="relative">
         <button type="button" onclick="DIMAD_STUDIO.toggleFilter('core')" class="text-[10px] font-semibold text-slate-300 hover:text-brand-gold border border-slate-700 bg-slate-950 px-2.5 py-1 rounded-lg transition">
@@ -71,28 +71,27 @@
       <div class="flex items-center flex-wrap gap-2">
         <label class="sr-only" for="cs-cal-mode-select">Calendar view</label>
         <select id="cs-cal-mode-select" onchange="CALENDAR_NAV.setMode(this.value)" class="text-[10px] font-mono bg-amber-500/10 text-brand-gold border border-amber-500/20 px-2 py-0.5 rounded outline-none cursor-pointer hover:bg-amber-500/20">
-          <option value="hourly">Hourly</option>
+          <option value="hourly">Daily</option>
           <option value="weekly">Weekly</option>
           <option value="monthly">Monthly</option>
+          <option value="yearly">Yearly</option>
         </select>
         <label class="flex items-center gap-1 text-[10px] font-semibold text-slate-400 cursor-pointer select-none">
           <input id="cs-cal-show-content" type="checkbox" checked onchange="DIMAD_CAL.setShowContent(this.checked)" class="accent-amber-500">
           Content calendar
         </label>
-        <label class="sr-only" for="cs-cal-layout-select">Calendar layout</label>
-        <select id="cs-cal-layout-select" data-cal-layout onchange="CALENDAR_NAV.setLayout(this.value)" class="text-[10px] font-mono bg-slate-950 text-slate-300 border border-slate-700 px-2 py-0.5 rounded outline-none cursor-pointer hover:text-brand-gold hover:border-amber-500/30">
-          <option value="full">Full view</option>
-          <option value="multi">Multiview</option>
-        </select>
         <button type="button" onclick="CAL_SETTINGS.open()" title="Calendar settings" class="text-slate-400 hover:text-brand-gold px-1.5 py-0.5 border border-slate-700 rounded-lg bg-slate-950"><i class="fa-solid fa-gear text-[10px]"></i></button>
         <button type="button" onclick="SCHEDULER.openFromStudio()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold px-4 py-2 rounded-xl transition shadow-lg shadow-amber-500/10">＋ Schedule Content</button>
       </div>
     </div>
     <p class="hidden" id="cs-cal-view-hint"></p>
     <div data-cs-body class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
-      <div id="cs-cal-dual" class="grid grid-cols-1 gap-3 items-start">
+      <div id="cs-cal-dual" class="cal-dual-rail">
         <div class="min-w-0" id="cs-hourly-slots-container"></div>
-        <div class="hidden min-w-0" id="cs-cal-companion-container"></div>
+        <aside class="min-w-0 flex flex-col gap-3">
+          <div id="cs-cal-companion-container" class="min-w-0"></div>
+          <div id="cs-cal-side-nav" class="min-h-[10rem] rounded-xl border border-slate-800 bg-slate-950/40" aria-hidden="true"></div>
+        </aside>
       </div>
       <div class="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500 border-t border-slate-800 pt-2.5">
         <span id="cs-calendar-timezone-label">Timezone: Auto-detected</span>
@@ -123,25 +122,30 @@
       <h3 class="font-bold text-slate-100 text-xs border-b border-brand-border pb-1.5 flex items-center justify-between gap-2">
         <span class="flex items-center gap-1.5 min-w-0">
           <button type="button" onclick="DIMAD_NOTEPAD.openTab()" class="inline-flex items-center gap-1.5 shrink-0 hover:text-brand-gold transition">
-            <i class="fa-solid fa-note-sticky text-brand-gold"></i> DIMAD Notepad
+            <i class="fa-solid fa-note-sticky text-brand-gold"></i> dimPad
           </button>
           <span class="relative">
-            <button type="button" onclick="DIMAD_NOTEPAD.toggleHelp(event, 'cs')" aria-label="About DIMAD Notepad" class="w-4 h-4 rounded-full border border-slate-600 text-[9px] leading-none text-slate-400 hover:text-brand-gold hover:border-amber-500/40">?</button>
+            <button type="button" onclick="DIMAD_NOTEPAD.toggleHelp(event, 'cs')" aria-label="About dimPad" class="w-4 h-4 rounded-full border border-slate-600 text-[9px] leading-none text-slate-400 hover:text-brand-gold hover:border-amber-500/40">?</button>
             <div id="cs-notepad-help" class="hidden absolute left-0 top-full mt-1 z-30 w-56 rounded-lg border border-slate-700 bg-slate-950 shadow-xl p-2.5 text-[10px] font-normal leading-relaxed text-slate-300">Cloud-based notepad. Autosaves directly to dimDrive. Think it. Jot it. Save it.</div>
           </span>
         </span>
         <span class="flex flex-wrap items-center justify-end gap-1.5">
           <span class="relative">
             <button type="button" onclick="DIMAD_NOTEPAD.toggleRecent(event, 'cs')" class="text-[9px] font-semibold text-slate-200 hover:text-brand-gold border border-slate-700 bg-slate-950 px-2 py-0.5 rounded-lg transition">Recent</button>
-            <div id="cs-notepad-recent" class="hidden absolute right-0 top-full mt-1 z-30 w-52 rounded-lg border border-slate-700 bg-slate-950 shadow-xl py-1"></div>
+            <div id="cs-notepad-recent" class="hidden absolute right-0 top-full mt-1 z-30 w-48 max-h-56 overflow-y-auto rounded-lg border border-slate-700 bg-slate-950 shadow-xl py-0.5"></div>
           </span>
           <button type="button" onclick="DIMAD_NOTEPAD.createFromDash('cs')" class="text-[9px] font-semibold text-brand-gold hover:text-amber-300 border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 rounded-lg transition">+ New Note</button>
         </span>
       </h3>
       <div data-cs-body class="space-y-2">
+        <div class="shrink-0">
+          <button type="button" id="cs-notepad-title" ondblclick="DIMAD_NOTEPAD.beginTitleEdit(event, 'cs')" title="Double-click to rename" class="w-full text-left text-[11px] font-semibold text-slate-100 truncate px-0.5 hover:text-brand-gold cursor-text">Untitled</button>
+          <input id="cs-notepad-title-input" type="text" class="hidden w-full bg-brand-black/60 border border-amber-500/40 rounded-md px-2 py-1 text-[11px] font-semibold text-slate-100 outline-none" onkeydown="DIMAD_NOTEPAD.titleKey(event)" onblur="DIMAD_NOTEPAD.commitTitleEdit()" onclick="event.stopPropagation()">
+          <p id="cs-notepad-stamp" class="text-[8px] text-slate-500 px-0.5 mt-0.5">Created —</p>
+        </div>
         <textarea id="cs-notepad-body" rows="5" placeholder="Save your thoughts here..." oninput="DIMAD_NOTEPAD.markDirty('cs')" class="w-full min-h-[5rem] bg-brand-black/60 p-2.5 rounded border border-brand-border text-[11px] leading-relaxed text-slate-200 placeholder:text-slate-600 outline-none focus:border-amber-500/40 resize-none font-mono"></textarea>
         <div class="flex items-center justify-between gap-2">
-          <p id="cs-notepad-status" class="text-[9px] text-slate-500">Autosaves to DIMAD Notepad.</p>
+          <p id="cs-notepad-status" class="text-[9px] text-slate-500">Autosaves to dimPad.</p>
           <button type="button" id="cs-notepad-save" onclick="DIMAD_NOTEPAD.saveDash('cs')" class="text-[9px] font-semibold text-slate-200 hover:text-brand-gold border border-slate-700 bg-slate-950 px-2 py-0.5 rounded-lg transition">Save</button>
         </div>
       </div>

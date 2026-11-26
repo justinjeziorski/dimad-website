@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { postToDashboard } from "@/lib/embeds/postToDashboard";
 import AccountBadge from "@/components/integrations/AccountBadge";
 import IntegrationLoadingBar from "@/components/integrations/IntegrationLoadingBar";
 import { authFetch } from "@/lib/auth/client";
@@ -24,11 +25,6 @@ function explain(code: string | undefined, fallback = "Could not load Lemon Sque
   if (REASONS[code]) return REASONS[code];
   if (code.includes(" ") && code.length < 180) return code;
   return fallback;
-}
-
-function postToDashboard(payload: Record<string, unknown>) {
-  if (window.parent === window) return;
-  window.parent.postMessage(payload, window.location.origin);
 }
 
 export default function LemonSqueezyWidget() {

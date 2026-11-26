@@ -291,7 +291,7 @@ const wrap: CSSProperties = {
   padding: "14px 16px",
   borderRadius: 14,
   border: `1px solid ${SNAPSHOT_THEME.navyLine}`,
-  background: "linear-gradient(165deg, rgba(17,34,64,0.9) 0%, rgba(10,25,47,0.95) 100%)"
+  background: "var(--card-surface)"
 };
 
 const row: CSSProperties = {
@@ -378,7 +378,7 @@ const badgeWrap: CSSProperties = {
   padding: "8px 12px",
   borderRadius: 12,
   border: `1px solid ${SNAPSHOT_THEME.navyLine}`,
-  background: "rgba(7,16,31,0.55)",
+  background: "var(--bg-nested)",
   minWidth: 140
 };
 

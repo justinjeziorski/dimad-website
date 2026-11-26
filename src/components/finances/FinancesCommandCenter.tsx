@@ -553,7 +553,7 @@ function Kpi({
       style={{
         ...kpiCard,
         border: `1px solid ${active ? SNAPSHOT_THEME.gold : SNAPSHOT_THEME.navyLine}`,
-        background: active ? SNAPSHOT_THEME.goldSoft : "rgba(7,16,31,0.55)",
+        background: active ? SNAPSHOT_THEME.goldSoft : "var(--bg-nested)",
         cursor: onClick ? "pointer" : "default",
         width: "100%",
         font: "inherit",
@@ -679,7 +679,7 @@ const split: CSSProperties = {
 const panel: CSSProperties = {
   borderRadius: 14,
   border: `1px solid ${SNAPSHOT_THEME.navyLine}`,
-  background: "rgba(7,16,31,0.55)",
+  background: "var(--bg-nested)",
   padding: "12px 14px"
 };
 

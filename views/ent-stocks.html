@@ -1,3 +1,12 @@
 <div id="view-ent-stocks" class="tab-view hidden absolute inset-0 bg-brand-black">
-  <iframe src="/market" title="Financial Markets" class="w-full h-full bg-brand-black" style="border:0"></iframe>
+  <div id="market-board-root" class="w-full h-full min-h-0" data-workspace-root="market" aria-label="Financial Markets">
+    <div data-workspace-skeleton class="h-full p-3 box-border flex flex-col gap-3" aria-hidden="true" style="background:#070A0F">
+      <div class="h-10 rounded-xl border border-slate-800 bg-slate-950/80 animate-pulse"></div>
+      <div class="flex-1 min-h-0 grid grid-cols-1 xl:grid-cols-[1fr_480px] gap-3">
+        <div class="rounded-xl border border-slate-800 bg-slate-950/60 animate-pulse min-h-[420px]"></div>
+        <div class="rounded-xl border border-slate-800 bg-slate-950/60 animate-pulse min-h-[320px]"></div>
+      </div>
+      <p class="text-[10px] text-slate-500 font-mono">Loading markets… TradingView chart embeds when ready.</p>
+    </div>
+  </div>
 </div>

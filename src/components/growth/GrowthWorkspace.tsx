@@ -309,7 +309,7 @@ function Kpi({ label, value, delta }: { label: string; value: string; delta: num
 }
 
 const panelStyle: CSSProperties = {
-  background: "rgba(17, 34, 64, 0.72)",
+  background: "var(--card-surface)",
   border: `1px solid ${SNAPSHOT_THEME.navyLine}`,
   borderRadius: 16,
   padding: 16

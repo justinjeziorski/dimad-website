@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { postToDashboard } from "@/lib/embeds/postToDashboard";
 import AccountBadge from "@/components/integrations/AccountBadge";
 import IntegrationLoadingBar from "@/components/integrations/IntegrationLoadingBar";
 import { takeWorkspaceHydration } from "@/components/workspace/WorkspaceDataProvider";
@@ -36,11 +37,6 @@ function explain(code: string | undefined, fallback = "Could not load Plaid.") {
   if (REASONS[code]) return REASONS[code];
   if (code.includes(" ") && code.length < 180) return code;
   return fallback;
-}
-
-function postToDashboard(payload: Record<string, unknown>) {
-  if (window.parent === window) return;
-  window.parent.postMessage(payload, window.location.origin);
 }
 
 function moneyExpense(amount: number) {

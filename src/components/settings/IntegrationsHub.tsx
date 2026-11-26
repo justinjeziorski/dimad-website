@@ -499,7 +499,7 @@ export default function IntegrationsHub() {
           <section
             key={group}
             style={{
-              background: "rgba(17, 34, 64, 0.72)",
+              background: "var(--card-surface)",
               border: `1px solid ${SNAPSHOT_THEME.navyLine}`,
               borderRadius: 16,
               padding: 16
@@ -531,7 +531,7 @@ export default function IntegrationsHub() {
                       border: `1px solid ${SNAPSHOT_THEME.navyLine}`,
                       borderRadius: 12,
                       padding: "12px 14px",
-                      background: "rgba(7, 16, 31, 0.35)"
+                      background: "var(--bg-nested)"
                     }}
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
@@ -638,7 +638,7 @@ export default function IntegrationsHub() {
                           padding: 12,
                           borderRadius: 10,
                           border: `1px solid ${SNAPSHOT_THEME.navyLine}`,
-                          background: "rgba(7,16,31,0.65)",
+                          background: "var(--bg-card)",
                           display: "grid",
                           gap: 10
                         }}
@@ -757,7 +757,7 @@ export default function IntegrationsHub() {
 }
 
 const inputStyle: CSSProperties = {
-  background: "#070A0F",
+  background: "var(--bg-card)",
   color: SNAPSHOT_THEME.ink,
   border: `1px solid ${SNAPSHOT_THEME.navyLine}`,
   borderRadius: 10,

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { postToDashboard } from "@/lib/embeds/postToDashboard";
 import AccountBadge from "@/components/integrations/AccountBadge";
 import IntegrationLoadingBar from "@/components/integrations/IntegrationLoadingBar";
 import { takeWorkspaceHydration } from "@/components/workspace/WorkspaceDataProvider";
@@ -26,11 +27,6 @@ function normalizeShop(raw: string) {
   if (!shop) return "";
   if (!shop.includes(".")) shop = `${shop}.myshopify.com`;
   return /^[a-z0-9][a-z0-9-]*\.myshopify\.com$/.test(shop) ? shop : "";
-}
-
-function postToDashboard(payload: Record<string, unknown>) {
-  if (window.parent === window) return;
-  window.parent.postMessage(payload, window.location.origin);
 }
 
 function readFlash() {

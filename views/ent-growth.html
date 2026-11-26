@@ -1,8 +1,8 @@
 <div id="view-ent-growth" class="tab-view hidden space-y-3 w-full">
   <div class="flex items-center justify-between gap-2 px-1">
     <div>
-      <p class="text-[9px] font-mono uppercase tracking-[0.18em] text-brand-gold">Growth</p>
-      <h2 class="text-sm font-black text-white tracking-wide uppercase mt-0.5">Acquisition & channels</h2>
+      <p class="micro-label text-[9px]">Growth</p>
+      <h2 class="page-title mt-0.5">Acquisition & Channels</h2>
     </div>
     <button type="button" id="growth-api-filter-btn" onclick="GROWTH_HUB.toggleFilter('api')" class="text-[10px] font-semibold text-slate-300 hover:text-brand-gold border border-slate-700 bg-slate-950 px-2.5 py-1 rounded-lg transition">
       API Widgets
@@ -10,12 +10,46 @@
   </div>
 
   <div id="growth-workspace-board" class="w-full">
-    <iframe data-growth-workspace-frame title="Growth workspace" src="/dashboard/growth" class="block w-full rounded-2xl border border-brand-border" style="height:680px;border:0;background:#0A192F"></iframe>
+    <div id="growth-workspace-root" class="w-full min-h-[520px] rounded-2xl border border-white/10 bg-white/[0.03] overflow-hidden" data-workspace-root="growth" aria-label="Growth workspace">
+      <div data-workspace-skeleton class="p-4 space-y-3" aria-hidden="true">
+        <div class="flex items-center justify-between gap-2">
+          <div class="space-y-1.5">
+            <div class="h-3 w-20 rounded bg-white/10 animate-pulse"></div>
+            <div class="h-5 w-56 rounded bg-white/10 animate-pulse"></div>
+          </div>
+          <div class="h-6 w-36 rounded-full bg-white/10 animate-pulse"></div>
+        </div>
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-2">
+          <div class="h-20 rounded-xl border border-white/10 bg-white/[0.03] animate-pulse"></div>
+          <div class="h-20 rounded-xl border border-white/10 bg-white/[0.03] animate-pulse"></div>
+          <div class="h-20 rounded-xl border border-white/10 bg-white/[0.03] animate-pulse"></div>
+          <div class="h-20 rounded-xl border border-white/10 bg-white/[0.03] animate-pulse"></div>
+        </div>
+        <div class="flex gap-2">
+          <div class="h-2 flex-1 rounded-full bg-brand-gold/30 animate-pulse"></div>
+          <div class="h-2 flex-1 rounded-full bg-emerald-400/30 animate-pulse"></div>
+          <div class="h-2 flex-1 rounded-full bg-sky-400/30 animate-pulse"></div>
+          <div class="h-2 flex-1 rounded-full bg-violet-400/30 animate-pulse"></div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div id="growth-integrations" class="flex flex-col items-start gap-2 w-full">
-    <div data-growth-module="youtube" id="growth-module-youtube" class="cc-rail-card min-w-0 max-w-full w-full">
-      <iframe data-youtube-frame title="YouTube" src="/integrations/youtube-card" class="block w-full bg-brand-panel rounded-2xl border border-brand-border" style="height:240px;border:0;background:#0B0F17"></iframe>
+    <div data-growth-module="youtube" id="growth-module-youtube" class="cc-rail-card min-w-0 max-w-full w-full rounded-2xl border border-white/10 bg-white/[0.03] overflow-hidden">
+      <div id="youtube-card-root" class="min-h-[240px]" data-integration-root="youtube">
+        <div data-workspace-skeleton class="p-3 space-y-2" aria-hidden="true">
+          <div class="flex items-center justify-between">
+            <div class="h-4 w-28 rounded bg-white/10 animate-pulse"></div>
+            <div class="h-7 w-24 rounded-full bg-white/10 animate-pulse"></div>
+          </div>
+          <div class="grid grid-cols-3 gap-2">
+            <div class="h-14 rounded-lg bg-white/[0.03] border border-white/10 animate-pulse"></div>
+            <div class="h-14 rounded-lg bg-white/[0.03] border border-white/10 animate-pulse"></div>
+            <div class="h-14 rounded-lg bg-white/[0.03] border border-white/10 animate-pulse"></div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div data-growth-module="substack" class="cc-rail-card bg-slate-900 border border-slate-800 p-3 rounded-2xl transition-all duration-300 flex items-center gap-3 min-w-0 w-full">
@@ -32,12 +66,36 @@
       </div>
     </div>
 
-    <div data-growth-module="mailerlite" id="growth-module-mailerlite" class="cc-rail-card min-w-0 max-w-full w-full">
-      <iframe data-mailerlite-frame title="MailerLite" src="/integrations/mailerlite-card" class="block w-full bg-brand-panel rounded-2xl border border-brand-border" style="height:240px;border:0;background:#0B0F17"></iframe>
+    <div data-growth-module="mailerlite" id="growth-module-mailerlite" class="cc-rail-card min-w-0 max-w-full w-full rounded-2xl border border-white/10 bg-white/[0.03] overflow-hidden">
+      <div id="mailerlite-card-root" class="min-h-[240px]" data-integration-root="mailerlite">
+        <div data-workspace-skeleton class="p-3 space-y-2" aria-hidden="true">
+          <div class="flex items-center justify-between">
+            <div class="h-4 w-28 rounded bg-white/10 animate-pulse"></div>
+            <div class="h-7 w-24 rounded-full bg-white/10 animate-pulse"></div>
+          </div>
+          <div class="grid grid-cols-3 gap-2">
+            <div class="h-14 rounded-lg bg-white/[0.03] border border-white/10 animate-pulse"></div>
+            <div class="h-14 rounded-lg bg-white/[0.03] border border-white/10 animate-pulse"></div>
+            <div class="h-14 rounded-lg bg-white/[0.03] border border-white/10 animate-pulse"></div>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div data-growth-module="x" id="growth-module-x" class="cc-rail-card min-w-0 max-w-full w-full">
-      <iframe data-x-frame title="X" src="/integrations/x-card" class="block w-full bg-brand-panel rounded-2xl border border-brand-border" style="height:240px;border:0;background:#0B0F17"></iframe>
+    <div data-growth-module="x" id="growth-module-x" class="cc-rail-card min-w-0 max-w-full w-full rounded-2xl border border-white/10 bg-white/[0.03] overflow-hidden">
+      <div id="x-card-root" class="min-h-[240px]" data-integration-root="x">
+        <div data-workspace-skeleton class="p-3 space-y-2" aria-hidden="true">
+          <div class="flex items-center justify-between">
+            <div class="h-4 w-16 rounded bg-white/10 animate-pulse"></div>
+            <div class="h-7 w-24 rounded-full bg-white/10 animate-pulse"></div>
+          </div>
+          <div class="grid grid-cols-3 gap-2">
+            <div class="h-14 rounded-lg bg-white/[0.03] border border-white/10 animate-pulse"></div>
+            <div class="h-14 rounded-lg bg-white/[0.03] border border-white/10 animate-pulse"></div>
+            <div class="h-14 rounded-lg bg-white/[0.03] border border-white/10 animate-pulse"></div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>

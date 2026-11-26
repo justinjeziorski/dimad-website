@@ -37,8 +37,7 @@ const wrap: CSSProperties = {
   padding: "16px 18px",
   borderRadius: 14,
   border: `1px solid ${SNAPSHOT_THEME.navyLine}`,
-  background:
-    "linear-gradient(135deg, rgba(212,175,55,0.08) 0%, rgba(17,34,64,0.92) 42%, rgba(10,25,47,0.98) 100%)"
+  background: "linear-gradient(135deg, var(--accent-gold-soft) 0%, var(--card-surface) 42%, var(--bg-card) 100%)"
 };
 
 const head: CSSProperties = {

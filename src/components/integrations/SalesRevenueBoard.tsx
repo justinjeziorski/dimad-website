@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { postToDashboard } from "@/lib/embeds/postToDashboard";
 import AccountBadge from "@/components/integrations/AccountBadge";
 import IntegrationLoadingBar from "@/components/integrations/IntegrationLoadingBar";
 import { authFetch } from "@/lib/auth/client";
@@ -19,11 +20,6 @@ const RANGES: Array<{ id: ShopifyRangeKey; label: string }> = [
   { id: "year", label: "Year" },
   { id: "custom", label: "Custom" }
 ];
-
-function postToDashboard(payload: Record<string, unknown>) {
-  if (window.parent === window) return;
-  window.parent.postMessage(payload, window.location.origin);
-}
 
 function normalizeShop(raw: string) {
   let shop = raw.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/:\d+$/, "");

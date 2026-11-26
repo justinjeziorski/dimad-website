@@ -25,7 +25,7 @@ export default async function QuoteOfTheDay({ quote, author, context, compact = 
       style={{
         border: `1px solid ${SNAPSHOT_THEME.navyLine}`,
         borderLeft: `2px solid ${SNAPSHOT_THEME.gold}`,
-        background: "rgba(12, 18, 32, 0.85)",
+        background: "var(--bg-card)",
         backdropFilter: "blur(12px)",
         borderRadius: 10,
         padding: compact ? "10px 14px" : "12px 16px",

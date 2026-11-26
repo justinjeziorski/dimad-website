@@ -1,29 +1,45 @@
 <div id="view-ent-crm" class="tab-view hidden w-full relative">
   <style>
     #view-ent-crm { font-family: 'JetBrains Mono', monospace; }
-    #view-ent-crm iframe[data-revenue-workspace-frame] {
+    #finances-workspace-root {
       display: block;
       width: 100%;
-      border: 0;
+      min-height: 720px;
+      border-radius: 1rem;
+      border: 1px solid var(--border-hairline, rgba(255,255,255,0.1));
+      background: rgba(255,255,255,0.03);
       overflow: hidden;
-      background: #0A192F;
+    }
+    :root[data-theme="light"] #finances-workspace-root {
+      background: var(--bg-nav) !important;
     }
   </style>
   <div class="px-4 pt-3 pb-2 flex items-end justify-between gap-3">
     <div>
-      <h2 class="text-sm font-black text-brand-gold tracking-wide uppercase">Finances</h2>
-      <p class="text-[11px] text-slate-400 mt-0.5">Institutional cash-flow command center — hybrid charts, P&amp;L bridge, AI briefing, and exports. Connect platforms in Settings → Integrations.</p>
+      <h2 class="page-title">Finances</h2>
+      <p class="page-subtitle">Institutional cash-flow dashboard — hybrid charts, P&amp;L bridge, AI briefing, and exports. Connect platforms in Settings → Integrations.</p>
     </div>
   </div>
 
   <div id="revenue-workspace-board" class="px-4 pb-6">
-    <iframe
-      data-revenue-workspace-frame
-      title="Finances workspace"
-      src="/dashboard/finances"
-      class="w-full rounded-2xl border border-brand-border"
-      scrolling="no"
-      style="height:900px;background:#0A192F"
-    ></iframe>
+    <div id="finances-workspace-root" data-workspace-root="finances" aria-label="Finances workspace">
+      <!-- Instant shell — React hydrates in place; never waits on Stripe/Shopify/API -->
+      <div data-workspace-skeleton class="p-4 space-y-3" aria-hidden="true">
+        <div class="flex items-center justify-between gap-2">
+          <div class="space-y-1.5">
+            <div class="h-3 w-24 rounded bg-white/10 animate-pulse"></div>
+            <div class="h-5 w-48 rounded bg-white/10 animate-pulse"></div>
+          </div>
+          <div class="h-7 w-28 rounded-full bg-white/10 animate-pulse"></div>
+        </div>
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-2">
+          <div class="h-20 rounded-xl border border-white/10 bg-white/[0.03] animate-pulse"></div>
+          <div class="h-20 rounded-xl border border-white/10 bg-white/[0.03] animate-pulse"></div>
+          <div class="h-20 rounded-xl border border-white/10 bg-white/[0.03] animate-pulse"></div>
+          <div class="h-20 rounded-xl border border-white/10 bg-white/[0.03] animate-pulse"></div>
+        </div>
+        <div class="h-64 rounded-xl border border-white/10 bg-gradient-to-b from-brand-gold/10 to-transparent animate-pulse"></div>
+      </div>
+    </div>
   </div>
 </div>

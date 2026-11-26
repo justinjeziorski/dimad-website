@@ -108,11 +108,11 @@ export default function DimDriveView() {
     <div style={shell}>
       <header style={header}>
         <strong>dimDrive</strong>
-        <span style={{ color: "#94a3b8" }}>{busy || `${formatBytes(used)} stored`}</span>
+        <span style={{ color: "var(--text-secondary)" }}>{busy || `${formatBytes(used)} stored`}</span>
       </header>
       {!ready ? <p style={muted}>Loading dimDrive…</p> : null}
       {ready && !user ? <p style={muted}>Sign in to store files in dimDrive.</p> : null}
-      {error ? <p style={{ color: "#fb7185", margin: "12px 16px" }}>{error}</p> : null}
+      {error ? <p style={{ color: "var(--status-alert)", margin: "12px 16px" }}>{error}</p> : null}
       {user ? (
         <div style={layout}>
           <aside style={aside}>
@@ -120,7 +120,7 @@ export default function DimDriveView() {
               Upload file
               <input type="file" hidden onChange={(event) => void onUpload(event.target.files, folder)} />
             </label>
-            <label style={{ ...button, background: "#0f172a", color: "#e2e8f0" }}>
+            <label style={{ ...button, background: "var(--bg-nested)", color: "var(--text-primary)" }}>
               Upload folder
               <input
                 type="file"
@@ -135,7 +135,7 @@ export default function DimDriveView() {
                 }}
               />
             </label>
-            <button type="button" style={{ ...button, background: "#0f172a", color: "#fbbf24" }} onClick={createFolder}>
+            <button type="button" style={{ ...button, background: "var(--bg-nested)", color: "var(--accent-gold)" }} onClick={createFolder}>
               New folder
             </button>
             <button type="button" style={navBtn(folder === "")} onClick={() => setFolder("")}>
@@ -150,15 +150,23 @@ export default function DimDriveView() {
           <main style={{ flex: 1, minWidth: 0 }}>
             <h2 style={{ margin: "0 0 12px", fontSize: 16 }}>{folder || "My Drive"}</h2>
             {!visible.length ? (
-              <div style={{ textAlign: "center", padding: "48px 20px", border: "1px dashed #334155", borderRadius: 16, background: "rgba(15, 23, 42, 0.5)" }}>
-                <p style={{ margin: "0 0 6px", color: "#f8fafc", fontWeight: 700 }}>Your drive is empty</p>
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: "48px 20px",
+                  border: "1px dashed var(--border-subtle)",
+                  borderRadius: 16,
+                  background: "var(--bg-nested)"
+                }}
+              >
+                <p style={{ margin: "0 0 6px", color: "var(--text-primary)", fontWeight: 700 }}>Your drive is empty</p>
                 <p style={{ ...muted, marginTop: 0 }}>Upload a file or create a folder to store the first item in dimDrive.</p>
               </div>
             ) : null}
             <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 8 }}>
               {visible.map((file) => (
                 <li key={file.id} style={row}>
-                  <a href={file.downloadURL} target="_blank" rel="noreferrer" style={{ color: "#f8fafc", textDecoration: "none" }}>
+                  <a href={file.downloadURL} target="_blank" rel="noreferrer" style={{ color: "var(--text-primary)", textDecoration: "none" }}>
                     {file.name}
                   </a>
                   <span style={muted}>{formatBytes(file.size)}</span>
@@ -177,8 +185,8 @@ export default function DimDriveView() {
 
 const shell: CSSProperties = {
   minHeight: "100vh",
-  background: "#020617",
-  color: "#e2e8f0",
+  background: "var(--bg-canvas)",
+  color: "var(--text-primary)",
   fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace"
 };
 const header: CSSProperties = {
@@ -186,34 +194,36 @@ const header: CSSProperties = {
   justifyContent: "space-between",
   alignItems: "center",
   padding: "12px 16px",
-  borderBottom: "1px solid #1e293b"
+  borderBottom: "1px solid var(--border-hairline)",
+  background: "var(--bg-nav)"
 };
 const layout: CSSProperties = { display: "flex", gap: 16, padding: 16, alignItems: "flex-start" };
 const aside: CSSProperties = { width: 200, display: "grid", gap: 8 };
 const button: CSSProperties = {
   display: "block",
   textAlign: "center",
-  background: "#f59e0b",
-  color: "#0f172a",
+  background: "var(--accent-gold)",
+  color: "var(--accent-gold-fg)",
   borderRadius: 8,
   padding: "8px 10px",
   fontWeight: 700,
   cursor: "pointer"
 };
-const muted: CSSProperties = { color: "#94a3b8", fontSize: 12 };
+const muted: CSSProperties = { color: "var(--text-secondary)", fontSize: 12 };
 const row: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "1fr auto auto",
   gap: 12,
   alignItems: "center",
   padding: "10px 12px",
-  border: "1px solid #1e293b",
-  borderRadius: 8
+  border: "1px solid var(--border-hairline)",
+  borderRadius: 8,
+  background: "var(--card-surface)"
 };
 const danger: CSSProperties = {
   background: "transparent",
-  color: "#fb7185",
-  border: "1px solid #fb7185",
+  color: "var(--status-alert)",
+  border: "1px solid var(--status-alert)",
   borderRadius: 6,
   padding: "4px 8px",
   cursor: "pointer"
@@ -222,9 +232,9 @@ const danger: CSSProperties = {
 function navBtn(active: boolean): CSSProperties {
   return {
     textAlign: "left",
-    background: active ? "#1e293b" : "transparent",
-    color: active ? "#fbbf24" : "#e2e8f0",
-    border: "1px solid #1e293b",
+    background: active ? "var(--bg-hover)" : "transparent",
+    color: active ? "var(--accent-gold)" : "var(--text-primary)",
+    border: "1px solid var(--border-hairline)",
     borderRadius: 8,
     padding: "8px 10px",
     cursor: "pointer"

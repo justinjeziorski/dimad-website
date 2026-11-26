@@ -7,9 +7,9 @@ function shimmerStyle(extra?: CSSProperties): CSSProperties {
   return {
     background: `linear-gradient(
       90deg,
-      rgba(17, 34, 64, 0.55) 0%,
-      rgba(212, 175, 55, 0.12) 45%,
-      rgba(17, 34, 64, 0.55) 100%
+      var(--bg-nested) 0%,
+      var(--accent-gold-soft) 45%,
+      var(--bg-nested) 100%
     )`,
     backgroundSize: "200% 100%",
     animation: "dimad-rev-shimmer 1.4s ease-in-out infinite",
@@ -43,7 +43,7 @@ export function KpiGridSkeleton({ count = 4 }: { count?: number }) {
         <div
           key={i}
           style={{
-            background: "rgba(17, 34, 64, 0.72)",
+            background: "var(--card-surface)",
             border: `1px solid ${SNAPSHOT_THEME.navyLine}`,
             borderRadius: 16,
             padding: 16,
@@ -64,7 +64,7 @@ export function ChartSkeleton() {
     <div
       style={{
         marginTop: 14,
-        background: "rgba(17, 34, 64, 0.72)",
+        background: "var(--card-surface)",
         border: `1px solid ${SNAPSHOT_THEME.navyLine}`,
         borderRadius: 16,
         padding: 16,
@@ -111,7 +111,7 @@ export function ExpenseRowsSkeleton({ count = 6 }: { count?: number }) {
             border: `1px solid ${SNAPSHOT_THEME.navyLine}`,
             borderRadius: 12,
             padding: "12px 12px",
-            background: "rgba(7,16,31,0.35)"
+            background: "var(--bg-nested)"
           }}
         >
           <div style={{ flex: 1 }}>
@@ -141,7 +141,7 @@ export function SyncPill({ syncing }: { syncing: boolean }) {
         border: `1px solid ${SNAPSHOT_THEME.navyLine}`,
         borderRadius: 999,
         padding: "5px 10px",
-        background: "rgba(7,16,31,0.45)"
+        background: "var(--bg-nested)"
       }}
     >
       <span

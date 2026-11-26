@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { postToDashboard } from "@/lib/embeds/postToDashboard";
 import AccountBadge from "@/components/integrations/AccountBadge";
 import IntegrationLoadingBar from "@/components/integrations/IntegrationLoadingBar";
 import { takeWorkspaceHydration } from "@/components/workspace/WorkspaceDataProvider";
@@ -50,11 +51,6 @@ function readFlash(): Flash | null {
   } catch {
     return null;
   }
-}
-
-function postToDashboard(payload: Record<string, unknown>) {
-  if (window.parent === window) return;
-  window.parent.postMessage(payload, window.location.origin);
 }
 
 export default function GumroadWidget() {

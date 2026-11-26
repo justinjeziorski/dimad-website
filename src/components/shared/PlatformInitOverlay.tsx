@@ -34,7 +34,7 @@ export default function PlatformInitOverlay({
       data-phase={phase}
       style={{
         ...shellStyle,
-        background: transparent ? "rgba(7, 16, 31, 0.72)" : SNAPSHOT_THEME.navy,
+        background: transparent ? "var(--overlay-scrim)" : SNAPSHOT_THEME.navy,
         backdropFilter: transparent ? "blur(10px)" : undefined,
         opacity: progress >= 1 ? 0 : 1,
         pointerEvents: progress >= 1 ? "none" : "auto",
@@ -77,11 +77,11 @@ const shellStyle: CSSProperties = {
 
 const cardStyle: CSSProperties = {
   width: "min(420px, 100%)",
-  background: "linear-gradient(165deg, rgba(17,34,64,0.96) 0%, rgba(10,25,47,0.98) 100%)",
+  background: "var(--card-surface)",
   border: `1px solid ${SNAPSHOT_THEME.navyLine}`,
   borderRadius: 18,
   padding: "28px 26px 22px",
-  boxShadow: "0 28px 60px rgba(0,0,0,0.45)"
+  boxShadow: "var(--shadow-elevated)"
 };
 
 const kickerStyle: CSSProperties = {
