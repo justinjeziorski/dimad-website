@@ -385,10 +385,10 @@ export default function CityHeaderSettings({
           ) : null}
         </section>
 
-        {/* Temperature */}
+        {/* Weather units (°C/km/h vs °F/mph) */}
         <section>
           <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", color: "#94a3b8", marginBottom: 8 }}>
-            TEMPERATURE
+            WEATHER
           </div>
           <div
             style={{
@@ -401,23 +401,28 @@ export default function CityHeaderSettings({
               gap: 2
             }}
           >
-            {(["C", "F"] as TempUnit[]).map((u) => (
+            {(
+              [
+                { unit: "C" as TempUnit, label: "°C/km" },
+                { unit: "F" as TempUnit, label: "°F/mph" }
+              ] as const
+            ).map(({ unit, label }) => (
               <button
-                key={u}
+                key={unit}
                 type="button"
-                onClick={() => onTempUnitChange(u)}
+                onClick={() => onTempUnitChange(unit)}
                 style={{
-                  padding: "6px 14px",
+                  padding: "6px 12px",
                   borderRadius: 8,
                   border: "none",
                   cursor: "pointer",
                   fontSize: 12,
                   fontWeight: 700,
-                  background: tempUnit === u ? "#fbbf24" : "transparent",
-                  color: tempUnit === u ? "#0f172a" : "#94a3b8"
+                  background: tempUnit === unit ? "#fbbf24" : "transparent",
+                  color: tempUnit === unit ? "#0f172a" : "#94a3b8"
                 }}
               >
-                °{u}
+                {label}
               </button>
             ))}
           </div>

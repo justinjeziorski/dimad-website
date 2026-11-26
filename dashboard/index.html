@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -25,7 +25,7 @@
   </script>
 
   <!-- City header island: preload before views so mount is not blocked ~5s -->
-  <link rel="preload" href="/embeds/yerevan-header.js?v=29" as="script" />
+  <link rel="preload" href="/embeds/yerevan-header.js?v=40" as="script" />
 
   <!-- TAILWIND & FONTS DEPENDENCIES -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -854,10 +854,15 @@
     <div class="mkt-ticker-viewport tabular-nums" aria-label="Live watchlist ticker">
       <div id="mkt-live-quotes" class="mkt-ticker-track is-static"></div>
     </div>
-    <div class="shrink-0 hidden md:flex items-center gap-1.5 pl-2 border-l border-hairline">
+    <button
+      type="button"
+      id="geo-location-btn"
+      title="Open location settings"
+      class="shrink-0 hidden md:flex items-center gap-1.5 pl-2 border-l border-hairline hover:opacity-90 transition cursor-pointer bg-transparent border-0 p-0"
+    >
       <span class="text-slate-500 uppercase tracking-wider text-[8px]">Location</span>
       <span id="geo-location-label" class="text-brand-accent font-semibold">Yerevan</span>
-    </div>
+    </button>
   </div>
 
   <!-- MAIN SHELL -->
@@ -1761,6 +1766,9 @@
 <script type="module" src="../auth/dimdrive.js?v=dimdrive-cloud"></script>
 <script type="module" src="../auth/aurinko-status.js?v=aurinko-disconnect"></script>
 <script type="module" src="../auth/email.js?v=mail-nav-case"></script>
-<script src="../script.js?v=yerevan-header-29"></script>
+<script src="../script.js?v=yerevan-header-40"></script>
 </body>
 </html>
+
+
+

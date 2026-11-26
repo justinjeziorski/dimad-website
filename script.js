@@ -90,7 +90,7 @@ async function loadViews() {
   const container = document.getElementById('view-container');
   try {
     const fragments = await Promise.all(VIEW_FILES.map(async (id) => {
-      const res = await fetch(new URL(`../views/${id}.html?v=yerevan-header-20`, window.location.href), { cache: 'no-store' });
+      const res = await fetch(new URL(`../views/${id}.html?v=yerevan-header-40`, window.location.href), { cache: 'no-store' });
       if (!res.ok) throw new Error(`Failed to load views/${id}.html (${res.status})`);
       return res.text();
     }));
@@ -109,7 +109,7 @@ async function loadViews() {
 }
 
 /** Native React City Header island (replaces slow iframe). */
-const YEREVAN_HEADER_BUNDLE = '/embeds/yerevan-header.js?v=29';
+const YEREVAN_HEADER_BUNDLE = '/embeds/yerevan-header.js?v=40';
 let _yerevanHeaderScriptPromise = null;
 
 function ensureYerevanHeaderBundle() {
@@ -270,6 +270,7 @@ const WORLD_CLOCK_CITIES = [
 
 const DIMAD_GEO = {
   storageKey: 'dimad_geo_city',
+  localLocationKey: 'dimad_local_location_v1',
   watchId: null,
   refreshing: false,
   hubs: [
@@ -279,17 +280,50 @@ const DIMAD_GEO = {
   ],
 
   init() {
-    const el = document.getElementById('geo-location-label');
-    const cached = this.readCache();
+    this.bindLabelClick();
+    const fromHeader = this.readLocalCity();
+    const cached = fromHeader || this.readCache();
     if (cached) this.setLabel(cached);
-    if (!el || !navigator.geolocation) return;
+    window.addEventListener('dimad:local-location', (e) => {
+      const city = this.cityFromLocal(e && e.detail);
+      if (!city) return;
+      this.setLabel(city);
+      this.writeCache(city);
+    });
+    // Header owns live geolocation; only backfill once if no shared local city yet.
+    if (fromHeader || !navigator.geolocation) return;
     const opts = { enableHighAccuracy: false, timeout: 12000, maximumAge: 300000 };
     const onOk = (pos) => this.resolve(pos.coords.latitude, pos.coords.longitude);
     try {
-      this.watchId = navigator.geolocation.watchPosition(onOk, () => {}, opts);
-    } catch (_) {
       navigator.geolocation.getCurrentPosition(onOk, () => {}, opts);
+    } catch (_) { /* ignore */ }
+  },
+
+  cityFromLocal(loc) {
+    if (!loc || typeof loc !== 'object') return '';
+    return String(loc.greetingPlaceName || loc.city || '').trim();
+  },
+
+  readLocalCity() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(this.localLocationKey) || '');
+      return this.cityFromLocal(raw);
+    } catch {
+      return '';
     }
+  },
+
+  bindLabelClick() {
+    const btn = document.getElementById('geo-location-btn');
+    if (!btn || btn.dataset.bound === '1') return;
+    btn.dataset.bound = '1';
+    btn.addEventListener('click', () => this.openCitySettings());
+  },
+
+  openCitySettings() {
+    try {
+      window.dispatchEvent(new CustomEvent('dimad:open-city-settings'));
+    } catch (_) { /* ignore */ }
   },
 
   readCache() {
@@ -22626,11 +22660,21 @@ window.CREATOR_AI = CREATOR_AI;
 
 const COMMAND_CENTER = {
   storageKey: 'dimad_cc_modules',
-  layoutVersion: 21,
+  layoutVersion: 23,
   retiredApiIds: ['stripe', 'shopify', 'lemon', 'gumroad', 'patreon', 'mailerlite', 'plaid', 'store', 'copilot', 'your-city', 'quote', 'clocks', 'emergency', 'logistics', 'weather'],
   catalog: [
     { id: 'ticker', label: 'Stock Ticker', group: 'core' },
-    { id: 'yerevan-header', label: 'City Header', group: 'core' },
+    {
+      id: 'yerevan-header',
+      label: 'Your City',
+      group: 'core',
+      children: [
+        { id: 'yc-quote', label: 'Quote of the Day' },
+        { id: 'yc-live-clock', label: 'Live Clock' },
+        { id: 'yc-clocks', label: 'World Clocks' },
+        { id: 'yc-weather', label: 'Weather' }
+      ]
+    },
     { id: 'dimad-ai', label: 'Dimad AI', group: 'core' },
     { id: 'calendar', label: 'Calendar', group: 'core' },
     { id: 'notepad', label: 'dimPad', group: 'core' },
@@ -22641,6 +22685,8 @@ const COMMAND_CENTER = {
     { id: 'revenue-snapshot', label: 'Revenue Snapshot', group: 'core' },
     { id: 'growth-snapshot', label: 'Growth Snapshot', group: 'core' }
   ],
+  /** In-memory: which parent rows are expanded in the filter panel. */
+  filterExpanded: { 'yerevan-header': true },
 
   defaultState() {
     return { hidden: [], collapsed: [], layoutVersion: this.layoutVersion };
@@ -22653,8 +22699,20 @@ const COMMAND_CENTER = {
         if (raw.layoutVersion === this.layoutVersion) return raw;
         const retired = new Set(this.retiredApiIds);
         let hidden = raw.hidden.filter((id) => !retired.has(id));
-        // Snapshots + pipeline + billing + Dimad AI + city header default visible on layout bump.
-        hidden = hidden.filter((id) => id !== 'revenue-snapshot' && id !== 'growth-snapshot' && id !== 'pipeline' && id !== 'billing' && id !== 'dimad-ai' && id !== 'yerevan-header');
+        // Snapshots + pipeline + billing + Dimad AI + Your City (+ sections) default visible on layout bump.
+        hidden = hidden.filter(
+          (id) =>
+            id !== 'revenue-snapshot' &&
+            id !== 'growth-snapshot' &&
+            id !== 'pipeline' &&
+            id !== 'billing' &&
+            id !== 'dimad-ai' &&
+            id !== 'yerevan-header' &&
+            id !== 'yc-quote' &&
+            id !== 'yc-live-clock' &&
+            id !== 'yc-clocks' &&
+            id !== 'yc-weather'
+        );
         const next = {
           hidden: Array.from(new Set(hidden)),
           collapsed: raw.collapsed.filter((id) => !retired.has(id)),
@@ -22683,6 +22741,7 @@ const COMMAND_CENTER = {
       const body = el.querySelector('[data-cc-body]');
       if (body) body.classList.remove('hidden');
     });
+    this.syncYourCitySections(hidden);
     this.balanceLayout();
     this.renderFilter();
     if (typeof DIMAD_NOTEPAD !== 'undefined' && DIMAD_NOTEPAD.renderDash) DIMAD_NOTEPAD.renderDash();
@@ -22701,6 +22760,25 @@ const COMMAND_CENTER = {
     if (typeof CC_YOUR_CITY !== 'undefined' && !hidden.includes('weather') && CC_YOUR_CITY.render) {
       CC_YOUR_CITY.render();
     }
+  },
+
+  syncYourCitySections(hidden) {
+    const sections = {
+      quote: !hidden.includes('yc-quote'),
+      liveClock: !hidden.includes('yc-live-clock'),
+      clocks: !hidden.includes('yc-clocks'),
+      weather: !hidden.includes('yc-weather')
+    };
+    const root = document.getElementById('yerevan-header-root');
+    if (root) {
+      root.dataset.ycQuote = sections.quote ? '1' : '0';
+      root.dataset.ycLiveClock = sections.liveClock ? '1' : '0';
+      root.dataset.ycClocks = sections.clocks ? '1' : '0';
+      root.dataset.ycWeather = sections.weather ? '1' : '0';
+    }
+    try {
+      window.dispatchEvent(new CustomEvent('dimad:cc-your-city-sections', { detail: sections }));
+    } catch (err) { /* ignore */ }
   },
 
   /** Stretch lone / odd-row modules so filtered dashboards don't leave empty cells. */
@@ -22761,6 +22839,11 @@ const COMMAND_CENTER = {
     this.apply();
   },
 
+  toggleFilterExpand(id) {
+    this.filterExpanded[id] = !this.filterExpanded[id];
+    this.renderFilter();
+  },
+
   toggleFilter(kind) {
     const core = document.getElementById('cc-module-filter');
     if (!core) return;
@@ -22770,12 +22853,36 @@ const COMMAND_CENTER = {
   },
 
   filterChecks(items, hidden) {
-    return items.map((item) => `
+    return items.map((item) => {
+      const children = Array.isArray(item.children) ? item.children : [];
+      if (!children.length) {
+        return `
       <label class="flex items-center gap-2 px-1 py-1 rounded hover:bg-slate-900 cursor-pointer">
         <input type="checkbox" ${hidden.includes(item.id) ? '' : 'checked'} onchange="COMMAND_CENTER.toggleVisible('${item.id}', this.checked)" class="accent-amber-400">
         <span class="text-[11px] text-slate-200">${item.label}</span>
-      </label>
-    `).join('');
+      </label>`;
+      }
+      const expanded = !!this.filterExpanded[item.id];
+      const parentOn = !hidden.includes(item.id);
+      const childRows = children.map((child) => `
+        <label class="flex items-center gap-2 pl-6 pr-1 py-1 rounded hover:bg-slate-900 cursor-pointer ${parentOn ? '' : 'opacity-50'}">
+          <input type="checkbox" ${hidden.includes(child.id) ? '' : 'checked'} ${parentOn ? '' : 'disabled'} onchange="COMMAND_CENTER.toggleVisible('${child.id}', this.checked)" class="accent-amber-400">
+          <span class="text-[11px] text-slate-300">${child.label}</span>
+        </label>`).join('');
+      return `
+      <div class="rounded">
+        <div class="flex items-center gap-1 px-1 py-1 rounded hover:bg-slate-900">
+          <label class="flex items-center gap-2 flex-1 min-w-0 cursor-pointer">
+            <input type="checkbox" ${parentOn ? 'checked' : ''} onchange="COMMAND_CENTER.toggleVisible('${item.id}', this.checked)" class="accent-amber-400">
+            <span class="text-[11px] text-slate-200">${item.label}</span>
+          </label>
+          <button type="button" onclick="COMMAND_CENTER.toggleFilterExpand('${item.id}')" class="shrink-0 w-5 h-5 flex items-center justify-center text-slate-400 hover:text-amber-300" aria-label="${expanded ? 'Collapse' : 'Expand'} ${item.label}">
+            <span class="text-[10px] leading-none">${expanded ? '▾' : '▸'}</span>
+          </button>
+        </div>
+        ${expanded ? `<div class="pb-0.5">${childRows}</div>` : ''}
+      </div>`;
+    }).join('');
   },
 
   renderFilter() {
@@ -23266,3 +23373,5 @@ window.onload = async function() {
     setInterval(() => DIMAD_CAL.tickReminders(), 15000);
   }
 };
+
+

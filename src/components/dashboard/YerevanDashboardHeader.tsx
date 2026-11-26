@@ -185,6 +185,50 @@ function weatherIcon(code: number, className = "w-5 h-5 text-amber-400") {
   return <CloudSun className={className} />;
 }
 
+type YourCitySections = {
+  quote: boolean;
+  liveClock: boolean;
+  clocks: boolean;
+  weather: boolean;
+};
+
+const DEFAULT_YOUR_CITY_SECTIONS: YourCitySections = {
+  quote: true,
+  liveClock: true,
+  clocks: true,
+  weather: true
+};
+
+function readYourCitySections(): YourCitySections {
+  if (typeof window === "undefined") return DEFAULT_YOUR_CITY_SECTIONS;
+  try {
+    const root = document.getElementById("yerevan-header-root");
+    if (
+      root?.dataset.ycQuote != null ||
+      root?.dataset.ycLiveClock != null ||
+      root?.dataset.ycClocks != null ||
+      root?.dataset.ycWeather != null
+    ) {
+      return {
+        quote: root.dataset.ycQuote !== "0",
+        liveClock: root.dataset.ycLiveClock !== "0",
+        clocks: root.dataset.ycClocks !== "0",
+        weather: root.dataset.ycWeather !== "0"
+      };
+    }
+    const raw = JSON.parse(localStorage.getItem("dimad_cc_modules") || "");
+    const hidden = Array.isArray(raw?.hidden) ? (raw.hidden as string[]) : [];
+    return {
+      quote: !hidden.includes("yc-quote"),
+      liveClock: !hidden.includes("yc-live-clock"),
+      clocks: !hidden.includes("yc-clocks"),
+      weather: !hidden.includes("yc-weather")
+    };
+  } catch {
+    return DEFAULT_YOUR_CITY_SECTIONS;
+  }
+}
+
 export default function YerevanDashboardHeader({
   tempUnit,
   onTempUnitChange,
@@ -219,11 +263,36 @@ export default function YerevanDashboardHeader({
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [citiesOpen, setCitiesOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [sections, setSections] = useState<YourCitySections>(DEFAULT_YOUR_CITY_SECTIONS);
   /** Dev-only local preview — never triggers geolocation, weather, or Firestore. */
   const [previewCountry, setPreviewCountry] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const greetingAnchorRef = useRef<HTMLDivElement>(null);
   const settingsBtnRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    setSections(readYourCitySections());
+    const onSections = (e: Event) => {
+      const detail = (e as CustomEvent<Partial<YourCitySections>>).detail;
+      if (!detail) {
+        setSections(readYourCitySections());
+        return;
+      }
+      setSections({
+        quote: detail.quote !== false,
+        liveClock: detail.liveClock !== false,
+        clocks: detail.clocks !== false,
+        weather: detail.weather !== false
+      });
+    };
+    const onOpenSettings = () => setSettingsOpen(true);
+    window.addEventListener("dimad:cc-your-city-sections", onSections);
+    window.addEventListener("dimad:open-city-settings", onOpenSettings);
+    return () => {
+      window.removeEventListener("dimad:cc-your-city-sections", onSections);
+      window.removeEventListener("dimad:open-city-settings", onOpenSettings);
+    };
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -236,14 +305,14 @@ export default function YerevanDashboardHeader({
   }, []);
 
   const menuOptions: MenuOption[] = [
-    { id: "overview", label: "Overview", icon: <LayoutGrid className="w-3.5 h-3.5 text-amber-400" /> },
-    { id: "logistics", label: "Logistics", icon: <Truck className="w-3.5 h-3.5 text-emerald-400" /> },
-    { id: "emergency", label: "Emergency", icon: <ShieldAlert className="w-3.5 h-3.5 text-rose-400" /> },
-    { id: "weather", label: "Forecast", icon: <CloudSun className="w-3.5 h-3.5 text-sky-400" /> },
+    { id: "overview", label: "Overview", icon: <LayoutGrid className="w-3 h-3 text-amber-400" /> },
+    { id: "logistics", label: "Logistics", icon: <Truck className="w-3 h-3 text-emerald-400" /> },
+    { id: "emergency", label: "Emergency", icon: <ShieldAlert className="w-3 h-3 text-rose-400" /> },
+    { id: "weather", label: "Forecast", icon: <CloudSun className="w-3 h-3 text-sky-400" /> },
     {
       id: "city-preferred",
       label: "City Preferred",
-      icon: <Star className="w-3.5 h-3.5 text-violet-300" />,
+      icon: <Star className="w-3 h-3 text-violet-300" />,
       comingSoon: true
     }
   ];
@@ -295,7 +364,7 @@ export default function YerevanDashboardHeader({
     alignItems: "stretch",
     gap: 28,
     minHeight: 300,
-    padding: "22px 28px",
+    padding: "16px 28px 30px",
     boxSizing: "border-box",
     width: "100%"
   };
@@ -304,9 +373,9 @@ export default function YerevanDashboardHeader({
     display: "flex",
     flexDirection: "column"
   };
-  /** Matches controls row so quote/weather share the same vertical band. */
+  /** Matches compact controls row so quote/weather share the same vertical band. */
   const toolbarSpacerStyle: React.CSSProperties = {
-    height: 44,
+    height: 32,
     flexShrink: 0
   };
 
@@ -355,18 +424,18 @@ export default function YerevanDashboardHeader({
               gap: 14
             }}
           >
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 6 }}>
               <button
                 type="button"
                 onClick={onOpenCityGuide}
-                className="inline-flex items-center gap-2.5 w-fit px-3 py-1 rounded-full bg-slate-950/60 backdrop-blur-md border border-white/10 hover:border-amber-400/40 transition"
+                className="inline-flex items-center gap-1.5 w-fit px-2.5 py-0.5 rounded-full bg-slate-950/60 backdrop-blur-md border border-white/10 hover:border-amber-400/40 transition"
               >
-                <span className="flex flex-col w-4 h-3 rounded-[2px] overflow-hidden shrink-0 shadow-sm">
-                  <span className="h-1 bg-[#D90012]" />
-                  <span className="h-1 bg-[#0033A0]" />
-                  <span className="h-1 bg-[#F2A800]" />
+                <span className="flex flex-col w-3.5 h-2.5 rounded-[2px] overflow-hidden shrink-0 shadow-sm">
+                  <span className="h-[3px] bg-[#D90012]" />
+                  <span className="h-[3px] bg-[#0033A0]" />
+                  <span className="h-[3px] bg-[#F2A800]" />
                 </span>
-                <span className="text-xs font-semibold tracking-wider uppercase text-slate-200">
+                <span className="text-[10px] font-semibold tracking-wider uppercase text-slate-200 leading-none py-0.5">
                   {placeBadge}
                 </span>
               </button>
@@ -494,6 +563,7 @@ export default function YerevanDashboardHeader({
             <div style={{ ...colStyle, flex: "1.15 1 0", justifyContent: "space-between", gap: 12 }}>
               <div style={toolbarSpacerStyle} aria-hidden="true" />
               <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", minWidth: 0 }}>
+                {sections.quote ? (
                 <a
                   href="/dashboard/quotes"
                   target="_top"
@@ -564,6 +634,9 @@ export default function YerevanDashboardHeader({
                     ) : null}
                   </div>
                 </a>
+                ) : (
+                  <div aria-hidden="true" style={{ minHeight: 120 }} />
+                )}
               </div>
             </div>
           ) : null}
@@ -576,26 +649,37 @@ export default function YerevanDashboardHeader({
               gap: 12
             }}
           >
-            <div className="flex items-center justify-end gap-2 flex-wrap" style={{ minHeight: 44 }}>
-              <div ref={dropdownRef} className="relative" style={{ minWidth: 168, flex: "1 1 auto", maxWidth: 240 }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "minmax(0, 5fr) minmax(0, 7fr)",
+                gap: 10,
+                width: "100%",
+                minHeight: 32,
+                alignItems: "center"
+              }}
+            >
+              <div aria-hidden="true" />
+              <div className="flex items-center gap-1.5 min-w-0">
+              <div ref={dropdownRef} className="relative min-w-0" style={{ flex: "1 1 auto" }}>
                 <button
                   type="button"
                   onClick={() => setDropdownOpen((prev) => !prev)}
-                  className="w-full flex items-center justify-between gap-3 px-3.5 py-2 rounded-xl bg-[#0e131f]/90 hover:bg-[#141b2b] backdrop-blur-md border border-amber-400/40 text-xs font-medium text-slate-100 shadow-lg transition-all"
+                  className="w-full flex items-center justify-between gap-2 px-2.5 py-1 rounded-lg bg-[#0e131f]/90 hover:bg-[#141b2b] backdrop-blur-md border border-amber-400/40 text-[11px] font-medium text-slate-100 shadow-lg transition-all"
                 >
-                  <span className="flex items-center gap-2">
+                  <span className="flex items-center gap-1.5">
                     {currentOption.icon}
                     <span>{currentOption.label}</span>
                   </span>
                   {dropdownOpen ? (
-                    <ChevronUp className="w-3.5 h-3.5 text-slate-400" />
+                    <ChevronUp className="w-3 h-3 text-slate-400" />
                   ) : (
-                    <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                    <ChevronDown className="w-3 h-3 text-slate-400" />
                   )}
                 </button>
 
                 {dropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-full min-w-[240px] rounded-xl bg-[#0d121d]/95 backdrop-blur-xl border border-slate-700/80 shadow-2xl py-1.5 z-50">
+                  <div className="absolute left-0 mt-2 w-full min-w-[200px] rounded-xl bg-[#0d121d]/95 backdrop-blur-xl border border-slate-700/80 shadow-2xl py-1.5 z-50">
                     {menuOptions.map((item) => {
                       const isSelected = !item.comingSoon && activeTab === item.id;
                       return (
@@ -651,37 +735,38 @@ export default function YerevanDashboardHeader({
                 type="button"
                 title="Location & temperature settings"
                 onClick={() => setSettingsOpen(true)}
-                className={`p-2.5 rounded-xl backdrop-blur-md border transition-colors ${
+                className={`p-1.5 rounded-lg backdrop-blur-md border transition-colors shrink-0 ${
                   settingsOpen
                     ? "bg-amber-400/15 border-amber-400/50 text-amber-300"
                     : "bg-[#0e131f]/90 hover:bg-[#141b2b] border-slate-700/70 text-slate-400 hover:text-slate-200"
                 }`}
               >
-                <Settings className="w-4 h-4" />
+                <Settings className="w-3.5 h-3.5" />
               </button>
-              <CityHeaderSettings
-                open={settingsOpen}
-                onClose={() => setSettingsOpen(false)}
-                anchorRef={settingsBtnRef}
-                city={programmedCity}
-                country={countryLabel}
-                tzLabel={primaryClock.utcLabel}
-                tempUnit={tempUnit}
-                onTempUnitChange={onTempUnitChange}
-                locationServicesEnabled={locationServicesEnabled}
-                onLocationServicesChange={async (on) => {
-                  await onLocationServicesChange?.(on);
-                }}
-                onRefreshLocation={async () => {
-                  await onRefreshLocation?.();
-                }}
-                onPinCuratedCity={async (cityId) => {
-                  setPreviewCountry(null);
-                  return Boolean(await onPinCuratedCity?.(cityId));
-                }}
-                permissionState={permissionState}
-              />
+              </div>
             </div>
+            <CityHeaderSettings
+              open={settingsOpen}
+              onClose={() => setSettingsOpen(false)}
+              anchorRef={settingsBtnRef}
+              city={programmedCity}
+              country={countryLabel}
+              tzLabel={primaryClock.utcLabel}
+              tempUnit={tempUnit}
+              onTempUnitChange={onTempUnitChange}
+              locationServicesEnabled={locationServicesEnabled}
+              onLocationServicesChange={async (on) => {
+                await onLocationServicesChange?.(on);
+              }}
+              onRefreshLocation={async () => {
+                await onRefreshLocation?.();
+              }}
+              onPinCuratedCity={async (cityId) => {
+                setPreviewCountry(null);
+                return Boolean(await onPinCuratedCity?.(cityId));
+              }}
+              permissionState={permissionState}
+            />
 
             <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 10 }}>
               {activeTab === "overview" && (
@@ -694,6 +779,7 @@ export default function YerevanDashboardHeader({
                       width: "100%"
                     }}
                   >
+                    {sections.weather ? (
                     <div
                       className="rounded-xl backdrop-blur-md"
                       style={{
@@ -719,7 +805,11 @@ export default function YerevanDashboardHeader({
                         </p>
                       </div>
                     </div>
+                    ) : (
+                      <div aria-hidden="true" style={{ minHeight: 92 }} />
+                    )}
 
+                    {sections.liveClock ? (
                     <div
                       className="rounded-xl backdrop-blur-md"
                       style={{
@@ -736,7 +826,7 @@ export default function YerevanDashboardHeader({
                         <span className="text-[11px] font-bold tracking-wider uppercase text-slate-300">
                           {primaryClock.city.toUpperCase()}
                         </span>
-                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-400/15 text-amber-300 border border-amber-400/30">
+                        <span className="text-[10px] font-mono text-amber-300">
                           {primaryClock.utcLabel || "UTC"}
                         </span>
                       </div>
@@ -754,6 +844,9 @@ export default function YerevanDashboardHeader({
                         </span>
                       </div>
                     </div>
+                    ) : (
+                      <div aria-hidden="true" style={{ minHeight: 92 }} />
+                    )}
                   </div>
 
                   <div
@@ -762,11 +855,16 @@ export default function YerevanDashboardHeader({
                       flexDirection: "row",
                       flexWrap: "nowrap",
                       alignItems: "flex-start",
+                      justifyContent: "flex-end",
                       gap: 10,
+                      width: "100%",
                       minWidth: 0,
+                      minHeight: 72,
                       overflowX: "auto"
                     }}
                   >
+                    {sections.clocks ? (
+                      <>
                     {worldClocks.map((c) => (
                       <WorldClockDisc
                         key={c.id}
@@ -804,6 +902,8 @@ export default function YerevanDashboardHeader({
                         <Plus className="w-4 h-4" />
                       </span>
                     </WorldCitiesPicker>
+                      </>
+                    ) : null}
                   </div>
                 </>
               )}

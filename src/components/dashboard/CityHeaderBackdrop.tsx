@@ -113,14 +113,14 @@ export function HeaderPhotoCredit({
       style={{
         position: "absolute",
         right: 12,
-        bottom: 8,
-        zIndex: 20,
+        bottom: 6,
+        zIndex: 5,
         pointerEvents: "auto",
-        fontSize: 9,
-        lineHeight: 1.3,
-        color: "rgba(226,232,240,0.78)",
+        fontSize: 8,
+        lineHeight: 1.25,
+        color: "rgba(226,232,240,0.72)",
         textShadow: "0 1px 2px rgba(0,0,0,0.7)",
-        maxWidth: "48%",
+        maxWidth: "42%",
         textAlign: "right"
       }}
     >
