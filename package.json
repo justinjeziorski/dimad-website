@@ -4,9 +4,12 @@
   "description": "DIMAD OS — static dashboard and marketing site",
   "scripts": {
     "dev": "next dev -p 3000",
-    "predev": "node scripts/bundle-city-header.mjs",
+    "predev": "node scripts/bundle-city-header.mjs && node scripts/bundle-dashboard-snapshots.mjs && node scripts/bundle-dashboard-calendar.mjs && node scripts/bundle-workspace-islands.mjs",
     "bundle:city-header": "node scripts/bundle-city-header.mjs",
-    "prebuild": "node scripts/copy-static.mjs && node scripts/bundle-city-header.mjs",
+    "bundle:dashboard-snapshots": "node scripts/bundle-dashboard-snapshots.mjs",
+    "bundle:dashboard-calendar": "node scripts/bundle-dashboard-calendar.mjs",
+    "bundle:workspace-islands": "node scripts/bundle-workspace-islands.mjs",
+    "prebuild": "node scripts/copy-static.mjs && node scripts/bundle-city-header.mjs && node scripts/bundle-dashboard-snapshots.mjs && node scripts/bundle-dashboard-calendar.mjs && node scripts/bundle-workspace-islands.mjs",
     "build": "next build",
     "start": "next start",
     "quotes:import": "node scripts/import-daily-quotes.mjs",
@@ -23,6 +26,7 @@
     "@tiptap/react": "^3.33.1",
     "@tiptap/starter-kit": "^3.33.1",
     "@tiptap/suggestion": "^3.33.1",
+    "date-fns": "^4.4.0",
     "firebase": "^13.2.0",
     "firebase-admin": "^14.5.0",
     "html2canvas": "^1.4.1",
@@ -36,7 +40,8 @@
     "react-plaid-link": "^5.0.0",
     "stripe": "^23.1.0",
     "tippy.js": "^6.3.7",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "zustand": "^5.1.0"
   },
   "devDependencies": {
     "@types/node": "^22.18.8",

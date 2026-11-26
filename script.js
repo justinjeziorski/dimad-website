@@ -90,7 +90,7 @@ async function loadViews() {
   const container = document.getElementById('view-container');
   try {
     const fragments = await Promise.all(VIEW_FILES.map(async (id) => {
-      const res = await fetch(new URL(`../views/${id}.html?v=yerevan-header-40`, window.location.href), { cache: 'no-store' });
+      const res = await fetch(new URL(`../views/${id}.html?v=cc-layout-1`, window.location.href), { cache: 'no-store' });
       if (!res.ok) throw new Error(`Failed to load views/${id}.html (${res.status})`);
       return res.text();
     }));
@@ -171,8 +171,231 @@ async function mountYerevanHeader() {
   }
 }
 
-/* Start downloading the city-header bundle as soon as this script parses. */
+/** Native React Revenue / Growth snapshot islands (replaces dashboard iframes). */
+const DASHBOARD_SNAPSHOTS_BUNDLE = '/embeds/dashboard-snapshots.js?v=1';
+let _dashboardSnapshotsScriptPromise = null;
+
+function ensureDashboardSnapshotsBundle() {
+  if (
+    typeof window.__DIMAD_MOUNT_REVENUE_SNAPSHOT === 'function' &&
+    typeof window.__DIMAD_MOUNT_GROWTH_SNAPSHOT === 'function'
+  ) {
+    return Promise.resolve();
+  }
+  if (_dashboardSnapshotsScriptPromise) return _dashboardSnapshotsScriptPromise;
+  _dashboardSnapshotsScriptPromise = new Promise((resolve, reject) => {
+    const existing = document.querySelector('script[data-dashboard-snapshots-bundle]');
+    if (existing) {
+      if (typeof window.__DIMAD_MOUNT_REVENUE_SNAPSHOT === 'function') {
+        resolve();
+        return;
+      }
+      existing.addEventListener('load', () => resolve(), { once: true });
+      existing.addEventListener('error', () => reject(new Error('dashboard_snapshots_bundle_failed')), { once: true });
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = DASHBOARD_SNAPSHOTS_BUNDLE;
+    script.async = true;
+    script.dataset.dashboardSnapshotsBundle = '1';
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('dashboard_snapshots_bundle_failed'));
+    document.head.appendChild(script);
+  });
+  return _dashboardSnapshotsScriptPromise;
+}
+
+function prefetchDashboardSnapshotsBundle() {
+  try {
+    if (!document.querySelector('link[data-dashboard-snapshots-preload]')) {
+      const link = document.createElement('link');
+      link.rel = 'preload';
+      link.as = 'script';
+      link.href = DASHBOARD_SNAPSHOTS_BUNDLE;
+      link.dataset.dashboardSnapshotsPreload = '1';
+      document.head.appendChild(link);
+    }
+  } catch (_) { /* ignore */ }
+  void ensureDashboardSnapshotsBundle().catch(() => {});
+}
+
+async function mountDashboardSnapshots() {
+  const revenue = document.getElementById('revenue-snapshot-root');
+  const growth = document.getElementById('growth-snapshot-root');
+  if (!revenue && !growth) return;
+  try {
+    await ensureDashboardSnapshotsBundle();
+    if (revenue && revenue.dataset.reactMounted !== '1' && typeof window.__DIMAD_MOUNT_REVENUE_SNAPSHOT === 'function') {
+      window.__DIMAD_MOUNT_REVENUE_SNAPSHOT(revenue);
+      revenue.dataset.reactMounted = '1';
+    }
+    if (growth && growth.dataset.reactMounted !== '1' && typeof window.__DIMAD_MOUNT_GROWTH_SNAPSHOT === 'function') {
+      window.__DIMAD_MOUNT_GROWTH_SNAPSHOT(growth);
+      growth.dataset.reactMounted = '1';
+    }
+  } catch (err) {
+    console.warn('Dashboard snapshot mount failed', err);
+  }
+}
+
+/** Lazy-loaded workspace islands (Finances / Growth / Markets) — replace tab iframes. */
+const WORKSPACE_ISLAND_BUNDLES = {
+  finances: '/embeds/finances-workspace.js?v=1',
+  growth: '/embeds/growth-workspace.js?v=1',
+  market: '/embeds/market-board.js?v=1'
+};
+const _workspaceIslandPromises = {};
+
+function ensureWorkspaceIslandBundle(kind) {
+  const src = WORKSPACE_ISLAND_BUNDLES[kind];
+  if (!src) return Promise.reject(new Error('unknown_workspace_island'));
+  const ready =
+    (kind === 'finances' && typeof window.__DIMAD_MOUNT_FINANCES_WORKSPACE === 'function') ||
+    (kind === 'growth' && typeof window.__DIMAD_MOUNT_GROWTH_WORKSPACE === 'function') ||
+    (kind === 'market' && typeof window.__DIMAD_MOUNT_MARKET_BOARD === 'function');
+  if (ready) return Promise.resolve();
+  if (_workspaceIslandPromises[kind]) return _workspaceIslandPromises[kind];
+  _workspaceIslandPromises[kind] = new Promise((resolve, reject) => {
+    const attr = `data-${kind}-workspace-bundle`;
+    const existing = document.querySelector(`script[${attr}]`);
+    if (existing) {
+      existing.addEventListener('load', () => resolve(), { once: true });
+      existing.addEventListener('error', () => reject(new Error(kind + '_bundle_failed')), { once: true });
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = src;
+    script.async = true;
+    script.setAttribute(attr, '1');
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error(kind + '_bundle_failed'));
+    document.head.appendChild(script);
+  });
+  return _workspaceIslandPromises[kind];
+}
+
+function mountOnce(el, mountFn) {
+  if (!el || el.dataset.reactMounted === '1' || typeof mountFn !== 'function') return;
+  mountFn(el);
+  el.dataset.reactMounted = '1';
+}
+
+async function mountFinancesWorkspaceIsland() {
+  const el = document.getElementById('finances-workspace-root');
+  if (!el || el.dataset.reactMounted === '1') return;
+  try {
+    await ensureWorkspaceIslandBundle('finances');
+    mountOnce(el, window.__DIMAD_MOUNT_FINANCES_WORKSPACE);
+  } catch (err) {
+    console.warn('Finances workspace mount failed', err);
+  }
+}
+
+async function mountGrowthWorkspaceIslands() {
+  const workspace = document.getElementById('growth-workspace-root');
+  const youtube = document.getElementById('youtube-card-root');
+  const mailerlite = document.getElementById('mailerlite-card-root');
+  const xCard = document.getElementById('x-card-root');
+  if (!workspace && !youtube && !mailerlite && !xCard) return;
+  try {
+    await ensureWorkspaceIslandBundle('growth');
+    mountOnce(workspace, window.__DIMAD_MOUNT_GROWTH_WORKSPACE);
+    mountOnce(youtube, window.__DIMAD_MOUNT_YOUTUBE_CARD);
+    mountOnce(mailerlite, window.__DIMAD_MOUNT_MAILERLITE_CARD);
+    mountOnce(xCard, window.__DIMAD_MOUNT_X_CARD);
+  } catch (err) {
+    console.warn('Growth workspace mount failed', err);
+  }
+}
+
+async function mountMarketBoardIsland() {
+  const el = document.getElementById('market-board-root');
+  if (!el || el.dataset.reactMounted === '1') return;
+  try {
+    await ensureWorkspaceIslandBundle('market');
+    mountOnce(el, window.__DIMAD_MOUNT_MARKET_BOARD);
+  } catch (err) {
+    console.warn('Market board mount failed', err);
+  }
+}
+
+function mountWorkspaceIslandForTab(tabId) {
+  if (tabId === 'ent-crm') void mountFinancesWorkspaceIsland();
+  else if (tabId === 'ent-growth') void mountGrowthWorkspaceIslands();
+  else if (tabId === 'ent-stocks') void mountMarketBoardIsland();
+}
+
+/** Native React Agenda + Calendar islands (shared Zustand date context). */
+const DASHBOARD_CALENDAR_BUNDLE = '/embeds/dashboard-calendar.js?v=5';
+let _dashboardCalendarScriptPromise = null;
+
+function ensureDashboardCalendarBundle() {
+  if (
+    typeof window.__DIMAD_MOUNT_CC_AGENDA === 'function' &&
+    typeof window.__DIMAD_MOUNT_CC_CALENDAR === 'function'
+  ) {
+    return Promise.resolve();
+  }
+  if (_dashboardCalendarScriptPromise) return _dashboardCalendarScriptPromise;
+  _dashboardCalendarScriptPromise = new Promise((resolve, reject) => {
+    const existing = document.querySelector('script[data-dashboard-calendar-bundle]');
+    if (existing) {
+      if (typeof window.__DIMAD_MOUNT_CC_AGENDA === 'function') {
+        resolve();
+        return;
+      }
+      existing.addEventListener('load', () => resolve(), { once: true });
+      existing.addEventListener('error', () => reject(new Error('dashboard_calendar_bundle_failed')), { once: true });
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = DASHBOARD_CALENDAR_BUNDLE;
+    script.async = true;
+    script.dataset.dashboardCalendarBundle = '1';
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('dashboard_calendar_bundle_failed'));
+    document.head.appendChild(script);
+  });
+  return _dashboardCalendarScriptPromise;
+}
+
+function prefetchDashboardCalendarBundle() {
+  try {
+    if (!document.querySelector('link[data-dashboard-calendar-preload]')) {
+      const link = document.createElement('link');
+      link.rel = 'preload';
+      link.as = 'script';
+      link.href = DASHBOARD_CALENDAR_BUNDLE;
+      link.dataset.dashboardCalendarPreload = '1';
+      document.head.appendChild(link);
+    }
+  } catch (_) { /* ignore */ }
+  void ensureDashboardCalendarBundle().catch(() => {});
+}
+
+async function mountDashboardCalendarIslands() {
+  const agenda = document.getElementById('cc-agenda-root');
+  const calendar = document.getElementById('cc-calendar-root');
+  if (!agenda && !calendar) return;
+  try {
+    await ensureDashboardCalendarBundle();
+    if (agenda && agenda.dataset.reactMounted !== '1' && typeof window.__DIMAD_MOUNT_CC_AGENDA === 'function') {
+      window.__DIMAD_MOUNT_CC_AGENDA(agenda);
+      agenda.dataset.reactMounted = '1';
+    }
+    if (calendar && calendar.dataset.reactMounted !== '1' && typeof window.__DIMAD_MOUNT_CC_CALENDAR === 'function') {
+      window.__DIMAD_MOUNT_CC_CALENDAR(calendar);
+      calendar.dataset.reactMounted = '1';
+    }
+  } catch (err) {
+    console.warn('Dashboard calendar mount failed', err);
+  }
+}
+
+/* Start downloading native island bundles as soon as this script parses. */
 prefetchYerevanHeaderBundle();
+prefetchDashboardSnapshotsBundle();
+prefetchDashboardCalendarBundle();
 
 function toggleSidebar() {
   const sidebar = document.getElementById('main-sidebar');
@@ -1543,6 +1766,7 @@ function switchTab(tabId) {
     if (tabId === 'ent-growth') GROWTH_HUB.apply();
     else GROWTH_HUB.closeFilter();
   }
+  mountWorkspaceIslandForTab(tabId);
   if (tabId === 'dimad-calendar' && typeof DIMAD_CAL !== 'undefined') {
     if (typeof CALENDAR_NAV !== 'undefined') {
       DIMAD_CAL.dayOffset = CALENDAR_NAV.dayOffset || 0;
@@ -4544,19 +4768,19 @@ const DIMAD_GOALS = {
     }
     if (bar) {
       bar.style.width = (sc.entered ? pct : 0) + '%';
-      bar.className = `h-full ${pct === 100 && sc.entered ? 'bg-brand-mint' : 'bg-brand-gold'}`;
+      bar.className = `h-full transition-[width] duration-500 ${pct === 100 && sc.entered ? 'bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.45)]' : 'bg-brand-gold shadow-[0_0_10px_rgba(245,185,66,0.45)]'}`;
     }
     if (list) {
       const empty = `<p class="text-[10px] text-slate-500 py-1">No ${this.escape(horizon)} goals this period.</p>`;
       list.innerHTML = items.map((g) => {
         const done = this.isDone(g, key);
         const rec = g.recurring
-          ? `<span class="shrink-0 text-[7px] font-black uppercase tracking-wide text-sky-300 bg-sky-500/15 px-1 py-px rounded">${this.escape(this.weekdayBadge(g))}</span>`
+          ? `<span class="shrink-0 text-[7px] font-black uppercase tracking-wide text-sky-300 bg-sky-500/15 px-1.5 py-px rounded-full border border-sky-500/25">${this.escape(this.weekdayBadge(g))}</span>`
           : '';
-        return `<div class="flex items-center gap-1.5 min-w-0 bg-brand-black/40 p-1.5 rounded border ${done ? 'border-emerald-500/30' : 'border-brand-border'}">
-          <div class="flex shrink-0 rounded overflow-hidden border ${done ? 'border-emerald-500/40' : 'border-slate-700'}">
-            <button type="button" onclick="DIMAD_GOALS.setDone('${horizon}', '${g.id}', true, '${key}')" class="px-1.5 py-0.5 text-[8px] font-black uppercase ${done ? 'bg-emerald-500 text-slate-950' : 'bg-slate-950 text-slate-500 hover:text-emerald-300'}">Yes</button>
-            <button type="button" onclick="DIMAD_GOALS.setDone('${horizon}', '${g.id}', false, '${key}')" class="px-1.5 py-0.5 text-[8px] font-black uppercase border-l ${done ? 'border-emerald-500/30 bg-slate-950 text-slate-500' : 'border-slate-700 bg-amber-500 text-slate-950'}">No</button>
+        return `<div class="flex items-center gap-1.5 min-w-0 bg-white/[0.03] p-1.5 rounded-lg border ${done ? 'border-emerald-500/25' : 'border-white/10'}">
+          <div class="flex shrink-0 rounded-full overflow-hidden border border-white/10 p-0.5 bg-black/20">
+            <button type="button" onclick="DIMAD_GOALS.setDone('${horizon}', '${g.id}', true, '${key}')" class="px-2 py-0.5 text-[8px] font-black uppercase rounded-full transition ${done ? 'bg-emerald-400 text-slate-950 shadow-[0_0_8px_rgba(52,211,153,0.35)]' : 'text-slate-500 hover:text-emerald-300'}">Yes</button>
+            <button type="button" onclick="DIMAD_GOALS.setDone('${horizon}', '${g.id}', false, '${key}')" class="px-2 py-0.5 text-[8px] font-black uppercase rounded-full transition ${done ? 'text-slate-500' : 'bg-slate-600/80 text-slate-100'}">No</button>
           </div>
           <span class="flex-1 min-w-0 text-[10px] font-semibold leading-tight ${done ? 'line-through text-slate-500' : 'text-slate-200'}">${g.text ? this.escape(g.text) : 'Untitled target'}</span>
           ${rec}
@@ -6143,6 +6367,14 @@ const CONNECT_MODULARS = {
         if (frame.contentWindow) {
           frame.contentWindow.postMessage({ type: 'dimad-mailerlite-connect' }, window.location.origin);
         }
+      });
+      const card = document.getElementById('growth-module-mailerlite');
+      if (card && card.scrollIntoView) card.scrollIntoView({ block: 'nearest' });
+      return;
+    }
+    if (document.getElementById('mailerlite-card-root')) {
+      void mountGrowthWorkspaceIslands().then(() => {
+        window.postMessage({ type: 'dimad-mailerlite-connect' }, window.location.origin);
       });
       const card = document.getElementById('growth-module-mailerlite');
       if (card && card.scrollIntoView) card.scrollIntoView({ block: 'nearest' });
@@ -12248,6 +12480,19 @@ const PIPELINE = {
     `).join('');
   },
 
+  statusBadgeClass(status) {
+    const map = {
+      Target: 'bg-slate-500/15 text-slate-300 border-slate-500/30',
+      Pitched: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+      Negotiating: 'bg-violet-500/15 text-violet-300 border-violet-500/30',
+      'Active Collab': 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+      Paid: 'bg-emerald-500/20 text-emerald-200 border-emerald-500/40',
+      Closed: 'bg-slate-600/20 text-slate-400 border-slate-600/30',
+      Sent: 'bg-sky-500/15 text-sky-300 border-sky-500/30'
+    };
+    return map[status] || 'bg-white/5 text-slate-300 border-white/10';
+  },
+
   renderDash() {
     const root = document.getElementById('cc-pipeline-list');
     if (!root) return;
@@ -12261,13 +12506,13 @@ const PIPELINE = {
       return;
     }
     root.innerHTML = rows.map((row) => `
-      <button type="button" onclick="PIPELINE.openFromDash(${Number(row.id)})" class="w-full flex items-start justify-between gap-2 bg-brand-nested/70 border border-hairline rounded-lg px-2 py-1.5 text-left hover:border-gold-soft transition">
+      <button type="button" onclick="PIPELINE.openFromDash(${Number(row.id)})" class="w-full flex items-start justify-between gap-2 bg-white/[0.03] border border-white/10 rounded-lg px-2 py-1.5 text-left hover:border-gold-soft transition">
         <span class="min-w-0">
           <span class="block text-[11px] font-semibold text-slate-100 leading-snug break-words">${this.escape(row.name)}</span>
           <span class="block text-[9px] text-slate-500 leading-snug break-words">${this.escape(row.sector || row.contact || '—')}</span>
         </span>
-        <span class="text-right shrink-0">
-          <span class="block text-[9px] font-bold text-brand-mint">${this.escape(row.status)}</span>
+        <span class="text-right shrink-0 space-y-0.5">
+          <span class="inline-flex items-center text-[8px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full border ${this.statusBadgeClass(row.status)}">${this.escape(row.status)}</span>
           <span class="block text-[9px] text-brand-gold font-mono tabular-nums">${this.escape(row.profit || '')}</span>
         </span>
       </button>
@@ -16460,7 +16705,7 @@ const DIMAD_CAL = {
       const slotClick = options.slotFn
         ? `${options.slotFn}('${dateKey}','${time}')`
         : `DIMAD_CAL.openComposer({date:'${dateKey}',time:'${time}'})`;
-      return `<button type="button" onclick="${slotClick}" class="block w-full border-t border-dashed border-slate-800 hover:border-amber-500/40 hover:bg-amber-500/5 transition" style="height:${hourPx}px" title="Add event at ${time}"></button>`;
+      return `<button type="button" data-cc-hour-slot="1" onclick="${slotClick}" class="block w-full border-t border-dashed border-slate-800 hover:border-amber-500/40 hover:bg-amber-500/5 transition cursor-grab active:cursor-grabbing" style="height:${hourPx}px" title="Drag to pan · click to add event at ${time}"></button>`;
     }).join('');
     const blocks = (events || []).map((ev) => {
       const start = this.toMinutes(ev.startTime || ev.time);
@@ -16481,7 +16726,7 @@ const DIMAD_CAL = {
       const safeTitle = this.escape(ev.title);
       const cancelledCls = ev.cancelled ? ' line-through opacity-60' : '';
       const evId = ev.id || '';
-      return `<button type="button" ${this.eventPointerAttrs(evId)} class="absolute left-0 right-0 ${wrap}${cancelledCls} border rounded-md px-1.5 text-left overflow-hidden z-[1] hover:brightness-110" style="top:${top}px;height:${hgt}px">
+      return `<button type="button" data-event-id="${this.escape(evId)}" ${this.eventPointerAttrs(evId)} class="absolute left-0 right-0 ${wrap}${cancelledCls} border rounded-md px-1.5 text-left overflow-hidden z-[1] hover:brightness-110 cursor-pointer" style="top:${top}px;height:${hgt}px">
         <div class="text-[10px] font-semibold text-slate-100 truncate leading-tight pt-0.5">${safeTitle}</div>
         <div class="text-[8px] font-mono text-slate-300/90">${startLabel}–${endLabel}</div>
       </button>`;
@@ -16624,6 +16869,12 @@ const DIMAD_CAL = {
     if (typeof SCHEDULER !== 'undefined' && SCHEDULER.render) {
       try { SCHEDULER.render(); } catch (err) { /* tab may be unmounted */ }
     }
+    try {
+      window.dispatchEvent(new CustomEvent('dimad:calendar-refresh'));
+      if (window.__DIMAD_CC_CAL && typeof window.__DIMAD_CC_CAL.refreshEvents === 'function') {
+        void window.__DIMAD_CC_CAL.refreshEvents();
+      }
+    } catch (_) { /* ignore */ }
   },
 
   openContextMenu(evt, id) {
@@ -17315,16 +17566,16 @@ class DimadCalendar {
       return d;
     });
     const hourPx = DIMAD_CAL.HOUR_PX;
-    const header = `<div class="text-[9px] font-mono text-slate-500 py-1">Time</div>${days.map((d) => `<div class="text-center text-[9px] font-mono text-slate-400 py-1">${d.toLocaleDateString('en-US', { weekday: 'short' })} ${d.getDate()}</div>`).join('')}`;
+    const header = `<div class="cc-agenda-time-col text-[9px] font-mono text-slate-500 py-1">Time</div>${days.map((d) => `<div class="text-center text-[9px] font-mono text-slate-400 py-1">${d.toLocaleDateString('en-US', { weekday: 'short' })} ${d.getDate()}</div>`).join('')}`;
     const gutter = this.hours.map((h) => `<div class="text-[10px] font-mono text-slate-500 border-t border-slate-800/80" style="height:${hourPx}px;line-height:${hourPx}px">${String(h).padStart(2, '0')}:00</div>`).join('');
     const dayCols = days.map((d) => {
       const key = this.formatDateKey(d);
       return DIMAD_CAL.renderHourColumn(key, this.hours, this.eventsOn(key), { showGutter: false });
     }).join('');
-    return `<div class="min-w-[860px] space-y-1">
-      <div class="grid gap-1" style="grid-template-columns: 42px repeat(7, minmax(0, 1fr))">${header}</div>
+    return `<div class="cc-agenda-week min-w-[860px] space-y-1">
+      <div class="grid gap-1 sticky top-0 z-[3] bg-[color:var(--bg-card,#0c1220)]/95 backdrop-blur-sm" style="grid-template-columns: 42px repeat(7, minmax(0, 1fr))">${header}</div>
       <div class="grid gap-1" style="grid-template-columns: 42px repeat(7, minmax(0, 1fr))">
-        <div class="select-none">${gutter}</div>
+        <div class="cc-agenda-time-col select-none">${gutter}</div>
         ${dayCols}
       </div>
     </div>`;
@@ -17437,6 +17688,10 @@ const CAL_SETTINGS = {
     modal.querySelectorAll('input[name="cal-week-start"]').forEach((el) => {
       el.checked = el.value === start;
     });
+    const contentBox = modal.querySelector('#cal-show-content');
+    if (contentBox && typeof DIMAD_CAL !== 'undefined') {
+      contentBox.checked = !!DIMAD_CAL.showContentSchedule();
+    }
     modal.classList.remove('hidden');
     modal.classList.add('flex');
   },
@@ -17720,8 +17975,131 @@ const CALENDAR_NAV = {
     el.textContent = this.anchorDate().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   },
 
+  monthNames() {
+    return ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  },
+
+  toggleMonthPicker(event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    const panel = document.getElementById('cc-month-picker');
+    const title = document.getElementById('cc-month-title');
+    if (!panel) return;
+    const open = panel.classList.contains('hidden');
+    if (!open) {
+      this.closeMonthPicker();
+      return;
+    }
+    this.renderMonthPicker();
+    panel.classList.remove('hidden');
+    if (title) title.setAttribute('aria-expanded', 'true');
+    this.bindMonthPickerOutside();
+  },
+
+  closeMonthPicker() {
+    const panel = document.getElementById('cc-month-picker');
+    const title = document.getElementById('cc-month-title');
+    if (panel) panel.classList.add('hidden');
+    if (title) title.setAttribute('aria-expanded', 'false');
+  },
+
+  bindMonthPickerOutside() {
+    if (this._monthPickerBound) return;
+    this._monthPickerBound = true;
+    document.addEventListener('click', (event) => {
+      const panel = document.getElementById('cc-month-picker');
+      const title = document.getElementById('cc-month-title');
+      if (!panel || panel.classList.contains('hidden')) return;
+      if (panel.contains(event.target) || (title && title.contains(event.target))) return;
+      this.closeMonthPicker();
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') this.closeMonthPicker();
+    });
+  },
+
+  renderMonthPicker() {
+    const panel = document.getElementById('cc-month-picker');
+    if (!panel) return;
+    const anchor = this.anchorDate();
+    const names = this.monthNames();
+    const selectedYear = anchor.getFullYear();
+    const selectedMonth = anchor.getMonth();
+    const yearStart = selectedYear - 3;
+    const yearEnd = selectedYear + 8;
+    const yearOpts = [];
+    for (let y = yearStart; y <= yearEnd; y += 1) {
+      yearOpts.push(`<option value="${y}" ${y === selectedYear ? 'selected' : ''}>${y}</option>`);
+    }
+    const monthOpts = names.map((name, idx) =>
+      `<option value="${idx}" ${idx === selectedMonth ? 'selected' : ''}>${name}</option>`
+    ).join('');
+
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    start.setDate(1);
+    const upcoming = Array.from({ length: 12 }, (_, i) => {
+      const d = new Date(start.getFullYear(), start.getMonth() + i, 1);
+      const y = d.getFullYear();
+      const m = d.getMonth();
+      const on = y === selectedYear && m === selectedMonth;
+      const label = d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+      return `<button type="button" onclick="CALENDAR_NAV.jumpToMonth(${y}, ${m})" class="w-full text-left px-2 py-1 rounded-md text-[10px] font-mono transition ${on ? 'bg-brand-gold/20 text-brand-gold font-semibold' : 'text-slate-300 hover:bg-white/5 hover:text-brand-gold'}">${label}</button>`;
+    }).join('');
+
+    panel.innerHTML = `
+      <div class="space-y-1.5" onclick="event.stopPropagation()">
+        <p class="text-[9px] font-semibold uppercase tracking-wide text-slate-500">Month &amp; year</p>
+        <div class="grid grid-cols-2 gap-1.5">
+          <label class="sr-only" for="cc-month-pick-month">Month</label>
+          <select id="cc-month-pick-month" onchange="CALENDAR_NAV.applyMonthChooser()" class="w-full bg-slate-950/80 border border-white/10 rounded-md px-1.5 py-1 text-[10px] font-mono text-slate-200 outline-none focus:border-brand-gold/50">
+            ${monthOpts}
+          </select>
+          <label class="sr-only" for="cc-month-pick-year">Year</label>
+          <select id="cc-month-pick-year" onchange="CALENDAR_NAV.applyMonthChooser()" class="w-full bg-slate-950/80 border border-white/10 rounded-md px-1.5 py-1 text-[10px] font-mono text-slate-200 outline-none focus:border-brand-gold/50">
+            ${yearOpts.join('')}
+          </select>
+        </div>
+        <p class="text-[9px] font-semibold uppercase tracking-wide text-slate-500 pt-1">Next 12 months</p>
+        <div class="max-h-40 overflow-y-auto space-y-0.5 pr-0.5">${upcoming}</div>
+      </div>`;
+  },
+
+  applyMonthChooser() {
+    const monthEl = document.getElementById('cc-month-pick-month');
+    const yearEl = document.getElementById('cc-month-pick-year');
+    if (!monthEl || !yearEl) return;
+    const month = Number(monthEl.value);
+    const year = Number(yearEl.value);
+    if (!Number.isFinite(month) || !Number.isFinite(year)) return;
+    this.jumpToMonth(year, month);
+  },
+
+  jumpToMonth(year, monthIndex) {
+    const d = this.anchorDate();
+    const day = d.getDate();
+    d.setFullYear(Number(year), Number(monthIndex), 1);
+    const maxDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    d.setDate(Math.min(day, maxDay));
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    this.dayOffset = Math.round((d - today) / 86400000);
+    calendarClickCount = this.dayOffset === 0 ? 0 : 1;
+    if (typeof dimadCal !== 'undefined' && dimadCal) {
+      dimadCal.currentDate = new Date(d);
+      dimadCal.render();
+    }
+    this.closeMonthPicker();
+    this.render();
+  },
+
   syncCondenseBtn() {
     this.condensed = false;
+    const ccReact =
+      document.getElementById('cc-agenda-root')?.dataset?.reactMounted === '1' ||
+      document.getElementById('cc-calendar-root')?.dataset?.reactMounted === '1';
     this.surfaces().forEach((surface) => {
       const wrap = document.getElementById(surface.dual);
       const side = document.getElementById(surface.side);
@@ -17730,7 +18108,14 @@ const CALENDAR_NAV = {
         wrap.classList.toggle('cal-dual-rail', !isCc);
         wrap.classList.remove('cal-dual-condensed');
       }
-      if (side) side.classList.remove('hidden');
+      if (!side) return;
+      /* React owns the Command Center month picker — never resurface the legacy companion. */
+      if (isCc && ccReact) {
+        side.classList.add('hidden');
+        side.innerHTML = '';
+        return;
+      }
+      side.classList.remove('hidden');
     });
   },
 
@@ -17766,18 +18151,29 @@ const CALENDAR_NAV = {
   paintSurface(surface, html, companionHtml) {
     const main = document.getElementById(surface.main);
     const side = document.getElementById(surface.side);
-    if (!main) return;
-    main.innerHTML = html;
-    if (side) side.innerHTML = companionHtml == null ? '' : companionHtml;
+    if (main) main.innerHTML = html;
+    if (side && companionHtml != null) side.innerHTML = companionHtml;
+    if (!main && !side) return;
   },
 
   render() {
     this.condensed = false;
-    const surfaces = this.surfaces().filter((surface) => document.getElementById(surface.main));
-    if (!surfaces.length) return;
-    this.syncCondenseBtn();
+    const ccReact =
+      document.getElementById('cc-agenda-root')?.dataset?.reactMounted === '1' ||
+      document.getElementById('cc-calendar-root')?.dataset?.reactMounted === '1';
+    const surfaces = this.surfaces().filter((surface) => {
+      const isCc = surface.main === 'hourly-slots-container';
+      if (isCc && ccReact) return false;
+      return document.getElementById(surface.main) || document.getElementById(surface.side);
+    });
     this.syncCcScheduleToggle();
-    this.syncCcMonthTitle();
+    if (!ccReact) this.syncCcMonthTitle();
+    /* Always run so a prior render cannot leave the legacy CC companion visible. */
+    this.syncCondenseBtn();
+    if (!surfaces.length) {
+      this.updateChromeForMode();
+      return;
+    }
 
     surfaces.forEach((surface) => {
       const isCc = surface.main === 'hourly-slots-container';
@@ -17786,8 +18182,12 @@ const CALENDAR_NAV = {
         const scheduleMode = this.mode === 'weekly' ? 'weekly' : 'hourly';
         const scheduleHtml = scheduleMode === 'weekly'
           ? this.weekGridHtml()
-          : `<div class="h-full min-h-0 overflow-auto">${this.dayHtml()}</div>`;
-        this.paintSurface(surface, `<div class="cc-schedule-pane">${scheduleHtml}</div>`, monthHtml);
+          : this.dayHtml();
+        this.paintSurface(
+          surface,
+          `<div class="cc-schedule-pane"><div class="cc-agenda-pan" data-cc-agenda-pan>${scheduleHtml}</div></div>`,
+          monthHtml
+        );
         return;
       }
 
@@ -17799,6 +18199,96 @@ const CALENDAR_NAV = {
       this.paintSurface(surface, html, monthHtml);
     });
     this.updateChromeForMode();
+    this.bindAgendaHandScroll();
+    this.scrollAgendaToNow();
+  },
+
+  /** Hand-tool drag-to-pan on the Command Center agenda schedule (works over empty hour slots). */
+  bindAgendaHandScroll() {
+    const panes = document.querySelectorAll('[data-cc-agenda-pan]');
+    panes.forEach((pane) => {
+      if (pane.dataset.handScrollBound === '1') return;
+      pane.dataset.handScrollBound = '1';
+      pane.classList.add('cc-agenda-pan');
+      let tracking = false;
+      let panning = false;
+      let startX = 0;
+      let startY = 0;
+      let scrollLeft = 0;
+      let scrollTop = 0;
+      let pointerId = null;
+
+      /* Only hard-block real form controls — empty hour cells are <button>s and must still pan. */
+      const isHardBlock = (target) =>
+        !!(target && target.closest && target.closest('input, select, textarea, label, a[href]'));
+
+      const endPan = (event) => {
+        if (!tracking) return;
+        if (pointerId != null && event && event.pointerId != null && event.pointerId !== pointerId) return;
+        const wasPanning = panning;
+        tracking = false;
+        panning = false;
+        pane.classList.remove('is-panning');
+        try { if (pointerId != null) pane.releasePointerCapture(pointerId); } catch (_) { /* ignore */ }
+        pointerId = null;
+        if (wasPanning) {
+          const swallow = (ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+          };
+          pane.addEventListener('click', swallow, true);
+          window.setTimeout(() => pane.removeEventListener('click', swallow, true), 80);
+        }
+      };
+
+      pane.addEventListener('pointerdown', (event) => {
+        if (event.button !== 0) return;
+        if (isHardBlock(event.target)) return;
+        tracking = true;
+        panning = false;
+        pointerId = event.pointerId;
+        startX = event.clientX;
+        startY = event.clientY;
+        scrollLeft = pane.scrollLeft;
+        scrollTop = pane.scrollTop;
+      });
+
+      pane.addEventListener('pointermove', (event) => {
+        if (!tracking || (pointerId != null && event.pointerId !== pointerId)) return;
+        const dx = event.clientX - startX;
+        const dy = event.clientY - startY;
+        if (!panning && (Math.abs(dx) > 4 || Math.abs(dy) > 4)) {
+          panning = true;
+          pane.classList.add('is-panning');
+          try { pane.setPointerCapture(pointerId); } catch (_) { /* ignore */ }
+        }
+        if (!panning) return;
+        pane.scrollLeft = scrollLeft - dx;
+        pane.scrollTop = scrollTop - dy;
+        event.preventDefault();
+      }, { passive: false });
+
+      pane.addEventListener('pointerup', endPan);
+      pane.addEventListener('pointercancel', endPan);
+      pane.addEventListener('lostpointercapture', () => {
+        tracking = false;
+        panning = false;
+        pane.classList.remove('is-panning');
+        pointerId = null;
+      });
+    });
+  },
+
+  /** Prefer showing “now” in the capped agenda viewport instead of empty midnight hours. */
+  scrollAgendaToNow() {
+    const pane = document.querySelector('#hourly-slots-container [data-cc-agenda-pan]');
+    if (!pane) return;
+    const hourPx = typeof DIMAD_CAL !== 'undefined' ? DIMAD_CAL.HOUR_PX : 32;
+    const hour = new Date().getHours();
+    const target = Math.max(0, (hour - 1) * hourPx);
+    requestAnimationFrame(() => {
+      pane.scrollTop = target;
+    });
   },
 
   updateChromeForMode() {
@@ -17850,7 +18340,7 @@ const CALENDAR_NAV = {
     const hourPx = typeof DIMAD_CAL !== 'undefined' ? DIMAD_CAL.HOUR_PX : 32;
     const todayKey = this.dateKey(new Date());
     const selectedKey = this.dateKey(this.anchorDate());
-    const header = `<div class="text-[9px] font-mono text-slate-500 py-1">Time</div>${days.map((d) => {
+    const header = `<div class="cc-agenda-time-col text-[9px] font-mono text-slate-500 py-1">Time</div>${days.map((d) => {
       const key = this.dateKey(d);
       const isToday = key === todayKey;
       const isSelected = key === selectedKey;
@@ -17862,13 +18352,11 @@ const CALENDAR_NAV = {
       const list = typeof DIMAD_CAL !== 'undefined' ? DIMAD_CAL.eventsListForDay(key) : [];
       return DIMAD_CAL.renderHourColumn(key, hours, list, { showGutter: false });
     }).join('');
-    return `<div class="overflow-x-auto">
-      <div class="min-w-[860px] space-y-1">
-        <div class="grid gap-1" style="grid-template-columns: 42px repeat(7, minmax(0, 1fr))">${header}</div>
-        <div class="grid gap-1" style="grid-template-columns: 42px repeat(7, minmax(0, 1fr))">
-          <div class="select-none">${gutter}</div>
-          ${dayCols}
-        </div>
+    return `<div class="cc-agenda-week min-w-[860px] space-y-1">
+      <div class="grid gap-1 sticky top-0 z-[3] bg-[color:var(--bg-card,#0c1220)]/95 backdrop-blur-sm" style="grid-template-columns: 42px repeat(7, minmax(0, 1fr))">${header}</div>
+      <div class="grid gap-1" style="grid-template-columns: 42px repeat(7, minmax(0, 1fr))">
+        <div class="cc-agenda-time-col select-none">${gutter}</div>
+        ${dayCols}
       </div>
     </div>`;
   },
@@ -18810,6 +19298,18 @@ const TASK_MANAGER = {
             ${editing ? editPanel : items.join('')}
           </div>`;
     const rowPad = compact ? 'gap-1.5 py-0.5 px-0.5' : 'gap-2 py-1.5 px-1';
+    let priorityPill = '';
+    if (compact && !task.completed && !history) {
+      const today = this.todayKey();
+      const level = task.date < today ? 'High' : task.date > today ? 'Low' : 'Medium';
+      const pill =
+        level === 'High'
+          ? 'bg-rose-500/15 text-rose-300 border-rose-500/30'
+          : level === 'Low'
+            ? 'bg-sky-500/15 text-sky-300 border-sky-500/30'
+            : 'bg-amber-500/15 text-amber-300 border-amber-500/30';
+      priorityPill = `<span class="shrink-0 text-[7px] font-black uppercase tracking-wide px-1.5 py-px rounded-full border ${pill}">${level}</span>`;
+    }
     return `
       <div data-tm-row="${task.id}" draggable="${canDrag ? 'true' : 'false'}" oncontextmenu="TASK_MANAGER.openContextMenu(event, '${task.id}')" ondragstart="TASK_MANAGER.onDragStart(event, '${task.id}', '${from}')" ondragover="TASK_MANAGER.onDragOver(event, '${task.id}', '${from}')" ondragleave="TASK_MANAGER.onDragLeave(event)" ondrop="TASK_MANAGER.onDrop(event, '${task.id}', '${from}')" ondragend="TASK_MANAGER.onDragEnd()" class="flex items-start ${rowPad} rounded-md hover:bg-white/[0.04] ${canDrag ? 'select-none' : ''}">
         ${check}
@@ -18817,6 +19317,7 @@ const TASK_MANAGER = {
           ${title}
           ${meta ? `<span class="block text-[9px] font-mono text-slate-500 leading-tight">${meta}</span>` : ''}
         </div>
+        ${priorityPill}
         ${menuPanel}
       </div>`;
   },
@@ -19715,13 +20216,13 @@ const INVOICES = {
         return;
       }
       list.innerHTML = rows.map((row) => `
-        <button type="button" onclick='INVOICES.openFromDash("proposals", ${JSON.stringify(String(row.id))})' class="w-full flex items-start justify-between gap-2 bg-brand-nested/70 border border-hairline rounded-lg px-2 py-1.5 text-left hover:border-gold-soft transition">
+        <button type="button" onclick='INVOICES.openFromDash("proposals", ${JSON.stringify(String(row.id))})' class="w-full flex items-start justify-between gap-2 bg-white/[0.03] border border-white/10 rounded-lg px-2 py-1.5 text-left hover:border-gold-soft transition">
           <span class="min-w-0">
             <span class="block text-[11px] font-semibold text-slate-100 leading-snug break-words">${this.escape(row.clientName)}</span>
             <span class="block text-[9px] text-slate-500 leading-snug break-words">${this.escape(row.title || row.number || '—')}</span>
           </span>
-          <span class="text-right shrink-0">
-            <span class="block text-[9px] font-bold text-brand-mint">${this.escape(row.stage || 'Draft')}</span>
+          <span class="text-right shrink-0 space-y-0.5">
+            <span class="inline-flex items-center text-[8px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full border ${this.dashStatusBadge(row.stage || 'Draft')}">${this.escape(row.stage || 'Draft')}</span>
             <span class="block text-[9px] text-brand-gold font-mono tabular-nums">${this.money(row.total, row.currency)}</span>
           </span>
         </button>
@@ -19736,17 +20237,29 @@ const INVOICES = {
       return;
     }
     list.innerHTML = rows.map((row) => `
-      <button type="button" onclick='INVOICES.openFromDash("invoices", ${JSON.stringify(String(row.id))})' class="w-full flex items-start justify-between gap-2 bg-brand-nested/70 border border-hairline rounded-lg px-2 py-1.5 text-left hover:border-gold-soft transition">
+      <button type="button" onclick='INVOICES.openFromDash("invoices", ${JSON.stringify(String(row.id))})' class="w-full flex items-start justify-between gap-2 bg-white/[0.03] border border-white/10 rounded-lg px-2 py-1.5 text-left hover:border-gold-soft transition">
         <span class="min-w-0">
           <span class="block text-[11px] font-semibold text-slate-100 leading-snug break-words">${this.escape(row.clientName)}</span>
           <span class="block text-[9px] text-slate-500 leading-snug break-words">${this.escape(row.number || row.title || '—')}</span>
         </span>
-        <span class="text-right shrink-0">
-          <span class="block text-[9px] font-bold text-brand-mint">${this.escape(row.status || 'Draft')}</span>
+        <span class="text-right shrink-0 space-y-0.5">
+          <span class="inline-flex items-center text-[8px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full border ${this.dashStatusBadge(row.status || 'Draft')}">${this.escape(row.status || 'Draft')}</span>
           <span class="block text-[9px] text-brand-gold font-mono tabular-nums">${this.money(row.total, row.currency)}</span>
         </span>
       </button>
     `).join('');
+  },
+
+  dashStatusBadge(status) {
+    const map = {
+      Draft: 'bg-slate-500/15 text-slate-300 border-slate-500/30',
+      Sent: 'bg-sky-500/15 text-sky-300 border-sky-500/30',
+      Paid: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+      Overdue: 'bg-rose-500/15 text-rose-300 border-rose-500/30',
+      Accepted: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+      Declined: 'bg-slate-600/20 text-slate-400 border-slate-600/30'
+    };
+    return map[status] || 'bg-white/5 text-slate-300 border-white/10';
   },
 
   openFromDash(kind, id) {
@@ -22658,8 +23171,20 @@ window.CREATOR_AI = CREATOR_AI;
 
 const COMMAND_CENTER = {
   storageKey: 'dimad_cc_modules',
-  layoutVersion: 23,
+  layoutVersion: 26,
   retiredApiIds: ['stripe', 'shopify', 'lemon', 'gumroad', 'patreon', 'mailerlite', 'plaid', 'store', 'copilot', 'your-city', 'quote', 'clocks', 'emergency', 'logistics', 'weather'],
+  /** Default bento module order (Agenda first = tall 2-row tile; drag-reorder updates this). */
+  defaultOrder: [
+    'agenda',
+    'calendar',
+    'revenue-snapshot',
+    'growth-snapshot',
+    'goals',
+    'tasks',
+    'pipeline',
+    'billing',
+    'notepad'
+  ],
   catalog: [
     { id: 'ticker', label: 'Stock Ticker', group: 'core' },
     {
@@ -22675,6 +23200,7 @@ const COMMAND_CENTER = {
     },
     { id: 'dimad-ai', label: 'Dimad AI', group: 'core' },
     { id: 'calendar', label: 'Calendar', group: 'core' },
+    { id: 'agenda', label: 'Agenda', group: 'core' },
     { id: 'notepad', label: 'dimPad', group: 'core' },
     { id: 'goals', label: 'Accountability Log', group: 'core' },
     { id: 'tasks', label: 'Task Manager', group: 'core' },
@@ -22687,21 +23213,45 @@ const COMMAND_CENTER = {
   filterExpanded: { 'yerevan-header': true },
 
   defaultState() {
-    return { hidden: [], collapsed: [], layoutVersion: this.layoutVersion };
+    return {
+      hidden: [],
+      collapsed: [],
+      order: this.defaultOrder.slice(),
+      layoutVersion: this.layoutVersion
+    };
+  },
+
+  normalizeOrder(order) {
+    const seen = new Set();
+    const next = [];
+    (Array.isArray(order) ? order : []).forEach((id) => {
+      if (!id || seen.has(id) || !this.defaultOrder.includes(id)) return;
+      seen.add(id);
+      next.push(id);
+    });
+    this.defaultOrder.forEach((id) => {
+      if (!seen.has(id)) next.push(id);
+    });
+    return next;
   },
 
   state() {
     try {
       const raw = JSON.parse(localStorage.getItem(this.storageKey) || '');
       if (raw && Array.isArray(raw.hidden) && Array.isArray(raw.collapsed)) {
-        if (raw.layoutVersion === this.layoutVersion) return raw;
+        if (raw.layoutVersion === this.layoutVersion) {
+          raw.order = this.normalizeOrder(raw.order);
+          return raw;
+        }
         const retired = new Set(this.retiredApiIds);
         let hidden = raw.hidden.filter((id) => !retired.has(id));
-        // Snapshots + pipeline + billing + Dimad AI + Your City (+ sections) default visible on layout bump.
+        // Snapshots + agenda + pipeline + billing + Dimad AI + Your City (+ sections) default visible on layout bump.
         hidden = hidden.filter(
           (id) =>
             id !== 'revenue-snapshot' &&
             id !== 'growth-snapshot' &&
+            id !== 'agenda' &&
+            id !== 'calendar' &&
             id !== 'pipeline' &&
             id !== 'billing' &&
             id !== 'dimad-ai' &&
@@ -22714,6 +23264,7 @@ const COMMAND_CENTER = {
         const next = {
           hidden: Array.from(new Set(hidden)),
           collapsed: raw.collapsed.filter((id) => !retired.has(id)),
+          order: this.normalizeOrder(raw.order),
           layoutVersion: this.layoutVersion
         };
         this.persist(next);
@@ -22731,6 +23282,7 @@ const COMMAND_CENTER = {
 
   apply() {
     const { hidden } = this.state();
+    this.applyBentoOrder();
     document.querySelectorAll('[data-cc-module]').forEach((el) => {
       const id = el.getAttribute('data-cc-module');
       const hide = hidden.includes(id);
@@ -22741,7 +23293,10 @@ const COMMAND_CENTER = {
     });
     this.syncYourCitySections(hidden);
     this.balanceLayout();
+    this.bindBentoDrag();
     this.renderFilter();
+    void mountDashboardSnapshots();
+    void mountDashboardCalendarIslands();
     if (typeof DIMAD_NOTEPAD !== 'undefined' && DIMAD_NOTEPAD.renderDash) DIMAD_NOTEPAD.renderDash();
     if (typeof DIMAD_GOALS !== 'undefined' && DIMAD_GOALS.renderDash) DIMAD_GOALS.renderDash();
     if (typeof DIM_ENGINE !== 'undefined' && DIM_ENGINE.renderStreakTrack) DIM_ENGINE.renderStreakTrack();
@@ -22779,7 +23334,417 @@ const COMMAND_CENTER = {
     } catch (err) { /* ignore */ }
   },
 
-  /** Stretch lone / odd-row modules so filtered dashboards don't leave empty cells. */
+  applyBentoOrder() {
+    const grid = document.querySelector('#view-ent-dashboard .cc-bento-grid');
+    if (!grid) return;
+    const order = this.normalizeOrder(this.state().order);
+    order.forEach((id) => {
+      const el = grid.querySelector(`:scope > [data-cc-module="${id}"]`);
+      if (el) grid.appendChild(el);
+    });
+  },
+
+  saveBentoOrderFromDom() {
+    const grid = document.querySelector('#view-ent-dashboard .cc-bento-grid');
+    if (!grid) return;
+    const order = Array.from(grid.querySelectorAll(':scope > [data-cc-module]'))
+      .map((el) => el.getAttribute('data-cc-module'))
+      .filter(Boolean);
+    const next = this.state();
+    next.order = this.normalizeOrder(order);
+    this.persist(next);
+  },
+
+  layoutDraft: null,
+  layoutSnapshot: null,
+  layoutCols: 3,
+
+  moduleLabel(id) {
+    const hit = this.catalog.find((item) => item.id === id);
+    if (hit) return hit.label;
+    const map = {
+      agenda: 'Agenda',
+      calendar: 'Calendar',
+      'revenue-snapshot': 'Revenue',
+      'growth-snapshot': 'Growth',
+      goals: 'Accountability',
+      tasks: 'Tasks',
+      pipeline: 'Pipeline',
+      billing: 'Billing',
+      notepad: 'dimPad'
+    };
+    return map[id] || id;
+  },
+
+  moduleRowSpan(id) {
+    return id === 'agenda' ? 2 : 1;
+  },
+
+  /**
+   * Mirror the live bento: 3-col dense placement with Agenda spanning 2 rows.
+   * Returns { positions: { [id]: { row, col, rowSpan } }, neighbor(id, dir) }.
+   */
+  layoutPlacement(order) {
+    const cols = this.layoutCols;
+    const cells = [];
+    const positions = {};
+
+    const ensureRow = (r) => {
+      while (cells.length <= r) cells.push(Array.from({ length: cols }, () => null));
+    };
+
+    const free = (r, c, span) => {
+      for (let i = 0; i < span; i += 1) {
+        ensureRow(r + i);
+        if (cells[r + i][c] != null) return false;
+      }
+      return true;
+    };
+
+    const occupy = (id, r, c, span) => {
+      for (let i = 0; i < span; i += 1) {
+        ensureRow(r + i);
+        cells[r + i][c] = id;
+      }
+      positions[id] = { row: r, col: c, rowSpan: span };
+    };
+
+    (Array.isArray(order) ? order : []).forEach((id) => {
+      if (!id || positions[id]) return;
+      const span = this.moduleRowSpan(id);
+      let placed = false;
+      for (let r = 0; !placed; r += 1) {
+        for (let c = 0; c < cols; c += 1) {
+          if (!free(r, c, span)) continue;
+          occupy(id, r, c, span);
+          placed = true;
+          break;
+        }
+        if (r > 40) break;
+      }
+    });
+
+    const at = (r, c) => {
+      if (r < 0 || c < 0 || c >= cols) return null;
+      ensureRow(r);
+      return cells[r][c] || null;
+    };
+
+    const neighbor = (id, dir) => {
+      const pos = positions[id];
+      if (!pos) return null;
+      let r = pos.row;
+      let c = pos.col;
+      if (dir === 'left') {
+        c -= 1;
+        while (c >= 0) {
+          const hit = at(r, c);
+          if (hit && hit !== id) return hit;
+          c -= 1;
+        }
+        return null;
+      }
+      if (dir === 'right') {
+        c += 1;
+        while (c < cols) {
+          const hit = at(r, c);
+          if (hit && hit !== id) return hit;
+          c += 1;
+        }
+        return null;
+      }
+      if (dir === 'up') {
+        r -= 1;
+        while (r >= 0) {
+          const hit = at(r, c);
+          if (hit && hit !== id) return hit;
+          r -= 1;
+        }
+        return null;
+      }
+      if (dir === 'down') {
+        r += pos.rowSpan;
+        const maxR = Math.max(cells.length + 2, r + 8);
+        while (r < maxR) {
+          const hit = at(r, c);
+          if (hit && hit !== id) return hit;
+          r += 1;
+        }
+        return null;
+      }
+      return null;
+    };
+
+    return { cells, positions, neighbor };
+  },
+
+  openLayoutEditor() {
+    const core = document.getElementById('cc-module-filter');
+    if (core) core.classList.add('hidden');
+    const order = this.normalizeOrder(this.state().order);
+    this.layoutSnapshot = order.slice();
+    this.layoutDraft = order.slice();
+    this.renderLayoutEditor();
+    const modal = document.getElementById('cc-layout-editor');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  },
+
+  cancelLayoutEditor() {
+    this.layoutDraft = null;
+    this.layoutSnapshot = null;
+    const modal = document.getElementById('cc-layout-editor');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  },
+
+  saveLayoutEditor() {
+    if (!Array.isArray(this.layoutDraft)) {
+      this.cancelLayoutEditor();
+      return;
+    }
+    const next = this.state();
+    next.order = this.normalizeOrder(this.layoutDraft);
+    this.persist(next);
+    this.layoutDraft = null;
+    this.layoutSnapshot = null;
+    const modal = document.getElementById('cc-layout-editor');
+    if (modal) {
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+    this.apply();
+  },
+
+  moveLayoutTile(id, dir) {
+    if (!Array.isArray(this.layoutDraft)) return;
+    const order = this.layoutDraft.slice();
+    const { positions, neighbor } = this.layoutPlacement(order);
+    const other = neighbor(id, dir);
+    if (!other) return;
+    const a = positions[id];
+    const b = positions[other];
+    if (!a || !b) return;
+
+    // Swap visual origins, then serialize top-left reading order so dense
+    // reflow keeps "down" = same column, one row below (not flat index ±3).
+    const placed = Object.keys(positions).map((mid) => {
+      const p = positions[mid];
+      let row = p.row;
+      let col = p.col;
+      if (mid === id) {
+        row = b.row;
+        col = b.col;
+      } else if (mid === other) {
+        row = a.row;
+        col = a.col;
+      }
+      return { id: mid, row, col };
+    });
+    placed.sort((x, y) => (x.row - y.row) || (x.col - y.col));
+    this.layoutDraft = this.normalizeOrder(placed.map((p) => p.id));
+    this.renderLayoutEditor();
+  },
+
+  renderLayoutEditor() {
+    const root = document.getElementById('cc-layout-editor-grid');
+    if (!root || !Array.isArray(this.layoutDraft)) return;
+    const { hidden } = this.state();
+    const order = this.normalizeOrder(this.layoutDraft);
+    const { neighbor } = this.layoutPlacement(order);
+    root.innerHTML = order.map((id) => {
+      const muted = hidden.includes(id);
+      const tall = id === 'agenda';
+      const canLeft = !!neighbor(id, 'left');
+      const canRight = !!neighbor(id, 'right');
+      const canUp = !!neighbor(id, 'up');
+      const canDown = !!neighbor(id, 'down');
+      const label = this.moduleLabel(id);
+      return `<div class="cc-layout-mini-tile ${tall ? 'is-agenda' : ''} ${muted ? 'opacity-45' : ''}" data-layout-id="${id}">
+        <div class="cc-layout-mini-label">${label}${muted ? '<div class="text-[8px] font-normal text-slate-500 mt-0.5">Hidden</div>' : ''}</div>
+        <div class="cc-layout-mini-arrows">
+          <button type="button" ${canLeft ? '' : 'disabled'} onclick="COMMAND_CENTER.moveLayoutTile('${id}','left')" title="Move left" aria-label="Move ${label} left">◀</button>
+          <button type="button" ${canUp ? '' : 'disabled'} onclick="COMMAND_CENTER.moveLayoutTile('${id}','up')" title="Move up" aria-label="Move ${label} up">▲</button>
+          <button type="button" ${canDown ? '' : 'disabled'} onclick="COMMAND_CENTER.moveLayoutTile('${id}','down')" title="Move down" aria-label="Move ${label} down">▼</button>
+          <button type="button" ${canRight ? '' : 'disabled'} onclick="COMMAND_CENTER.moveLayoutTile('${id}','right')" title="Move right" aria-label="Move ${label} right">▶</button>
+        </div>
+      </div>`;
+    }).join('');
+  },
+
+  pendingBentoMove: null,
+
+  clearBentoDropMarks(grid) {
+    if (!grid) return;
+    grid.querySelectorAll('.cc-bento-drop-target, .cc-bento-drop-before, .cc-bento-drop-after').forEach((el) => {
+      el.classList.remove('cc-bento-drop-target', 'cc-bento-drop-before', 'cc-bento-drop-after');
+    });
+  },
+
+  /** Resolve which card + before/after edge the pointer is over (supports gaps between tiles). */
+  resolveBentoDropTarget(grid, clientX, clientY, dragId) {
+    const cards = Array.from(grid.querySelectorAll(':scope > [data-cc-module]:not(.hidden)'))
+      .filter((el) => el.getAttribute('data-cc-module') !== dragId);
+    if (!cards.length) return null;
+
+    let best = null;
+    let bestDist = Infinity;
+    cards.forEach((card) => {
+      const rect = card.getBoundingClientRect();
+      const cx = Math.min(Math.max(clientX, rect.left), rect.right);
+      const cy = Math.min(Math.max(clientY, rect.top), rect.bottom);
+      const dist = Math.hypot(clientX - cx, clientY - cy);
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = { card, rect };
+      }
+    });
+    if (!best) return null;
+
+    const { card, rect } = best;
+    /* Prefer vertical half for tall stacks; use horizontal half when closer to left/right edges. */
+    const relY = (clientY - rect.top) / Math.max(rect.height, 1);
+    const relX = (clientX - rect.left) / Math.max(rect.width, 1);
+    let before;
+    if (relX < 0.28) before = true;
+    else if (relX > 0.72) before = false;
+    else before = relY < 0.5;
+    return { card, before };
+  },
+
+  openBentoMoveConfirm(payload) {
+    this.pendingBentoMove = payload;
+    const modal = document.getElementById('cc-bento-move-confirm');
+    if (!modal) {
+      this.confirmBentoMove(true);
+      return;
+    }
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  },
+
+  confirmBentoMove(accepted) {
+    const modal = document.getElementById('cc-bento-move-confirm');
+    if (modal) {
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+    const pending = this.pendingBentoMove;
+    this.pendingBentoMove = null;
+    if (!accepted || !pending) return;
+
+    const grid = document.querySelector('#view-ent-dashboard .cc-bento-grid');
+    if (!grid) return;
+    const source = grid.querySelector(`:scope > [data-cc-module="${pending.sourceId}"]`);
+    const over = grid.querySelector(`:scope > [data-cc-module="${pending.targetId}"]`);
+    if (!source || !over || source === over) return;
+    if (pending.before) grid.insertBefore(source, over);
+    else grid.insertBefore(source, over.nextSibling);
+    this.saveBentoOrderFromDom();
+    this.balanceLayout();
+  },
+
+  /** Header-handle drag-and-drop reorder for Command Center bento tiles. */
+  bindBentoDrag() {
+    const grid = document.querySelector('#view-ent-dashboard .cc-bento-grid');
+    if (!grid || grid.dataset.bentoDragBound === '1') return;
+    grid.dataset.bentoDragBound = '1';
+    let dragId = '';
+    let didDrag = false;
+    let dropHint = null;
+
+    grid.addEventListener('pointerdown', (event) => {
+      if (event.button != null && event.button !== 0) return;
+      const handle = event.target.closest('[data-cc-drag-handle]');
+      if (!handle || !grid.contains(handle)) return;
+      /* Controls stay interactive; title / empty header starts a drag. */
+      if (event.target.closest('[data-cc-no-drag], select, input, label, textarea, a')) return;
+      const card = handle.closest('[data-cc-module]');
+      if (!card || card.parentElement !== grid) return;
+      didDrag = false;
+      card.draggable = true;
+      card.classList.add('cc-bento-dragging');
+    });
+
+    grid.addEventListener('dragstart', (event) => {
+      const card = event.target.closest('[data-cc-module]');
+      if (!card || card.parentElement !== grid || !card.draggable) {
+        event.preventDefault();
+        return;
+      }
+      didDrag = true;
+      dragId = card.getAttribute('data-cc-module') || '';
+      event.dataTransfer.effectAllowed = 'move';
+      try {
+        event.dataTransfer.setData('text/plain', dragId);
+        event.dataTransfer.setData('application/x-cc-module', dragId);
+      } catch (_) { /* ignore */ }
+      try {
+        event.dataTransfer.setDragImage(card, 24, 16);
+      } catch (_) { /* ignore */ }
+    });
+
+    grid.addEventListener('click', (event) => {
+      if (!didDrag) return;
+      const inHandle = event.target.closest('[data-cc-drag-handle]');
+      if (!inHandle || !grid.contains(inHandle)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      didDrag = false;
+    }, true);
+
+    grid.addEventListener('dragover', (event) => {
+      if (!dragId) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'move';
+      const hit = this.resolveBentoDropTarget(grid, event.clientX, event.clientY, dragId);
+      this.clearBentoDropMarks(grid);
+      dropHint = hit;
+      if (!hit) return;
+      hit.card.classList.add('cc-bento-drop-target');
+      hit.card.classList.add(hit.before ? 'cc-bento-drop-before' : 'cc-bento-drop-after');
+    });
+
+    grid.addEventListener('drop', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const sourceId = dragId
+        || event.dataTransfer.getData('application/x-cc-module')
+        || event.dataTransfer.getData('text/plain');
+      const hit = dropHint || this.resolveBentoDropTarget(grid, event.clientX, event.clientY, sourceId);
+      this.clearBentoDropMarks(grid);
+      dropHint = null;
+      if (!sourceId || !hit) return;
+      const targetId = hit.card.getAttribute('data-cc-module');
+      if (!targetId || targetId === sourceId) return;
+      const source = grid.querySelector(`:scope > [data-cc-module="${sourceId}"]`);
+      if (!source) return;
+      /* No-op if already in that slot. */
+      const alreadyBefore = hit.before && source.nextElementSibling === hit.card;
+      const alreadyAfter = !hit.before && hit.card.nextElementSibling === source;
+      if (alreadyBefore || alreadyAfter) return;
+      this.openBentoMoveConfirm({ sourceId, targetId, before: hit.before });
+    });
+
+    const endDrag = () => {
+      dragId = '';
+      dropHint = null;
+      this.clearBentoDropMarks(grid);
+      grid.querySelectorAll(':scope > [data-cc-module]').forEach((card) => {
+        card.draggable = false;
+        card.classList.remove('cc-bento-dragging');
+      });
+    };
+    /* Only clear on dragend — pointerup races ahead of drop and was killing reorders. */
+    grid.addEventListener('dragend', endDrag);
+    grid.addEventListener('pointercancel', () => {
+      if (!dragId) endDrag();
+    });
+  },
+
+  /** Bento reflow — agenda stays 2 rows tall; strip leftover wide spans. */
   balanceLayout() {
     const top = document.querySelector('#view-ent-dashboard [data-cc-top-grid]');
     if (top) {
@@ -22802,19 +23767,35 @@ const COMMAND_CENTER = {
       if (visiblePanes.length) visiblePanes[visiblePanes.length - 1].classList.add('cc-city-pane-last');
     }
 
+    /* Legacy quad path (if present in older cached markup). */
     const quadWrap = document.querySelector('#view-ent-dashboard [data-cc-quad-wrap]');
     const calendar = document.querySelector('#view-ent-dashboard [data-cc-module="calendar"]');
     if (quadWrap && calendar) {
       quadWrap.classList.toggle('cc-quad-full', calendar.classList.contains('hidden'));
     }
+    const legacyGrid = document.querySelector('#view-ent-dashboard .cc-quad-grid');
+    if (legacyGrid) {
+      const cards = Array.from(legacyGrid.querySelectorAll(':scope > [data-cc-module]'));
+      cards.forEach((el) => el.classList.remove('cc-quad-span-2'));
+      const visible = cards.filter((el) => !el.classList.contains('hidden'));
+      if (visible.length % 2 === 1) {
+        visible[visible.length - 1].classList.add('cc-quad-span-2');
+      }
+    }
 
-    const grid = document.querySelector('#view-ent-dashboard .cc-quad-grid');
-    if (!grid) return;
-    const cards = Array.from(grid.querySelectorAll(':scope > [data-cc-module]'));
-    cards.forEach((el) => el.classList.remove('cc-quad-span-2'));
-    const visible = cards.filter((el) => !el.classList.contains('hidden'));
-    if (visible.length % 2 === 1) {
-      visible[visible.length - 1].classList.add('cc-quad-span-2');
+    /* Bento: agenda is far-right × 2 rows tall via CSS; strip any leftover wide spans. */
+    const bento = document.querySelector('#view-ent-dashboard .cc-bento-grid');
+    if (bento) {
+      const agenda = bento.querySelector(':scope > [data-cc-module="agenda"]');
+      if (agenda) {
+        agenda.classList.remove(
+          'md:col-span-2',
+          'xl:col-span-2',
+          'col-span-2',
+          'xl:row-span-1',
+          'md:row-span-1'
+        );
+      }
     }
   },
 
@@ -23302,6 +24283,8 @@ window.onload = async function() {
   await loadViews();
   /* Bundle was prefetched at parse-time; mount as soon as the root exists. */
   void mountYerevanHeader();
+  void mountDashboardSnapshots();
+  void mountDashboardCalendarIslands();
   if (typeof DIMAD_WELCOME !== 'undefined' && DIMAD_WELCOME.active) DIMAD_WELCOME.setStatus('Preparing clocks, goals, and modules…');
   if (typeof WORLD_CLOCKS !== 'undefined') WORLD_CLOCKS.render();
   if (typeof DIMAD_GEO !== 'undefined') DIMAD_GEO.init();

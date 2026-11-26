@@ -13,13 +13,21 @@ import { openIntegrationsSettings, openShellTab } from "@/lib/snapshots/nav";
 import type { SnapshotRange } from "@/lib/snapshots/theme";
 import { takeWorkspaceHydration } from "@/lib/cache/workspace-data-cache";
 
-export default function RevenueSnapshotCard() {
+type Props = {
+  /** Mounted inside Command Center bento (no iframe chrome / resize posts). */
+  embedded?: boolean;
+};
+
+export default function RevenueSnapshotCard({ embedded = false }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
+  const hasDataRef = useRef(false);
   const [range, setRange] = useState<SnapshotRange>("1M");
   const [payloads, setPayloads] = useState<Partial<Record<RevenueSourceId, Record<string, unknown>>>>({});
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
+    if (embedded) return;
     const node = rootRef.current;
     if (!node || window.parent === window) return;
     const post = () => {
@@ -32,10 +40,13 @@ export default function RevenueSnapshotCard() {
     const observer = new ResizeObserver(post);
     observer.observe(node);
     return () => observer.disconnect();
-  }, [loading, range, payloads]);
+  }, [embedded, loading, range, payloads]);
 
   const load = useCallback(async (nextRange: SnapshotRange) => {
-    setLoading(true);
+    const initial = !hasDataRef.current;
+    if (initial) setLoading(true);
+    else setRefreshing(true);
+
     const keys: RevenueSourceId[] = ["stripe", "lemon", "gumroad", "patreon", "shopify"];
     const endpoints: Record<RevenueSourceId, string> = {
       stripe: "/api/integrations/stripe/metrics",
@@ -58,8 +69,10 @@ export default function RevenueSnapshotCard() {
         }
       })
     );
+    hasDataRef.current = true;
     setPayloads(next);
     setLoading(false);
+    setRefreshing(false);
   }, []);
 
   useEffect(() => {
@@ -70,7 +83,7 @@ export default function RevenueSnapshotCard() {
   const metrics = useMemo(() => extractRevenueMetrics(payloads, range), [payloads, range]);
 
   return (
-    <div ref={rootRef}>
+    <div ref={rootRef} className="h-full">
       <SnapshotChrome
         kicker="Revenue"
         title="Total Volume"
@@ -79,6 +92,9 @@ export default function RevenueSnapshotCard() {
         onRange={setRange}
         sources={sources}
         loading={loading}
+        refreshing={refreshing}
+        accent="revenue"
+        embedded={embedded}
         workspaceLabel="Open Revenue"
         onOpenWorkspace={() => openShellTab("ent-crm")}
         onOpenIntegrations={openIntegrationsSettings}

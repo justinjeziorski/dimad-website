@@ -12,13 +12,20 @@ import { openIntegrationsSettings, openShellTab } from "@/lib/snapshots/nav";
 import type { SnapshotRange } from "@/lib/snapshots/theme";
 import { takeWorkspaceHydration } from "@/lib/cache/workspace-data-cache";
 
-export default function GrowthSnapshotCard() {
+type Props = {
+  embedded?: boolean;
+};
+
+export default function GrowthSnapshotCard({ embedded = false }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
+  const hasDataRef = useRef(false);
   const [range, setRange] = useState<SnapshotRange>("1M");
   const [payloads, setPayloads] = useState<Partial<Record<GrowthSourceId, Record<string, unknown>>>>({});
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
+    if (embedded) return;
     const node = rootRef.current;
     if (!node || window.parent === window) return;
     const post = () => {
@@ -31,10 +38,13 @@ export default function GrowthSnapshotCard() {
     const observer = new ResizeObserver(post);
     observer.observe(node);
     return () => observer.disconnect();
-  }, [loading, range, payloads]);
+  }, [embedded, loading, range, payloads]);
 
   const load = useCallback(async () => {
-    setLoading(true);
+    const initial = !hasDataRef.current;
+    if (initial) setLoading(true);
+    else setRefreshing(true);
+
     const keys: GrowthSourceId[] = ["youtube", "x", "mailerlite"];
     const endpoints: Record<GrowthSourceId, string> = {
       youtube: "/api/youtube/data",
@@ -54,8 +64,10 @@ export default function GrowthSnapshotCard() {
         }
       })
     );
+    hasDataRef.current = true;
     setPayloads(next);
     setLoading(false);
+    setRefreshing(false);
   }, []);
 
   useEffect(() => {
@@ -66,7 +78,7 @@ export default function GrowthSnapshotCard() {
   const metrics = useMemo(() => extractGrowthMetrics(payloads, range), [payloads, range]);
 
   return (
-    <div ref={rootRef}>
+    <div ref={rootRef} className="h-full">
       <SnapshotChrome
         kicker="Growth"
         title="Audience Reach"
@@ -75,6 +87,9 @@ export default function GrowthSnapshotCard() {
         onRange={setRange}
         sources={sources}
         loading={loading}
+        refreshing={refreshing}
+        accent="growth"
+        embedded={embedded}
         workspaceLabel="Open Growth"
         onOpenWorkspace={() => openShellTab("ent-growth")}
         onOpenIntegrations={openIntegrationsSettings}

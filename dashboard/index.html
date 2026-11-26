@@ -24,8 +24,9 @@
     })();
   </script>
 
-  <!-- City header island: preload before views so mount is not blocked ~5s -->
+  <!-- Native React islands: preload before views so mount is not blocked -->
   <link rel="preload" href="/embeds/yerevan-header.js?v=41" as="script" />
+  <link rel="preload" href="/embeds/dashboard-snapshots.js?v=1" as="script" />
 
   <!-- TAILWIND & FONTS DEPENDENCIES -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -152,6 +153,216 @@
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
       border: 1px solid var(--border-hairline);
+    }
+    /* Command Center bento — uniform 1×1 tiles; Agenda = far-right column × 2 rows tall */
+    .cc-bento-grid {
+      --cc-bento-row: 280px;
+      --cc-bento-gap: 0.75rem;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      grid-auto-rows: var(--cc-bento-row);
+      gap: var(--cc-bento-gap);
+      grid-auto-flow: dense;
+      align-items: stretch;
+      width: 100%;
+    }
+    @media (min-width: 768px) {
+      .cc-bento-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+    @media (min-width: 1280px) {
+      .cc-bento-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+    }
+    .cc-bento-card {
+      background: rgba(255, 255, 255, 0.03);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 1rem;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+      transition: border-color 180ms ease, background-color 180ms ease, box-shadow 180ms ease;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      min-height: 0;
+      height: 100%; /* fill the uniform row track — no between-tile dead space */
+    }
+    .cc-bento-card:hover {
+      border-color: rgba(245, 185, 66, 0.28);
+      background: rgba(255, 255, 255, 0.045);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 8px 28px rgba(0, 0, 0, 0.22);
+    }
+    .cc-bento-card > [data-cc-body],
+    .cc-bento-card > .cc-bento-body {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: auto; /* scroll inside the tile instead of empty stretch */
+    }
+    .cc-bento-card .cc-bento-textarea {
+      flex: 1 1 auto;
+      min-height: 5rem;
+    }
+    /* Agenda: 1 column wide, 2 rows tall (position follows DOM order for drag-reorder) */
+    .cc-bento-agenda:not(.hidden) {
+      grid-row: span 2;
+      height: 100%;
+    }
+    .cc-bento-agenda .cc-agenda-scroll-host,
+    .cc-bento-agenda .cc-schedule-pane,
+    #cc-agenda-root,
+    #cc-calendar-root {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    #cc-calendar-root {
+      overflow: hidden;
+      flex: 1 1 auto !important;
+      min-height: 0 !important;
+    }
+    /* Jumper overlays inside the card; keep card clipped so legacy/bleed can't stack */
+    [data-cc-module="calendar"].cc-bento-card {
+      overflow: hidden;
+    }
+    [data-cc-module="calendar"] #cal-companion-container {
+      display: none !important;
+    }
+    #cc-agenda-root > *,
+    #cc-calendar-root > * {
+      flex: 1 1 auto;
+      min-height: 0;
+      height: 100%;
+    }
+    .cc-bento-agenda .cc-agenda-pan {
+      flex: 1 1 auto;
+      min-height: 0;
+      max-height: none;
+    }
+    .cc-agenda-pan {
+      overflow: auto;
+      cursor: grab;
+      overscroll-behavior: contain;
+      touch-action: none;
+      scrollbar-width: thin;
+    }
+    /* Keep hour labels pinned while panning across week days */
+    .cc-agenda-pan .cc-agenda-time-col,
+    .cc-agenda-week .cc-agenda-time-col {
+      position: sticky;
+      left: 0;
+      z-index: 2;
+      background: color-mix(in srgb, var(--bg-card, #0c1220) 92%, #000 8%);
+      box-shadow: 6px 0 10px -6px rgba(0, 0, 0, 0.55);
+    }
+    .cc-agenda-pan .sticky.top-0 .cc-agenda-time-col {
+      z-index: 4;
+    }
+    /* Empty hour slots are buttons — keep grab cursor so pan is discoverable */
+    .cc-agenda-pan,
+    .cc-agenda-pan * {
+      cursor: grab;
+    }
+    .cc-agenda-pan.is-panning,
+    .cc-agenda-pan.is-panning * {
+      cursor: grabbing !important;
+      user-select: none !important;
+    }
+    /* Event chips + day headers stay clickable (pointer), empty slots stay grab */
+    .cc-agenda-pan a[href],
+    .cc-agenda-pan input,
+    .cc-agenda-pan label,
+    .cc-agenda-pan select,
+    .cc-agenda-pan textarea,
+    .cc-agenda-pan [data-event-id],
+    .cc-agenda-pan button[ondblclick],
+    .cc-agenda-pan button[oncontextmenu] {
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+    [data-cc-drag-handle] {
+      user-select: none;
+    }
+    .cc-bento-card.cc-bento-dragging {
+      opacity: 0.55;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
+    }
+    .cc-bento-card.cc-bento-drop-target {
+      outline: 1px dashed rgba(245, 185, 66, 0.55);
+      outline-offset: -2px;
+    }
+    .cc-bento-card.cc-bento-drop-before {
+      box-shadow: inset 0 3px 0 0 rgba(245, 185, 66, 0.85);
+    }
+    .cc-bento-card.cc-bento-drop-after {
+      box-shadow: inset 0 -3px 0 0 rgba(245, 185, 66, 0.85);
+    }
+    .cc-layout-mini-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.5rem;
+      grid-auto-flow: row dense;
+    }
+    .cc-layout-mini-tile {
+      position: relative;
+      min-height: 4.5rem;
+      border-radius: 0.75rem;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.04);
+      padding: 0.5rem 0.4rem 1.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+    .cc-layout-mini-tile.is-agenda {
+      grid-row: span 2;
+      min-height: 9.5rem;
+    }
+    .cc-layout-mini-label {
+      font-size: 10px;
+      font-weight: 600;
+      color: #e2e8f0;
+      line-height: 1.25;
+      padding: 0 0.25rem;
+    }
+    .cc-layout-mini-arrows {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0.3rem;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.2rem;
+      padding: 0 0.3rem;
+    }
+    .cc-layout-mini-arrows button {
+      height: 1.35rem;
+      border-radius: 0.35rem;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(2, 6, 23, 0.55);
+      color: #cbd5e1;
+      font-size: 9px;
+      line-height: 1;
+    }
+    .cc-layout-mini-arrows button:hover:not(:disabled) {
+      border-color: rgba(245, 185, 66, 0.45);
+      color: #f5b942;
+    }
+    .cc-layout-mini-arrows button:disabled {
+      opacity: 0.28;
+      cursor: not-allowed;
+    }
+    :root[data-theme="light"] .cc-bento-card {
+      background: var(--bg-card);
+      border-color: var(--border-hairline);
+      box-shadow: var(--shadow-elevated);
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
     }
     :root[data-theme="light"] .surface-card {
       background: var(--bg-card);
@@ -487,27 +698,24 @@
         grid-template-columns: minmax(0, 1fr);
       }
     }
-    /* Schedule pane fills remaining calendar height (no dead space) */
+    /* Schedule pane — capped height; content pans inside (no card-level dead stretch) */
     .cc-schedule-pane {
-      flex: 1 1 auto;
-      min-height: 180px;
-      height: 100%;
-      overflow: auto;
+      min-height: 0;
+      overflow: hidden;
       display: flex;
       flex-direction: column;
     }
-    .cc-schedule-pane > * {
+    .cc-schedule-pane > .cc-agenda-pan {
       flex: 1 1 auto;
       min-height: 0;
     }
-    #cal-dual,
-    #hourly-slots-container {
-      flex: 1 1 auto;
+    #view-ent-dashboard #cal-dual,
+    #view-ent-dashboard #hourly-slots-container {
       min-height: 0;
       display: flex;
       flex-direction: column;
     }
-    /* Equal-size Dashboard quad modules — stretch with calendar column */
+    /* Legacy quad helpers (kept for other views); bento uses .cc-bento-* */
     .cc-quad-grid {
       grid-auto-rows: 1fr;
       align-content: stretch;
@@ -1722,7 +1930,43 @@
         Sunday
       </label>
     </div>
+    <div class="space-y-2 border-t border-slate-800 pt-3">
+      <div class="text-[10px] font-semibold text-slate-300">Schedule overlays</div>
+      <label class="flex items-center gap-2 text-[12px] text-slate-200 cursor-pointer">
+        <input id="cal-show-content" type="checkbox" onchange="DIMAD_CAL.setShowContent(this.checked)" class="accent-amber-500">
+        Content schedule
+      </label>
+      <p class="text-[10px] text-slate-500 leading-relaxed">When on, scheduled content posts appear on Daily and Weekly agenda views.</p>
+    </div>
     <button type="button" onclick="CAL_SETTINGS.close()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[11px] py-2 rounded-xl">Done</button>
+  </div>
+</div>
+
+<div id="cc-bento-move-confirm" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[350] items-center justify-center p-4">
+  <div class="bg-slate-900 border border-slate-700 max-w-sm w-full rounded-2xl p-5 space-y-4 font-mono shadow-2xl">
+    <h3 class="text-sm font-bold text-brand-gold">Move module?</h3>
+    <p class="text-[12px] text-slate-200 leading-relaxed">Are you sure you want to move this module?</p>
+    <div class="flex items-center gap-2">
+      <button type="button" onclick="COMMAND_CENTER.confirmBentoMove(true)" class="flex-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[11px] py-2 rounded-xl">Yes</button>
+      <button type="button" onclick="COMMAND_CENTER.confirmBentoMove(false)" class="flex-1 bg-slate-950 hover:bg-slate-800 border border-slate-700 text-slate-200 font-bold text-[11px] py-2 rounded-xl">No</button>
+    </div>
+  </div>
+</div>
+
+<div id="cc-layout-editor" class="hidden fixed inset-0 bg-slate-950/85 backdrop-blur-md z-[360] items-center justify-center p-4" onclick="if(event.target===this)COMMAND_CENTER.cancelLayoutEditor()">
+  <div class="bg-slate-900 border border-slate-700 max-w-2xl w-full rounded-2xl p-5 space-y-4 font-mono shadow-2xl max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+    <div class="flex items-start justify-between gap-3">
+      <div>
+        <h3 class="text-sm font-bold text-brand-gold">Dashboard layout</h3>
+        <p class="text-[11px] text-slate-400 mt-1 leading-relaxed">Use the arrows to reposition modules. Save applies the new order; Cancel restores your previous layout.</p>
+      </div>
+      <button type="button" onclick="COMMAND_CENTER.cancelLayoutEditor()" class="shrink-0 w-8 h-8 rounded-lg border border-slate-700 text-slate-400 hover:text-white hover:border-slate-500" aria-label="Close">✕</button>
+    </div>
+    <div id="cc-layout-editor-grid" class="cc-layout-mini-grid"></div>
+    <div class="flex items-center gap-2 pt-1">
+      <button type="button" onclick="COMMAND_CENTER.saveLayoutEditor()" class="flex-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[11px] py-2.5 rounded-xl">Save</button>
+      <button type="button" onclick="COMMAND_CENTER.cancelLayoutEditor()" class="flex-1 bg-slate-950 hover:bg-slate-800 border border-slate-700 text-slate-200 font-bold text-[11px] py-2.5 rounded-xl">Cancel</button>
+    </div>
   </div>
 </div>
 
@@ -1761,7 +2005,7 @@
 <script type="module" src="../auth/dimdrive.js?v=dimdrive-cloud"></script>
 <script type="module" src="../auth/aurinko-status.js?v=aurinko-disconnect"></script>
 <script type="module" src="../auth/email.js?v=mail-nav-case"></script>
-<script src="../script.js?v=yerevan-header-40"></script>
+<script src="../script.js?v=cc-layout-2"></script>
 </body>
 </html>
 
