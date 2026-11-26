@@ -39,6 +39,7 @@ import type { CityClockRow, CityQuote } from "@/hooks/useCityDashboardState";
 import { getLocalGreeting } from "@/lib/city/localGreeting";
 import { COUNTRY_TOOLKIT_LIST } from "@/data/city-toolkit/countries";
 import {
+  flagEmojiFromIso2,
   isCountryToolkitFallback,
   parseToolkitHello,
   resolveCountryToolkit,
@@ -337,6 +338,7 @@ export default function YerevanDashboardHeader({
     ? effectiveCountry || liveCountryLabel
     : toolkit.country;
   const placeBadge = countryLabel ? `${greetingCity}, ${countryLabel}` : greetingCity;
+  const countryFlag = flagEmojiFromIso2(toolkit.iso2);
   const logisticsTiles = buildLogisticsTiles(toolkit);
   const emergencyTel = toolkit.emergencyNumber.replace(/[^\d+]/g, "") || toolkit.emergencyNumber;
 
@@ -430,11 +432,20 @@ export default function YerevanDashboardHeader({
                 onClick={onOpenCityGuide}
                 className="inline-flex items-center gap-1.5 w-fit px-2.5 py-0.5 rounded-full bg-slate-950/60 backdrop-blur-md border border-white/10 hover:border-amber-400/40 transition"
               >
-                <span className="flex flex-col w-3.5 h-2.5 rounded-[2px] overflow-hidden shrink-0 shadow-sm">
-                  <span className="h-[3px] bg-[#D90012]" />
-                  <span className="h-[3px] bg-[#0033A0]" />
-                  <span className="h-[3px] bg-[#F2A800]" />
-                </span>
+                {countryFlag ? (
+                  <span
+                    aria-hidden="true"
+                    style={{
+                      fontSize: 12,
+                      lineHeight: 1,
+                      flexShrink: 0,
+                      display: "inline-flex",
+                      alignItems: "center"
+                    }}
+                  >
+                    {countryFlag}
+                  </span>
+                ) : null}
                 <span className="text-[10px] font-semibold tracking-wider uppercase text-slate-200 leading-none py-0.5">
                   {placeBadge}
                 </span>

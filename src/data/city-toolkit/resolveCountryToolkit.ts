@@ -36,6 +36,7 @@ const COUNTRY_ALIASES: Record<string, string> = {
 export const FALLBACK_COUNTRY_TOOLKIT: CountryToolkitEntry = {
   id: 0,
   country: "Unknown",
+  iso2: "",
   type: "Country",
   nationalLanguage: "—",
   hello: "Hello",
@@ -53,6 +54,19 @@ export const FALLBACK_COUNTRY_TOOLKIT: CountryToolkitEntry = {
   safetyWing: false,
   airalo: false
 };
+
+/** Convert ISO 3166-1 alpha-2 to a regional-indicator flag emoji. */
+export function flagEmojiFromIso2(iso2?: string | null): string {
+  const code = String(iso2 ?? "")
+    .trim()
+    .toUpperCase();
+  if (!/^[A-Z]{2}$/.test(code)) return "";
+  const A = 0x1f1e6;
+  return String.fromCodePoint(
+    A + (code.charCodeAt(0) - 65),
+    A + (code.charCodeAt(1) - 65)
+  );
+}
 
 export function normalizeCountryToolkitKey(input: string): string {
   const key = input.trim().toLowerCase();

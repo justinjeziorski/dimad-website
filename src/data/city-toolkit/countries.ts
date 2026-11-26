@@ -1,6 +1,8 @@
 export interface CountryToolkitEntry {
   id: number;
   country: string;
+  /** ISO 3166-1 alpha-2 for flag emoji / assets */
+  iso2: string;
   type: "Country" | "Territory";
   nationalLanguage: string;
   hello: string;
@@ -23,6 +25,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 1,
     country: "Spain",
+    iso2: "ES",
     type: "Country",
     nationalLanguage: "Spanish",
     hello: "Hola",
@@ -43,6 +46,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 2,
     country: "France",
+    iso2: "FR",
     type: "Country",
     nationalLanguage: "French",
     hello: "Salut",
@@ -63,6 +67,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 3,
     country: "United States",
+    iso2: "US",
     type: "Country",
     nationalLanguage: "English",
     hello: "Hello",
@@ -83,6 +88,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 4,
     country: "Turkiye",
+    iso2: "TR",
     type: "Country",
     nationalLanguage: "Turkish",
     hello: "Selam",
@@ -103,6 +109,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 5,
     country: "Italy",
+    iso2: "IT",
     type: "Country",
     nationalLanguage: "Italian",
     hello: "Ciao",
@@ -123,6 +130,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 6,
     country: "Mexico",
+    iso2: "MX",
     type: "Country",
     nationalLanguage: "Spanish",
     hello: "Hola",
@@ -143,9 +151,10 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 7,
     country: "United Kingdom",
+    iso2: "GB",
     type: "Country",
     nationalLanguage: "English",
-    hello: "Hi",
+    hello: "Hello",
     regionalExceptions: null,
     rideshare: "Uber",
     rideshareUrl: "https://www.uber.com",
@@ -163,6 +172,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 8,
     country: "Germany",
+    iso2: "DE",
     type: "Country",
     nationalLanguage: "German",
     hello: "Hallo",
@@ -183,6 +193,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 9,
     country: "Japan",
+    iso2: "JP",
     type: "Country",
     nationalLanguage: "Japanese",
     hello: "こんにちは (Konnichiwa)",
@@ -203,6 +214,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 10,
     country: "Portugal",
+    iso2: "PT",
     type: "Country",
     nationalLanguage: "Portuguese",
     hello: "Olá",
@@ -223,6 +235,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 11,
     country: "Greece",
+    iso2: "GR",
     type: "Country",
     nationalLanguage: "Greek",
     hello: "Γεια (Yia)",
@@ -243,6 +256,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 12,
     country: "Austria",
+    iso2: "AT",
     type: "Country",
     nationalLanguage: "German",
     hello: "Servus",
@@ -263,6 +277,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 13,
     country: "Hong Kong",
+    iso2: "HK",
     type: "Territory",
     nationalLanguage: "Cantonese",
     hello: "你好 (Néih hóu)",
@@ -283,6 +298,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 14,
     country: "Poland",
+    iso2: "PL",
     type: "Country",
     nationalLanguage: "Polish",
     hello: "Cześć",
@@ -303,6 +319,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 15,
     country: "Canada",
+    iso2: "CA",
     type: "Country",
     nationalLanguage: "English",
     hello: "Hello",
@@ -323,6 +340,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 16,
     country: "South Korea",
+    iso2: "KR",
     type: "Country",
     nationalLanguage: "Korean",
     hello: "안녕 (Annyeong)",
@@ -343,6 +361,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 17,
     country: "Netherlands",
+    iso2: "NL",
     type: "Country",
     nationalLanguage: "Dutch",
     hello: "Hoi",
@@ -363,6 +382,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 18,
     country: "Croatia",
+    iso2: "HR",
     type: "Country",
     nationalLanguage: "Croatian",
     hello: "Bok",
@@ -383,6 +403,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 19,
     country: "Denmark",
+    iso2: "DK",
     type: "Country",
     nationalLanguage: "Danish",
     hello: "Hej",
@@ -403,6 +424,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 20,
     country: "Indonesia",
+    iso2: "ID",
     type: "Country",
     nationalLanguage: "Indonesian",
     hello: "Halo",
@@ -423,6 +445,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 21,
     country: "Romania",
+    iso2: "RO",
     type: "Country",
     nationalLanguage: "Romanian",
     hello: "Salut",
@@ -443,6 +466,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 22,
     country: "Czechia",
+    iso2: "CZ",
     type: "Country",
     nationalLanguage: "Czech",
     hello: "Ahoj",
@@ -463,6 +487,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 23,
     country: "Hungary",
+    iso2: "HU",
     type: "Country",
     nationalLanguage: "Hungarian",
     hello: "Szia",
@@ -483,6 +508,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 24,
     country: "Singapore",
+    iso2: "SG",
     type: "Country",
     nationalLanguage: "English / Malay / Mandarin / Tamil",
     hello: "Hello",
@@ -503,6 +529,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 25,
     country: "Albania",
+    iso2: "AL",
     type: "Country",
     nationalLanguage: "Albanian",
     hello: "Tung",
@@ -523,6 +550,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 26,
     country: "UAE",
+    iso2: "AE",
     type: "Country",
     nationalLanguage: "Arabic",
     hello: "مرحبا (Marhaba)",
@@ -543,6 +571,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 27,
     country: "Ireland",
+    iso2: "IE",
     type: "Country",
     nationalLanguage: "English / Irish",
     hello: "Hello",
@@ -563,6 +592,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 28,
     country: "Morocco",
+    iso2: "MA",
     type: "Country",
     nationalLanguage: "Arabic / Amazigh",
     hello: "سلام (Salam)",
@@ -583,6 +613,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 29,
     country: "South Africa",
+    iso2: "ZA",
     type: "Country",
     nationalLanguage: "English / Zulu / Xhosa / Afrikaans",
     hello: "Hello",
@@ -603,6 +634,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 30,
     country: "Malaysia",
+    iso2: "MY",
     type: "Country",
     nationalLanguage: "Malay",
     hello: "Hai",
@@ -623,6 +655,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 31,
     country: "Belgium",
+    iso2: "BE",
     type: "Country",
     nationalLanguage: "Dutch / French",
     hello: "Hallo / Salut",
@@ -643,6 +676,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 32,
     country: "Switzerland",
+    iso2: "CH",
     type: "Country",
     nationalLanguage: "German / French / Italian",
     hello: "Hoi",
@@ -663,6 +697,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 33,
     country: "Dominican Republic",
+    iso2: "DO",
     type: "Country",
     nationalLanguage: "Spanish",
     hello: "Hola",
@@ -683,6 +718,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 34,
     country: "Brazil",
+    iso2: "BR",
     type: "Country",
     nationalLanguage: "Portuguese",
     hello: "Oi",
@@ -703,6 +739,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 35,
     country: "Sweden",
+    iso2: "SE",
     type: "Country",
     nationalLanguage: "Swedish",
     hello: "Hej",
@@ -723,6 +760,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 36,
     country: "Argentina",
+    iso2: "AR",
     type: "Country",
     nationalLanguage: "Spanish",
     hello: "Hola",
@@ -743,6 +781,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 37,
     country: "Bulgaria",
+    iso2: "BG",
     type: "Country",
     nationalLanguage: "Bulgarian",
     hello: "Здрасти (Zdrasti)",
@@ -763,6 +802,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 38,
     country: "Puerto Rico",
+    iso2: "PR",
     type: "Territory",
     nationalLanguage: "Spanish / English",
     hello: "Hola",
@@ -783,6 +823,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 39,
     country: "Chile",
+    iso2: "CL",
     type: "Country",
     nationalLanguage: "Spanish",
     hello: "Hola",
@@ -803,6 +844,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 40,
     country: "Georgia",
+    iso2: "GE",
     type: "Country",
     nationalLanguage: "Georgian",
     hello: "გამარჯობა (Gamarjoba)",
@@ -823,6 +865,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 41,
     country: "Slovenia",
+    iso2: "SI",
     type: "Country",
     nationalLanguage: "Slovenian",
     hello: "Živjo",
@@ -843,6 +886,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 42,
     country: "Norway",
+    iso2: "NO",
     type: "Country",
     nationalLanguage: "Norwegian",
     hello: "Hei",
@@ -863,6 +907,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 43,
     country: "Slovakia",
+    iso2: "SK",
     type: "Country",
     nationalLanguage: "Slovak",
     hello: "Ahoj",
@@ -883,6 +928,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 44,
     country: "Colombia",
+    iso2: "CO",
     type: "Country",
     nationalLanguage: "Spanish",
     hello: "Hola",
@@ -903,6 +949,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 45,
     country: "Finland",
+    iso2: "FI",
     type: "Country",
     nationalLanguage: "Finnish / Swedish",
     hello: "Moi",
@@ -923,6 +970,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 46,
     country: "Andorra",
+    iso2: "AD",
     type: "Country",
     nationalLanguage: "Catalan",
     hello: "Hola",
@@ -943,6 +991,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 47,
     country: "Cyprus",
+    iso2: "CY",
     type: "Country",
     nationalLanguage: "Greek / Turkish",
     hello: "Γεια (Yia)",
@@ -963,6 +1012,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 48,
     country: "Malta",
+    iso2: "MT",
     type: "Country",
     nationalLanguage: "Maltese / English",
     hello: "Ċaw",
@@ -983,6 +1033,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 49,
     country: "Vietnam",
+    iso2: "VN",
     type: "Country",
     nationalLanguage: "Vietnamese",
     hello: "Chào",
@@ -1003,6 +1054,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 50,
     country: "New Zealand",
+    iso2: "NZ",
     type: "Country",
     nationalLanguage: "English / Māori",
     hello: "Kia ora",
@@ -1023,6 +1075,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 51,
     country: "Peru",
+    iso2: "PE",
     type: "Country",
     nationalLanguage: "Spanish",
     hello: "Hola",
@@ -1043,6 +1096,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 52,
     country: "El Salvador",
+    iso2: "SV",
     type: "Country",
     nationalLanguage: "Spanish",
     hello: "Hola",
@@ -1063,6 +1117,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 53,
     country: "Uruguay",
+    iso2: "UY",
     type: "Country",
     nationalLanguage: "Spanish",
     hello: "Hola",
@@ -1083,6 +1138,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 54,
     country: "Costa Rica",
+    iso2: "CR",
     type: "Country",
     nationalLanguage: "Spanish",
     hello: "Hola",
@@ -1103,6 +1159,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 55,
     country: "Estonia",
+    iso2: "EE",
     type: "Country",
     nationalLanguage: "Estonian",
     hello: "Tere",
@@ -1123,6 +1180,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 56,
     country: "Philippines",
+    iso2: "PH",
     type: "Country",
     nationalLanguage: "Filipino / English",
     hello: "Kumusta",
@@ -1143,6 +1201,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 57,
     country: "Qatar",
+    iso2: "QA",
     type: "Country",
     nationalLanguage: "Arabic",
     hello: "مرحبا (Marhaba)",
@@ -1163,6 +1222,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 58,
     country: "Jamaica",
+    iso2: "JM",
     type: "Country",
     nationalLanguage: "Jamaican Patois / English",
     hello: "Wah gwaan",
@@ -1183,6 +1243,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 59,
     country: "Lithuania",
+    iso2: "LT",
     type: "Country",
     nationalLanguage: "Lithuanian",
     hello: "Labas",
@@ -1203,6 +1264,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 60,
     country: "Serbia",
+    iso2: "RS",
     type: "Country",
     nationalLanguage: "Serbian",
     hello: "Ćao",
@@ -1223,6 +1285,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 61,
     country: "Iceland",
+    iso2: "IS",
     type: "Country",
     nationalLanguage: "Icelandic",
     hello: "Hæ",
@@ -1243,6 +1306,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 62,
     country: "Cambodia",
+    iso2: "KH",
     type: "Country",
     nationalLanguage: "Khmer",
     hello: "សួស្តី (Suostei)",
@@ -1263,6 +1327,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 63,
     country: "Armenia",
+    iso2: "AM",
     type: "Country",
     nationalLanguage: "Armenian",
     hello: "Բարեւ (Barev)",
@@ -1283,6 +1348,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 64,
     country: "Ecuador",
+    iso2: "EC",
     type: "Country",
     nationalLanguage: "Spanish",
     hello: "Hola",
@@ -1303,6 +1369,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 65,
     country: "Montenegro",
+    iso2: "ME",
     type: "Country",
     nationalLanguage: "Montenegrin",
     hello: "Ćao",
@@ -1323,6 +1390,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 66,
     country: "Bahamas",
+    iso2: "BS",
     type: "Country",
     nationalLanguage: "English",
     hello: "Hello",
@@ -1343,6 +1411,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 67,
     country: "Australia",
+    iso2: "AU",
     type: "Country",
     nationalLanguage: "English",
     hello: "G'day",
@@ -1363,6 +1432,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 68,
     country: "Azerbaijan",
+    iso2: "AZ",
     type: "Country",
     nationalLanguage: "Azerbaijani",
     hello: "Salam",
@@ -1383,6 +1453,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 69,
     country: "Guatemala",
+    iso2: "GT",
     type: "Country",
     nationalLanguage: "Spanish",
     hello: "Hola",
@@ -1403,6 +1474,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 70,
     country: "Panama",
+    iso2: "PA",
     type: "Country",
     nationalLanguage: "Spanish",
     hello: "Hola",
@@ -1423,6 +1495,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 71,
     country: "Bosnia and Herzegovina",
+    iso2: "BA",
     type: "Country",
     nationalLanguage: "Bosnian / Croatian / Serbian",
     hello: "Ćao",
@@ -1443,6 +1516,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 72,
     country: "Mauritius",
+    iso2: "MU",
     type: "Country",
     nationalLanguage: "Mauritian Creole / English / French",
     hello: "Bonzour",
@@ -1463,6 +1537,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 73,
     country: "North Macedonia",
+    iso2: "MK",
     type: "Country",
     nationalLanguage: "Macedonian",
     hello: "Здраво (Zdravo)",
@@ -1483,6 +1558,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 74,
     country: "Aruba",
+    iso2: "AW",
     type: "Territory",
     nationalLanguage: "Papiamento / Dutch",
     hello: "Bon dia",
@@ -1503,6 +1579,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 75,
     country: "Paraguay",
+    iso2: "PY",
     type: "Country",
     nationalLanguage: "Spanish / Guaraní",
     hello: "Hola",
@@ -1523,6 +1600,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 76,
     country: "Luxembourg",
+    iso2: "LU",
     type: "Country",
     nationalLanguage: "Luxembourgish / French / German",
     hello: "Moien",
@@ -1543,6 +1621,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 77,
     country: "Israel",
+    iso2: "IL",
     type: "Country",
     nationalLanguage: "Hebrew / Arabic",
     hello: "Shalom",
@@ -1563,6 +1642,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 78,
     country: "Fiji",
+    iso2: "FJ",
     type: "Country",
     nationalLanguage: "English / Fijian / Fiji Hindi",
     hello: "Bula",
@@ -1583,6 +1663,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 79,
     country: "Honduras",
+    iso2: "HN",
     type: "Country",
     nationalLanguage: "Spanish",
     hello: "Hola",
@@ -1603,6 +1684,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 80,
     country: "Nicaragua",
+    iso2: "NI",
     type: "Country",
     nationalLanguage: "Spanish",
     hello: "Hola",
@@ -1623,6 +1705,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 81,
     country: "Laos",
+    iso2: "LA",
     type: "Country",
     nationalLanguage: "Lao",
     hello: "ສະບາຍດີ (Sabaidee)",
@@ -1643,6 +1726,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 82,
     country: "Bolivia",
+    iso2: "BO",
     type: "Country",
     nationalLanguage: "Spanish",
     hello: "Hola",
@@ -1663,6 +1747,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 83,
     country: "Sri Lanka",
+    iso2: "LK",
     type: "Country",
     nationalLanguage: "Sinhala / Tamil",
     hello: "ආයුබෝවන් (Ayubowan)",
@@ -1683,6 +1768,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 84,
     country: "Barbados",
+    iso2: "BB",
     type: "Country",
     nationalLanguage: "English",
     hello: "Hello",
@@ -1703,6 +1789,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 85,
     country: "Nepal",
+    iso2: "NP",
     type: "Country",
     nationalLanguage: "Nepali",
     hello: "नमस्ते (Namaste)",
@@ -1723,6 +1810,7 @@ export const COUNTRY_TOOLKIT_LIST: CountryToolkitEntry[] = [
   {
     id: 86,
     country: "Thailand",
+    iso2: "TH",
     type: "Country",
     nationalLanguage: "Thai",
     hello: "สวัสดี (Sawasdee)",

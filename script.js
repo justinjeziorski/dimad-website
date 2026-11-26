@@ -64,7 +64,7 @@ const MODE_NAV = {
   nomad: {
     defaultTab: 'nomad-city',
     items: [
-      { id: 'nomad-city', label: 'Your City', highlight: true },
+      { id: 'nomad-city', label: 'Your City', icon: 'fa-city', highlight: true },
       { id: 'nomad-ai', label: '⚡ Nomad AI' },
       { id: 'nomad-concierge', label: 'Dimad Concierge', premium: true },
       { id: 'nomad-maps', label: 'Digital Maps' },
@@ -109,7 +109,7 @@ async function loadViews() {
 }
 
 /** Native React City Header island (replaces slow iframe). */
-const YEREVAN_HEADER_BUNDLE = '/embeds/yerevan-header.js?v=40';
+const YEREVAN_HEADER_BUNDLE = '/embeds/yerevan-header.js?v=41';
 let _yerevanHeaderScriptPromise = null;
 
 function ensureYerevanHeaderBundle() {
@@ -522,14 +522,12 @@ const DIMAD_GEO = {
 };
 
 function openYourCityDash() {
-  if (typeof switchTab === 'function') switchTab('ent-dashboard');
-  const go = () => {
-    const el = document.getElementById('cc-module-emergency')
-      || document.getElementById('cc-module-weather')
-      || document.getElementById('cc-module-logistics');
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
-  requestAnimationFrame(() => setTimeout(go, 60));
+  // Your City lives under Nomad — expand that identity and open the city tab.
+  if (typeof switchIdentity === 'function') {
+    switchIdentity('nomad');
+    return;
+  }
+  if (typeof switchTab === 'function') switchTab('nomad-city');
 }
 
 const CC_YOUR_CITY = {
