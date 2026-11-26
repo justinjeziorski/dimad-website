@@ -172,7 +172,7 @@ async function mountYerevanHeader() {
 }
 
 /** Native React Revenue / Growth snapshot islands (replaces dashboard iframes). */
-const DASHBOARD_SNAPSHOTS_BUNDLE = '/embeds/dashboard-snapshots.js?v=1';
+const DASHBOARD_SNAPSHOTS_BUNDLE = '/embeds/dashboard-snapshots.js?v=4';
 let _dashboardSnapshotsScriptPromise = null;
 
 function ensureDashboardSnapshotsBundle() {
@@ -326,7 +326,7 @@ function mountWorkspaceIslandForTab(tabId) {
 }
 
 /** Native React Agenda + Calendar islands (shared Zustand date context). */
-const DASHBOARD_CALENDAR_BUNDLE = '/embeds/dashboard-calendar.js?v=5';
+const DASHBOARD_CALENDAR_BUNDLE = '/embeds/dashboard-calendar.js?v=7';
 let _dashboardCalendarScriptPromise = null;
 
 function ensureDashboardCalendarBundle() {
@@ -16662,19 +16662,29 @@ const DIMAD_CAL = {
     return (parts[0] || 0) * 60 + (parts[1] || 0);
   },
 
+  /** End minutes on the timeline; overnight (e.g. 23:00→00:00) wraps past midnight. */
+  endMinutes(startTime, endTime) {
+    const start = this.toMinutes(startTime);
+    let end = this.toMinutes(endTime || this.calculateEndTime(startTime));
+    if (end <= start) end += 1440;
+    return end;
+  },
+
   eventStartHour(ev) {
     return Math.floor(this.toMinutes(ev.startTime || ev.time) / 60);
   },
 
   eventEndExclusiveHour(ev) {
-    const endM = this.toMinutes(ev.endTime || this.calculateEndTime(ev.startTime || ev.time));
-    if (endM <= this.toMinutes(ev.startTime || ev.time)) return this.eventStartHour(ev) + 1;
-    return endM % 60 === 0 ? endM / 60 : Math.ceil(endM / 60);
+    const startTime = ev.startTime || ev.time;
+    const endM = this.endMinutes(startTime, ev.endTime || this.calculateEndTime(startTime));
+    const capped = Math.min(endM, 1440);
+    return capped % 60 === 0 ? capped / 60 : Math.ceil(capped / 60);
   },
 
   coversHour(ev, hour) {
-    const startM = this.toMinutes(ev.startTime || ev.time);
-    const endM = this.toMinutes(ev.endTime || this.calculateEndTime(ev.startTime || ev.time));
+    const startTime = ev.startTime || ev.time;
+    const startM = this.toMinutes(startTime);
+    const endM = Math.min(this.endMinutes(startTime, ev.endTime || this.calculateEndTime(startTime)), 1440);
     return startM < (hour + 1) * 60 && endM > hour * 60;
   },
 
@@ -16751,11 +16761,11 @@ const DIMAD_CAL = {
 
   hasConflict(date, startTime, endTime, ignoreId) {
     const start = this.toMinutes(startTime);
-    const end = this.toMinutes(endTime || this.calculateEndTime(startTime));
+    const end = this.endMinutes(startTime, endTime);
     return this.load().some((ev) => {
       if (ev.cancelled || (ignoreId && String(ev.id) === String(ignoreId)) || ev.date !== date) return false;
       const evStart = this.toMinutes(ev.startTime || ev.time);
-      const evEnd = this.toMinutes(ev.endTime || this.calculateEndTime(ev.startTime || ev.time));
+      const evEnd = this.endMinutes(ev.startTime || ev.time, ev.endTime || this.calculateEndTime(ev.startTime || ev.time));
       return start < evEnd && end > evStart;
     });
   },
@@ -16793,6 +16803,12 @@ const DIMAD_CAL = {
     else rows.push(payload);
     this.persist(rows);
     if (typeof dimadCal !== 'undefined' && dimadCal) dimadCal.syncFromStore();
+    try {
+      window.dispatchEvent(new CustomEvent('dimad:calendar-refresh'));
+      if (window.__DIMAD_CC_CAL && typeof window.__DIMAD_CC_CAL.refreshEvents === 'function') {
+        void window.__DIMAD_CC_CAL.refreshEvents();
+      }
+    } catch (_) { /* ignore */ }
     return payload;
   },
 
@@ -17235,8 +17251,13 @@ const DIMAD_CAL = {
     const endTime = this.clockValue(document.getElementById('cal-event-end')?.value);
     const notes = document.getElementById('cal-event-notes')?.value || '';
     const reminder = document.getElementById('cal-event-reminder')?.value || 'none';
-    if (!title || !date || !startTime) return;
-    if (endTime && this.toMinutes(endTime) <= this.toMinutes(startTime)) {
+    if (!title || !date || !startTime) {
+      alert('Please provide a title, date, and start time.');
+      return;
+    }
+    /* Same clock time for start/end is invalid; end earlier than start means overnight
+       (e.g. Fri 23:00 → Sat 00:00) and is allowed. */
+    if (endTime && this.toMinutes(endTime) === this.toMinutes(startTime)) {
       alert('End time must be after start time.');
       return;
     }
@@ -17287,13 +17308,19 @@ const DIMAD_CAL = {
     try {
       const result = await window.DIMAD_AURINKO.createEvent(localEvent);
       if (!result.ok) {
-        if (result.error === 'aurinko_not_connected' || result.status === 401) return;
-        console.error('Google calendar create failed', result);
-        window.alert(result.error || 'Could not add this event to Google Calendar.');
+        const soft =
+          result.status === 401 ||
+          /not_connected|unauthorized|not_signed_in/i.test(String(result.error || ''));
+        if (soft) return;
+        /* Local event already saved — don't scare users with raw API codes. */
+        console.warn('Google calendar create failed; local event kept', result);
         return;
       }
       const converted = this.fromRemoteEvent(result.event || {});
-      if (!converted) return;
+      if (!converted) {
+        this.refreshViews();
+        return;
+      }
       const rows = this.load().filter((ev) => String(ev.id) !== String(localEvent.id));
       rows.push({
         ...converted,
@@ -17304,8 +17331,7 @@ const DIMAD_CAL = {
       this.persist(rows);
       this.refreshViews();
     } catch (err) {
-      console.error('Google calendar create failed', err);
-      window.alert(err instanceof Error ? err.message : 'Could not add this event to Google Calendar.');
+      console.warn('Google calendar create failed; local event kept', err);
     }
   },
 
@@ -23174,7 +23200,7 @@ const COMMAND_CENTER = {
   storageKey: 'dimad_cc_modules',
   layoutVersion: 26,
   retiredApiIds: ['stripe', 'shopify', 'lemon', 'gumroad', 'patreon', 'mailerlite', 'plaid', 'store', 'copilot', 'your-city', 'quote', 'clocks', 'emergency', 'logistics', 'weather'],
-  /** Default bento module order (Agenda first = tall 2-row tile; drag-reorder updates this). */
+  /** Default bento module order (Agenda first = tall 2-row tile; Layout editor updates this). */
   defaultOrder: [
     'agenda',
     'calendar',
@@ -23294,7 +23320,6 @@ const COMMAND_CENTER = {
     });
     this.syncYourCitySections(hidden);
     this.balanceLayout();
-    this.bindBentoDrag();
     this.renderFilter();
     void mountDashboardSnapshots();
     void mountDashboardCalendarIslands();
@@ -23343,17 +23368,6 @@ const COMMAND_CENTER = {
       const el = grid.querySelector(`:scope > [data-cc-module="${id}"]`);
       if (el) grid.appendChild(el);
     });
-  },
-
-  saveBentoOrderFromDom() {
-    const grid = document.querySelector('#view-ent-dashboard .cc-bento-grid');
-    if (!grid) return;
-    const order = Array.from(grid.querySelectorAll(':scope > [data-cc-module]'))
-      .map((el) => el.getAttribute('data-cc-module'))
-      .filter(Boolean);
-    const next = this.state();
-    next.order = this.normalizeOrder(order);
-    this.persist(next);
   },
 
   layoutDraft: null,
@@ -23573,176 +23587,6 @@ const COMMAND_CENTER = {
         </div>
       </div>`;
     }).join('');
-  },
-
-  pendingBentoMove: null,
-
-  clearBentoDropMarks(grid) {
-    if (!grid) return;
-    grid.querySelectorAll('.cc-bento-drop-target, .cc-bento-drop-before, .cc-bento-drop-after').forEach((el) => {
-      el.classList.remove('cc-bento-drop-target', 'cc-bento-drop-before', 'cc-bento-drop-after');
-    });
-  },
-
-  /** Resolve which card + before/after edge the pointer is over (supports gaps between tiles). */
-  resolveBentoDropTarget(grid, clientX, clientY, dragId) {
-    const cards = Array.from(grid.querySelectorAll(':scope > [data-cc-module]:not(.hidden)'))
-      .filter((el) => el.getAttribute('data-cc-module') !== dragId);
-    if (!cards.length) return null;
-
-    let best = null;
-    let bestDist = Infinity;
-    cards.forEach((card) => {
-      const rect = card.getBoundingClientRect();
-      const cx = Math.min(Math.max(clientX, rect.left), rect.right);
-      const cy = Math.min(Math.max(clientY, rect.top), rect.bottom);
-      const dist = Math.hypot(clientX - cx, clientY - cy);
-      if (dist < bestDist) {
-        bestDist = dist;
-        best = { card, rect };
-      }
-    });
-    if (!best) return null;
-
-    const { card, rect } = best;
-    /* Prefer vertical half for tall stacks; use horizontal half when closer to left/right edges. */
-    const relY = (clientY - rect.top) / Math.max(rect.height, 1);
-    const relX = (clientX - rect.left) / Math.max(rect.width, 1);
-    let before;
-    if (relX < 0.28) before = true;
-    else if (relX > 0.72) before = false;
-    else before = relY < 0.5;
-    return { card, before };
-  },
-
-  openBentoMoveConfirm(payload) {
-    this.pendingBentoMove = payload;
-    const modal = document.getElementById('cc-bento-move-confirm');
-    if (!modal) {
-      this.confirmBentoMove(true);
-      return;
-    }
-    modal.classList.remove('hidden');
-    modal.classList.add('flex');
-  },
-
-  confirmBentoMove(accepted) {
-    const modal = document.getElementById('cc-bento-move-confirm');
-    if (modal) {
-      modal.classList.add('hidden');
-      modal.classList.remove('flex');
-    }
-    const pending = this.pendingBentoMove;
-    this.pendingBentoMove = null;
-    if (!accepted || !pending) return;
-
-    const grid = document.querySelector('#view-ent-dashboard .cc-bento-grid');
-    if (!grid) return;
-    const source = grid.querySelector(`:scope > [data-cc-module="${pending.sourceId}"]`);
-    const over = grid.querySelector(`:scope > [data-cc-module="${pending.targetId}"]`);
-    if (!source || !over || source === over) return;
-    if (pending.before) grid.insertBefore(source, over);
-    else grid.insertBefore(source, over.nextSibling);
-    this.saveBentoOrderFromDom();
-    this.balanceLayout();
-  },
-
-  /** Header-handle drag-and-drop reorder for Command Center bento tiles. */
-  bindBentoDrag() {
-    const grid = document.querySelector('#view-ent-dashboard .cc-bento-grid');
-    if (!grid || grid.dataset.bentoDragBound === '1') return;
-    grid.dataset.bentoDragBound = '1';
-    let dragId = '';
-    let didDrag = false;
-    let dropHint = null;
-
-    grid.addEventListener('pointerdown', (event) => {
-      if (event.button != null && event.button !== 0) return;
-      const handle = event.target.closest('[data-cc-drag-handle]');
-      if (!handle || !grid.contains(handle)) return;
-      /* Controls stay interactive; title / empty header starts a drag. */
-      if (event.target.closest('[data-cc-no-drag], select, input, label, textarea, a')) return;
-      const card = handle.closest('[data-cc-module]');
-      if (!card || card.parentElement !== grid) return;
-      didDrag = false;
-      card.draggable = true;
-      card.classList.add('cc-bento-dragging');
-    });
-
-    grid.addEventListener('dragstart', (event) => {
-      const card = event.target.closest('[data-cc-module]');
-      if (!card || card.parentElement !== grid || !card.draggable) {
-        event.preventDefault();
-        return;
-      }
-      didDrag = true;
-      dragId = card.getAttribute('data-cc-module') || '';
-      event.dataTransfer.effectAllowed = 'move';
-      try {
-        event.dataTransfer.setData('text/plain', dragId);
-        event.dataTransfer.setData('application/x-cc-module', dragId);
-      } catch (_) { /* ignore */ }
-      try {
-        event.dataTransfer.setDragImage(card, 24, 16);
-      } catch (_) { /* ignore */ }
-    });
-
-    grid.addEventListener('click', (event) => {
-      if (!didDrag) return;
-      const inHandle = event.target.closest('[data-cc-drag-handle]');
-      if (!inHandle || !grid.contains(inHandle)) return;
-      event.preventDefault();
-      event.stopPropagation();
-      didDrag = false;
-    }, true);
-
-    grid.addEventListener('dragover', (event) => {
-      if (!dragId) return;
-      event.preventDefault();
-      event.dataTransfer.dropEffect = 'move';
-      const hit = this.resolveBentoDropTarget(grid, event.clientX, event.clientY, dragId);
-      this.clearBentoDropMarks(grid);
-      dropHint = hit;
-      if (!hit) return;
-      hit.card.classList.add('cc-bento-drop-target');
-      hit.card.classList.add(hit.before ? 'cc-bento-drop-before' : 'cc-bento-drop-after');
-    });
-
-    grid.addEventListener('drop', (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      const sourceId = dragId
-        || event.dataTransfer.getData('application/x-cc-module')
-        || event.dataTransfer.getData('text/plain');
-      const hit = dropHint || this.resolveBentoDropTarget(grid, event.clientX, event.clientY, sourceId);
-      this.clearBentoDropMarks(grid);
-      dropHint = null;
-      if (!sourceId || !hit) return;
-      const targetId = hit.card.getAttribute('data-cc-module');
-      if (!targetId || targetId === sourceId) return;
-      const source = grid.querySelector(`:scope > [data-cc-module="${sourceId}"]`);
-      if (!source) return;
-      /* No-op if already in that slot. */
-      const alreadyBefore = hit.before && source.nextElementSibling === hit.card;
-      const alreadyAfter = !hit.before && hit.card.nextElementSibling === source;
-      if (alreadyBefore || alreadyAfter) return;
-      this.openBentoMoveConfirm({ sourceId, targetId, before: hit.before });
-    });
-
-    const endDrag = () => {
-      dragId = '';
-      dropHint = null;
-      this.clearBentoDropMarks(grid);
-      grid.querySelectorAll(':scope > [data-cc-module]').forEach((card) => {
-        card.draggable = false;
-        card.classList.remove('cc-bento-dragging');
-      });
-    };
-    /* Only clear on dragend — pointerup races ahead of drop and was killing reorders. */
-    grid.addEventListener('dragend', endDrag);
-    grid.addEventListener('pointercancel', () => {
-      if (!dragId) endDrag();
-    });
   },
 
   /** Bento reflow — agenda stays 2 rows tall; strip leftover wide spans. */

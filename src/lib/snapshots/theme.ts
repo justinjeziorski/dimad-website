@@ -102,10 +102,10 @@ export const SNAPSHOT_CSS = `
   }
   html[data-theme="light"] .dimad-snap-metric,
   html[data-theme="light"] .dimad-snap-ranges,
-  html[data-theme="light"] .dimad-snap-connected-menu,
+  html[data-theme="light"] .dimad-snap-connected-overlay-panel,
   :root[data-theme="light"] .dimad-snap-metric,
   :root[data-theme="light"] .dimad-snap-ranges,
-  :root[data-theme="light"] .dimad-snap-connected-menu {
+  :root[data-theme="light"] .dimad-snap-connected-overlay-panel {
     background: #ffffff !important;
   }
   .dimad-snap::before {
@@ -123,6 +123,8 @@ export const SNAPSHOT_CSS = `
     justify-content: space-between;
     gap: 8px;
     margin-bottom: 8px;
+    position: relative;
+    z-index: 24;
   }
   .dimad-snap-kicker {
     margin: 0;
@@ -214,33 +216,71 @@ export const SNAPSHOT_CSS = `
     text-overflow: ellipsis;
   }
   .dimad-snap-foot {
-    display: flex; align-items: center; justify-content: space-between; gap: 6px;
+    display: flex; align-items: center; justify-content: flex-end; gap: 6px;
     border-top: 1px solid var(--snap-line); padding-top: 8px; margin-top: 2px;
     position: relative;
   }
   .dimad-snap-connected {
-    border: 1px solid var(--snap-line);
-    background: transparent;
-    color: var(--snap-ok);
-    font: inherit;
-    font-size: 9px;
-    font-weight: 700;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
+    width: 22px; height: 22px;
+    border: 1px solid var(--snap-gold-border);
+    background: var(--snap-gold-soft);
+    color: var(--snap-gold);
     border-radius: 999px;
-    padding: 4px 8px;
+    padding: 0;
     cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
-  .dimad-snap-connected:hover { color: var(--snap-gold); border-color: var(--snap-gold-border); }
-  .dimad-snap-connected-menu {
-    position: absolute; left: 0; bottom: calc(100% + 6px); z-index: 22;
-    min-width: 180px; max-width: 240px;
-    background: var(--snap-nested); border: 1px solid var(--snap-line); border-radius: 10px;
-    padding: 6px 8px; box-shadow: var(--shadow-elevated);
+  .dimad-snap-connected:hover,
+  .dimad-snap-connected.is-open {
+    color: var(--snap-gold-hover);
+    border-color: var(--snap-gold);
+    background: color-mix(in srgb, var(--snap-gold) 18%, transparent);
   }
+  .dimad-snap-chain-icon { flex-shrink: 0; display: block; }
+  /* Beat `.dimad-snap * { position: relative }` so the sheet covers the card. */
+  .dimad-snap .dimad-snap-connected-overlay {
+    position: absolute;
+    left: 0; right: 0; top: 0; bottom: 0;
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 10px;
+    background: color-mix(in srgb, var(--snap-navy) 72%, transparent);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  .dimad-snap-connected-overlay-panel {
+    margin-top: 34px;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--snap-gold-border);
+    background: var(--snap-nested);
+    border-radius: 12px;
+    padding: 10px 12px;
+    box-shadow: var(--shadow-elevated);
+    overflow: auto;
+  }
+  .dimad-snap-connected-overlay-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    margin-bottom: 8px;
+    font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--snap-gold);
+  }
+  .dimad-snap-connected-overlay-close {
+    border: 0; background: transparent; color: var(--snap-mute);
+    font-size: 11px; line-height: 1; cursor: pointer; padding: 2px 4px;
+  }
+  .dimad-snap-connected-overlay-close:hover { color: var(--snap-ink); }
+  .dimad-snap-connected-overlay-list { display: flex; flex-direction: column; gap: 2px; }
   .dimad-snap-connected-row {
     display: flex; align-items: center; justify-content: space-between; gap: 8px;
-    font-size: 10px; padding: 4px 0; border-bottom: 1px solid var(--snap-line);
+    font-size: 11px; padding: 7px 2px; border-bottom: 1px solid var(--snap-line);
+    color: var(--snap-ink);
   }
   .dimad-snap-connected-row:last-child { border-bottom: 0; }
   .dimad-snap-check { color: var(--snap-ok); font-weight: 700; }

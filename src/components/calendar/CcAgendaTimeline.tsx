@@ -35,6 +35,14 @@ function endTimeOf(ev: CalendarEvent): string {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
+/** Inclusive end on the day timeline; overnight ends (00:00 after 23:00) wrap to 24:00. */
+function endMinutesOf(ev: CalendarEvent): number {
+  const start = toMinutes(ev.startTime || ev.time);
+  let end = toMinutes(endTimeOf(ev));
+  if (end <= start) end += 24 * 60;
+  return Math.min(end, 24 * 60);
+}
+
 function openComposer(date: string, time?: string) {
   try {
     const w = window as Window & {
@@ -149,7 +157,7 @@ function eventTone(ev: CalendarEvent): string {
 
 function EventBlock({ ev, compact }: { ev: CalendarEvent; compact?: boolean }) {
   const start = toMinutes(ev.startTime || ev.time);
-  const end = Math.max(start + 30, toMinutes(endTimeOf(ev)));
+  const end = Math.max(start + 30, endMinutesOf(ev));
   const top = (start / 60) * HOUR_PX + 1;
   const hgt = Math.max(18, ((end - start) / 60) * HOUR_PX - 3);
   return (
@@ -178,7 +186,9 @@ function EventBlock({ ev, compact }: { ev: CalendarEvent; compact?: boolean }) {
 
 function DayLane({ day, showNow }: { day: Date; showNow?: boolean }) {
   const key = dateKey(day);
+  const eventsVersion = useCalendarStore((s) => s.eventsVersion);
   const dayEvents = eventsForDate(key).filter((ev) => !ev.allDay && (ev.startTime || ev.time));
+  void eventsVersion;
   const [nowMinutes, setNowMinutes] = useState(() => {
     const n = new Date();
     return n.getHours() * 60 + n.getMinutes();

@@ -45,6 +45,7 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     const message = err instanceof Error ? err.message : "calendar_write_failed";
     console.error("Calendar POST failed", session.uid, message, err);
-    return NextResponse.json({ ok: false, error: message }, { status: message.includes("not_connected") ? 401 : 500 });
+    const unauthorized = /not_connected|unauthorized|not_signed_in/i.test(message);
+    return NextResponse.json({ ok: false, error: message }, { status: unauthorized ? 401 : 500 });
   }
 }

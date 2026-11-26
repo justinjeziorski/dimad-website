@@ -98,11 +98,11 @@
 
     <!-- Agenda first in DOM so dense placement can pin it to column 3, rows 1–2 -->
     <div data-cc-module="agenda" class="cc-bento-card cc-bento-agenda min-w-0 flex flex-col">
-      <div data-cc-drag-handle class="border-b border-white/10 mx-3 mt-3 pb-1.5 flex flex-col gap-1.5 shrink-0 cursor-grab active:cursor-grabbing">
+      <div class="border-b border-white/10 mx-3 mt-3 pb-1.5 flex flex-col gap-1.5 shrink-0">
         <button type="button" onclick="switchTab('dimad-calendar')" class="inline-flex items-center gap-1.5 text-[10px] font-semibold text-slate-100 tracking-wide hover:text-brand-gold transition self-start">
           <i class="fa-solid fa-clock text-brand-gold text-[9px]"></i> Agenda
         </button>
-        <div class="flex items-center flex-wrap gap-1.5" data-cc-no-drag>
+        <div class="flex items-center flex-wrap gap-1.5">
           <div class="inline-flex items-center rounded-full border border-white/10 overflow-hidden p-0.5 bg-white/[0.03]">
             <button type="button" data-cc-schedule-mode="hourly" onclick="(window.__DIMAD_CC_CAL&&window.__DIMAD_CC_CAL.setAgendaMode('daily')); CALENDAR_NAV.setMode('hourly')" class="px-3 py-1 text-[10px] font-semibold rounded-full text-slate-400 hover:text-slate-200 transition">Daily</button>
             <button type="button" data-cc-schedule-mode="weekly" onclick="(window.__DIMAD_CC_CAL&&window.__DIMAD_CC_CAL.setAgendaMode('weekly')); CALENDAR_NAV.setMode('weekly')" class="px-3 py-1 text-[10px] font-semibold rounded-full text-slate-400 hover:text-slate-200 transition">Weekly</button>
@@ -124,18 +124,19 @@
           </div>
           <div class="hidden min-w-0 flex-1 min-h-0" id="hourly-slots-container"></div>
         </div>
-        <div class="shrink-0 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500 border-t border-white/10 pt-2.5">
-          <span id="calendar-timezone-label" class="font-mono text-[10px]">Timezone: Auto-detected</span>
+        <div class="shrink-0 flex flex-wrap items-center justify-end gap-2 text-[11px] text-slate-500 border-t border-white/10 pt-2.5">
           <div class="relative inline-flex" data-account-wrap>
-            <button type="button" id="calendar-source-status" title="Connect Gmail or Outlook to sync calendar into Dashboard and DIMAD Calendar." onclick="event.preventDefault(); (window.DIMAD_AURINKO && window.DIMAD_AURINKO.connect ? window.DIMAD_AURINKO.connect() : (window.location.href='/api/auth/aurinko'))" class="bg-transparent border-0 text-[11px] font-semibold text-brand-gold hover:text-amber-300 px-0 py-0.5 transition inline-flex items-center gap-1.5">
-              Connect Gmail / Outlook
+            <button type="button" id="calendar-source-status" data-calendar-source-status title="Connect Gmail or Outlook to sync calendar into Dashboard and DIMAD Calendar." onclick="event.preventDefault(); (window.DIMAD_AURINKO && window.DIMAD_AURINKO.connect ? window.DIMAD_AURINKO.connect() : (window.location.href='/api/auth/aurinko'))" class="inline-flex items-center gap-1.5 rounded-full border border-gold-soft bg-brand-gold/10 px-2.5 py-1 text-[10px] font-semibold text-brand-gold hover:bg-brand-gold/15 hover:border-brand-gold/50 transition">
+              <i class="fa-brands fa-google text-[11px]" aria-hidden="true"></i>
+              <i class="fa-brands fa-microsoft text-[11px]" aria-hidden="true"></i>
+              <span>Connect</span>
             </button>
-            <div id="calendar-account-menu" data-account-menu class="hidden absolute right-0 bottom-full mb-1 z-50 min-w-[7.5rem] rounded-md border border-white/10 bg-brand-nested shadow-xl">
+            <div data-account-menu="logout" class="hidden absolute right-0 bottom-full mb-1 z-50 min-w-[7.5rem] rounded-md border border-white/10 bg-brand-nested shadow-xl">
               <button type="button" data-account-logout class="w-full text-left px-3 py-2 text-[11px] font-mono text-slate-200 hover:bg-white/5 hover:text-brand-alert">Log out</button>
             </div>
-            <div id="calendar-connect-menu" data-account-menu class="hidden absolute right-0 bottom-full mb-1 z-50 min-w-[10.5rem] rounded-md border border-white/10 bg-brand-nested shadow-xl">
-              <button type="button" data-account-connect="google" class="w-full text-left px-3 py-2 text-[11px] font-mono text-slate-200 hover:bg-white/5 hover:text-brand-gold">Connect Gmail</button>
-              <button type="button" data-account-connect="microsoft" class="w-full text-left px-3 py-2 text-[11px] font-mono text-slate-200 hover:bg-white/5 hover:text-brand-gold">Connect Outlook</button>
+            <div data-account-menu="connect" class="hidden absolute right-0 bottom-full mb-1 z-50 min-w-[10.5rem] rounded-md border border-white/10 bg-brand-nested shadow-xl">
+              <button type="button" data-account-connect="google" class="w-full text-left px-3 py-2 text-[11px] font-mono text-slate-200 hover:bg-white/5 hover:text-brand-gold inline-flex items-center gap-2"><i class="fa-brands fa-google text-[12px]" aria-hidden="true"></i>Connect Gmail</button>
+              <button type="button" data-account-connect="microsoft" class="w-full text-left px-3 py-2 text-[11px] font-mono text-slate-200 hover:bg-white/5 hover:text-brand-gold inline-flex items-center gap-2"><i class="fa-brands fa-microsoft text-[12px]" aria-hidden="true"></i>Connect Outlook</button>
             </div>
           </div>
         </div>
@@ -145,10 +146,24 @@
     <!-- Standard 1×1 tiles (equal size) — dense-pack into columns 1–2 around the tall agenda -->
     <div data-cc-module="calendar" class="cc-bento-card min-w-0 flex flex-col">
       <div data-cc-body class="p-3 space-y-2 flex flex-col flex-1 min-h-0">
-        <h3 data-cc-drag-handle class="border-b border-white/10 pb-1.5 flex items-center justify-between gap-2 shrink-0 cursor-grab active:cursor-grabbing">
+        <h3 class="border-b border-white/10 pb-1.5 flex items-center justify-between gap-2 shrink-0">
           <button type="button" onclick="switchTab('dimad-calendar')" class="inline-flex items-center gap-1.5 text-[10px] font-semibold text-slate-100 tracking-wide hover:text-brand-gold transition">
             <i class="fa-regular fa-calendar text-brand-gold text-[9px]"></i> Calendar
           </button>
+          <div class="relative inline-flex shrink-0" data-account-wrap>
+            <button type="button" data-calendar-source-status title="Connect Gmail or Outlook to sync calendar into Dashboard and DIMAD Calendar." onclick="event.preventDefault(); (window.DIMAD_AURINKO && window.DIMAD_AURINKO.connect ? window.DIMAD_AURINKO.connect() : (window.location.href='/api/auth/aurinko'))" class="inline-flex items-center gap-1.5 rounded-full border border-gold-soft bg-brand-gold/10 px-2.5 py-1 text-[10px] font-semibold text-brand-gold hover:bg-brand-gold/15 hover:border-brand-gold/50 transition">
+              <i class="fa-brands fa-google text-[11px]" aria-hidden="true"></i>
+              <i class="fa-brands fa-microsoft text-[11px]" aria-hidden="true"></i>
+              <span>Connect</span>
+            </button>
+            <div data-account-menu="logout" class="hidden absolute right-0 top-full mt-1 z-50 min-w-[7.5rem] rounded-md border border-white/10 bg-brand-nested shadow-xl">
+              <button type="button" data-account-logout class="w-full text-left px-3 py-2 text-[11px] font-mono text-slate-200 hover:bg-white/5 hover:text-brand-alert">Log out</button>
+            </div>
+            <div data-account-menu="connect" class="hidden absolute right-0 top-full mt-1 z-50 min-w-[10.5rem] rounded-md border border-white/10 bg-brand-nested shadow-xl">
+              <button type="button" data-account-connect="google" class="w-full text-left px-3 py-2 text-[11px] font-mono text-slate-200 hover:bg-white/5 hover:text-brand-gold inline-flex items-center gap-2"><i class="fa-brands fa-google text-[12px]" aria-hidden="true"></i>Connect Gmail</button>
+              <button type="button" data-account-connect="microsoft" class="w-full text-left px-3 py-2 text-[11px] font-mono text-slate-200 hover:bg-white/5 hover:text-brand-gold inline-flex items-center gap-2"><i class="fa-brands fa-microsoft text-[12px]" aria-hidden="true"></i>Connect Outlook</button>
+            </div>
+          </div>
         </h3>
         <div id="cc-calendar-root" class="min-w-0 flex-1 min-h-0 overflow-hidden flex flex-col">
           <div class="animate-pulse space-y-2 p-1" aria-hidden="true">
@@ -163,11 +178,11 @@
 
     <!-- Revenue — native React island (no iframe) -->
     <div data-cc-module="revenue-snapshot" id="module-revenue-snapshot" class="cc-bento-card min-w-0 overflow-hidden flex flex-col">
-      <h3 data-cc-drag-handle class="border-b border-white/10 mx-3 mt-3 pb-1.5 flex items-center justify-between gap-2 shrink-0 cursor-grab active:cursor-grabbing">
+      <h3 class="border-b border-white/10 mx-3 mt-3 pb-1.5 flex items-center justify-between gap-2 shrink-0">
         <button type="button" onclick="switchTab('ent-crm')" class="inline-flex items-center gap-1.5 text-[10px] font-semibold text-slate-100 tracking-wide hover:text-brand-gold transition">
           <i class="fa-solid fa-chart-line text-brand-gold text-[9px]"></i> Revenue
         </button>
-        <span class="inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" title="Live" data-cc-no-drag></span>
+        <span class="inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" title="Live"></span>
       </h3>
       <div id="revenue-snapshot-root" class="flex-1 min-h-0" data-snapshot-root="revenue">
         <div data-snap-skeleton class="dimad-snap-shell p-3 h-full box-border" aria-hidden="true">
@@ -184,7 +199,7 @@
 
     <!-- Growth — native React island (no iframe) -->
     <div data-cc-module="growth-snapshot" id="module-growth-snapshot" class="cc-bento-card min-w-0 overflow-hidden flex flex-col">
-      <h3 data-cc-drag-handle class="border-b border-white/10 mx-3 mt-3 pb-1.5 flex items-center justify-between gap-2 shrink-0 cursor-grab active:cursor-grabbing">
+      <h3 class="border-b border-white/10 mx-3 mt-3 pb-1.5 flex items-center justify-between gap-2 shrink-0">
         <button type="button" onclick="switchTab('ent-growth')" class="inline-flex items-center gap-1.5 text-[10px] font-semibold text-slate-100 tracking-wide hover:text-brand-gold transition">
           <i class="fa-solid fa-arrow-trend-up text-emerald-400 text-[9px]"></i> Growth
         </button>
@@ -208,12 +223,12 @@
     </div>
 
     <div data-cc-module="goals" class="cc-bento-card p-3 space-y-2 min-w-0 flex flex-col">
-      <h3 data-cc-drag-handle class="border-b border-white/10 pb-1.5 flex items-center justify-between gap-2 shrink-0 cursor-grab active:cursor-grabbing">
+      <h3 class="border-b border-white/10 pb-1.5 flex items-center justify-between gap-2 shrink-0">
         <button type="button" onclick="switchTab('ent-goals')" class="inline-flex items-center gap-1.5 text-[10px] font-semibold text-slate-100 tracking-wide hover:text-brand-gold transition">
           <i class="fa-solid fa-bullseye text-emerald-400 text-[9px]"></i> Accountability Log
         </button>
         <label class="sr-only" for="cc-goals-horizon">Time frame</label>
-        <select id="cc-goals-horizon" data-cc-no-drag onchange="DIMAD_GOALS.setDashHorizon(this.value)" class="text-[9px] font-mono bg-white/[0.03] text-slate-300 border border-white/10 px-2 py-0.5 rounded-full outline-none cursor-pointer hover:text-brand-gold hover:border-gold-soft max-w-[7.5rem]">
+        <select id="cc-goals-horizon" onchange="DIMAD_GOALS.setDashHorizon(this.value)" class="text-[9px] font-mono bg-white/[0.03] text-slate-300 border border-white/10 px-2 py-0.5 rounded-full outline-none cursor-pointer hover:text-brand-gold hover:border-gold-soft max-w-[7.5rem]">
           <option value="daily" selected>Daily</option>
           <option value="weekly">Weekly</option>
           <option value="monthly">Monthly</option>
@@ -237,12 +252,12 @@
     </div>
 
     <div data-cc-module="tasks" class="cc-bento-card p-3 space-y-2 min-w-0 flex flex-col">
-      <h3 data-cc-drag-handle class="border-b border-white/10 pb-1.5 flex items-center justify-between gap-2 shrink-0 cursor-grab active:cursor-grabbing">
+      <h3 class="border-b border-white/10 pb-1.5 flex items-center justify-between gap-2 shrink-0">
         <button type="button" onclick="switchTab('ent-tasks')" class="inline-flex items-center gap-1.5 text-[10px] font-semibold text-slate-100 tracking-wide hover:text-brand-gold transition">
           <i class="fa-solid fa-list-check text-brand-gold text-[9px]"></i> Task Manager
         </button>
         <label class="sr-only" for="cc-tm-scope">Task scope</label>
-        <select id="cc-tm-scope" data-cc-no-drag onchange="TASK_MANAGER.setDashView(this.value)" class="text-[9px] font-mono bg-white/[0.03] text-slate-300 border border-white/10 px-2 py-0.5 rounded-full outline-none cursor-pointer hover:text-brand-gold hover:border-gold-soft max-w-[5.5rem]">
+        <select id="cc-tm-scope" onchange="TASK_MANAGER.setDashView(this.value)" class="text-[9px] font-mono bg-white/[0.03] text-slate-300 border border-white/10 px-2 py-0.5 rounded-full outline-none cursor-pointer hover:text-brand-gold hover:border-gold-soft max-w-[5.5rem]">
           <option value="today" selected>Today</option>
           <option value="future">Future</option>
         </select>
@@ -257,12 +272,12 @@
     </div>
 
     <div data-cc-module="pipeline" class="cc-bento-card p-3 space-y-2 min-w-0 flex flex-col">
-      <h3 data-cc-drag-handle class="border-b border-white/10 pb-1.5 flex items-center justify-between gap-2 shrink-0 cursor-grab active:cursor-grabbing">
+      <h3 class="border-b border-white/10 pb-1.5 flex items-center justify-between gap-2 shrink-0">
         <button type="button" onclick="switchTab('creator-pipeline')" class="inline-flex items-center gap-1.5 text-[10px] font-semibold text-slate-100 tracking-wide hover:text-brand-gold transition">
           <i class="fa-solid fa-diagram-project text-brand-gold text-[9px]"></i> Creator Pipeline
         </button>
         <label class="sr-only" for="cc-pipeline-status">Pipeline status</label>
-        <select id="cc-pipeline-status" data-cc-no-drag onchange="PIPELINE.renderDash()" class="text-[9px] font-mono bg-white/[0.03] text-slate-300 border border-white/10 px-2 py-0.5 rounded-full outline-none cursor-pointer hover:text-brand-gold hover:border-gold-soft max-w-[7.5rem]">
+        <select id="cc-pipeline-status" onchange="PIPELINE.renderDash()" class="text-[9px] font-mono bg-white/[0.03] text-slate-300 border border-white/10 px-2 py-0.5 rounded-full outline-none cursor-pointer hover:text-brand-gold hover:border-gold-soft max-w-[7.5rem]">
           <option value="all">All open</option>
           <option value="Target">Target</option>
           <option value="Pitched">Pitched</option>
@@ -278,11 +293,11 @@
     </div>
 
     <div data-cc-module="billing" class="cc-bento-card p-3 space-y-2 min-w-0 flex flex-col">
-      <h3 data-cc-drag-handle class="border-b border-white/10 pb-1.5 flex items-center justify-between gap-2 shrink-0 cursor-grab active:cursor-grabbing">
+      <h3 class="border-b border-white/10 pb-1.5 flex items-center justify-between gap-2 shrink-0">
         <button type="button" onclick="switchTab('ent-invoices')" class="inline-flex items-center gap-1.5 text-[10px] font-semibold text-slate-100 tracking-wide hover:text-brand-gold transition">
           <i class="fa-solid fa-file-invoice-dollar text-brand-gold text-[9px]"></i> Billing
         </button>
-        <div class="flex items-center gap-1 min-w-0" data-cc-no-drag>
+        <div class="flex items-center gap-1 min-w-0">
           <label class="sr-only" for="cc-billing-kind">Billing type</label>
           <select id="cc-billing-kind" onchange="INVOICES.onDashKindChange()" class="text-[9px] font-mono bg-white/[0.03] text-slate-300 border border-white/10 px-2 py-0.5 rounded-full outline-none cursor-pointer hover:text-brand-gold hover:border-gold-soft max-w-[6.5rem]">
             <option value="invoices" selected>Invoices</option>
@@ -304,17 +319,17 @@
     </div>
 
     <div data-cc-module="notepad" class="cc-bento-card p-3 space-y-2 min-w-0 flex flex-col">
-      <h3 data-cc-drag-handle class="border-b border-white/10 pb-1.5 flex items-center justify-between gap-2 shrink-0 cursor-grab active:cursor-grabbing">
+      <h3 class="border-b border-white/10 pb-1.5 flex items-center justify-between gap-2 shrink-0">
         <span class="flex items-center gap-1.5 min-w-0">
           <button type="button" onclick="switchTab('dimad-notepad')" class="inline-flex items-center gap-1.5 shrink-0 text-[10px] font-semibold text-slate-100 tracking-wide hover:text-brand-gold transition">
             <i class="fa-solid fa-note-sticky text-brand-gold text-[9px]"></i> dimPad
           </button>
-          <span class="relative" data-cc-no-drag>
+          <span class="relative">
             <button type="button" onclick="DIMAD_NOTEPAD.toggleHelp(event, 'cc')" aria-label="About dimPad" class="w-4 h-4 rounded-full border border-white/10 text-[9px] leading-none text-slate-400 hover:text-brand-gold hover:border-gold-soft">?</button>
             <div id="cc-notepad-help" class="hidden absolute left-0 top-full mt-1 z-30 w-56 rounded-lg cc-bento-card shadow-xl p-2.5 text-[10px] font-normal leading-relaxed text-slate-300">Cloud-based notepad. Autosaves directly to dimDrive. Think it. Jot it. Save it.</div>
           </span>
         </span>
-        <span class="flex flex-wrap items-center justify-end gap-1.5 shrink-0" data-cc-no-drag>
+        <span class="flex flex-wrap items-center justify-end gap-1.5 shrink-0">
           <span class="relative">
             <button type="button" onclick="DIMAD_NOTEPAD.toggleRecent(event)" class="text-[9px] font-semibold text-slate-300 hover:text-brand-gold border border-white/10 bg-transparent px-2 py-0.5 rounded-full transition">Recent</button>
             <div id="cc-notepad-recent" class="hidden absolute right-0 top-full mt-1 z-30 w-48 max-h-56 overflow-y-auto rounded-lg cc-bento-card shadow-xl py-0.5"></div>

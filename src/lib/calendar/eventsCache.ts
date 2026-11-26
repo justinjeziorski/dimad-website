@@ -162,13 +162,14 @@ export async function ensureMonth(key: MonthKey): Promise<CalendarEvent[]> {
     const start = parseISO(`${key}-01`);
     const fromKey = format(startOfMonth(start), "yyyy-MM-dd");
     const toKey = format(endOfMonth(start), "yyyy-MM-dd");
-    const local = readLocalWindow(fromKey, toKey);
     let remote: CalendarEvent[] = [];
     try {
       remote = await fetchFirestoreMonth(key);
     } catch {
       remote = [];
     }
+    /* Re-read local at completion so events created while fetch was in flight are kept. */
+    const local = readLocalWindow(fromKey, toKey);
     const merged = mergeById([...local, ...remote]);
     monthCache.set(key, merged);
     inflight.delete(key);
@@ -191,30 +192,39 @@ export async function ensureWindow(visibleMonth: Date): Promise<Map<MonthKey, Ca
 
 export function eventsForDate(dateKey: string): CalendarEvent[] {
   const key = dateKey.slice(0, 7) as MonthKey;
-  const rows = monthCache.get(key) || readLocalWindow(dateKey, dateKey);
-  return rows.filter((ev) => ev.date === dateKey && !ev.cancelled);
+  const cached = monthCache.get(key) || [];
+  /* Always union localStorage so Agenda updates even if the month cache is stale. */
+  const local = readLocalWindow(dateKey, dateKey);
+  return mergeById([...cached, ...local]).filter((ev) => ev.date === dateKey && !ev.cancelled);
 }
 
 export function eventsInMonth(key: MonthKey): CalendarEvent[] {
-  return monthCache.get(key) || [];
+  const start = parseISO(`${key}-01`);
+  const fromKey = format(startOfMonth(start), "yyyy-MM-dd");
+  const toKey = format(endOfMonth(start), "yyyy-MM-dd");
+  return mergeById([...(monthCache.get(key) || []), ...readLocalWindow(fromKey, toKey)]);
 }
 
 /** Invalidate cache after local writes / remote merges. */
 export function invalidateMonthCache(keys?: MonthKey[]): void {
   if (!keys || !keys.length) {
     monthCache.clear();
+    inflight.clear();
     return;
   }
-  keys.forEach((k) => monthCache.delete(k));
+  keys.forEach((k) => {
+    monthCache.delete(k);
+    inflight.delete(k);
+  });
 }
 
-export function seedMonthFromLocal(visibleMonth: Date): void {
+export function seedMonthFromLocal(visibleMonth: Date, _force = false): void {
   const center = startOfMonth(visibleMonth);
   [subMonths(center, 1), center, addMonths(center, 1)].forEach((d) => {
     const key = monthKey(d);
-    if (monthCache.has(key)) return;
     const fromKey = format(startOfMonth(d), "yyyy-MM-dd");
     const toKey = format(endOfMonth(d), "yyyy-MM-dd");
-    monthCache.set(key, mergeById(readLocalWindow(fromKey, toKey)));
+    const local = readLocalWindow(fromKey, toKey);
+    monthCache.set(key, mergeById([...(monthCache.get(key) || []), ...local]));
   });
 }

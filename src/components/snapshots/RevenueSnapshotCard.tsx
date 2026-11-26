@@ -9,7 +9,7 @@ import {
   shopifyRangeParam,
   type RevenueSourceId
 } from "@/lib/snapshots/aggregate";
-import { openIntegrationsSettings, openShellTab } from "@/lib/snapshots/nav";
+import { openIntegrationsSettings } from "@/lib/snapshots/nav";
 import type { SnapshotRange } from "@/lib/snapshots/theme";
 import { takeWorkspaceHydration } from "@/lib/cache/workspace-data-cache";
 
@@ -95,8 +95,6 @@ export default function RevenueSnapshotCard({ embedded = false }: Props) {
         refreshing={refreshing}
         accent="revenue"
         embedded={embedded}
-        workspaceLabel="Open Revenue"
-        onOpenWorkspace={() => openShellTab("ent-crm")}
         onOpenIntegrations={openIntegrationsSettings}
       />
     </div>

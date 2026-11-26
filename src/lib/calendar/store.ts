@@ -135,7 +135,15 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
 
   refreshEvents: async () => {
     invalidateMonthCache();
-    await get().ensureVisibleWindow();
+    const { visibleMonth } = get();
+    seedMonthFromLocal(visibleMonth, true);
+    set({ loadingWindow: true });
+    try {
+      await ensureWindow(visibleMonth);
+      set({ eventsVersion: get().eventsVersion + 1 });
+    } finally {
+      set({ loadingWindow: false });
+    }
   }
 }));
 

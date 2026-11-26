@@ -18,8 +18,8 @@ type Props = {
   loading?: boolean;
   /** Soft refresh while keeping previous metrics visible (no layout swap). */
   refreshing?: boolean;
-  workspaceLabel: string;
-  onOpenWorkspace: () => void;
+  workspaceLabel?: string;
+  onOpenWorkspace?: () => void;
   onOpenIntegrations: () => void;
   /** Visual accent family for sparkline / progress rings. */
   accent?: Accent;
@@ -76,6 +76,28 @@ function GrowthAccentBars() {
         </div>
       ))}
     </div>
+  );
+}
+
+/** Gold interlocking chain — Connected badge glyph. */
+function ChainBadgeIcon() {
+  return (
+    <svg className="dimad-snap-chain-icon" viewBox="0 0 16 16" width="12" height="12" aria-hidden>
+      <path
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        d="M6.2 9.8a2.6 2.6 0 0 1 0-3.6l1.4-1.4a2.6 2.6 0 0 1 3.6 3.6L10 9.6"
+      />
+      <path
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        d="M9.8 6.2a2.6 2.6 0 0 1 0 3.6L8.4 11.2a2.6 2.6 0 1 1-3.6-3.6L6 6.4"
+      />
+    </svg>
   );
 }
 
@@ -152,17 +174,61 @@ export default function SnapshotChrome({
               ))}
             </div>
             {!isEmpty ? (
-              <button
-                type="button"
-                className="dimad-snap-integrations"
-                title="Manage integrations"
-                onClick={onOpenIntegrations}
-              >
-                Integrations
-              </button>
+              <>
+                <button
+                  type="button"
+                  className="dimad-snap-integrations"
+                  title="Manage integrations"
+                  onClick={onOpenIntegrations}
+                >
+                  Integrations
+                </button>
+                <button
+                  type="button"
+                  className={`dimad-snap-connected${openConnected ? " is-open" : ""}`}
+                  title={`Connected integrations (${connected.length})`}
+                  aria-label={`Connected integrations, ${connected.length}`}
+                  aria-expanded={openConnected}
+                  aria-controls={connectedId}
+                  onClick={() => setOpenConnected((v) => !v)}
+                >
+                  <ChainBadgeIcon />
+                </button>
+              </>
             ) : null}
           </div>
         </div>
+
+        {openConnected && !isEmpty ? (
+          <div
+            className="dimad-snap-connected-overlay"
+            id={connectedId}
+            role="dialog"
+            aria-label="Connected integrations"
+          >
+            <div className="dimad-snap-connected-overlay-panel">
+              <div className="dimad-snap-connected-overlay-head">
+                <span>Connected</span>
+                <button
+                  type="button"
+                  className="dimad-snap-connected-overlay-close"
+                  aria-label="Close"
+                  onClick={() => setOpenConnected(false)}
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="dimad-snap-connected-overlay-list">
+                {connected.map((s) => (
+                  <div className="dimad-snap-connected-row" key={s.id}>
+                    <span>{s.label}</span>
+                    <span className="dimad-snap-check">✓</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         {isEmpty ? (
           <div className="dimad-snap-empty-wrap">
@@ -186,32 +252,14 @@ export default function SnapshotChrome({
                   ))}
             </div>
             {accent === "revenue" ? <RevenueSparkline /> : <GrowthAccentBars />}
-            <div className="dimad-snap-foot">
-              <div style={{ position: "relative" }}>
-                <button
-                  type="button"
-                  className="dimad-snap-connected"
-                  aria-expanded={openConnected}
-                  aria-controls={connectedId}
-                  onClick={() => setOpenConnected((v) => !v)}
-                >
-                  Connected · {connected.length}
+            {workspaceLabel && onOpenWorkspace ? (
+              <div className="dimad-snap-foot">
+                <span />
+                <button type="button" className="dimad-snap-link" onClick={onOpenWorkspace}>
+                  {workspaceLabel} →
                 </button>
-                {openConnected ? (
-                  <div className="dimad-snap-connected-menu" id={connectedId}>
-                    {connected.map((s) => (
-                      <div className="dimad-snap-connected-row" key={s.id}>
-                        <span>{s.label}</span>
-                        <span className="dimad-snap-check">✓</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
               </div>
-              <button type="button" className="dimad-snap-link" onClick={onOpenWorkspace}>
-                {workspaceLabel} →
-              </button>
-            </div>
+            ) : null}
           </>
         )}
       </article>

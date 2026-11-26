@@ -107,41 +107,58 @@ function escapeBadge(value) {
     .replace(/>/g, "&gt;");
 }
 
+const CONNECT_BADGE_CLASS =
+  "inline-flex items-center gap-1.5 rounded-full border border-gold-soft bg-brand-gold/10 px-2.5 py-1 text-[10px] font-semibold text-brand-gold hover:bg-brand-gold/15 hover:border-brand-gold/50 transition";
+
+function sourceStatusButtons() {
+  return Array.from(document.querySelectorAll("[data-calendar-source-status], #calendar-source-status"));
+}
+
 function paint(connected, count) {
-  const btn = document.getElementById("calendar-source-status");
-  if (!btn) return;
-  if (!btn.dataset.baseClass) btn.dataset.baseClass = btn.getAttribute("class") || "";
+  const buttons = sourceStatusButtons();
+  if (!buttons.length) return;
   const on = connected || querySaysConnected();
-  btn.dataset.aurinkoConnected = on ? "1" : "0";
-  if (on) {
-    const { email, serviceType } = connectedMailbox();
-    const address = email || "Mailbox";
-    btn.title = `${address} connected`;
-    btn.className =
-      "max-w-[18rem] inline-flex items-center gap-2 pl-1.5 pr-2.5 py-1 rounded-full border border-brand-border bg-brand-black text-left cursor-pointer";
-    btn.innerHTML = `<span class="w-5 h-5 rounded-full bg-amber-500/15 border border-amber-500/30 text-brand-gold text-[9px] font-mono font-bold flex items-center justify-center shrink-0">${mailboxBadgeIcon(address, serviceType)}</span>
-      <span class="min-w-0">
-        <span class="block text-[8px] font-mono uppercase tracking-[0.14em] text-slate-500 leading-none">Account</span>
-        <span class="block text-[10px] font-mono text-slate-200 truncate leading-tight">${escapeBadge(address)} connected</span>
-      </span>`;
-    return;
-  }
-  hideAccountMenus();
-  btn.className = btn.dataset.baseClass;
-  btn.title = "Connect Gmail or Outlook to sync calendar and email.";
-  btn.textContent = "Connect Gmail / Outlook";
+  if (!on) hideAccountMenus();
+
+  buttons.forEach((btn) => {
+    if (!btn.dataset.baseClass) btn.dataset.baseClass = btn.getAttribute("class") || CONNECT_BADGE_CLASS;
+    btn.dataset.aurinkoConnected = on ? "1" : "0";
+    if (on) {
+      const { email, serviceType } = connectedMailbox();
+      const address = email || "Mailbox";
+      btn.title = `${address} connected`;
+      btn.className =
+        "max-w-[14rem] inline-flex items-center gap-2 pl-1.5 pr-2.5 py-1 rounded-full border border-brand-border bg-brand-black text-left cursor-pointer";
+      btn.innerHTML = `<span class="w-5 h-5 rounded-full bg-amber-500/15 border border-amber-500/30 text-brand-gold text-[9px] font-mono font-bold flex items-center justify-center shrink-0">${mailboxBadgeIcon(address, serviceType)}</span>
+        <span class="min-w-0">
+          <span class="block text-[8px] font-mono uppercase tracking-[0.14em] text-slate-500 leading-none">Account</span>
+          <span class="block text-[10px] font-mono text-slate-200 truncate leading-tight">${escapeBadge(address)} connected</span>
+        </span>`;
+      return;
+    }
+    btn.className = btn.dataset.baseClass || CONNECT_BADGE_CLASS;
+    btn.title = "Connect Gmail or Outlook to sync calendar and email.";
+    btn.innerHTML =
+      '<i class="fa-brands fa-google text-[11px]" aria-hidden="true"></i>' +
+      '<i class="fa-brands fa-microsoft text-[11px]" aria-hidden="true"></i>' +
+      "<span>Connect</span>";
+  });
 }
 
 function hideAccountMenus() {
   document.querySelectorAll("[data-account-menu]").forEach((menu) => menu.classList.add("hidden"));
 }
 
-function toggleAccountMenu(id) {
-  const menu = document.getElementById(id);
-  if (!menu) return;
-  const open = !menu.classList.contains("hidden");
+function toggleAccountMenu(idOrKind, anchor) {
   hideAccountMenus();
-  if (!open) menu.classList.remove("hidden");
+  let menu = null;
+  if (anchor && (idOrKind === "logout" || idOrKind === "connect")) {
+    menu = anchor.closest("[data-account-wrap]")?.querySelector(`[data-account-menu="${idOrKind}"]`);
+  } else if (typeof idOrKind === "string") {
+    menu = document.getElementById(idOrKind);
+  }
+  if (!menu) return;
+  menu.classList.remove("hidden");
 }
 
 function dropOauthSuccessQuery() {
@@ -336,7 +353,10 @@ window.DIMAD_AURINKO = {
   paint,
   apiBase,
   isConnected() {
-    return querySaysConnected() || document.getElementById("calendar-source-status")?.dataset.aurinkoConnected === "1";
+    return (
+      querySaysConnected() ||
+      sourceStatusButtons().some((btn) => btn.dataset.aurinkoConnected === "1")
+    );
   },
   async boot() {
     const user = auth.currentUser || window.DIMAD_FIREBASE?.auth?.currentUser;
@@ -419,9 +439,12 @@ window.DIMAD_AURINKO = {
     return report;
   },
   async connect(serviceType) {
-    const btn = document.getElementById("calendar-source-status");
+    const buttons = sourceStatusButtons();
+    const btn = buttons[0];
     if (btn?.dataset.aurinkoConnected === "1" && !serviceType) {
-      btn.textContent = "Syncing…";
+      buttons.forEach((el) => {
+        el.textContent = "Syncing…";
+      });
       await window.DIMAD_AURINKO.sync();
       if (typeof window.DIMAD_MAIL?.mount === "function") await window.DIMAD_MAIL.mount();
       return;
@@ -434,7 +457,7 @@ window.DIMAD_AURINKO = {
       return;
     }
     if (!serviceType) {
-      toggleAccountMenu("calendar-connect-menu");
+      toggleAccountMenu("connect", btn);
       return;
     }
     mailboxDisconnected = false;
@@ -469,15 +492,15 @@ document.addEventListener(
       void window.DIMAD_AURINKO.connect(pick.getAttribute("data-account-connect"));
       return;
     }
-    const cal = event.target.closest?.("#calendar-source-status");
+    const cal = event.target.closest?.("[data-calendar-source-status], #calendar-source-status");
     if (cal) {
       event.preventDefault();
       event.stopImmediatePropagation();
       if (cal.dataset.aurinkoConnected === "1") {
-        toggleAccountMenu("calendar-account-menu");
+        toggleAccountMenu("logout", cal);
         return;
       }
-      toggleAccountMenu("calendar-connect-menu");
+      toggleAccountMenu("connect", cal);
       return;
     }
     const mail = event.target.closest?.("#mail-account-badge");
@@ -492,7 +515,7 @@ document.addEventListener(
 );
 
 const mo = new MutationObserver(() => {
-  const btn = document.getElementById("calendar-source-status");
+  const btn = sourceStatusButtons()[0];
   if (!btn) return;
   if (querySaysConnected() && btn.dataset.aurinkoConnected !== "1") paint(true);
 });
